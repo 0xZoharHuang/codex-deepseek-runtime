@@ -1,0 +1,118 @@
+"""Transport invariants: local authorization, no retries, terminal errors and cancellation."""
+
+import asyncio
+
+import aiohttp
+from aiohttp import web
+import pytest
+
+import codex_deepseek.gateway as module
+from codex_deepseek.gateway import Gateway, Store
+from codex_deepseek.protocol import MODEL
+
+
+@pytest.fixture
+async def fake_upstream(monkeypatch):
+    handlers = []
+    async def dispatch(request):
+        return await handlers[0](request)
+    app = web.Application()
+    app.router.add_post("/responses", dispatch)
+    runner = web.AppRunner(app, handler_cancellation=True)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", 0).start()
+    monkeypatch.setattr(module, "UPSTREAM", f"http://127.0.0.1:{runner.addresses[0][1]}/responses")
+    yield handlers
+    await runner.cleanup()
+
+
+async def test_no_retry_or_key_leak_on_upstream_error(fake_upstream, tmp_path):
+    calls = 0
+    async def failure(request):
+        nonlocal calls
+        calls += 1
+        assert request.headers["Authorization"] == "Bearer SECRET"
+        payload = await request.json()
+        assert payload["provider"]["only"] == ["deepseek"]
+        return web.json_response({"error": {"message": "rate limit"}}, status=429,headers={"Retry-After":"7","X-Request-Id":"native-retry-proof"})
+    fake_upstream.append(failure)
+    store = Store(tmp_path / "state.sqlite")
+    try:
+        async with Gateway("SECRET", "LOCAL", store, {}) as gateway, aiohttp.ClientSession() as client:
+            url = f"http://127.0.0.1:{gateway.port}/v1/responses"
+            async with client.post(url, json={"model": MODEL}, headers={"Authorization": "Bearer LOCAL"}) as response:
+                assert response.status == 429
+                assert response.headers["Retry-After"]=="7" and response.headers["X-Request-Id"]=="native-retry-proof"
+                assert "SECRET" not in await response.text()
+            async with client.post(url, json={"model": MODEL}) as response:
+                assert response.status == 401
+        assert calls == 1
+    finally:
+        store.close()
+
+
+async def test_truncated_stream_reports_failure_and_does_not_complete(fake_upstream, tmp_path):
+    async def truncated(request):
+        return web.Response(body=b'event: response.created\ndata: {"type":"response.created","response":{"id":"r1"}}\n\n', content_type="text/event-stream")
+    fake_upstream.append(truncated)
+    store = Store(tmp_path / "state.sqlite")
+    try:
+        async with Gateway("SECRET", "LOCAL", store, {}) as gateway, aiohttp.ClientSession() as client:
+            async with client.post(f"http://127.0.0.1:{gateway.port}/v1/responses", json={"model": MODEL, "stream": True}, headers={"Authorization": "Bearer LOCAL"}) as response:
+                text = await response.text()
+                assert "response.failed" in text and "response.completed" not in text
+        assert store.db.execute("SELECT status FROM receipts").fetchone()[0] == "adapter_error"
+    finally:
+        store.close()
+
+
+async def test_native_disconnect_closes_inflight_upstream(fake_upstream, tmp_path):
+    disconnected = asyncio.Event()
+    started = asyncio.Event()
+    async def slow(request):
+        response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+        await response.prepare(request)
+        await response.write(b'data: {"type":"response.created","response":{"id":"r1"}}\n\n')
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            disconnected.set()
+    fake_upstream.append(slow)
+    store = Store(tmp_path / "state.sqlite")
+    try:
+        async with Gateway("SECRET", "LOCAL", store, {}) as gateway, aiohttp.ClientSession() as client:
+            response = await client.post(f"http://127.0.0.1:{gateway.port}/v1/responses", json={"model": MODEL, "stream": True}, headers={"Authorization": "Bearer LOCAL"})
+            await asyncio.wait_for(started.wait(), 2)
+            await response.content.read(10)
+            response.close()
+            await asyncio.wait_for(disconnected.wait(), 2)
+        assert store.db.execute("SELECT status FROM receipts").fetchone()[0] == "cancelled"
+    finally:
+        store.close()
+
+
+async def test_failed_trace_storage_records_terminal_failure_without_upstream(fake_upstream,tmp_path,monkeypatch):
+    trace=tmp_path/'not-a-directory';trace.write_text('preserve')
+    monkeypatch.setenv('CODEX_DEEPSEEK_TRACE_DIR',str(trace))
+    store=Store(tmp_path/'state.sqlite')
+    try:
+        async with Gateway('SECRET','LOCAL',store,{}) as gateway,aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',json={'model':MODEL},headers={'Authorization':'Bearer LOCAL'}) as response:
+                assert response.status==502
+        assert store.db.execute('SELECT status FROM receipts').fetchone()[0]=='adapter_error'
+        assert trace.read_text()=='preserve'
+    finally:
+        store.close()
+
+
+async def test_damaged_trace_configuration_fails_before_upstream_with_terminal_receipt(fake_upstream,tmp_path):
+    import json
+    def broken():raise json.JSONDecodeError('damaged private trace configuration','[',1)
+    store=Store(tmp_path/'state.sqlite')
+    try:
+        async with Gateway('SECRET','LOCAL',store,{},trace_source=broken) as gateway,aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',json={'model':MODEL},headers={'Authorization':'Bearer LOCAL'}) as response:
+                assert response.status==502 and 'SECRET' not in await response.text()
+        assert store.db.execute('SELECT status FROM receipts').fetchall()==[('adapter_error',)]
+    finally:store.close()

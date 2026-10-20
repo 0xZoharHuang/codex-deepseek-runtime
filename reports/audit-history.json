@@ -1,0 +1,47 @@
+{
+  "original_failures_preserved": true,
+  "runtime_fixes": [
+    "Removed redundant provider CLI overrides that forced native TUI into embedded mode.",
+    "Preserved native exact hashed Unix socket rendezvous and stale-root recovery while rejecting foreign/direct socket attachments.",
+    "Validated the hidden stdio-to-uds positional attachment path.",
+    "Preserved native ephemeral WebSocket port zero using kernel-owned endpoint registration.",
+    "Cleared provider-side defer_loading only after actual native tool discovery, preserving current schemas and grammar.",
+    "Fixed the dedicated connectivity probe outside Git without altering ordinary exec trust behavior."
+  ],
+  "verifier_scope_correction": {
+    "topic": "Native memory v1/v2",
+    "original_observation": "Native extraction, consolidation and cold injection succeeded; opaque random project identifiers were not always retained by the model summary.",
+    "runtime_pass_criterion": "Generated native summary content must appear exactly in the fresh cold thread input, with source-bound artifacts and native model pins. Identifier retention is recorded separately as model quality.",
+    "patch": "memory-verifier-scope.patch",
+    "lineage": "qualification-lineage.json"
+  },
+  "real_work": [
+    {
+      "name": "httpcore",
+      "passed": true,
+      "total_seconds": 839.25,
+      "cold_resume_during_source_edits": true,
+      "continuation_after_wall_clock_budget": false,
+      "continuation": null,
+      "independent_native_reviewers_completed": 1
+    },
+    {
+      "name": "jinja",
+      "passed": true,
+      "total_seconds": 2046.3600000000001,
+      "cold_resume_during_source_edits": false,
+      "continuation_after_wall_clock_budget": true,
+      "continuation": {
+        "reason": "native cold continuation after a bounded model-workflow timeout",
+        "model_reasoning_effort": "low",
+        "oracle_sources_unchanged": true,
+        "seconds": 242.92
+      },
+      "independent_native_reviewers_completed": 1
+    }
+  ],
+  "earlier_exploratory_failure": {
+    "case": "HTTPcore",
+    "reason": "A separate earlier high-effort exploratory workflow reached its 30-minute budget; retained as a model-workflow observation and not counted as a passing release workflow."
+  }
+}

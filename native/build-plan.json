@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "distribution": "codex-deepseek-runtime",
+  "upstream_version": "0.164.0-alpha.7",
+  "source": {
+    "commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "url": "https://codeload.github.com/openai/codex/tar.gz/fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "sha256": "3f9d7e83c9f152a438633813daefacee944d29165101c305e8ac08dc00a0e361"
+  },
+  "rust_toolchain": "1.95.0",
+  "target": "aarch64-apple-darwin",
+  "build": {
+    "profile": "release",
+    "jobs": 2,
+    "incremental": false,
+    "debug": 0,
+    "strip": "symbols",
+    "lto": false,
+    "codegen_units": 16
+  },
+  "external_dependency_lock_unchanged": true
+}

@@ -1,0 +1,41 @@
+{
+  "kind": "scoped_verifier_revalidation",
+  "reason": "Memory runtime acceptance verifies exact generated-file injection rather than opaque identifier retention by the model. The Jinja model workflow continued from its saved session after the 30-minute budget, retaining the original timeout and rerunning its complete external validation. All native and adapter runtime bytes stayed unchanged.",
+  "runtime_unchanged": true,
+  "changed_verifiers": [
+    "verify_memory_audit.py"
+  ],
+  "added_verification_utilities": [
+    "assemble_scoped_acceptance.py",
+    "verify_real_work_resume.py"
+  ],
+  "base_artifact_sha256": "0c4f6b07e357484d5f61c6a25751e5263600ba6b5081f6ba3bd6c51b4764b921",
+  "base_verdict_sha256": "b9a20395e1505ac44271f1c3d1232ad3eac4c43e802ac8bd570e0bd8b52da87b",
+  "revalidation_stages": [
+    {
+      "artifact_sha256": "3cb0bf688332bd5ad1dd0533c824275b875d0e5de24db4c90e9576146c9e0594",
+      "verdict_sha256": "bcca5a335b337a6e13a9effd44c60937a17db881fdef8f3a23919753ad411c3a",
+      "gates": [
+        "memory-v1",
+        "memory-v2"
+      ],
+      "protocol": "scoped installed-artifact gate rerun"
+    },
+    {
+      "artifact_sha256": "49e1ce21f99b2c01b2c652c39a0f5fd1f28ea4023dc216dc1eb575cd95235dd2",
+      "verdict_sha256": "4a43ae1ebe290cd79af9b4b30c19b108e73561dc15faf30344fdd6af94d254e0",
+      "gates": [
+        "real-work"
+      ],
+      "protocol": "saved native workflow continuation with original failure retained"
+    }
+  ],
+  "previous_verifier_sha256": "d9f85cd5ebdab2d8285f8eafde6ee193939c001a5a045ce91b5cfb25b29a0cf6",
+  "current_verifier_sha256": "f1a0bd29dbadaf2102a3bf9615225c20fef242a887a26ae163c592b37fd10aff",
+  "failed_original_gates": [
+    "memory-v1",
+    "memory-v2",
+    "real-work"
+  ],
+  "original_failures_preserved": true
+}

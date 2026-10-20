@@ -1,0 +1,44 @@
+{
+  "repository": "encode/httpcore",
+  "fix": "7b04cda582b32cba34a7bfb0eb1dd535f0ea88a5",
+  "base": "79fa6bf0dfcf3820d1ae7e52a2d268f33022c5a4",
+  "title": "Safe async cancellations. (#880)\n\n* Connection pool work\r\n\r\n* Connection pool work\r\n\r\n* Connection pool work\r\n\r\n* Connection pool work\r\n\r\n* Comments\r\n\r\n* Comments\r\n\r\n* Connection pool work\r\n\r\n* Reraise\r\n\r\n* Lookin sharp\r\n\r\n* nocover directive\r\n\r\n* Safe cancellations\r\n\r\n* Update CHANGELOG",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "changes": 1
+    },
+    {
+      "path": "httpcore/_async/connection.py",
+      "changes": 16
+    },
+    {
+      "path": "httpcore/_async/connection_pool.py",
+      "changes": 364
+    },
+    {
+      "path": "httpcore/_sync/connection.py",
+      "changes": 16
+    },
+    {
+      "path": "httpcore/_sync/connection_pool.py",
+      "changes": 364
+    },
+    {
+      "path": "httpcore/_synchronization.py",
+      "changes": 58
+    },
+    {
+      "path": "requirements.txt",
+      "changes": 2
+    },
+    {
+      "path": "tests/_async/test_connection_pool.py",
+      "changes": 35
+    },
+    {
+      "path": "tests/_sync/test_connection_pool.py",
+      "changes": 35
+    }
+  ]
+}

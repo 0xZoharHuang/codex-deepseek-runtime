@@ -1,0 +1,11 @@
+--- a/src/codex_deepseek/cli.py
++++ b/src/codex_deepseek/cli.py
+@@ -153,7 +153,7 @@
+     work.mkdir(exist_ok=True,mode=0o700)
+     flags={'mcp_servers':'{}','web_search':'"disabled"','model_reasoning_effort':'"low"',
+            **{'features.'+name:'false' for name in ['apps','plugins','memories','multi_agent','multi_agent_v2','shell_tool','code_mode','code_mode_only']}}
+-    arguments=['-a','never','exec','--ephemeral','--json','--sandbox','read-only','-C',str(work),*[part for name,value in flags.items() for part in ['-c',name+'='+value]],
++    arguments=['-a','never','exec','--skip-git-repo-check','--ephemeral','--json','--sandbox','read-only','-C',str(work),*[part for name,value in flags.items() for part in ['-c',name+'='+value]],
+                'Reply with exactly CONNECTED. Do not call tools or delegate.']
+     process=await asyncio.create_subprocess_exec(*adapter_command(),*arguments,
+         env={**os.environ,'CODEX_DEEPSEEK_HOME':str(home)},stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)

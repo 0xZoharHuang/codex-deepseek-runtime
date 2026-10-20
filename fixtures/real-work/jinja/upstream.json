@@ -1,0 +1,20 @@
+{
+  "repository": "pallets/jinja",
+  "fix": "c8fdce1e0333f1122b244b03a48535fdd7b03d91",
+  "base": "fbc3a696c729d177340cc089531de7e2e5b6f065",
+  "title": "Fix bug involving calling set on a template parameter within all branches of an if block (#1665)",
+  "files": [
+    {
+      "path": "CHANGES.rst",
+      "changes": 3
+    },
+    {
+      "path": "src/jinja2/idtracking.py",
+      "changes": 17
+    },
+    {
+      "path": "tests/test_regression.py",
+      "changes": 10
+    }
+  ]
+}

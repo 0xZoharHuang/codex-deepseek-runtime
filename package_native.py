@@ -1,0 +1,46 @@
+"""Create a deterministic native archive and explicit installer manifest."""
+from __future__ import annotations
+import argparse
+import gzip
+import hashlib
+import json
+from pathlib import Path
+import tarfile
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def package_native(package,archive,manifest_path,url):
+    package=Path(package).resolve();archive=Path(archive).resolve();manifest_path=Path(manifest_path).resolve()
+    if archive.exists():raise ValueError('Preserving existing native archive; choose a fresh output')
+    metadata=json.loads((package/'codex-package.json').read_text())
+    receipt=json.loads((package/'build-receipt.json').read_text())
+    if metadata.get('distribution')!='codex-deepseek-runtime' or receipt.get('profile')!='release':
+        raise ValueError('Only an attested optimized dedicated runtime package can be published')
+    paths=sorted(path for path in package.rglob('*') if path.is_file())
+    if any(path.is_symlink() for path in paths):raise ValueError('Native release files must not be symlinks')
+    files={str(path.relative_to(package)):sha(path) for path in paths}
+    if not {'bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport','codex-package.json','build-receipt.json'}<=files.keys():raise ValueError('Native package is incomplete')
+    archive.parent.mkdir(parents=True,exist_ok=True)
+    with archive.open('xb') as raw,gzip.GzipFile(fileobj=raw,filename='',mode='wb',mtime=0) as zipped,tarfile.open(fileobj=zipped,mode='w',format=tarfile.PAX_FORMAT) as bundle:
+        for path in paths:
+            info=bundle.gettarinfo(str(path),arcname=str(path.relative_to(package)))
+            info.uid=info.gid=info.mtime=0;info.uname=info.gname='';info.pax_headers={}
+            info.mode=0o755 if info.name in {'bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport'} else 0o644
+            with path.open('rb') as content:bundle.addfile(info,content)
+    manifest={'schema':1,'status':'ready','distribution':'codex-deepseek-runtime','distribution_version':'0.3.0',
+              'upstream_version':metadata['version'],'upstream_commit':metadata['upstreamCommit'],'patch_sha256':metadata['patchSha256'],
+              'target':metadata['target'],'archive':{'filename':archive.name,'url':url,'sha256':sha(archive)},'files':files}
+    manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n')
+    return manifest
+
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument('--package',type=Path,required=True);parser.add_argument('--archive',type=Path,required=True);parser.add_argument('--manifest',type=Path,required=True);parser.add_argument('--url',required=True);args=parser.parse_args()
+    manifest=package_native(args.package,args.archive,args.manifest,args.url)
+    print(json.dumps({'archive':str(args.archive),'sha256':manifest['archive']['sha256'],'files':len(manifest['files'])},indent=2))
+
+
+if __name__=='__main__':main()

@@ -1,0 +1,120 @@
+--- a/codex-rs/cli/src/main.rs
++++ b/codex-rs/cli/src/main.rs
+@@ -1464,7 +1464,7 @@
+                             codex_app_server::app_server_control_socket_path(&codex_home)?
+                         }
+                     };
+-                    codex_stdio_to_uds::run(socket_path.as_path()).await?;
++                    codex_stdio_to_uds::run_websocket(socket_path.as_path()).await?;
+                 }
+                 Some(AppServerSubcommand::GenerateTs(gen_cli)) => {
+                     let options = codex_app_server_protocol::GenerateTsOptions {
+--- a/codex-rs/stdio-to-uds/Cargo.toml
++++ b/codex-rs/stdio-to-uds/Cargo.toml
+@@ -20,6 +20,8 @@
+ [dependencies]
+ anyhow = { workspace = true }
+ codex-uds = { workspace = true }
++futures = { workspace = true }
++tokio-tungstenite = { workspace = true }
+ tokio = { workspace = true, features = [
+     "io-std",
+     "io-util",
+--- a/codex-rs/stdio-to-uds/src/lib.rs
++++ b/codex-rs/stdio-to-uds/src/lib.rs
+@@ -44,3 +44,80 @@
+ 
+     Ok(())
+ }
++
++/// Current app-server control sockets carry WebSockets rather than raw JSONL.
++/// Keep the raw UDS relay above available for its existing non-app-server users.
++pub async fn run_websocket(socket_path: &Path) -> anyhow::Result<()> {
++    use futures::SinkExt;
++    use futures::StreamExt;
++    use tokio::io::AsyncBufReadExt;
++    use tokio::io::BufReader;
++    use tokio_tungstenite::tungstenite::Message;
++    use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
++    use tokio_tungstenite::tungstenite::protocol::frame::Frame;
++    use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
++    use tokio_tungstenite::tungstenite::protocol::frame::coding::OpCode;
++
++    let stream = UnixStream::connect(socket_path).await?;
++    let config = WebSocketConfig::default()
++        .max_frame_size(Some(64 << 20))
++        .max_message_size(Some(64 << 20));
++    let (socket, response) =
++        tokio_tungstenite::client_async_with_config("ws://localhost/", stream, Some(config))
++            .await?;
++    let frame_limit = response
++        .headers()
++        .get("x-codex-websocket-max-unfragmented-message-bytes")
++        .and_then(|value| value.to_str().ok())
++        .and_then(|value| value.parse::<usize>().ok())
++        .filter(|value| *value > 0)
++        .unwrap_or(16 << 20);
++    let (mut writer, mut reader) = socket.split();
++    let incoming = async {
++        let mut lines = BufReader::new(tokio::io::stdin()).lines();
++        while let Some(line) = lines.next_line().await? {
++            let bytes = line.as_bytes();
++            if bytes.len() <= frame_limit {
++                writer.send(Message::Text(line.into())).await?;
++            } else {
++                let count = bytes.len().div_ceil(frame_limit);
++                for (index, chunk) in bytes.chunks(frame_limit).enumerate() {
++                    let kind = if index == 0 {
++                        Data::Text
++                    } else {
++                        Data::Continue
++                    };
++                    writer
++                        .send(Message::Frame(Frame::message(
++                            chunk.to_vec(),
++                            OpCode::Data(kind),
++                            index + 1 == count,
++                        )))
++                        .await?;
++                }
++            }
++        }
++        writer.close().await?;
++        anyhow::Ok(())
++    };
++    let outgoing = async {
++        let mut stdout = tokio::io::stdout();
++        while let Some(message) = reader.next().await {
++            let bytes = match message? {
++                Message::Text(text) => text.as_bytes().to_vec(),
++                Message::Binary(bytes) => bytes.to_vec(),
++                Message::Close(_) => break,
++                _ => continue,
++            };
++            stdout.write_all(&bytes).await?;
++            stdout.write_all(b"\n").await?;
++            stdout.flush().await?;
++        }
++        anyhow::Ok(())
++    };
++    tokio::select! {
++        result = incoming => result?,
++        result = outgoing => result?,
++    }
++    Ok(())
++}
+--- a/codex-rs/Cargo.lock
++++ b/codex-rs/Cargo.lock
+@@ -4762,10 +4762,12 @@
+ dependencies = [
+  "anyhow",
+  "codex-uds",
++ "futures",
+  "codex-utils-cargo-bin",
+  "pretty_assertions",
+  "tempfile",
+  "tokio",
++ "tokio-tungstenite",
+ ]
+ 
+ [[package]]

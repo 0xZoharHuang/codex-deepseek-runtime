@@ -1,0 +1,122 @@
+{
+  "base_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "files": [
+    {
+      "path": "codex-rs/Cargo.lock",
+      "base_sha256": "49a1e5e4f67e0ab56ccea5674003ec06d6436b1b7f74b833e3e2440d591bee9b",
+      "fork_sha256": "4f9cf90b7614da6b50977f2a25e4b7f9e27b3ad594dd50e309373e4efc2aae4c"
+    },
+    {
+      "path": "codex-rs/Cargo.toml",
+      "base_sha256": "c8744b05a56f45549927eff2e7ae9d44bfd05a74c5b54baa388cf86a7312bab5",
+      "fork_sha256": "dad4f678ade4a36c56c4120586034541bb4d2221409310c3cd818d38a53fb97f"
+    },
+    {
+      "path": "codex-rs/cli/src/main.rs",
+      "base_sha256": "19656a7c9a15dacec719a01ea992b9821aebedfe51146e22715a0d52ff29a795",
+      "fork_sha256": "acff8cb47174246d86c81d46eebd108dc4adbcb0f7b0427605020c1d89fdeb82"
+    },
+    {
+      "path": "codex-rs/config/src/isolated_provider.rs",
+      "base_sha256": null,
+      "fork_sha256": "47dd8e5e6cd88bc9ce2e927c168e6c251d27b5779020dd8429a1ca75551891e3"
+    },
+    {
+      "path": "codex-rs/config/src/lib.rs",
+      "base_sha256": "99082e0a494ef440151c0fcd269eb4f8d72cce32aed59a3ac7c3a476d7741e87",
+      "fork_sha256": "dd4bb653685188995a64db9162402eacf648c9c42f84e0272b8afc311074b9ae"
+    },
+    {
+      "path": "codex-rs/config/src/loader/managed_requirements.rs",
+      "base_sha256": "00595b2320674364053537213638735da20739a8864c92947bd4acb869fcf448",
+      "fork_sha256": "95d85257c0b44dd55d919000b8bf11a5a7936afc30e3586a52fbf5d25d76fd9e"
+    },
+    {
+      "path": "codex-rs/config/src/loader/mod.rs",
+      "base_sha256": "308f8e290d55ef1cd2328edb6053c90c20c7bcb893c7168012d67bcde36f4c6c",
+      "fork_sha256": "ccbcafc9cdcdc6a931ea13f273b247221c97c657fd3ccaf0e038308837f460b5"
+    },
+    {
+      "path": "codex-rs/core/src/tools/spec_plan.rs",
+      "base_sha256": "919bf85acf44810892f6d1adc6701253c92a71678cbf74c877d718d0aaf9db9f",
+      "fork_sha256": "b34a1c87256666b67fd0198270d1ff4939accbe5028e2eb32bff4c30070ad562"
+    },
+    {
+      "path": "codex-rs/deepseek-http-transport/Cargo.toml",
+      "base_sha256": null,
+      "fork_sha256": "dc03ad7ef87c0e993095ea2dadddb810235f027e177462c304ed5e3b2619def9"
+    },
+    {
+      "path": "codex-rs/deepseek-http-transport/src/main.rs",
+      "base_sha256": null,
+      "fork_sha256": "9927416bd2a4f0e7382798976a46bafa48ea561b5a7f319e96d5ad824d9d26b1"
+    },
+    {
+      "path": "codex-rs/deepseek-http-transport/tests/native_policy.rs",
+      "base_sha256": null,
+      "fork_sha256": "2a9195d5208c44e641ab1d4564a497b0499403f88562ee277fa6fd806480d570"
+    },
+    {
+      "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler.rs",
+      "base_sha256": "d1d333643e4924f07b65ff6f2fe1790e48074cce855d91b6ce4da066fb23a4a7",
+      "fork_sha256": "906e77718d37b1405dbbd34da1b18f7830b6247840d9d143389375241645c731"
+    },
+    {
+      "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
+      "base_sha256": "54e5120868d946cd3c4955780ac4551b64115d9bee45ba10065b85b208fed5f6",
+      "fork_sha256": "a024c41cab44f6e97cd34477aba495eaf45f79d81205f84318d41d8068d997c1"
+    },
+    {
+      "path": "codex-rs/ext/guardian-v2/src/async_scorer/startup.rs",
+      "base_sha256": "edcf3814898d3a8fbbef71127b62d7842e932a1916f4fd6894e8cae9695bc564",
+      "fork_sha256": "3e4c41f08f1dfdf10c2014b9b7e813aedbb174670de838566189be134cb5dec2"
+    },
+    {
+      "path": "codex-rs/http-client/src/client_builder.rs",
+      "base_sha256": "dce0278248477c6fe23d3c5415a57e65e4c83a7fe6d554136ff9517636bd44a6",
+      "fork_sha256": "47e2ab9a9a7f15d50ff35ca5c1a0b5c84b028d273f11dc1a7f6e7066a1a4f715"
+    },
+    {
+      "path": "codex-rs/http-client/src/dedicated_transport.rs",
+      "base_sha256": null,
+      "fork_sha256": "d333113982e2457c762c96d1d3a9d7482161447457891da71c8788fc533ae38a"
+    },
+    {
+      "path": "codex-rs/http-client/src/lib.rs",
+      "base_sha256": "2bd662c41596b2534e23301dc08dc165ffd94ef8e192b869543d54f64e31bdeb",
+      "fork_sha256": "c44e83c94c0770c37ea9977fdb8a044f26b3951813517a4633bad01baf4f5260"
+    },
+    {
+      "path": "codex-rs/http-client/src/network_policy.rs",
+      "base_sha256": "65569bcb7f943980ab0ff8f75352d3de4f738bd369c527cff0018a03c30bd8bf",
+      "fork_sha256": "29762b91ee9f35be1236bb8b058d0ca9aa1444e6f77d81cda5933979fa5600d2"
+    },
+    {
+      "path": "codex-rs/http-client/src/outbound_proxy.rs",
+      "base_sha256": "5c1fb52555ea4e9546cf66dd1c4ddee2a9d6ef136ba3f51a25ceafd368d3be36",
+      "fork_sha256": "bb29216de5202101132338040a90bed0494df4028ed3cb52c691a0fbcd27dedf"
+    },
+    {
+      "path": "codex-rs/http-client/src/route_aware_client_pool/execution.rs",
+      "base_sha256": "024ed73f0afc5db847e77682ea8410dce3b1762fa5837d6df104fc725e21dd5a",
+      "fork_sha256": "2218a2919b5ce6e0ba65249b3c47a85d156a4bfb4b37274e8a65661cff777a49"
+    },
+    {
+      "path": "codex-rs/rmcp-client/src/oauth.rs",
+      "base_sha256": "a26b6f35be2c85855af3ccc10416c313677c4bde2af32617e4ea7aadc22de9ac",
+      "fork_sha256": "eb558232d2f54cccc02d55de3eb56ebf3276a856c3e0c89e28d4f53c557df2cd"
+    },
+    {
+      "path": "codex-rs/stdio-to-uds/Cargo.toml",
+      "base_sha256": "86bc7744cb3455915a0dca21bdf9b95b1f446c03eee70dccda8ade7497ee1510",
+      "fork_sha256": "43b81f04204e4360442e6fba097c9f5a307275e07b4b848d30cd4ad4751402cd"
+    },
+    {
+      "path": "codex-rs/stdio-to-uds/src/lib.rs",
+      "base_sha256": "f6d45cd733992f9882af62478245a0b8c98010b0dde0626f422d297d5751a050",
+      "fork_sha256": "536de43d41572aaef687383c84c551320aa3635b0384e435515486524a099a31"
+    }
+  ],
+  "external_dependency_lock_unchanged": true,
+  "external_packages": 1305
+}

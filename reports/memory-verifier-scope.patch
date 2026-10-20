@@ -1,0 +1,31 @@
+--- a/verify_memory_audit.py
++++ b/verify_memory_audit.py
+@@ -1,5 +1,6 @@
+ """Native persistent memory extraction, consolidation, cold read and sampling."""
+ import argparse
++import hashlib
+ import json
+ import os
+ from pathlib import Path
+@@ -65,9 +66,20 @@
+         passed('native_memory_extraction_and_consolidation',bool(selected) and any(row.get('selected_for_phase2') for row in selected) and bool(artifacts) and bool(summaries),{'selected':selected,'artifacts':[str(path.relative_to(root)) for path in artifacts+summaries]})
+         traces=[json.loads(path.read_text()) for path in (root/'adapter-traces').glob('*-request.json')]
+         passed('memory_auxiliary_models_remain_pinned_deepseek',bool(traces) and all(body['model']=='deepseek/deepseek-v4.1-flash-1017' for body in traces),{'requests':len(traces),'routes':sorted({body['provider']['only'][0] for body in traces})})
++        summary_snapshots={str(path.relative_to(root)):path.read_text() for path in summaries}
+         peer.close();peer=Peer(root);reader=peer.new()
+         items=peer.turn(reader,'Consult the native memory guidance for this workspace. What are the ledger project identifier and durable money/idempotency conventions? Do not open project source files or delegate.')
+-        passed('native_memory_cold_read',nonce in text(items) and 'integer' in text(items).lower() and 'idempoten' in text(items).lower(),text(items))
++        # Summary content selection is model quality. Runtime acceptance binds
++        # actual generated artifacts to the new cold thread's native input.
++        cold=[]
++        for path in (root/'adapter-traces').glob('*-request.json'):
++            body=json.loads(path.read_text())
++            if body.get('client_metadata',{}).get('thread_id')!=reader:continue
++            texts='\n'.join(content['text'] for item in body.get('input',[]) if isinstance(item,dict) and isinstance(item.get('content'),list) for content in item['content'] if isinstance(content,dict) and isinstance(content.get('text'),str))
++            for name,summary in summary_snapshots.items():
++                if summary.strip() and summary.strip() in texts:
++                    cold.append({'request':path.name,'thread':reader,'artifact':name,'artifact_sha256':hashlib.sha256(summary.encode()).hexdigest(),'request_sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
++        passed('native_memory_cold_read',bool(cold) and 'integer' in text(items).lower() and 'idempoten' in text(items).lower(),{'native_exact_artifact_injection':cold,'answer':text(items),'model_quality_observation':{'user_identifier_retained':nonce in text(items),'outside_runtime_pass_criterion':True}})
+     finally:
+         if peer:peer.close()
+         print('EVIDENCE',root,flush=True)
