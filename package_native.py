@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import tarfile
+import tomllib
 
 
 def sha(path):
@@ -15,25 +16,36 @@ def sha(path):
 def package_native(package,archive,manifest_path,url):
     package=Path(package).resolve();archive=Path(archive).resolve();manifest_path=Path(manifest_path).resolve()
     if archive.exists():raise ValueError('Preserving existing native archive; choose a fresh output')
-    metadata=json.loads((package/'codex-package.json').read_text())
-    receipt=json.loads((package/'build-receipt.json').read_text())
+    metadata=json.loads((package/'codex-package.json').read_text(encoding='utf-8'))
+    receipt=json.loads((package/'build-receipt.json').read_text(encoding='utf-8'))
     if metadata.get('distribution')!='codex-deepseek-runtime' or receipt.get('profile')!='release':
         raise ValueError('Only an attested optimized dedicated runtime package can be published')
     paths=sorted(path for path in package.rglob('*') if path.is_file())
     if any(path.is_symlink() for path in paths):raise ValueError('Native release files must not be symlinks')
-    files={str(path.relative_to(package)):sha(path) for path in paths}
-    if not {'bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport','codex-package.json','build-receipt.json'}<=files.keys():raise ValueError('Native package is incomplete')
+    files={path.relative_to(package).as_posix():sha(path) for path in paths}
+    if (receipt.get('upstream_commit')!=metadata.get('upstreamCommit')
+        or receipt.get('patch_sha256')!=metadata.get('patchSha256')
+        or receipt.get('files')!={name:digest for name,digest in files.items() if name!='build-receipt.json'}):
+        raise ValueError('Native package changed after its build receipt was recorded')
+    suffix='.exe' if metadata['target'].endswith('windows-msvc') else ''
+    binaries={name+suffix for name in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']}
+    if suffix:binaries|={name+suffix for name in ['bin/codex-windows-sandbox-setup','bin/codex-command-runner','bin/codex-windows-managed-deny-probe','bin/codex-windows-sandbox-service']}
+    if suffix:binaries|={'codex-resources/codex-windows-sandbox-setup.exe','codex-resources/codex-command-runner.exe'}
+    if 'linux' in metadata['target']:binaries.add('codex-resources/bwrap')
+    if any(metadata.get(key)!=value for key,value in {'variant':'codex','resourcesDir':'codex-resources','pathDir':'codex-path'}.items()):
+        raise ValueError('Native package must use the official canonical resource layout')
+    if not binaries|{'codex-package.json','build-receipt.json'}<=files.keys():raise ValueError('Native package is incomplete')
     archive.parent.mkdir(parents=True,exist_ok=True)
     with archive.open('xb') as raw,gzip.GzipFile(fileobj=raw,filename='',mode='wb',mtime=0) as zipped,tarfile.open(fileobj=zipped,mode='w',format=tarfile.PAX_FORMAT) as bundle:
         for path in paths:
-            info=bundle.gettarinfo(str(path),arcname=str(path.relative_to(package)))
+            info=bundle.gettarinfo(str(path),arcname=path.relative_to(package).as_posix())
             info.uid=info.gid=info.mtime=0;info.uname=info.gname='';info.pax_headers={}
-            info.mode=0o755 if info.name in {'bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport'} else 0o644
+            info.mode=0o755 if info.name in binaries else 0o644
             with path.open('rb') as content:bundle.addfile(info,content)
-    manifest={'schema':1,'status':'ready','distribution':'codex-deepseek-runtime','distribution_version':'0.3.0',
+    manifest={'schema':1,'status':'ready','distribution':'codex-deepseek-runtime','distribution_version':tomllib.loads((Path(__file__).parent/'pyproject.toml').read_text(encoding='utf-8'))['project']['version'],
               'upstream_version':metadata['version'],'upstream_commit':metadata['upstreamCommit'],'patch_sha256':metadata['patchSha256'],
               'target':metadata['target'],'archive':{'filename':archive.name,'url':url,'sha256':sha(archive)},'files':files}
-    manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n')
+    manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n', encoding='utf-8')
     return manifest
 
 

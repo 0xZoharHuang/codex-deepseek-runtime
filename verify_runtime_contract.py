@@ -7,8 +7,9 @@ import subprocess
 import time
 import uuid
 from verify_live import Peer, text
+from process_acceptance import python_command,evidence_root
 
-root=Path(__file__).resolve().parent.parent/'delivery/evidence/runtime-contract'/str(uuid.uuid4())
+root=evidence_root('runtime-contract')/str(uuid.uuid4())
 (root/'home').mkdir(parents=True);(root/'work').mkdir()
 subprocess.run(['git','init','-q',str(root/'work')],check=True)
 (root/'home/config.toml').write_text('model_reasoning_effort="high"\n[features]\ncode_mode=false\ncode_mode_only=false\ncode_mode_only_strict_3p_tools=false\n')
@@ -22,13 +23,13 @@ peer=Peer(root)
 try:
     with ThreadPoolExecutor(1) as pool:
         start=len(peer.events)
-        future=pool.submit(peer.call,'command/exec',{'command':['/bin/zsh','-c','printf READY; read value; printf "RESULT:%s" "$value"'],'cwd':str(root/'work'),'processId':'native-pty','tty':True,'size':{'rows':24,'cols':80},'timeoutMs':15000})
+        future=pool.submit(peer.call,'command/exec',{'command':python_command('import os;print("READY",flush=True);value=input();size=os.get_terminal_size();print("SIZE:%s:%s"%(size.lines,size.columns));print("RESULT:"+value)'),'cwd':str(root/'work'),'processId':'native-pty','tty':True,'size':{'rows':24,'cols':80},'timeoutMs':15000})
         peer.wait(lambda e:e.get('method')=='command/exec/outputDelta' and e['params']['processId']=='native-pty',start,20)
         peer.call('command/exec/resize',{'processId':'native-pty','size':{'rows':32,'cols':120}})
         peer.call('command/exec/write',{'processId':'native-pty','deltaBase64':base64.b64encode(b'RUNTIME_PTY_9341\n').decode()})
         result=future.result(20)
         output=b''.join(base64.b64decode(e['params']['deltaBase64']) for e in peer.events[start:] if e.get('method')=='command/exec/outputDelta').decode()
-        passed('native_pty_stdin_resize_output',result['exitCode']==0 and 'RESULT:RUNTIME_PTY_9341' in output,output)
+        passed('native_pty_stdin_resize_output',result['exitCode']==0 and 'RESULT:RUNTIME_PTY_9341' in output and 'SIZE:32:120' in output,output)
     tools=[]
     for namespace in ['ledger_alpha','ledger_beta']:
         tools.append({'type':'namespace','name':namespace,'description':f'Independent {namespace} ledger.','tools':[{'type':'function','name':'read_record','deferLoading':True,'description':'Return the immutable ledger value.','inputSchema':{'type':'object','properties':{},'additionalProperties':False}}]})

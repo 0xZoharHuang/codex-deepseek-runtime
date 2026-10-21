@@ -9,7 +9,7 @@ from codex_deepseek.processes import matches,terminate
 from codex_deepseek.service import ensure,healthy,native_active,read_descriptor
 
 
-def test_profile_service_reuses_identity_and_recovers_worker_without_port_change(tmp_path,monkeypatch):
+def test_profile_service_reuses_identity_and_recovers_worker_without_port_change(tmp_path,monkeypatch,assert_private):
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
     home=tmp_path/'private-home';home.mkdir(mode=0o700)
     catalog=Path(__file__).resolve().parents[1]/'catalog.json'
@@ -18,7 +18,7 @@ def test_profile_service_reuses_identity_and_recovers_worker_without_port_change
     monkeypatch.delenv('CODEX_DEEPSEEK_TRACE_DIR')
     try:
         assert healthy(value) and not native_active(home)
-        assert (home/'provider-state/gateway.json').stat().st_mode&0o777==0o600
+        assert_private(home/'provider-state/gateway.json')
         again=ensure(home,catalog)
         assert again['pid']==value['pid'] and again['port']==value['port'] and again['token']==value['token']
         assert json.loads((home/'provider-state/trace.json').read_text())['directory']==str(tmp_path/'traces')
@@ -27,7 +27,7 @@ def test_profile_service_reuses_identity_and_recovers_worker_without_port_change
         assert json.loads((home/'provider-state/trace.json').read_text())['directory'] is None
         actual=read_descriptor(home)
         assert matches(actual['worker_pid'],actual['worker_birth'])
-        os.kill(actual['worker_pid'],signal.SIGKILL)
+        os.kill(actual['worker_pid'],getattr(signal,'SIGKILL',signal.SIGTERM))
         end=time.monotonic()+6
         while time.monotonic()<end:
             current=read_descriptor(home)
@@ -114,3 +114,35 @@ def test_real_supervisor_survives_worker_schema_publication_delay(tmp_path,monke
     finally:
         blocker.close()
         if value:terminate(value['pid'],value['birth'],timeout=8)
+
+
+def test_concurrent_large_catalog_reads_survive_three_worker_crashes(tmp_path,monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import hashlib
+    import urllib.request
+    monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','30')
+    home=tmp_path/'profile';catalog=tmp_path/'large-catalog.json'
+    expected={'data':[{'id':'transport-fixture','description':'真实 UTF-8 transport '+('x'*2*1024*1024)}]}
+    catalog.write_text(json.dumps(expected,ensure_ascii=False),encoding='utf-8')
+    value=ensure(home,catalog);current=value
+    def fetch(_):
+        request=urllib.request.Request(f'http://127.0.0.1:{value["port"]}/v1/models',headers={'Authorization':'Bearer '+value['token']})
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=10) as response:
+            assert response.status==200
+            result=json.load(response)
+            assert result==expected
+            return hashlib.sha256(result['data'][0]['description'].encode()).hexdigest()
+    try:
+        for crash_count in range(4):
+            with ThreadPoolExecutor(4) as pool:assert len(set(pool.map(fetch,range(8))))==1
+            if crash_count==3:break
+            previous=read_descriptor(home)
+            os.kill(previous['worker_pid'],getattr(signal,'SIGKILL',signal.SIGTERM))
+            end=time.monotonic()+10
+            while time.monotonic()<end:
+                current=read_descriptor(home)
+                if current.get('worker_pid')!=previous['worker_pid'] and healthy(current):break
+                time.sleep(.05)
+            assert current['restarts']==crash_count+1 and current['worker_pid']!=previous['worker_pid']
+            assert current['port']==value['port'] and current['token']==value['token'] and healthy(current)
+    finally:terminate(value['pid'],value['birth'],timeout=8)

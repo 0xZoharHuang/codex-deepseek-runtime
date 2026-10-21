@@ -1,4 +1,5 @@
 """Per-method native effects, with failures preserved rather than counted as coverage."""
+from install import python_entry
 import argparse
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -15,6 +16,7 @@ import traceback
 import uuid
 from urllib.parse import unquote
 from verify_live import Peer,text
+from process_acceptance import python_command,shell_command
 
 
 class Audit:
@@ -60,7 +62,7 @@ def catalog(a):
     a.verify('permissionProfile/list',lambda:a.call('permissionProfile/list',{'cwd':str(a.root/'work')}),lambda r:bool(r['data']))
     a.verify('collaborationMode/list',lambda:a.call('collaborationMode/list',{}),lambda r:bool(r['data']))
     a.verify('mock/experimentalMethod',lambda:a.call('mock/experimentalMethod',{'value':'ROUNDTRIP_'+a.root.name}),lambda r:r['echoed']=='ROUNDTRIP_'+a.root.name)
-    a.verify('configRequirements/read',lambda:a.call('configRequirements/read',{}),lambda r:r['requirements']['modelProvider']=='deepseek_runtime' and unquote(r['requirements']['sqliteHome'])=='file://'+str(a.root/'home'))
+    a.verify('configRequirements/read',lambda:a.call('configRequirements/read',{}),lambda r:r['requirements']['modelProvider']=='deepseek_runtime' and unquote(r['requirements']['sqliteHome'])==unquote((a.root/'home').as_uri()))
     def config():
         result=a.call('config/batchWrite',{'edits':[{'keyPath':'model_reasoning_effort','value':'medium','mergeStrategy':'replace'},{'keyPath':'history.max_bytes','value':1234567,'mergeStrategy':'replace'}]})
         import tomllib
@@ -142,10 +144,12 @@ def threads(a):
         return {'result':result,'answer':text(items)}
     a.verify('thread/inject_items',inject,lambda r:injected in r['answer'])
     target=a.root/'work/shell-effect.txt'
+    writer=a.root/'work/shell_effect_writer.py'
+    writer.write_text('from pathlib import Path\nimport sys\nPath(sys.argv[1]).write_text("SHELL_EFFECT")\n',encoding='utf-8')
     def shell():
         import shlex
         start=len(a.peer.events)
-        result=a.call('thread/shellCommand',{'threadId':thread,'command':'printf SHELL_EFFECT > '+shlex.quote(str(target)),'timeoutMs':10000})
+        result=a.call('thread/shellCommand',{'threadId':thread,'command':shell_command([python_command('')[0],'-I',str(writer),str(target)]),'timeoutMs':10000})
         end=time.monotonic()+10
         while not target.exists() and time.monotonic()<end:time.sleep(.02)
         return {'result':result,'content':target.read_text() if target.exists() else None}
@@ -170,16 +174,25 @@ def threads(a):
     a.verify('thread/delete',delete,lambda r:r['missing'] and thread not in json.dumps(r['archived']))
 
 
+def process_stdout_lines(events,handle):
+    chunks=[]
+    for event in events:
+        params=event.get('params',{})
+        if event.get('method')=='process/outputDelta' and params.get('processHandle')==handle and params.get('stream')=='stdout':
+            chunks.append(base64.b64decode(params['deltaBase64'],validate=True))
+    return b''.join(chunks).splitlines()
+
+
 def processes(a):
     start=len(a.peer.events);handle='resize-and-kill'
-    a.call('process/spawn',{'command':['/bin/sh','-c','printf PTY_READY; read value; stty size; sleep 120'],'cwd':str(a.root/'work'),'processHandle':handle,'tty':True,'size':{'rows':24,'cols':80},'streamStdin':True,'streamStdoutStderr':True,'timeoutMs':150000})
+    a.call('process/spawn',{'command':python_command('import os,time;print("PTY_READY",flush=True);input();s=os.get_terminal_size();print(s.lines,s.columns,flush=True);time.sleep(120)'),'cwd':str(a.root/'work'),'processHandle':handle,'tty':True,'size':{'rows':24,'cols':80},'streamStdin':True,'streamStdoutStderr':True,'timeoutMs':150000})
     a.peer.wait(lambda e:e.get('method')=='process/outputDelta' and e['params']['processHandle']==handle,start,15)
     def resize():
         result=a.call('process/resizePty',{'processHandle':handle,'size':{'rows':37,'cols':111}})
         a.call('process/writeStdin',{'processHandle':handle,'deltaBase64':base64.b64encode(b'check-size\n').decode()})
-        a.peer.wait(lambda e:e.get('method')=='process/outputDelta' and b'37 111' in base64.b64decode(e['params']['deltaBase64']),start,15)
+        a.peer.wait(lambda _:b'37 111' in process_stdout_lines(a.peer.events[start:],handle),start,15)
         return {'response':result,'events':a.peer.events[start:]}
-    a.verify('process/resizePty',resize,lambda r:any(e.get('method')=='process/outputDelta' and b'37 111' in base64.b64decode(e['params']['deltaBase64']) for e in r['events']))
+    a.verify('process/resizePty',resize,lambda r:b'37 111' in process_stdout_lines(r['events'],handle))
     def kill():
         result=a.call('process/kill',{'processHandle':handle})
         ended=a.peer.wait(lambda e:e.get('method')=='process/exited' and e['params']['processHandle']==handle,start,15)
@@ -187,7 +200,7 @@ def processes(a):
     a.verify('process/kill',kill,lambda r:r['exit']['params'].get('exitCode')!=0)
     with ThreadPoolExecutor(1) as pool:
         start=len(a.peer.events)
-        future=pool.submit(a.call,'command/exec',{'command':['/bin/sh','-c','printf TERMINATE_READY; exec sleep 120'],'processId':'terminate-command','cwd':str(a.root/'work'),'streamStdoutStderr':True,'timeoutMs':150000})
+        future=pool.submit(a.call,'command/exec',{'command':python_command('import time;print("TERMINATE_READY",flush=True);time.sleep(120)'),'processId':'terminate-command','cwd':str(a.root/'work'),'streamStdoutStderr':True,'timeoutMs':150000})
         a.peer.wait(lambda e:e.get('method')=='command/exec/outputDelta',start,15)
         def terminate():
             result=a.call('command/exec/terminate',{'processId':'terminate-command'})
@@ -210,8 +223,8 @@ def processes(a):
         def add_environment():
             result=a.call('environment/add',{'environmentId':eid,'execServerUrl':f'ws://127.0.0.1:{port}','authBearerToken':token,'connectTimeoutMs':10000})
             return {'result':result,'info':a.call('environment/info',{'environmentId':eid})}
-        a.verify('environment/add',add_environment,lambda r:unquote(r['info']['cwd'])=='file://'+str(a.root/'work'))
-        a.verify('environment/info',lambda:a.call('environment/info',{'environmentId':eid}),lambda r:bool(r['shell']['path']) and unquote(r['cwd'])=='file://'+str(a.root/'work'))
+        a.verify('environment/add',add_environment,lambda r:unquote(r['info']['cwd'])==unquote((a.root/'work').as_uri()))
+        a.verify('environment/info',lambda:a.call('environment/info',{'environmentId':eid}),lambda r:bool(r['shell']['path']) and unquote(r['cwd'])==unquote((a.root/'work').as_uri()))
         a.verify('environment/status',lambda:a.call('environment/status',{'environmentId':eid}),lambda r:r['status']=='ready')
     finally:
         executor.stdin.close();executor.terminate()
@@ -222,7 +235,7 @@ def processes(a):
     fixture=a.root/'work/background_audit.py'
     fixture.write_text('import time\nprint("BACKGROUND_READY",flush=True)\ntime.sleep(120)\n')
     def start_background():
-        return a.peer.turn(thread,'Do not delegate. Use native exec_command to run `python3 background_audit.py` with yield_time_ms=1000. Once it reports a running session, finish your turn without waiting or polling. This is an explicitly authorized disposable background process.')
+        return a.peer.turn(thread,'Do not delegate. Use native exec_command to run '+shell_command([python_command('')[0],'-I',str(fixture)])+' with yield_time_ms=1000. Once it reports a running session, finish your turn without waiting or polling. This is an explicitly authorized disposable background process.')
     start_background()
     terminals={}
     def list_terminals():
@@ -330,7 +343,7 @@ def increment_counter()->dict:
 m.run(transport='stdio')
 ''')
     with (a.root/'home/config.toml').open('a') as f:
-        f.write('\n[mcp_servers.local_fixture]\ncommand='+json.dumps(str(entry.parent/'python'))+'\nargs='+json.dumps(['-I',str(fixture),str(source),str(effect)])+'\ndefault_tools_approval_mode="approve"\n')
+        f.write('\n[mcp_servers.local_fixture]\ncommand='+json.dumps(str(python_entry(entry.parent.parent)))+'\nargs='+json.dumps(['-I',str(fixture),str(source),str(effect)])+'\ndefault_tools_approval_mode="approve"\n')
     a.peer=Peer(a.root,command=[str(entry)]);thread=a.peer.new()
     def resource():
         first=a.call('mcpServer/resource/read',{'threadId':thread,'server':'local_fixture','uri':'audit://local/nonce'})
@@ -412,7 +425,7 @@ def control(a):
         for message in pending:original_send(message)
         pending.clear();items=a.peer.complete(held,start)
         requests=[json.loads(p.read_text()) for p in (a.root/'adapter-traces').glob('*-request.json')]
-        requests=[p for p in requests if p.get('prompt_cache_key')==held]
+        requests=[p for p in requests if p.get('client_metadata',{}).get('thread_id')==held]
         return {'response':response,'answer':text(items),'inference_efforts':[p.get('reasoning') for p in requests]}
     try:a.verify('turn/settings/update',update_turn,lambda r:r['response']['status']=='applied' and 'BARRIER_RELEASED' in r['answer'] and {'effort':'high'} in r['inference_efforts'])
     finally:
@@ -424,7 +437,7 @@ def control(a):
         response=a.call('thread/approveGuardianDeniedAction',{'threadId':guardian,'event':event})
         items=a.peer.turn(guardian,'Do not use tools, execute commands or delegate. Read the preceding Guardian approved-action context and quote the exact approved command. This checks context delivery only.')
         requests=[json.loads(p.read_text()) for p in (a.root/'adapter-traces').glob('*-request.json')]
-        matching=[p for p in requests if p.get('prompt_cache_key')==guardian]
+        matching=[p for p in requests if p.get('client_metadata',{}).get('thread_id')==guardian]
         return {'response':response,'answer':text(items),'native_approved_context_forwarded':any(marker in json.dumps(p['input']) and 'The user has manually approved a specific action' in json.dumps(p['input']) for p in matching),'command_executed':any(x.get('type')=='commandExecution' for x in items),'fixture_kind':'valid serialized denial event; does not claim this test produced an automatic Guardian denial'}
     a.verify('thread/approveGuardianDeniedAction',guardian_approval,lambda r:marker in r['answer'] and r['native_approved_context_forwarded'] and not r['command_executed'])
     a.call('thread/archive',{'threadId':queued})

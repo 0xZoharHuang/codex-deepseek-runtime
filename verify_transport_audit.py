@@ -8,18 +8,19 @@ import socket
 import subprocess
 import time
 import uuid
+from codex_deepseek.platforms import comparison_path
 
 import aiohttp
 from codex_deepseek.isolation import check_attachment,registry
 from codex_deepseek.protocol_errors import ProtocolError
-from codex_deepseek.processes import identity,terminate
+from codex_deepseek.processes import identity,terminate,matches
 
 
-async def audit(root,endpoint):
+async def audit(root,endpoint,sandbox_mode):
     results=[]
     def passed(name,condition,detail):
-        record={'name':name,'passed':bool(condition),'detail':detail};results.append(record)
-        (root/'results.json').write_text(json.dumps(results,indent=2));print(json.dumps(record),flush=True)
+        record={'name':name,'passed':bool(condition),'sandbox_mode':sandbox_mode,'detail':detail};results.append(record)
+        (root/'results.json').write_text(json.dumps(results,indent=2), encoding='utf-8');print(json.dumps(record),flush=True)
         if not condition:raise AssertionError(name)
     if endpoint.endswith(':0'):
         end=time.monotonic()+30
@@ -50,12 +51,12 @@ async def audit(root,endpoint):
                 return answer['result']
         initialized=await call('initialize',{'clientInfo':{'name':'isolated_transport_audit','version':'1'},'capabilities':{'experimentalApi':True}})
         await ws.send_json({'method':'initialized'})
-        passed('owned_websocket_listener_and_home',Path(initialized['codexHome']).resolve()==root/'home',initialized['codexHome'])
+        passed('owned_websocket_listener_and_home',comparison_path(initialized['codexHome'])==comparison_path(root/'home'),initialized['codexHome'])
         config=await call('config/read',{'includeLayers':False})
-        (root/'effective-config.json').write_text(json.dumps(config,indent=2))
+        (root/'effective-config.json').write_text(json.dumps(config,indent=2), encoding='utf-8')
         provider=config['config']['model_providers']['deepseek_runtime']
         passed('safe_native_transport_tuning_survives_policy',provider['request_max_retries']==7 and provider['stream_idle_timeout_ms']==900000,provider)
-        thread=await call('thread/start',{'cwd':str(root/'work'),'modelProvider':'openai','config':{'model_providers.deepseek_runtime.base_url':'http://127.0.0.1:1/trap'}})
+        thread=await call('thread/start',{'cwd':str(root/'work'),'sandbox':sandbox_mode,'modelProvider':'openai','config':{'model_providers.deepseek_runtime.base_url':'http://127.0.0.1:1/trap'}})
         passed('websocket_per_request_provider_pin',thread['modelProvider']=='deepseek_runtime',thread['modelProvider'])
         try:await call('config/value/write',{'keyPath':'model_provider','value':'openai','mergeStrategy':'replace'})
         except RuntimeError as error:blocked='configRequirementReadonly' in str(error)
@@ -69,16 +70,25 @@ async def audit(root,endpoint):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True,mode=0o700);(root/'work').mkdir()
-    (root/'home/config.toml').write_text('model_reasoning_effort="low"\n[model_providers.deepseek_runtime]\nrequest_max_retries=7\nstream_idle_timeout_ms=900000\n')
+    (root/'home/config.toml').write_text('model_reasoning_effort="low"\n[model_providers.deepseek_runtime]\nrequest_max_retries=7\nstream_idle_timeout_ms=900000\n', encoding='utf-8')
     endpoint='ws://127.0.0.1:0'
-    with (root/'stderr.txt').open('w') as log:
+    with (root/'stderr.txt').open('w',encoding='utf-8') as log:
         process=subprocess.Popen([str(args.entry.resolve()),'app-server','--listen',endpoint],env={**os.environ,'CODEX_DEEPSEEK_HOME':str(root/'home')},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=log)
         birth=identity(process.pid)
-        try:asyncio.run(audit(root,endpoint))
+        try:asyncio.run(audit(root,endpoint,args.sandbox_mode))
         finally:terminate(process.pid,birth,timeout=10);process.wait(timeout=5)
-    endpoint=next(iter(registry(root/'home')))
+    endpoint,listener=next(iter(registry(root/'home').items()))
+    started=time.monotonic()
+    while matches(listener['pid'],listener['birth']) and time.monotonic()-started<10:time.sleep(.025)
+    dead=not matches(listener['pid'],listener['birth'])
+    (root/'listener-shutdown.json').write_text(json.dumps({'launcher_pid':process.pid,'listener':listener,'listener_dead':dead,'seconds':round(time.monotonic()-started,3)},indent=2),encoding='utf-8')
+    if not dead:
+        # Cleanup only after preserving the failed lifecycle observation.
+        terminate(listener['pid'],listener['birth'])
+        raise AssertionError('Native listener survived launcher termination for ten seconds')
     try:check_attachment(['--remote',endpoint],root/'home')
     except ProtocolError:pass
     else:raise AssertionError('A dead listener cannot authorize a new attachment')

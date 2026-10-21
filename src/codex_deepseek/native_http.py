@@ -9,11 +9,12 @@ import secrets
 import time
 
 import aiohttp
+from .platforms import executable
 
 
 def native_helper():
     from .cli import native
-    path=native().parent/'codex-http-transport'
+    path=executable(native().parent,'codex-http-transport')
     if not path.is_file():raise RuntimeError('The verified native HTTP transport is missing; rerun the installer')
     return path
 

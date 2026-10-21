@@ -11,14 +11,21 @@ the exact installed artifact, gates and any remaining limits.
 
 The frozen upstream baseline is `0.164.0-alpha.7`, commit
 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`. This is an upstream prerelease.
-The verified platform is macOS arm64 with independent Python 3.11+. The model is
+中文运行与验收说明见 [稳定方案](docs/STABLE_PLAN.zh-CN.md).
+Target-specific acceptance is recorded under `reports/platforms/<target>/`.
+The published v0.4.1 evidence covers macOS arm64; Windows x86_64 and Linux x86_64
+are additional v0.5 qualification targets. Their implementation or native build
+alone does not establish acceptance. An independent Python 3.11+ is required. The model is
 `deepseek/deepseek-v4.1-flash-1017`, rather than a floating latest alias.
 
 ## Install and run
 
 The installer requires the release's hash-pinned native manifest and archive.
 It creates an immutable Python environment and a complete native package, checks
-both, then atomically updates only `~/.local/bin/codex-deepseek`.
+both, then atomically updates the dedicated `~/.local/bin/codex-deepseek` entry
+(`codex-deepseek.exe` on Windows). `--no-activate` installs an independently
+verifiable candidate without changing that entry. `--root /separate/runtime`
+selects a separate installation root; native state defaults to its `codex-home`.
 
 ```sh
 python3 install.py --native-archive /path/to/verified-native-release.tar.gz
@@ -36,9 +43,12 @@ OpenRouter generation metadata. The native Codex `doctor` command remains
 available under its original name. `--help` and `--version` require no API key,
 provider service or state-directory writes.
 
-Credentials use a dedicated macOS Keychain entry: service
-`ai.codex.deepseek.openrouter`, account `default`. `runtime setup-key` invokes the
-native hidden Keychain prompt. `OPENROUTER_API_KEY` can be supplied by the launching
+Provider credentials use macOS Keychain, Windows Credential Manager or Linux
+Secret Service, with the dedicated identity `ai.codex.deepseek.openrouter` and
+account `default`. Linux interactive setup requires `secret-tool` and an unlocked
+Secret Service session. Windows SSH network logons can lack a credential vault;
+use a secure process environment there, or set the key from an interactive Windows
+sign-in session. `OPENROUTER_API_KEY` can be supplied by the launching
 environment; it is removed before launching native agent tools. No key belongs in
 argv, Git, configuration, traces or a public acceptance report.
 
@@ -54,6 +64,13 @@ argv, Git, configuration, traces or a public acceptance report.
 | Provider receipts and search replay | `<home>/provider-state/adapter.sqlite` |
 | Native MCP credentials | Native File, Keyring, Auto and Secrets modes; direct MCP Keychain service is namespaced by isolated home |
 | CLI authentication | Native storage modes; native account keys are already scoped to CODEX_HOME |
+
+The Linux GNU package is built and exercised on Ubuntu 24.04 with glibc,
+OpenSSL 3 and libcap.so.2; it is not a statically linked musl distribution.
+On Windows the default installation root is `%LOCALAPPDATA%/codex-deepseek`.
+Profile directories inherit a protected owner-and-SYSTEM ACL. The Windows
+profile-local commands are standard Python console `.exe` launchers, preserving
+Unicode paths and arguments without CMD expansion or its environment-length limit.
 
 The launcher removes inherited App IPC/session identities, binds an independent
 CODEX_HOME, and rejects state/trace paths overlapping `~/.codex`. Profile-local
@@ -77,6 +94,10 @@ bundled ripgrep, a small native HTTP transport, license notices and build receip
 `native/codex-runtime.patch` applies to the exact upstream source archive. External
 Cargo dependency versions remain locked. Native public schemas are compared
 against the same-version official binary, including experimental methods.
+Windows adds `native/windows-transport.patch` for the custom HTTP helper's native
+parent-process handle. Its source hashes and combined patch identity are recorded
+separately; the common runtime patch is unchanged. The Windows package also includes
+the native sandbox setup, command runner, deny probe and sandbox service binaries.
 
 The source changes are limited to:
 
@@ -120,12 +141,18 @@ Every request fixes the same model and uses explicit `provider.only`,
 | Ordinary model requests | Official `deepseek` |
 | Strict JSON-schema output | `morph/fp8` |
 | Tools plus explicit `parallel_tool_calls=false` | `primeintellect` |
-| Thinking, native peer or incomplete-response context, and hosted web search together | `morph/fp8` |
+| Thinking with native peer, incomplete or unattested model history and hosted web search together | `morph/fp8` |
 
 These are capability selections before sending the request. A provider error does
 not cause adapter retries or replay tool effects. Native retry settings remain
 configurable and native retry behavior remains native. Official-route limitations
 and comparison probes are documented in `upstream/README.md`.
+The selected route and reason are stored with each request receipt. Completed
+validated model items have semantic fingerprints recorded locally; interrupted or
+imported history without completion evidence uses the compatible route when hosted
+search is present. No reasoning or tool result is dropped to force the official
+route. Native compaction that removes those historical items restores the ordinary
+official-route selection.
 
 Custom tools preserve grammar/regex validation and native call identities.
 Namespaced tools retain authoritative namespaces. Historical tool calls do not
@@ -205,7 +232,7 @@ enabled = false
 ```
 
 Dependency locks include the SDK, parsers and build tools. Regenerate them with
-`uv pip compile --generate-hashes --only-binary :all: --python-version 3.11
+`uv pip compile --universal --generate-hashes --only-binary :all: --python-version 3.11
 --output-file requirements.lock pyproject.toml build-requirements.in`.
 
 ## Lifetimes and recovery
@@ -216,7 +243,10 @@ exit after the idle window. It holds a lifetime lease and keeps a validated back
 of ownership metadata. Native HTTP helpers die with their parent and can restart
 for the next request; in-flight requests are not replayed.
 
-The native-process supervisor monitors a private parent pipe. Wrapper termination
+The native-process supervisor monitors a private parent pipe on Unix and a
+kernel-validated parent identity on Windows. Windows console Ctrl-C/Ctrl-Break
+continue to reach native Codex directly; wrappers do not translate these events.
+Wrapper termination
 asks native Codex to shut down its owned work. Yielded command sessions follow
 native lifetimes: interrupting a turn does not mean every background command exits.
 MCP calls also retain upstream lifetimes: turn interruption stops sampling but can
@@ -256,7 +286,15 @@ Real-work fixtures use pre-fix snapshots of Jinja and HTTPcore, separate upstrea
 fixed oracles, pinned/hash-verified dependencies and independent cancellation,
 TCP and TLS regressions. The HTTPcore workflow interrupts after source edits and
 cold-resumes; both tasks run in separate homes and must actually use their native
-reviewer. Regression and oracle tests run outside the model.
+reviewer. Regression and oracle tests run outside the model. Each fixture has
+a Python-3.11-only `pyproject.toml` and universal `uv.lock`; use `uv export --locked
+--no-dev --no-emit-project --format requirements-txt --output-file dependencies.lock`
+inside that fixture directory to reproduce its hash-locked dependencies.
+Acceptance explicitly requires that cold restart, the independent oracle read
+denial and restored contents, every required suite, and a fresh reviewer result.
+Browser evidence must come from the final parent turn and form an ordered,
+reference-linked open/find/click chain; earlier turns and reviewer browsing do
+not satisfy it.
 
 ```sh
 python3 prepare_real_work.py --output /fresh/fixtures --python /path/to/python3.11
@@ -279,6 +317,10 @@ ChatGPT account identity before accessing OS credentials: the same-version
 official/native comparison exercises only their unavailable-account guard, without
 enrolling, deleting or prompting for a real credential. The method matrix records
 these corrected scopes and all other account/platform exclusions.
+The complete frozen inventory has 174 client methods. The applicable local set
+contains 129 methods on macOS/Linux and 131 on Windows, including the separately
+tested local API-key account lifecycle and Windows sandbox lifecycle. These are
+required coverage counts, not a claim that a new build has already passed.
 
 ```sh
 python3 verify_remaining_methods.py --entry /immutable/release/venv/bin/codex-deepseek \
@@ -294,16 +336,26 @@ references, native model-driven navigation, explicit MCP cancellation and the
 official native interruption baseline.
 
 The complete acceptance runner requires an actual immutable installed entry and
-an independently built native policy test probe. Build the probe from the same
-patched source with `cargo +1.95.0 test --locked --profile dev-small -p
-codex-deepseek-http-transport --test native_policy --no-run`; Cargo prints the
-executable path. This test-only binary can be retained while deleting the large
-development build cache. The runner passes the actual installed HTTP helper to
-the probe and requires observable upstream cancellation.
+independently built native policy and keyring-cleanup probes. Build each against
+the same verified native source using `build_native_probe.py --source-root
+/native/source --target-dir /native/target --output /new/probe-output --kind network`
+or `--kind secret-key`. Both probes use native runtime implementations and create
+no release runtime entrypoints. The network probe requires observable upstream
+cancellation. The keyring probe removes only credentials belonging to a marked,
+inactive acceptance fixture and verifies absence through the native store.
+Pass their paths as `--native-probe` and `--keyring-probe` to `run_acceptance.py`.
+The standard plan has 30 gates; exact pytest collection, artifact identity and
+per-target skip applicability are checked alongside the exit codes.
+
+Windows privileged sandbox setup is tested only in the separately provisioned
+disposable Windows guest. Its supplemental receipt must identify the same full
+source, dependencies, model catalog and native manifest as the host-tested
+installation. Deployment paths can differ; the evidence retains both identities.
 
 ```sh
 python3 run_acceptance.py --entry /immutable/release/venv/bin/codex-deepseek \
   --native-probe /verified/native-policy-test-executable \
+  --keyring-probe /verified/native-keyring-test-executable \
   --fixtures /fresh/fixtures --output /private/acceptance --jobs 2
 ```
 

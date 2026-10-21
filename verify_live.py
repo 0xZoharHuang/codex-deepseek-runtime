@@ -35,10 +35,10 @@ class Peer:
         executable=Path(selected[0]).resolve()
         launch={'command':selected,'server_args':server_args or ['app-server','--strict-config'],'resolved_entry':str(executable),
                 'entry_sha256':hashlib.sha256(executable.read_bytes()).hexdigest() if executable.is_file() else None,'runtime_home':env['CODEX_DEEPSEEK_HOME']}
-        (root/f'launch-{time.time_ns()}.json').write_text(json.dumps(launch,indent=2))
+        (root/f'launch-{time.time_ns()}.json').write_text(json.dumps(launch,indent=2), encoding='utf-8')
         self.process = subprocess.Popen([*selected, *(server_args or ["app-server", "--strict-config"])],
                                         env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
-                                        text=True, bufsize=1)
+                                        text=True, encoding="utf-8", bufsize=1)
         self.closed=False
         self.reader=threading.Thread(target=self.read, daemon=True);self.reader.start()
         try:
@@ -138,7 +138,7 @@ class Peer:
             self.process.wait()
         self.reader.join(timeout=3)
         self.stderr.close()
-        (self.root / f"events-{time.time_ns()}.json").write_text(json.dumps(self.events, ensure_ascii=False, indent=2))
+        (self.root / f"events-{time.time_ns()}.json").write_text(json.dumps(self.events, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def text(items):
@@ -161,7 +161,7 @@ for line in sys.stdin:
   r={'content':[{'type':'text','text':'MCP-9f2a17'}]}
  else:r={}
  print(json.dumps({'jsonrpc':'2.0','id':x['id'],'result':r}),flush=True)
-''')
+''', encoding='utf-8')
     config = f'''model_reasoning_effort = "low"
 web_search = "live"
 [features]
@@ -172,7 +172,7 @@ command = {json.dumps(sys.executable)}
 args = [{json.dumps(str(mcp))}, {json.dumps(str(root/'mcp-called.txt'))}]
 default_tools_approval_mode = "approve"
 '''
-    (root / "home/config.toml").write_text(config)
+    (root / "home/config.toml").write_text(config, encoding='utf-8')
 
 
 def main():
@@ -186,7 +186,7 @@ def main():
     peer = Peer(root)
     def passed(name, condition, detail):
         results.append({"name": name, "passed": bool(condition), "detail": detail})
-        (root / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2))
+        (root / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps(results[-1], ensure_ascii=False), flush=True)
         if not condition:
             raise AssertionError(name)
@@ -222,7 +222,7 @@ def main():
             items = peer.turn(agents_thread, "This is an explicitly authorized isolated native subagent test. Spawn exactly one subagent with the task: compute 19*23, do not spawn descendants or use tools, and reply CHILD-437. Wait for its completion using the native lifecycle tool. Then report its answer. Do not use shell as a substitute for delegation.")
             children = []
             for rollout in (root/'home/sessions').rglob('*.jsonl'):
-                records = [json.loads(line) for line in rollout.read_text().splitlines()]
+                records = [json.loads(line) for line in rollout.read_text(encoding='utf-8').splitlines()]
                 meta = records[0]['payload']
                 source = meta.get('source')
                 spawn = source.get('subagent',{}).get('thread_spawn',{}) if isinstance(source,dict) else {}

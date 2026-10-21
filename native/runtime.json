@@ -2,22 +2,22 @@
   "schema": 1,
   "status": "ready",
   "distribution": "codex-deepseek-runtime",
-  "distribution_version": "0.3.0",
+  "distribution_version": "0.5.0",
   "upstream_version": "0.164.0-alpha.7",
   "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
   "patch_sha256": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
   "target": "aarch64-apple-darwin",
   "archive": {
-    "filename": "codex-deepseek-native-0.3.0-aarch64-apple-darwin.tar.gz",
-    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.3.0/codex-deepseek-native-0.3.0-aarch64-apple-darwin.tar.gz",
-    "sha256": "5d03a08b1e0e2f8605dc4d77a1e775b575cadc331c53c37da5482ee73f0fe623"
+    "filename": "codex-deepseek-native-0.5.0-aarch64-apple-darwin.tar.gz",
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.5.0/codex-deepseek-native-0.5.0-aarch64-apple-darwin.tar.gz",
+    "sha256": "bbefe248ca35df1c00f6e1d95eccc833ac590fffe75a2bef7e3d9926fbbe55f0"
   },
   "files": {
     "bin/codex": "a5c93856621c12c89aed65f13c54fd39a56396c3296d0b6d300841157e8d5362",
     "bin/codex-code-mode-host": "f11df64d7979b71a726910a26543781c2a3ef45c25c1687bef11f27c32933e56",
     "bin/codex-http-transport": "04ca57cd549e48755826a0973a2ba43ccc5f83f7a9f5feb9448e20bcedef9c58",
-    "build-receipt.json": "3e40174129ef86c87564f79b41418d54f18ad686bfdc65f70a8be36284640e73",
-    "codex-package.json": "fa17630a4acf13319f70da02b64a08805789a6649e884589c72c6ad024fc4bbd",
+    "build-receipt.json": "a538e418dc46e21b2647259357c8de4bec1084856f6d346c42064768725a3b9e",
+    "codex-package.json": "c4c77def1b68816478830308aeed36f6cc681e747f4e147975161c1be4a1fd2a",
     "codex-path/rg": "a326a1fb48074202e9ad41e4cd1e389eeea372c8c6f7d7e80da81176d5d9430e",
     "licenses/codex-LICENSE": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
     "licenses/codex-NOTICE": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",

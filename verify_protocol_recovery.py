@@ -1,4 +1,5 @@
 """Native retry-loop recovery from backend faults; no adapter tool loop or replay."""
+from codex_deepseek.platforms import executable
 import argparse
 import asyncio
 from contextlib import asynccontextmanager
@@ -11,6 +12,13 @@ from codex_deepseek.cli import credential,native_environment
 from codex_deepseek.gateway import Gateway
 from codex_deepseek.state import Store
 from verify_live import Peer,text
+from install import console_entry,valid_release,source_identity
+
+VERIFIERS=('verify_protocol_recovery.py','verify_live.py','install.py')
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 
 
 class Content:
@@ -59,7 +67,7 @@ class FaultOnce:
 def native_turn(root,binary,catalog,port,token,kind):
     (root/'work').mkdir();home=root/'home';home.mkdir()
     config='model="deepseek/deepseek-v4.1-flash-1017"\nmodel_provider="recovery_fixture"\nmodel_catalog_json='+json.dumps(str(catalog))+'\nmodel_reasoning_effort="high"\nweb_search="live"\n[features]\ncode_mode=false\ncode_mode_only=false\napps=false\nplugins=false\nmemories=false\nmulti_agent=false\n[model_providers.recovery_fixture]\nname="Isolated protocol fault fixture"\nbase_url="http://127.0.0.1:'+str(port)+'/v1"\nenv_key="RECOVERY_FIXTURE_TOKEN"\nwire_api="responses"\nsupports_websockets=false\n'
-    (home/'config.toml').write_text(config)
+    (home/'config.toml').write_text(config,encoding='utf-8')
     env=native_environment(home,'',binary,install_shims=False)
     for key in ['CODEX_DEEPSEEK_POLICY_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_BRIDGE_PORT']:env.pop(key,None)
     env['RECOVERY_FIXTURE_TOKEN']=token
@@ -73,24 +81,49 @@ def native_turn(root,binary,catalog,port,token,kind):
         items=peer.turn(thread,'Do not call tools, search or delegate. Reply exactly RECOVERY_NATIVE.' if kind=='undeclared-tool' else 'Do not call tools, search or delegate. Return marker RECOVERY_NATIVE and value 437 as JSON matching the required schema.',**options)
         messages=[x.get('text','') for x in items if x.get('type')=='agentMessage'];last=messages[-1] if messages else ''
         valid=last.strip()=='RECOVERY_NATIVE' if kind=='undeclared-tool' else json.loads(last)=={'marker':'RECOVERY_NATIVE','value':437}
-        return {'thread':thread,'answer':last,'answer_valid':valid,'native_retry_errors':[e['params'] for e in peer.events if e.get('method')=='error' and e.get('params',{}).get('willRetry')],'client_tool_executions':[x for x in items if x.get('type') in {'commandExecution','fileChange','mcpToolCall'}]+[e for e in peer.callbacks if e.get('method')=='item/tool/call']}
+        return {'thread':thread,'answer':last,'answer_valid':valid,'items':items,'native_retry_errors':[e['params'] for e in peer.events if e.get('method')=='error' and e.get('params',{}).get('willRetry')],'client_tool_executions':[x for x in items if x.get('type') in {'commandExecution','fileChange','mcpToolCall'}]+[e for e in peer.callbacks if e.get('method')=='item/tool/call']}
     finally:peer.close()
 
 
 async def scenario(args,kind):
-    root=args.output.resolve()/str(uuid.uuid4());root.mkdir(parents=True,mode=0o700);entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=json.loads((release/'installation.json').read_text())
-    native=Path(metadata['native_package'])/'bin/codex';catalog=release/'catalog.json';store=Store(root/'state.sqlite');result={'kind':kind,'passed':False,'installation':metadata}
+    entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    manifest=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+    if entry!=console_entry(release/'venv') or not valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],manifest):
+        raise SystemExit('Protocol recovery requires an intact immutable installed entry')
+    source_id,source_hashes=source_identity()
+    if source_id!=metadata['source_id'] or source_hashes!=metadata['source_sha256']:
+        raise SystemExit('Protocol recovery controller runtime source differs from the installed artifact')
+    root=args.output.resolve()/str(uuid.uuid4());root.mkdir(parents=True,mode=0o700)
+    native=executable(Path(metadata['native_package'])/'bin','codex');catalog=release/'catalog.json';store=Store(root/'state.sqlite')
+    artifact={'kind':kind,'entry':str(entry),'entry_sha256':sha(entry),'installation':metadata,'native_manifest':manifest,
+              'target':manifest['target'],'native_binary_sha256':sha(native),'controller_optimize':0,
+              'verifier_sha256':{name:sha(Path(__file__).with_name(name)) for name in VERIFIERS}}
+    (root/'artifact.json').write_text(json.dumps(artifact,indent=2),encoding='utf-8')
+    result={'kind':kind,'passed':False,'installation':metadata,'target':manifest['target']};requests=[];receipts=[];observed={}
     try:
-        async with Gateway(credential,uuid.uuid4().hex,store,json.loads(catalog.read_text()),native_http_binary=Path(metadata['native_package'])/'bin/codex-http-transport',trace_source=lambda:str(root/'adapter-traces')) as gateway:
+        async with Gateway(credential,uuid.uuid4().hex,store,json.loads(catalog.read_text()),native_http_binary=executable(Path(metadata['native_package'])/'bin','codex-http-transport'),trace_source=lambda:str(root/'adapter-traces')) as gateway:
             proxy=FaultOnce(gateway.client,kind);gateway.client=proxy
             observed=await asyncio.to_thread(native_turn,root,native,catalog,gateway.port,gateway.token,kind)
             requests=proxy.requests
             context=any(any(item.get('name')=='cx_native_continuation_context' for item in req.get('input',[]) if isinstance(item,dict)) for req in requests[1:])
             receipts=store.db.execute('SELECT status,provider,response_id,detail FROM receipts ORDER BY started').fetchall()
-            result.update(observed,requests=len(requests),continuation_context_observed=context,receipts=receipts)
+            result.update({k:v for k,v in observed.items() if k!='items'},requests=len(requests),continuation_context_observed=context,receipts=receipts)
             result['passed']=observed['answer_valid'] and len(requests)>=2 and context and bool(observed['native_retry_errors']) and not observed['client_tool_executions'] and receipts[0][0]=='adapter_error' and receipts[-1][0]=='completed' and (kind=='undeclared-tool' or 'structured output' in receipts[0][3])
     finally:
-        store.close();(root/'verdict.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n');print(json.dumps({k:v for k,v in result.items() if k not in {'installation','native_retry_errors','client_tool_executions'}}),flush=True);print('EVIDENCE',root,flush=True)
+        store.close()
+        for name,value in [('request-bodies.json',requests),('receipts.json',receipts),('observed.json',observed)]:
+            (root/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+        raw=[root/name for name in ['request-bodies.json','receipts.json','observed.json','client-requests.jsonl','state.sqlite']]
+        raw.extend(root.glob('events-*.json'));raw.extend(root.glob('launch-*.json'))
+        result['evidence_sha256']={path.name:sha(path) for path in raw if path.is_file()}
+        unchanged=(sha(entry)==artifact['entry_sha256'] and sha(native)==artifact['native_binary_sha256']
+                   and json.loads((release/'installation.json').read_text(encoding='utf-8'))==metadata
+                   and valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],manifest)
+                   and source_identity()==(source_id,source_hashes)
+                   and all(sha(Path(__file__).with_name(name))==digest for name,digest in artifact['verifier_sha256'].items()))
+        result['verifier_and_artifact_unchanged']=unchanged;result['passed']=result['passed'] and unchanged
+        (root/'verdict.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+        print(json.dumps({k:v for k,v in result.items() if k not in {'installation','native_retry_errors','client_tool_executions','evidence_sha256'}}),flush=True);print('EVIDENCE',root,flush=True)
     return result['passed']
 
 
@@ -101,6 +134,7 @@ async def run(args):
 
 
 def main():
+    if not __debug__:raise SystemExit('Acceptance must run with Python assertions enabled')
     p=argparse.ArgumentParser();p.add_argument('--entry',type=Path,required=True);p.add_argument('--output',type=Path,required=True);asyncio.run(run(p.parse_args()))
 
 

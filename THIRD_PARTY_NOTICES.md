@@ -13,6 +13,13 @@ Its index intentionally covers a superset of platform, build and test dependenci
 `native_licenses.py` records declared license expressions without inventing authors
 or claiming that upstream omitted notice files were present.
 
+Linux packages additionally include the native Codex-built bubblewrap resource.
+Its original GNU Library General Public License text, exact vendored sources and
+build provenance accompany it under `licenses/bubblewrap-*`. The complete pinned
+upstream source archive and checksum are recorded there. The resource is built and
+stripped before its checksum is embedded in the native CLI, following upstream's
+release process; the adapter does not replace the sandbox implementation.
+
 Python libraries are installed from exact version/hash locks and retain their own
 installed package licenses. Real-work fixtures identify public upstream projects
 and commits; test snapshots, private OAuth credentials and raw user traces are not
@@ -30,3 +37,9 @@ dependencies, not copied source incorporated into the native Codex binary.
 The source patch and build recipes are available alongside this distribution so
 native changes can be independently inspected. Public upstream contributions are
 separately labeled; local patches do not imply upstream endorsement.
+
+Windows console entrypoints use the public ScriptMaker API of distlib 0.4.4
+(Python Software Foundation license). Its original license is retained in
+`licenses/distlib-LICENSE.txt` and its wheel is pinned by SHA-256 in the lock.
+The standard distlib executable launcher directly starts the isolated Python
+entry script; it does not embed or replace the Codex agent runtime.

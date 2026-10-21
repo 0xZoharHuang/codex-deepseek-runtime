@@ -19,6 +19,26 @@ SERIAL_PROVIDER = "primeintellect"
 PEER_HOSTED_PROVIDER = STRUCTURED_PROVIDER
 
 
+def native_history_fingerprint(item):
+    """Hash model-owned replay semantics, retaining call identity and real reasoning."""
+    kind=item.get('type')
+    if kind=='reasoning':
+        parts=item.get('content') or item.get('summary') or []
+        if not isinstance(parts,list) or any(not isinstance(p,dict) or not isinstance(p.get('text'),str) for p in parts):return None
+        text=''.join(part['text'] for part in parts)
+        if not text:return None
+        value={'type':'reasoning','text':text}
+    elif kind in {'custom_tool_call','function_call'}:
+        arguments=item.get('input') if kind=='custom_tool_call' else item.get('arguments')
+        if kind=='function_call':
+            try:arguments=json.loads(arguments) if isinstance(arguments,str) else arguments
+            except (ValueError,TypeError):return None
+        value={'type':kind,'namespace':item.get('namespace') or None,'name':item.get('name'),
+               'call_id':item.get('call_id'),'arguments':arguments}
+    else:return None
+    return hashlib.sha256(json.dumps(value,sort_keys=True,ensure_ascii=True,separators=(',',':')).encode()).hexdigest()
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -40,6 +60,7 @@ class Registry:
         self.formats: dict[str,str] = {}
         self.peer_context = False
         self.continuation_context = False
+        self.unattested_history = False
 
     def add(self, name: str, namespace: str | None, kind: str, *, exposed: bool = False) -> Tool:
         identity = (namespace, name)
@@ -127,6 +148,10 @@ class Registry:
         for original in items:
             item = copy.deepcopy(original)
             kind = item.get("type", "message")
+            if kind in {'reasoning','function_call','custom_tool_call'}:
+                fingerprint=native_history_fingerprint(item)
+                check=getattr(self.search_store,'has_completed_native_item',None)
+                if not fingerprint or not check or not check(fingerprint):self.unattested_history=True
             if item.get('encrypted_content') or item.get('encrypted_function_args'):
                 raise ProtocolError('Cross-model opaque encrypted history cannot be represented by DeepSeek')
             if kind == 'message':
@@ -353,13 +378,16 @@ def prepare(body: dict, search_store: Any = None) -> tuple[dict, Registry]:
     if effort not in mapping:
         raise ProtocolError(f"Unknown reasoning effort {effort}")
     result["reasoning"] = {"effort": mapping[effort]}
-    # Official DeepSeek thinking rejects adapter-owned peer context inside the
-    # hosted-tool loop. Both alternative endpoints passed the same unchanged
+    # Official DeepSeek thinking rejects peer context and retained partial or
+    # unattested model items inside the hosted-tool loop. Both alternative endpoints passed the same unchanged
     # failing request. Pin the compatible endpoint without changing the model
     # or reasoning, and never retry a failed request on a different provider.
-    peer_hosted = (registry.peer_context or registry.continuation_context) and mapping[effort]!='none' and any(
+    peer_hosted = (registry.peer_context or registry.continuation_context or registry.unattested_history) and mapping[effort]!='none' and any(
         tool.get('type')=='openrouter:web_search' for tool in result['tools'])
     route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if structured else PEER_HOSTED_PROVIDER if peer_hosted else PROVIDER
+    registry.route_reason = ('explicit_serial_tools' if serial else 'strict_json_schema' if structured else
+                             'unattested_native_history_with_hosted_tools' if peer_hosted and registry.unattested_history else
+                             'native_peer_or_continuation_with_hosted_tools' if peer_hosted else 'official_default')
     result["provider"] = {"only": [route], "allow_fallbacks": False, "require_parameters": True}
     choice = result.get("tool_choice", "auto")
     if isinstance(choice, dict) and choice.get("name"):

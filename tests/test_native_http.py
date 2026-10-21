@@ -32,7 +32,7 @@ async def test_authenticated_native_transport_reuses_connections_and_recovers_ne
         async with aiohttp.ClientSession() as client:
             for headers in [{},{'Authorization':'Bearer '+transport.token,'Origin':'https://untrusted.invalid'}]:
                 async with client.post(f'http://127.0.0.1:{transport.port}/forward',data='not-json',headers=headers) as response:assert response.status==401
-        old=transport.process.pid;os.kill(old,signal.SIGKILL);await transport.process.wait()
+        old=transport.process.pid;os.kill(old,getattr(signal,'SIGKILL',signal.SIGTERM));await transport.process.wait()
         async with transport.request('POST',upstream,api_key='FIXTURE_ONLY',payload={}) as response:assert response.status==200
         assert transport.process.pid!=old and len(calls)==3 and transport.restarts==1
     finally:await transport.close();await runner.cleanup()
@@ -50,17 +50,17 @@ child.stdin.write(json.dumps({'token':'x'*64,'upstream':'https://openrouter.ai/a
 ready=json.loads(child.stdout.readline());Path(sys.argv[2]).write_text(json.dumps({'pid':child.pid,'birth':identity(child.pid),'ready':ready}))
 time.sleep(60)
 '''
-    from codex_deepseek.bootstrap import module_command
+    from codex_deepseek.bootstrap import module_command,module_environment
     package=str(Path(__import__('codex_deepseek').__file__).resolve().parent.parent)
     bootstrap='import sys;sys.path.insert(0,'+repr(package)+');exec('+repr(program)+')'
-    parent=subprocess.Popen([sys.executable,'-I','-c',bootstrap,binary,str(record)])
+    parent=subprocess.Popen([sys._base_executable if os.name=='nt' else sys.executable,'-I','-X','utf8','-c',bootstrap,binary,str(record)],env=module_environment())
     parent_birth=identity(parent.pid);owned=None
     try:
         end=time.monotonic()+5
         while not record.exists() and time.monotonic()<end:time.sleep(.02)
         assert record.exists(),'Native helper did not start'
         owned=json.loads(record.read_text());assert matches(owned['pid'],owned['birth'])
-        os.kill(parent.pid,signal.SIGKILL);parent.wait(timeout=5)
+        os.kill(parent.pid,getattr(signal,'SIGKILL',signal.SIGTERM));parent.wait(timeout=5)
         end=time.monotonic()+3
         while matches(owned['pid'],owned['birth']) and time.monotonic()<end:time.sleep(.025)
         assert not matches(owned['pid'],owned['birth']),'A helper was orphaned after its parent was killed'

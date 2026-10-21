@@ -4,7 +4,7 @@ The listening socket survives a worker crash. Model requests are never replayed.
 Idle services exit; native daemon and active client leases retain the service.
 """
 import asyncio
-import fcntl
+from .platforms import WINDOWS, executable, file_lock, private_directory, install_signals, replace_file
 import hashlib
 import json
 import os
@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 
 from .processes import identity,matches,terminate
-from .bootstrap import module_command
+from .bootstrap import module_command, module_environment
 
 
 def code_id(catalog,native_binary=None):
@@ -38,7 +38,7 @@ def code_id(catalog,native_binary=None):
         package=Path(native_binary).parent.parent
         digest.update(str(package).encode())
         digest.update((package/'codex-package.json').read_bytes())
-        helper=package/'bin/codex-http-transport'
+        helper=executable(package/'bin','codex-http-transport')
         if helper.is_file():
             with helper.open('rb') as stream:digest.update(hashlib.file_digest(stream,'sha256').digest())
     return digest.hexdigest()
@@ -51,7 +51,7 @@ def atomic_json(path,value):
     temporary=path.with_name(path.name+'.'+str(os.getpid())+'.tmp')
     with open(temporary,'w',opener=lambda name,flags:os.open(name,flags,0o600)) as stream:
         json.dump(value,stream);stream.flush();os.fsync(stream.fileno())
-    os.replace(temporary,path)
+    replace_file(temporary,path)
     if path.name=='gateway.json':atomic_json(path.with_name('gateway.last-good.json'),value)
 
 
@@ -68,7 +68,7 @@ def read_descriptor(home):
     path=descriptor_path(home)
     for candidate in [path,path.with_name('gateway.last-good.json')]:
         try:
-            value=json.loads(candidate.read_text())
+            value=json.loads(candidate.read_text(encoding='utf-8'))
             if valid_descriptor(value):return value
         except (OSError,ValueError):pass
     return {}
@@ -76,9 +76,9 @@ def read_descriptor(home):
 
 def lease_held(state):
     with (state/'gateway.lease').open('a') as lease:
-        try:fcntl.flock(lease,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        try:
+            with file_lock(lease,blocking=False):return False
         except BlockingIOError:return True
-        return False
 
 
 def native_active(home):
@@ -98,9 +98,14 @@ def native_active(home):
         if any(matches(pid,birth) for pid,birth in requests):return True
     for name in ['daemon.pid','app-server.pid']:
         try:
-            record=json.loads((Path(home)/'app-server-daemon'/name).read_text())
-            detail=record.get('processIdentity') or {}
-            birth=f'{detail["startSeconds"]}:{detail["startMicroseconds"]}'
+            record=json.loads((Path(home)/'app-server-daemon'/name).read_text(encoding='utf-8'))
+            if WINDOWS:
+                # Upstream backend/pid_start.rs leaves processIdentity absent on
+                # Windows; backend/windows.rs serializes creation FILETIME here.
+                birth='windows:'+record['processStartTime']
+            else:
+                detail=record.get('processIdentity') or {}
+                birth=('linux:'+detail['bootId']+':'+str(detail['startTicks'])) if 'startTicks' in detail else f'{detail["startSeconds"]}:{detail["startMicroseconds"]}'
             if matches(record['pid'],birth):return True
         except (OSError,ValueError,KeyError,TypeError):continue
     return False
@@ -117,10 +122,9 @@ def healthy(value):
 
 def ensure(home,catalog,native_binary=None):
     from .policy import isolated_path
-    home=isolated_path(Path(home));state=home/'provider-state';state.mkdir(parents=True,exist_ok=True,mode=0o700)
+    home=isolated_path(Path(home));private_directory(home);state=home/'provider-state';private_directory(state)
     expected=code_id(catalog,native_binary)
-    with (state/'gateway.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
+    with (state/'gateway.lock').open('a') as lock, file_lock(lock):
         trace=os.environ.get('CODEX_DEEPSEEK_TRACE_DIR')
         # A daemon keeps operating after its launcher exits. An unrelated
         # maintenance command must not silently disable that profile's tracing.
@@ -149,7 +153,7 @@ def ensure(home,catalog,native_binary=None):
             environment=dict(os.environ)
             for name in ['CODEX_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_TRACE_DIR']:environment.pop(name,None)
             process=subprocess.Popen(module_command('codex_deepseek.service',home,catalog,str(native_binary) if native_binary else ''),
-                stdin=subprocess.DEVNULL,stdout=log,stderr=log,env=environment,start_new_session=True)
+                stdin=subprocess.DEVNULL,stdout=log,stderr=log,env=module_environment(environment),**({'creationflags':subprocess.CREATE_NEW_PROCESS_GROUP|subprocess.DETACHED_PROCESS} if WINDOWS else {'start_new_session':True}))
         birth=identity(process.pid);end=time.monotonic()+20
         while time.monotonic()<end:
             value=read_descriptor(home)
@@ -173,21 +177,28 @@ async def worker(home,catalog,fd):
     from .cli import credential
     from .gateway import Gateway
     from .state import Store
-    value=read_descriptor(home);sock=socket.socket(fileno=fd);sock.setblocking(False)
+    value=read_descriptor(home)
+    sock=None if WINDOWS else socket.socket(fileno=fd)
+    if sock:sock.setblocking(False)
     if code_id(catalog,value.get('native_binary'))!=value['code_id']:raise RuntimeError('Provider service code changed; restart from an immutable release')
     store=Store(Path(home)/'provider-state/adapter.sqlite');stopped=asyncio.Event();loop=asyncio.get_running_loop()
-    for signum in [signal.SIGTERM,signal.SIGINT]:loop.add_signal_handler(signum,stopped.set)
+    restore_signals=install_signals(loop,{signal.SIGTERM:stopped.set,signal.SIGINT:stopped.set})
     async def watch_owner():
         while not stopped.is_set():
             if not matches(value['pid'],value['birth']):stopped.set();return
             await asyncio.sleep(.25)
     watcher=asyncio.create_task(watch_owner())
     try:
-        def trace_source():return json.loads((Path(home)/'provider-state/trace.json').read_text()).get('directory')
-        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text()),listen_socket=sock,trace_source=trace_source,native_http_binary=Path(value['native_binary']).parent/'codex-http-transport' if value.get('native_binary') else None):
-            await stopped.wait()
+        def trace_source():return json.loads((Path(home)/'provider-state/trace.json').read_text(encoding='utf-8')).get('directory')
+        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None) as gateway:
+            if WINDOWS:
+                from .windows_sockets import Receiver
+                receiver=Receiver(gateway,stopped);receiver.start()
+                try:await stopped.wait()
+                finally:await receiver.close()
+            else:await stopped.wait()
     finally:
-        watcher.cancel();await asyncio.gather(watcher,return_exceptions=True);store.close()
+        restore_signals();watcher.cancel();await asyncio.gather(watcher,return_exceptions=True);store.close()
 
 
 def supervise(home,catalog,native_binary=None):
@@ -195,14 +206,14 @@ def supervise(home,catalog,native_binary=None):
     # metadata or an interrupted launch. Hold this kernel lease for our lifetime.
     state=Path(home)/'provider-state'
     with (state/'gateway.lease').open('a') as lease:
-        try:fcntl.flock(lease,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        try:
+            with file_lock(lease,blocking=False):_supervise(home,catalog,native_binary)
         except BlockingIOError:raise RuntimeError('This profile already has a provider service owner')
-        _supervise(home,catalog,native_binary)
 
 
 def _supervise(home,catalog,native_binary):
     home=Path(home);path=descriptor_path(home);previous=read_descriptor(home)
-    sock=socket.socket();sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    sock=socket.socket();sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE if WINDOWS else socket.SO_REUSEADDR,1)
     # A just-killed watchdog's old worker may retain the inherited socket until
     # its identity watcher runs. Preserve the port while that owner exits.
     end=time.monotonic()+3
@@ -226,12 +237,22 @@ def _supervise(home,catalog,native_binary):
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
     try:
         while not stopped:
-            child=subprocess.Popen(module_command('codex_deepseek.service','--worker',home,catalog,sock.fileno()),pass_fds=(sock.fileno(),))
+            command=module_command('codex_deepseek.service','--worker',home,catalog,sock.fileno())
+            if WINDOWS:
+                child=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=module_environment())
+            else:child=subprocess.Popen(command,pass_fds=(sock.fileno(),))
             value.update(worker_pid=child.pid,worker_birth=identity(child.pid));atomic_json(path,value)
+            if WINDOWS:
+                from .windows_sockets import Broker, HandoffError
+                broker=Broker(sock,child);idle=time.monotonic()
             while child.poll() is None and not stopped:
                 if native_active(home):idle=time.monotonic()
                 if time.monotonic()-idle>float(os.environ.get('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','120')):stopped=True
-                time.sleep(.25)
+                if WINDOWS:
+                    try:broker.accept(.1)
+                    except HandoffError:
+                        if child.poll() is None:child.terminate();child.wait(timeout=6)
+                else:time.sleep(.25)
             if stopped:break
             value['restarts']+=1;atomic_json(path,value)
             failures=[stamp for stamp in failures if time.monotonic()-stamp<60];failures.append(time.monotonic())

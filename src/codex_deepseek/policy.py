@@ -1,5 +1,6 @@
 """Keep the dedicated provider and credential boundary across native config surfaces."""
 from pathlib import Path
+from .platforms import paths_overlap
 import tomllib
 
 from .protocol import MODEL, ProtocolError
@@ -14,7 +15,7 @@ def isolated_path(path: Path) -> Path:
     value=path.expanduser().resolve()
     protected=Path.home()/'.codex'
     protected=protected.resolve()
-    if value==protected or value.is_relative_to(protected) or protected.is_relative_to(value):
+    if paths_overlap(value,protected):
         raise ProtocolError('The isolated runtime home/trace must not overlap Codex App state (~/.codex)')
     return value
 

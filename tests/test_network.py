@@ -1,9 +1,7 @@
 """Exercise production native egress with authenticated proxy and real TLS sockets."""
 import asyncio
 import os
-from pathlib import Path
 import ssl
-import subprocess
 
 import aiohttp
 from aiohttp import web
@@ -35,12 +33,30 @@ async def test_real_native_http_proxy_auth_and_no_proxy(monkeypatch):
 
 async def test_real_native_tls_ca_precedence_connect_tunnel_and_rejection(tmp_path,monkeypatch):
     clear_proxies(monkeypatch)
-    ca=tmp_path/'ca.pem';key=tmp_path/'ca.key';server_key=tmp_path/'server.key';csr=tmp_path/'server.csr';cert=tmp_path/'server.pem'
-    extensions=tmp_path/'extensions.cnf';extensions.write_text('subjectAltName=DNS:localhost,IP:127.0.0.1\nbasicConstraints=CA:FALSE\nextendedKeyUsage=serverAuth\n')
-    commands=[['req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(ca),'-days','1','-subj','/CN=Isolated runtime test CA'],
-              ['req','-newkey','rsa:2048','-nodes','-keyout',str(server_key),'-out',str(csr),'-subj','/CN=localhost'],
-              ['x509','-req','-in',str(csr),'-CA',str(ca),'-CAkey',str(key),'-CAcreateserial','-out',str(cert),'-days','1','-extfile',str(extensions)]]
-    for command in commands:subprocess.run(['openssl',*command],check=True,capture_output=True)
+    # Use the already locked cryptography dependency to mint a fresh test CA;
+    # no platform-specific OpenSSL executable or machine trust-store changes.
+    import datetime,ipaddress
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes,serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID,ExtendedKeyUsageOID
+    ca=tmp_path/'ca.pem';server_key=tmp_path/'server.key';cert=tmp_path/'server.pem'
+    now=datetime.datetime.now(datetime.timezone.utc)
+    ca_key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+    leaf_key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+    issuer=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'Isolated runtime test CA')])
+    def builder(subject,key):
+        return (x509.CertificateBuilder().subject_name(subject).issuer_name(issuer)
+                .public_key(key.public_key()).serial_number(x509.random_serial_number())
+                .not_valid_before(now-datetime.timedelta(minutes=1)).not_valid_after(now+datetime.timedelta(days=1)))
+    ca_cert=builder(issuer,ca_key).add_extension(x509.BasicConstraints(ca=True,path_length=0),critical=True).sign(ca_key,hashes.SHA256())
+    leaf=(builder(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'localhost')]),leaf_key)
+          .add_extension(x509.BasicConstraints(ca=False,path_length=None),critical=True)
+          .add_extension(x509.SubjectAlternativeName([x509.DNSName('localhost'),x509.IPAddress(ipaddress.ip_address('127.0.0.1'))]),critical=False)
+          .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),critical=False)
+          .sign(ca_key,hashes.SHA256()))
+    ca.write_bytes(ca_cert.public_bytes(serialization.Encoding.PEM));cert.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    server_key.write_bytes(leaf_key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
     context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.load_cert_chain(cert,server_key)
     async def endpoint(request):
         assert request.headers['Authorization']=='Bearer origin-only'

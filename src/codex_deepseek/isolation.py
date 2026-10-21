@@ -1,6 +1,6 @@
 """Keep native remote attachment within explicitly owned local server lifetimes."""
 import asyncio
-import fcntl
+from .platforms import WINDOWS, file_lock, private_fd
 import hashlib
 import ipaddress
 import json
@@ -36,7 +36,7 @@ def listener(arguments):
 def registry(home):
     path=Path(home)/'provider-state/listeners.json'
     try:
-        value=json.loads(path.read_text())
+        value=json.loads(path.read_text(encoding='utf-8'))
         if not isinstance(value,dict):raise ValueError('invalid listener registry')
         return value
     except FileNotFoundError:return {}
@@ -48,16 +48,9 @@ def addresses(host):
 
 
 def local_addresses():
-    local=set()
-    try:local.update(addresses(socket.gethostname()))
-    except OSError:pass
-    try:
-        import re
-        result=subprocess.run(['/sbin/ifconfig','-a'],capture_output=True,text=True,timeout=3)
-        for value in re.findall(r'\binet6?\s+([^\s%]+)',result.stdout):
-            local.add(ipaddress.ip_address(value))
-    except (OSError,ValueError,subprocess.TimeoutExpired):pass
-    return local
+    import psutil
+    return {ipaddress.ip_address(entry.address.split('%',1)[0]) for values in psutil.net_if_addrs().values()
+            for entry in values if entry.family in {socket.AF_INET,socket.AF_INET6}}
 
 
 def normalized(address):
@@ -67,8 +60,7 @@ def normalized(address):
 def save_listener(home,endpoint,pid,birth):
     from .service import atomic_json
     state=Path(home)/'provider-state'
-    with (state/'listeners.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
+    with (state/'listeners.lock').open('a') as lock, file_lock(lock):
         values={key:value for key,value in registry(home).items()
                 if isinstance(value,dict) and matches(value.get('pid'),value.get('birth'))}
         values[endpoint]={'pid':pid,'birth':birth}
@@ -83,20 +75,18 @@ async def register_listener(home,endpoint,process):
         if process.returncode is not None:return
         # Kernel ownership prevents an occupied App port from being registered
         # merely because a new native process was asked to bind that address.
-        result=await asyncio.to_thread(subprocess.run,
-            ['/usr/sbin/lsof','-nP','-a','-p',str(process.pid),('-iTCP:'+str(port) if port else '-iTCP'),'-sTCP:LISTEN','-Fn'],
-            capture_output=True,text=True,timeout=3)
-        if result.returncode==0 and any(line.startswith('n') for line in result.stdout.splitlines()):
-            if port == 0:
-                # Native SocketAddr accepts port zero. Register the actual
-                # kernel-assigned endpoint, never the unusable requested zero.
-                names=[line[1:] for line in result.stdout.splitlines() if line.startswith('n')]
-                host=urlsplit(endpoint).hostname
-                candidates=[name for name in names if name.rsplit(':',1)[0].strip('[]')==host]
-                if len(candidates)!=1:
-                    await asyncio.sleep(.2);continue
-                endpoint='ws://'+candidates[0]
-            save_listener(home,endpoint,process.pid,birth);return
+        import psutil
+        try:connections=await asyncio.to_thread(psutil.Process(process.pid).net_connections,kind='tcp')
+        except (psutil.NoSuchProcess,psutil.AccessDenied) as error:
+            if process.returncode is not None:return
+            raise ProtocolError('Cannot verify native listener kernel ownership') from error
+        requested=urlsplit(endpoint);host=requested.hostname
+        candidates=[connection.laddr for connection in connections if connection.status==psutil.CONN_LISTEN
+                    and (not port or connection.laddr.port==port)
+                    and ipaddress.ip_address(connection.laddr.ip.split('%',1)[0])==ipaddress.ip_address(host)]
+        if len(candidates)==1 and matches(process.pid,birth):
+            actual=candidates[0];address='['+actual.ip+']' if ':' in actual.ip else actual.ip
+            save_listener(home,'ws://'+address+':'+str(actual.port),process.pid,birth);return
         await asyncio.sleep(.2)
     raise ProtocolError('Native listener did not publish a kernel-owned socket before the startup deadline')
 
@@ -195,6 +185,7 @@ def owned_unix_path(path,home):
     # Upstream always binds a SHA256 path under a fixed UID-owned /tmp root.
     # Its advertised home socket is a symlink, including on short home paths.
     # Accept only this exact mapping, never another home's/App's socket hash.
+    if WINDOWS:return False
     directory=native_socket_directory()
     expected=directory/hashlib.sha256(os.fsencode(logical)).hexdigest()
     if resolved!=expected or not path.is_symlink():return False
@@ -221,12 +212,13 @@ def check_home_ipc(home):
 
 
 def check_daemon_package(arguments,home,binary):
+    from .platforms import executable
     owner=command_index(arguments)
     if owner is None or arguments[owner]!='app-server':return
     rest=app_server_command(arguments)
     if rest[:2] in (['daemon','stop'],['daemon','version'],['daemon','update']):return
     if rest[:1] not in (['daemon'],['proxy']):return
-    current=Path(home)/'packages/app-server-daemon/current/bin/codex'
+    current=executable(Path(home)/'packages/app-server-daemon/current/bin','codex')
     if not current.is_file():return
     def digest(path):
         with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').digest()

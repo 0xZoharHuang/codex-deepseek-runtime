@@ -14,7 +14,7 @@ import subprocess
 import time
 import uuid
 
-from install import valid_release
+from install import valid_release,_support
 from run_acceptance import digest,SOURCE
 from verify_live import Peer
 from verify_real_work import run_test,run_script
@@ -26,7 +26,7 @@ def continue_case(root,entry):
     if previous.get('error')!='Real development workflow exceeded 30 minutes':
         raise RuntimeError('Only bounded incomplete work can use this continuation protocol')
     history=root/'completion-attempts'/str(uuid.uuid4());history.mkdir(parents=True)
-    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt')]:
+    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json')]:
         if path.is_file():shutil.copy2(path,history/path.name)
     config=root/'home/config.toml';config.write_text(config.read_text().replace('model_reasoning_effort = "high"','model_reasoning_effort = "low"'))
     oracle=root/'oracle';mode=oracle.stat().st_mode&0o777
@@ -59,7 +59,7 @@ def continue_case(root,entry):
         for child,source,path,agent in db.execute('SELECT id,source,rollout_path,agent_path FROM threads WHERE agent_path IS NOT NULL'):
             origin=json.loads(source) if source.startswith('{') else {}
             if origin.get('subagent',{}).get('thread_spawn',{}).get('parent_thread_id')!=previous['thread']:continue
-            if not Path(path).resolve().is_relative_to((root/'home').resolve()):continue
+            if not _support.comparison_path(path).is_relative_to(_support.comparison_path(root/'home')):continue
             complete=[v['payload'] for line in Path(path).read_text().splitlines() if (v:=json.loads(line)).get('type')=='event_msg' and v.get('payload',{}).get('type')=='task_complete']
             reviewers.append({'thread':child,'agent_path':agent,'completed':bool(complete),'completed_turns':len(complete),'final_message':complete[-1].get('last_agent_message') if complete else None})
     check=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True)

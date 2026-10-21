@@ -1,4 +1,5 @@
 """Independent native audits with instrumented effects and fresh private homes."""
+from process_acceptance import evidence_root
 import argparse
 import json
 import os
@@ -10,13 +11,15 @@ import urllib.request
 import uuid
 
 from verify_live import Peer,text
+from credential_acceptance import prepare_home,private_file,clear_fixture_secret_key
 
 SOURCE=Path(__file__).resolve().parent
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--source',action='store_true');parser.add_argument('--native-binary',type=Path);parser.add_argument('--store',choices=['file','keyring','auto'],default='file');parser.add_argument('--secrets',action='store_true');args=parser.parse_args()
-    root=SOURCE.parent/'delivery/independent-audit/live'/str(uuid.uuid4());root.mkdir(parents=True)
+    if args.secrets and not os.environ.get('CODEX_DEEPSEEK_TEST_KEYRING_PROBE'):raise SystemExit('Native keyring cleanup probe is required before creating encrypted credential fixtures')
+    root=evidence_root('independent-audit')/str(uuid.uuid4());root.mkdir(parents=True)
     command=[sys.executable,'-m','codex_deepseek.cli'] if args.source else None
     if args.source:os.environ['PYTHONPATH']=str(SOURCE/'src')
     if args.native_binary:
@@ -38,7 +41,7 @@ def main():
         feature_config='[features]\nsecret_auth_storage=true\n' if args.secrets else ''
         config=f'model_reasoning_effort="low"\nmcp_oauth_credentials_store="{args.store}"\n{feature_config}[mcp_servers.oauth_audit]\nurl={json.dumps(base+"/mcp")}\nstartup_timeout_sec=10\n'
         for name in ['primary','other']:
-            target=root/name;(target/'home').mkdir(parents=True);(target/'work').mkdir()
+            target=root/name;prepare_home(target/'home');(target/'work').mkdir()
             (target/'home/config.toml').write_text(config)
         peer=Peer(root/'primary',command=command)
         one=peer.call('thread/start',{'cwd':str(root/'primary/work'),'modelProvider':'openai'})
@@ -61,7 +64,7 @@ def main():
         resumed=peer.new();items=peer.turn(resumed,'Do not delegate. Call oauth_audit.read_nonce once and return its exact value.')
         actual=json.loads((fixture_root/'fixture-events.json').read_text())[before:]
         credentials=root/'primary/home/.credentials.json'
-        file_valid=credentials.is_file() and credentials.stat().st_mode&0o777==0o600
+        file_valid=private_file(credentials)
         selected_valid=file_valid if args.store=='file' else not credentials.exists() if args.store=='keyring' else True
         passed('native_oauth_selected_store_survives_cold_start',ready['nonce'] in text(items) and any(e['kind']=='tool_executed' for e in actual) and not any(e['kind']=='token' for e in actual) and selected_valid,{'events':actual,'store':args.store,'encrypted_secrets':args.secrets,'credential_file_present':credentials.exists(),'mode':oct(credentials.stat().st_mode&0o777) if credentials.exists() else None})
         before=len(json.loads((fixture_root/'fixture-events.json').read_text()))
@@ -79,26 +82,33 @@ def main():
     finally:
         if peer:peer.close()
         if other:other.close()
-        fixture.terminate();fixture.wait(timeout=10)
-        if args.store in {'keyring','auto'} and not args.secrets:
-            import hashlib
-            for name in ['primary','other']:
-                service='Codex DeepSeek MCP Credentials|'+hashlib.sha256(str((root/name/'home').resolve()).encode()).hexdigest()[:32]
-                subprocess.run(['security','delete-generic-password','-s',service],capture_output=True)
-        if args.secrets:
-            import hashlib
-            from codex_deepseek.service import native_active
-            cleanup=[]
+        cleanup=[]
+        try:
+            entry=command or [os.environ.get('CODEX_DEEPSEEK_TEST_ENTRY') or str(Path.home()/'.local/bin/codex-deepseek')]
             for name in ['primary','other']:
                 home=(root/name/'home').resolve()
-                if native_active(home):raise RuntimeError('Refusing to remove a fixture encryption key while its native owner is active')
-                account='secrets|'+hashlib.sha256(str(home).encode()).hexdigest()[:16]
-                removed=subprocess.run(['security','delete-generic-password','-s','codex','-a',account],capture_output=True)
-                absent=subprocess.run(['security','find-generic-password','-s','codex','-a',account],capture_output=True)
-                cleanup.append({'home':str(home),'account':account,'delete_exit':removed.returncode,'absent':absent.returncode==44})
-            (root/'fixture-keychain-cleanup.json').write_text(json.dumps(cleanup,indent=2))
-            if not all(r['absent'] for r in cleanup):raise RuntimeError('Fixture encryption key cleanup did not verify absence')
-
+                if not home.exists():continue
+                removed=subprocess.run([*entry,'mcp','logout','oauth_audit'],env={**os.environ,'CODEX_DEEPSEEK_HOME':str(home)},capture_output=True,text=True,encoding='utf-8',timeout=45)
+                row={'home':str(home),'logout_exit':removed.returncode,'stdout':removed.stdout,'stderr':removed.stderr}
+                if removed.returncode==0 and 'base' in locals():
+                    before=len(json.loads((fixture_root/'fixture-events.json').read_text(encoding='utf-8')))
+                    cold=Peer(root/name,command=command)
+                    try:
+                        cold.new();cold.call('mcpServerStatus/list',{})
+                        deadline=time.monotonic()+15
+                        while True:
+                            events=json.loads((fixture_root/'fixture-events.json').read_text(encoding='utf-8'))[before:]
+                            if any(e['kind'] in {'unauthenticated','mcp'} for e in events) or time.monotonic()>=deadline:break
+                            time.sleep(.1)
+                        row['cold_logout_verified']=any(e['kind']=='unauthenticated' for e in events) and not any(e['kind']=='mcp' for e in events)
+                        row['cold_authentication_events']=events
+                    finally:cold.close()
+                if args.secrets:row['native_keyring']=clear_fixture_secret_key(home)
+                cleanup.append(row)
+            (root/'fixture-credential-cleanup.json').write_text(json.dumps(cleanup,indent=2),encoding='utf-8')
+            if any(row['logout_exit']!=0 or not row.get('cold_logout_verified') for row in cleanup):raise RuntimeError('Native MCP credential logout did not survive cold readback')
+        finally:
+            fixture.terminate();fixture.wait(timeout=10)
         print('EVIDENCE',root,flush=True)
 
 

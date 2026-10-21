@@ -306,13 +306,16 @@ def test_corrupt_history_does_not_block_unaffected_native_startup_or_claim_compl
     finally:store.close()
 
 
-def test_trace_replacement_is_private_and_does_not_follow_existing_symlink(tmp_path):
+def test_trace_replacement_is_private_and_does_not_follow_existing_symlink(tmp_path,assert_private):
     from codex_deepseek.gateway import private_write
+    from codex_deepseek.platforms import private_directory
+    private_directory(tmp_path)
     unrelated=tmp_path/'unrelated';unrelated.write_text('PRESERVE')
     trace=tmp_path/'trace.json';trace.symlink_to(unrelated)
     private_write(trace,'PRIVATE_CONTEXT')
     assert unrelated.read_text()=='PRESERVE' and not trace.is_symlink()
-    assert trace.read_text()=='PRIVATE_CONTEXT' and trace.stat().st_mode&0o777==0o600
+    assert trace.read_text()=='PRIVATE_CONTEXT'
+    assert_private(trace)
 
 
 def test_duplicate_completed_item_cannot_replay_a_native_tool_call():

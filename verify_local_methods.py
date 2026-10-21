@@ -6,6 +6,7 @@ from pathlib import Path
 import uuid
 
 from verify_live import Peer,text
+from process_acceptance import python_command
 
 
 def main():
@@ -52,7 +53,7 @@ def main():
         passed('cold_local_metadata_and_transcript_persist',saved['name']=='Native method audit' and nonce in json.dumps(saved) and len(attachments)==1,saved)
         peer.call('thread/resume',{'threadId':thread})
         start=len(peer.events)
-        peer.call('process/spawn',{'command':['/bin/sh','-c','printf PROCESS_READY; read value; printf "RESULT:%s" "$value"'],'cwd':str(root/'work'),'processHandle':'native-process','streamStdin':True,'streamStdoutStderr':True,'timeoutMs':20000})
+        peer.call('process/spawn',{'command':python_command('print("PROCESS_READY",flush=True);value=input();print("RESULT:"+value)'),'cwd':str(root/'work'),'processHandle':'native-process','streamStdin':True,'streamStdoutStderr':True,'timeoutMs':20000})
         peer.wait(lambda e:e.get('method')=='process/outputDelta',start,15)
         peer.call('process/writeStdin',{'processHandle':'native-process','deltaBase64':base64.b64encode(b'PROCESS_INPUT_693\n').decode(),'closeStdin':True})
         terminal=peer.wait(lambda e:e.get('method')=='process/exited',start,20)

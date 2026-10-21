@@ -1,5 +1,5 @@
 """Install only the distribution-owned browser MCP stanza in the isolated home."""
-import fcntl
+from .platforms import file_lock, private_fd, replace_file
 import os
 from pathlib import Path
 import sys
@@ -10,11 +10,10 @@ from .policy import isolated_path
 
 def ensure_browser(home: Path):
     home=isolated_path(home)
-    with (home/'browser-config.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
+    with (home/'browser-config.lock').open('a') as lock, file_lock(lock):
         path=home/'config.toml'
         if path.is_symlink():raise RuntimeError('Isolated browser configuration cannot follow a symlink')
-        old=path.read_text() if path.exists() else ''
+        old=path.read_text(encoding='utf-8') if path.exists() else ''
         config=tomlkit.parse(old)
         servers=config.setdefault('mcp_servers',tomlkit.table())
         if 'codex_web' in servers:
@@ -28,13 +27,14 @@ def ensure_browser(home: Path):
             server['tool_timeout_sec']=60
             server['default_tools_approval_mode']='approve'
         server['command']=sys.executable
-        server['args']=['-I','-m','codex_deepseek.web_mcp','--home',str(home)]
+        server['args']=['-I','-X','utf8','-m','codex_deepseek.web_mcp','--home',str(home)]
         content=tomlkit.dumps(config)
         if content==old:return
-        with tempfile.NamedTemporaryFile('w',dir=home,prefix='.browser-config-',delete=False) as f:
-            temporary=Path(f.name)
-            try:
-                os.fchmod(f.fileno(),0o600);f.write(content);f.flush()
-                os.replace(temporary,path)
-            finally:
-                if temporary.exists():temporary.unlink()
+        temporary=None
+        try:
+            with tempfile.NamedTemporaryFile('w',encoding='utf-8',dir=home,prefix='.browser-config-',delete=False) as f:
+                temporary=Path(f.name)
+                private_fd(f.fileno());f.write(content);f.flush()
+            replace_file(temporary,path)
+        finally:
+            if temporary is not None and temporary.exists():temporary.unlink()

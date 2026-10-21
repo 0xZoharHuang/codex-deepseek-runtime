@@ -4,8 +4,6 @@ import asyncio
 import json
 import os
 from pathlib import Path
-import signal
-import shlex
 import subprocess
 import sys
 import time
@@ -18,6 +16,17 @@ from aiohttp import web
 from codex_deepseek.gateway import Gateway, sse_events
 from codex_deepseek.protocol import MODEL
 from codex_deepseek.state import Store, migrate_searches
+from codex_deepseek.bootstrap import module_environment
+from codex_deepseek.processes import identity,matches,terminate
+import psutil
+
+
+def wrapper_command(code):
+    """Launch the actual interpreter PID, including Windows venv redirectors."""
+    import codex_deepseek
+    package=str(Path(codex_deepseek.__file__).resolve().parent.parent)
+    return [sys._base_executable if os.name=="nt" else sys.executable,"-I","-X","utf8","-c",
+            "import sys;sys.path.insert(0,"+repr(package)+");"+code]
 
 
 async def test_large_sse_record_through_actual_http_transport(monkeypatch,tmp_path):
@@ -71,46 +80,40 @@ def test_profile_migration_copies_only_own_searches_and_owner_recovery(tmp_path)
 
 
 def test_killing_wrapper_does_not_orphan_owned_native_process(tmp_path):
-    child=tmp_path/'native.py';pidfile=tmp_path/'native.pid'
+    pidfile=tmp_path/'native.pid'
     body=f'import os,pathlib,time; pathlib.Path({str(pidfile)!r}).write_text(str(os.getpid())); time.sleep(120)'
-    child.write_text('#!/bin/sh\nexec '+shlex.quote(sys.executable)+' -c '+shlex.quote(body)+'\n');child.chmod(0o755)
     code=f'''from pathlib import Path
 import asyncio
 import codex_deepseek.cli as cli
 cli.credential=lambda:'FAKE'
 cli.data_root=lambda:Path({str(tmp_path)!r})
-cli.native=lambda:Path({str(child)!r})
+cli.native=lambda:Path({(sys._base_executable if os.name=='nt' else sys.executable)!r})
+cli.native_arguments=lambda arguments,port: (['-I','-X','utf8','-c',{body!r}],False)
 cli.catalog=lambda:{{'models':[]}}
 cli.ProviderService=lambda *args,**kwargs:cli.Gateway('FAKE','LOCAL',None,{{}})
 asyncio.run(cli.run(['app-server']))
 '''
-    process=subprocess.Popen([sys.executable,'-c',code],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-    native_pid=None
+    process=subprocess.Popen(wrapper_command(code),env=module_environment(),stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+    native_pid=None;birth=None
     try:
         end=time.monotonic()+8
         while not pidfile.exists() and time.monotonic()<end:time.sleep(.05)
-        assert pidfile.exists(),process.stderr.read().decode() if process.poll() is not None else 'Native did not start'
-        native_pid=int(pidfile.read_text());process.kill();process.wait(timeout=3)
+        assert pidfile.exists(),process.stderr.read().decode('utf-8',errors='replace') if process.poll() is not None else 'Native did not start'
+        native_pid=int(pidfile.read_text());birth=identity(native_pid)
+        assert birth is not None
+        process.kill();process.wait(timeout=3)
         end=time.monotonic()+8
-        state=''
-        while time.monotonic()<end:
-            state=subprocess.run(['ps','-p',str(native_pid),'-o','stat='],capture_output=True,text=True).stdout.strip()
-            if not state or state.startswith('Z'):break
-            time.sleep(.05)
-        assert not state or state.startswith('Z'),'Owned native process outlived its killed wrapper'
+        while matches(native_pid,birth) and time.monotonic()<end:time.sleep(.05)
+        assert not matches(native_pid,birth),'Owned native process outlived its killed wrapper'
     finally:
         if process.poll() is None:process.kill();process.wait()
-        if native_pid:
-            try:os.kill(native_pid,signal.SIGTERM)
-            except ProcessLookupError:pass
+        if native_pid:terminate(native_pid,birth,timeout=1)
 
 
 @pytest.mark.parametrize('scenario',['supervisor_only','both_then_restart'])
 def test_supervisor_crash_and_restart_reconcile_only_owned_processes(tmp_path,scenario):
-    from codex_deepseek.processes import identity,matches
-    child=tmp_path/'native';pidfile=tmp_path/'native.pid'
+    pidfile=tmp_path/'native.pid'
     body=f'import os,pathlib,time;pathlib.Path({str(pidfile)!r}).write_text(str(os.getpid()));time.sleep(120)'
-    child.write_text('#!/bin/sh\nexec '+shlex.quote(sys.executable)+' -c '+shlex.quote(body)+'\n');child.chmod(0o755)
     code=f'''from pathlib import Path
 import asyncio
 import codex_deepseek.cli as cli
@@ -121,13 +124,14 @@ class Pending(cli.Store):
 cli.Store=Pending
 cli.credential=lambda:'FAKE'
 cli.data_root=lambda:Path({str(tmp_path)!r})
-cli.native=lambda:Path({str(child)!r})
+cli.native=lambda:Path({(sys._base_executable if os.name=='nt' else sys.executable)!r})
+cli.native_arguments=lambda arguments,port: (['-I','-X','utf8','-c',{body!r}],False)
 cli.catalog=lambda:{{'models':[]}}
 cli.ProviderService=lambda *args,**kwargs:cli.Gateway('FAKE','LOCAL',None,{{}})
 asyncio.run(cli.run(['exec','test']))
 '''
-    wrapper=subprocess.Popen([sys.executable,'-c',code],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-    native_pid=None;birth=None;supervisor_pid=None
+    wrapper=subprocess.Popen(wrapper_command(code),env=module_environment(),stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+    native_pid=None;birth=None;supervisor_pid=None;supervisor_birth=None
     state=tmp_path/'codex-home/provider-state/adapter.sqlite'
     try:
         end=time.monotonic()+8;row=None
@@ -136,13 +140,14 @@ asyncio.run(cli.run(['exec','test']))
                 with sqlite3.connect(state) as db:row=db.execute('SELECT supervisor_pid,native_pid,native_birth FROM runtime_owners WHERE native_pid IS NOT NULL').fetchone()
                 if row:break
             time.sleep(.025)
-        assert row,wrapper.stderr.read().decode() if wrapper.poll() is not None else 'Native did not register'
+        assert row,wrapper.stderr.read().decode('utf-8',errors='replace') if wrapper.poll() is not None else 'Native did not register'
         supervisor_pid,native_pid,birth=row
+        supervisor_birth=identity(supervisor_pid)
         if scenario=='supervisor_only':
-            os.kill(supervisor_pid,signal.SIGKILL);wrapper.wait(timeout=8)
+            psutil.Process(supervisor_pid).kill();wrapper.wait(timeout=8)
         else:
-            os.kill(supervisor_pid,signal.SIGSTOP);wrapper.kill();wrapper.wait(timeout=3)
-            os.kill(supervisor_pid,signal.SIGKILL)
+            psutil.Process(supervisor_pid).suspend();wrapper.kill();wrapper.wait(timeout=3)
+            psutil.Process(supervisor_pid).kill()
             assert matches(native_pid,birth),'The experiment did not leave the intended owned orphan'
             time.sleep(.05)
             recovered=Store(state)
@@ -154,10 +159,11 @@ asyncio.run(cli.run(['exec','test']))
         assert identity(os.getpid()) is not None
     finally:
         if wrapper.poll() is None:wrapper.kill();wrapper.wait(timeout=3)
-        if native_pid and matches(native_pid,birth):os.kill(native_pid,signal.SIGKILL)
-        if supervisor_pid:
-            try:os.kill(supervisor_pid,signal.SIGCONT);os.kill(supervisor_pid,signal.SIGTERM)
-            except ProcessLookupError:pass
+        if native_pid:terminate(native_pid,birth,timeout=1)
+        if supervisor_pid and matches(supervisor_pid,supervisor_birth):
+            try:psutil.Process(supervisor_pid).resume()
+            except psutil.NoSuchProcess:pass
+            terminate(supervisor_pid,supervisor_birth,timeout=1)
 
 
 def test_pid_reuse_mismatch_never_signals_a_live_unrelated_process():

@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 from pypdf import PdfReader
 import truststore
 from .policy import isolated_path
+from .platforms import private_directory
 
 MAX_BODY=10*1024*1024
 MAX_TEXT=4*1024*1024
@@ -72,7 +73,7 @@ class Browser:
         self.home=isolated_path(home)
         directory=isolated_path(self.home/'web-cache')
         if not directory.is_relative_to(self.home):raise ValueError('Browser cache must remain inside its isolated home')
-        directory.mkdir(parents=True,exist_ok=True,mode=0o700)
+        private_directory(directory)
         self.path=directory/'pages.sqlite'
         if self.path.is_symlink():raise ValueError('Browser cache cannot follow a symlink')
         self.db=sqlite3.connect(self.path,timeout=30)

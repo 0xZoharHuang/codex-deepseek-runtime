@@ -8,17 +8,22 @@ import subprocess
 import time
 import uuid
 from verify_live import Peer,text
-root=Path(__file__).resolve().parent.parent/'delivery/evidence/native-crash'/str(uuid.uuid4())
+from process_acceptance import python_command,evidence_root,fixture_identity,write_process_tree_fixture
+from codex_deepseek.processes import identity,matches,terminate
+root=evidence_root('native-crash')/str(uuid.uuid4())
 (root/'home').mkdir(parents=True);(root/'work').mkdir();(root/'home/config.toml').write_text('model_reasoning_effort="high"\nsandbox_mode="workspace-write"\n')
 peer=Peer(root);result={}
 try:
     thread=peer.new();peer.turn(thread,'Do not use tools or delegate. Remember checkpoint RECOVERY-98371 and reply SAVED.')
-    pidfile=root/'work/owned-pids.txt'
-    peer.send({'id':8001,'method':'command/exec','params':{'command':['/bin/zsh','-c',f'echo $$ > "{pidfile}"; sleep 120 & echo $! >> "{pidfile}"; wait'],'cwd':str(root/'work'),'sandboxPolicy':{'type':'workspaceWrite','writableRoots':[str(root/'work')],'networkAccess':False},'processId':'crash-child','timeoutMs':130000}})
+    pidfile=root/'work/owned-pids.json';fixture=root/'work/owned-process-tree.py'
+    write_process_tree_fixture(fixture,pidfile)
+    peer.send({'id':8001,'method':'command/exec','params':{'command':[python_command('')[0],'-I','-u',str(fixture)],'cwd':str(root/'work'),'sandboxPolicy':{'type':'workspaceWrite','writableRoots':[str(root/'work')],'networkAccess':False},'processId':'crash-child','timeoutMs':130000}})
     until=time.monotonic()+10
-    while (not pidfile.exists() or len(pidfile.read_text().splitlines())<2) and time.monotonic()<until:time.sleep(.1)
+    while not pidfile.exists() and time.monotonic()<until:time.sleep(.1)
     assert pidfile.exists(),[e for e in peer.events if e.get('id')==8001 and 'method' not in e]
-    pids=[int(s) for s in pidfile.read_text().splitlines()]
+    markers=json.loads(pidfile.read_text(encoding='utf-8'));assert len(markers)==2
+    births=dict(fixture_identity(marker,fixture) for marker in markers);assert len(births)==2
+    pids=list(births)
     _,start=peer.start(thread,'Do not use tools or delegate. Write a detailed 6000-word explanation of implementing a durable queue. Continue until the explanation is complete.')
     state=root/'home/provider-state/adapter.sqlite'
     until=time.monotonic()+20
@@ -32,7 +37,7 @@ try:
     until=time.monotonic()+10
     alive=[]
     while time.monotonic()<until:
-        alive=[pid for pid in pids if subprocess.run(['ps','-p',str(pid),'-o','stat='],capture_output=True,text=True).stdout.strip().strip('Z')]
+        alive=[pid for pid in pids if matches(pid,births[pid])]
         if not alive:break
         time.sleep(.1)
     result.update({'owned_pids':pids,'remaining_pids':alive,'killed_during_stream':True,'thread':thread})
@@ -43,5 +48,7 @@ try:
     result['answer']=text(items)
     result['passed']=not alive and 'RECOVERY-98371' in result['answer'] and bool(result['crash_receipts']) and all(row[1] in {'owner_lost','cancelled'} for row in result['crash_receipts'])
 finally:
-    peer.close();(root/'results.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2));print('EVIDENCE',root)
+    peer.close()
+    for pid,birth in locals().get('births',{}).items():terminate(pid,birth)
+    (root/'results.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2));print('EVIDENCE',root)
 if not result.get('passed'):raise AssertionError('Native crash recovery acceptance failed')

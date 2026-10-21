@@ -10,16 +10,17 @@ from verify_live import Peer,text
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir()
-    (root/'home/config.toml').write_text('model_reasoning_effort="low"\n')
+    (root/'home/config.toml').write_text('sandbox_mode='+json.dumps(args.sandbox_mode)+'\nmodel_reasoning_effort="low"\n', encoding='utf-8')
     peer=Peer(root);results=[]
     def passed(name,condition,detail):
-        record={'name':name,'passed':bool(condition),'detail':detail};results.append(record)
-        (root/'results.json').write_text(json.dumps(results,indent=2));print(json.dumps(record),flush=True)
+        record={'name':name,'passed':bool(condition),'sandbox_mode':args.sandbox_mode,'detail':detail};results.append(record)
+        (root/'results.json').write_text(json.dumps(results,indent=2), encoding='utf-8');print(json.dumps(record),flush=True)
         if not condition:raise AssertionError(name)
     try:
-        source=peer.new();items=peer.turn(source,'Do not use tools, delegate or search. Remember SOURCE_CONTEXT_573 and reply exactly READY.')
+        source=peer.new(sandbox=args.sandbox_mode);items=peer.turn(source,'Do not use tools, delegate or search. Remember SOURCE_CONTEXT_573 and reply exactly READY.')
         completed=[e['params']['turn']['id'] for e in peer.events if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==source][-1]
         marker='SAMPLE_CANCEL_'+uuid.uuid4().hex;request_id='sample-'+uuid.uuid4().hex
         start=len(peer.events)
@@ -27,7 +28,7 @@ def main():
         receipt=None;end=time.monotonic()+30
         while time.monotonic()<end:
             for path in (root/'adapter-traces').glob('*-request.json'):
-                if marker in path.read_text():receipt=path.name.removesuffix('-request.json');break
+                if marker in path.read_text(encoding='utf-8'):receipt=path.name.removesuffix('-request.json');break
             if receipt:break
             time.sleep(.05)
         assert receipt,'Native sample did not reach the provider'
@@ -41,7 +42,7 @@ def main():
         passed('native_sample_cancel_aborts_provider_without_replay','cancel' in str(terminal.get('error',{})).lower() and state==('cancelled',),{'native_response':terminal,'receipt':receipt,'receipt_state':state})
         items=peer.turn(source,'Without tools or delegation, recall the exact source-context marker I asked you to remember. Do not continue the cancelled sample.')
         passed('sample_cancel_preserves_source_thread','SOURCE_CONTEXT_573' in text(items),text(items))
-        goal_thread=peer.new();nonce='GOAL_'+uuid.uuid4().hex;objective=f'Complete this two-stage local runtime goal without asking for more input. In the workspace, create goal-first.txt and goal-second.txt, both containing exactly {nonce} with no newline. Verify both contents, then mark this goal complete. Do not delegate or search.'
+        goal_thread=peer.new(sandbox=args.sandbox_mode);nonce='GOAL_'+uuid.uuid4().hex;objective=f'Complete this two-stage local runtime goal without asking for more input. In the workspace, create goal-first.txt and goal-second.txt, both containing exactly {nonce} with no newline. Verify both contents, then mark this goal complete. Do not delegate or search.'
         peer.call('thread/goal/set',{'threadId':goal_thread,'objective':objective,'status':'active','tokenBudget':120000,'origin':'user'})
         start=len(peer.events)
         peer.turn(goal_thread,f'This initial turn is stage one only: do not delegate or search. Use a native tool to create goal-first.txt containing exactly {nonce} with no newline and read it back. Do not create goal-second.txt during this initial turn. Leave the goal active and finish this turn with STAGE_ONE_FINISHED. The native goal continuation must perform stage two.')
@@ -57,12 +58,12 @@ def main():
         # effects, rather than assuming two API turn/completed notifications.
         continuation_ids=set()
         for path in (root/'adapter-traces').glob('*-request.json'):
-            body=json.loads(path.read_text())
-            if body.get('prompt_cache_key')!=goal_thread:continue
+            body=json.loads(path.read_text(encoding='utf-8'))
+            if body.get('client_metadata',{}).get('thread_id')!=goal_thread:continue
             for item in body.get('input',[]):
                 if item.get('type')=='message' and item.get('role')=='user' and any('<codex_internal_context source="goal">' in content.get('text','') for content in item.get('content',[]) if isinstance(content,dict)):
                     continuation_ids.add(item.get('id'))
-        passed('native_goal_autonomous_followup_and_completion',goal.get('status')=='complete' and bool(continuation_ids) and first.is_file() and second.is_file() and first.read_text()==second.read_text()==nonce,{'goal':goal,'completed_api_turns':len(turns),'native_goal_continuation_prompts':len(continuation_ids),'turn_statuses':[turn['status'] for turn in turns]})
+        passed('native_goal_autonomous_followup_and_completion',goal.get('status')=='complete' and bool(continuation_ids) and first.is_file() and second.is_file() and first.read_text(encoding='utf-8')==second.read_text(encoding='utf-8')==nonce,{'goal':goal,'completed_api_turns':len(turns),'native_goal_continuation_prompts':len(continuation_ids),'turn_statuses':[turn['status'] for turn in turns]})
         peer.call('thread/goal/clear',{'threadId':goal_thread,'origin':'user'})
     finally:peer.close();print('EVIDENCE',root,flush=True)
 

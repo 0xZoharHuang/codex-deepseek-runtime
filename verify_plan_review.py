@@ -1,10 +1,11 @@
 """Native plan events and review mode on an actual local change."""
+from process_acceptance import evidence_root
 import json
 from pathlib import Path
 import subprocess
 import uuid
 from verify_live import Peer,prepare,text
-root=Path(__file__).resolve().parent.parent/'delivery/evidence/plan-review'/str(uuid.uuid4())
+root=evidence_root('plan-review')/str(uuid.uuid4())
 prepare(root);work=root/'work'
 subprocess.run(['git','init','-q',str(work)],check=True)
 (work/'calculation.py').write_text('def divide(a, b):\n    return a / b\n')

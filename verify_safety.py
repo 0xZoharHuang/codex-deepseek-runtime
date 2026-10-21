@@ -9,6 +9,8 @@ import time
 import uuid
 
 from verify_live import Peer, prepare, text
+from codex_deepseek.processes import identity,matches,terminate
+from process_acceptance import python_command,shell_command,fixture_identity,write_process_tree_fixture
 
 
 def main():
@@ -22,7 +24,7 @@ def main():
         config=root/'home/config.toml'
         config.write_text(config.read_text().replace('[features]\n','[features]\nguardianv2 = {enabled=true,persist_scores=true,review_scope={computer_use_only=false,sandboxed_exec_commands=true}}\n'))
     fixture=root/'work/cancellable.py'
-    fixture.write_text('import subprocess,sys,os,json,pathlib,time\np=subprocess.Popen([sys.executable,"-c","import time;time.sleep(120)"])\npathlib.Path("processes.json").write_text(json.dumps([os.getpid(),p.pid]))\ntime.sleep(120)\n')
+    write_process_tree_fixture(fixture,root/'work/processes.json')
     peer=Peer(root)
     peer_closed=False
     results=[]
@@ -50,13 +52,15 @@ def main():
             check('native_guardian_v2_completed_classification_and_applied_score',all(row==('completed',200) for row in receipts) and bool(scores),{'receipts':receipts,'scores':scores})
 
         thread=peer.new()
-        turn,start=peer.start(thread,'Do not delegate. Run `python3 cancellable.py` using exec_command with a long yield. Wait for completion.')
+        turn,start=peer.start(thread,'Do not delegate. Run '+shell_command([python_command('')[0],'-I',str(fixture)])+' using exec_command with a long yield. Wait for completion.')
         peer.wait(lambda e:e.get('method')=='item/started' and e.get('params',{}).get('threadId')==thread and e.get('params',{}).get('item',{}).get('type')=='commandExecution',start)
         pids_file=root/'work/processes.json'
         end=time.monotonic()+15
         while not pids_file.exists() and time.monotonic()<end:time.sleep(0.05)
         if not pids_file.exists():raise AssertionError('Fixture process did not start')
-        pids=json.loads(pids_file.read_text())
+        markers=json.loads(pids_file.read_text(encoding='utf-8'));assert len(markers)==2
+        births=dict(fixture_identity(marker,fixture) for marker in markers);assert len(births)==2
+        pids=list(births)
         peer.call('turn/interrupt',{'threadId':thread,'turnId':turn})
         peer.complete(thread,start)
         terminal=[e for e in peer.events[start:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==thread][-1]
@@ -70,13 +74,13 @@ def main():
         while time.monotonic()<end:
             alive=[]
             for pid in pids:
-                state=subprocess.run(['ps','-p',str(pid),'-o','stat='],capture_output=True,text=True).stdout.strip()
-                if state and not state.startswith('Z'):alive.append({'pid':pid,'state':state})
+                if matches(pid,births[pid]):alive.append({'pid':pid,'birth':births[pid]})
             if not alive:break
             time.sleep(0.05)
         check('native_owner_shutdown_cleans_process_tree',not alive,{'fixture_pids':pids,'still_alive':alive})
     finally:
         if not peer_closed:peer.close()
+        for pid,birth in locals().get('births',{}).items():terminate(pid,birth)
         print('EVIDENCE',str(root),flush=True)
 
 

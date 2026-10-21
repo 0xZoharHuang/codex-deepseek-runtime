@@ -7,6 +7,8 @@ import sys
 
 from .state import Store
 from .isolation import listener, register_listener
+from .platforms import WINDOWS, install_signals
+from .processes import matches
 
 
 async def supervise(control_fd, state_path, owner, command):
@@ -32,9 +34,17 @@ async def supervise(control_fd, state_path, owner, command):
             except ProcessLookupError:
                 pass  # The owned child completed between the liveness check and signal.
 
-    loop.add_reader(control_fd, check_owner)
-    loop.add_signal_handler(signal.SIGTERM, lost.set)
-    loop.add_signal_handler(signal.SIGINT, (lambda: None) if sys.stdin.isatty() else lambda: forward(signal.SIGINT))
+    async def watch_parent():
+        nonlocal parent_lost
+        _,pid,birth=control_fd.split(':',2)
+        while not lost.is_set():
+            if not matches(int(pid),birth):parent_lost=True;lost.set();return
+            await asyncio.sleep(.1)
+    if WINDOWS:watcher=asyncio.create_task(watch_parent())
+    else:loop.add_reader(control_fd,check_owner);watcher=None
+    handlers={signal.SIGTERM:lost.set,signal.SIGINT:(lambda:None) if WINDOWS or sys.stdin.isatty() else lambda:forward(signal.SIGINT)}
+    if WINDOWS:handlers[signal.SIGBREAK]=lambda:None
+    restore_signals=install_signals(loop,handlers)
     completed = asyncio.create_task(process.wait())
     stopped = asyncio.create_task(lost.wait())
     endpoint=listener(command[1:])
@@ -51,7 +61,7 @@ async def supervise(control_fd, state_path, owner, command):
             try:
                 await asyncio.wait_for(asyncio.shield(completed), 5)
             except TimeoutError:
-                forward(signal.SIGKILL)
+                process.kill()
         result = await completed
         if parent_lost:
             Store.owner_lost(state_path, owner)
@@ -61,11 +71,12 @@ async def supervise(control_fd, state_path, owner, command):
             registered.cancel();await asyncio.gather(registered,return_exceptions=True)
         stopped.cancel()
         await asyncio.gather(stopped, return_exceptions=True)
-        loop.remove_reader(control_fd)
-        os.close(control_fd)
-        for signum in (signal.SIGINT, signal.SIGTERM):
-            loop.remove_signal_handler(signum)
+        restore_signals()
+        if watcher:
+            watcher.cancel();await asyncio.gather(watcher,return_exceptions=True)
+        else:
+            loop.remove_reader(control_fd);os.close(control_fd)
 
 
 if __name__ == '__main__':
-    raise SystemExit(asyncio.run(supervise(int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4:])))
+    raise SystemExit(asyncio.run(supervise(sys.argv[1] if WINDOWS else int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4:])))

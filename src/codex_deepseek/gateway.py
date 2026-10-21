@@ -18,21 +18,23 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 from .state import Store
 from .native_http import NativeTransport, network_policy, response_headers
 from .structured import StructuredOutput
+from .platforms import private_fd, private_directory, replace_file
 
 UPSTREAM = "https://openrouter.ai/api/v1/responses"
 
 
 def private_write(path, data):
     """Replace one trace atomically, with private permissions and no symlink traversal."""
-    with tempfile.NamedTemporaryFile('wb',dir=path.parent,prefix='.trace-',delete=False) as output:
-        temporary=Path(output.name)
-        try:
-            os.fchmod(output.fileno(),0o600)
+    temporary=None
+    try:
+        with tempfile.NamedTemporaryFile('wb',dir=path.parent,prefix='.trace-',delete=False) as output:
+            temporary=Path(output.name)
+            private_fd(output.fileno())
             output.write(data.encode('utf-8') if isinstance(data,str) else data)
             output.flush()
-            os.replace(temporary,path)
-        finally:
-            if temporary.exists():temporary.unlink()
+        replace_file(temporary,path)
+    finally:
+        if temporary is not None and temporary.exists():temporary.unlink()
 
 
 async def sse_events(content, max_event_bytes=96 * 1024 * 1024):
@@ -90,7 +92,7 @@ def error_response(message, status=400):
 
 
 class Gateway:
-    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None):
+    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None):
         self.key = key if isinstance(key,str) else None
         self.credential_source = key
         self.token = token
@@ -102,6 +104,7 @@ class Gateway:
         self.listen_socket = listen_socket
         self.trace_source = trace_source
         self.native_http_binary = native_http_binary
+        self.external_port = external_port
 
     async def __aenter__(self):
         self.client = NativeTransport(UPSTREAM,binary=self.native_http_binary,metadata_path=self.store.path.parent/'native-http.json' if self.store else None)
@@ -111,10 +114,19 @@ class Gateway:
         app.router.add_post("/v1/responses", self.responses)
         self.runner = web.AppRunner(app, handler_cancellation=True, shutdown_timeout=5)
         await self.runner.setup()
+        if self.external_port is not None:
+            self.port=self.external_port;return self
         site = web.SockSite(self.runner,self.listen_socket) if self.listen_socket else web.TCPSite(self.runner, "127.0.0.1", 0)
         await site.start()
         self.port = self.runner.addresses[0][1]
         return self
+
+    async def accept_socket(self,connection):
+        try:
+            connection.setblocking(False)
+            await asyncio.get_running_loop().connect_accepted_socket(self.runner.server,connection)
+        except BaseException:
+            connection.close();raise
 
     async def __aexit__(self, *exc):
         await self.runner.cleanup()
@@ -145,7 +157,7 @@ class Gateway:
             transport_policy=network_policy(request.headers)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
-        receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy)
+        receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason)
         trace = None
         response = None
         events = Events(registry)
@@ -157,8 +169,7 @@ class Gateway:
             if not isinstance(self.credential_source,str):
                 self.key = self.credential_source()
             if trace:
-                trace.mkdir(parents=True, exist_ok=True, mode=0o700)
-                trace.chmod(0o700)
+                private_directory(trace)
                 private_write(trace / (receipt + "-request.json"),json.dumps(payload, ensure_ascii=False, indent=2))
             async with self.client.post(UPSTREAM, json=payload, policy=transport_policy, allow_redirects=False, headers={
                 "Authorization": "Bearer " + self.key,
@@ -178,9 +189,8 @@ class Gateway:
                     result = await upstream.json()
                     validate_response(result)
                     structured.validate(result)
-                    result["output"] = [registry.output(item) for item in result.get("output", [])]
-                    events.response_id = result.get("id")
-                    events.usage = result.get("usage") or {}
+                    normalized=events.transform({'type':'response.'+result['status'],'response':result})
+                    result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
                     self.store.finish(receipt, result.get("status", "completed"), status, events)
                     return web.json_response(result, headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 response = web.StreamResponse(headers={**transport_headers,"Content-Type": "text/event-stream", "Cache-Control": "no-store",

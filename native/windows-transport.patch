@@ -1,0 +1,55 @@
+--- a/codex-rs/Cargo.lock
++++ b/codex-rs/Cargo.lock
+@@ -3175,6 +3175,7 @@
+  "serde_json",
+  "subtle",
+  "tokio",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+--- a/codex-rs/deepseek-http-transport/Cargo.toml
++++ b/codex-rs/deepseek-http-transport/Cargo.toml
+@@ -21,3 +21,6 @@
+ 
+ [lints]
+ workspace = true
++
++[target.'cfg(windows)'.dependencies]
++windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
+--- a/codex-rs/deepseek-http-transport/src/main.rs
++++ b/codex-rs/deepseek-http-transport/src/main.rs
+@@ -186,6 +186,18 @@
+         return Err("Invalid native upstream scheme".into());
+     }
+     let parent = config.parent_pid;
++    // Retain the original parent's kernel object: PID reuse cannot retain a helper.
++    #[cfg(windows)]
++    let parent_handle = {
++        use std::os::windows::io::{FromRawHandle, OwnedHandle};
++        use windows_sys::Win32::System::Threading::OpenProcess;
++        // SYNCHRONIZE grants waiting only; no rights to modify the parent.
++        let handle = unsafe { OpenProcess(0x00100000, 0, parent) };
++        if handle.is_null() {
++            return Err(std::io::Error::last_os_error().into());
++        }
++        unsafe { OwnedHandle::from_raw_handle(handle) }
++    };
+     let shared = Arc::new(Shared {
+         config,
+         origin,
+@@ -211,6 +223,14 @@
+             if unsafe { libc::getppid() } as u32 != parent {
+                 return;
+             }
++            #[cfg(windows)]
++            {
++                use std::os::windows::io::AsRawHandle;
++                use windows_sys::Win32::{Foundation::WAIT_TIMEOUT, System::Threading::WaitForSingleObject};
++                if unsafe { WaitForSingleObject(parent_handle.as_raw_handle(), 0) } != WAIT_TIMEOUT {
++                    return;
++                }
++            }
+             tokio::time::sleep(Duration::from_millis(250)).await;
+         }
+     };

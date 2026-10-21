@@ -29,7 +29,7 @@ def test_approval_option_value_does_not_hide_exec_scope():
 
 
 def test_native_environment_removes_app_ipc_but_preserves_public_ca_and_patch_flags(tmp_path,monkeypatch):
-    import os,subprocess
+    import os,subprocess,sys
     from pathlib import Path
     from codex_deepseek.cli import native_environment
     monkeypatch.setenv('CODEX_APP_TOOLS_PIPE_PATH','/app/private/socket')
@@ -37,15 +37,24 @@ def test_native_environment_removes_app_ipc_but_preserves_public_ca_and_patch_fl
     monkeypatch.setenv('CODEX_CA_CERTIFICATE','/public/ca.pem')
     monkeypatch.setenv('CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS','1')
     monkeypatch.setenv('OPENAI_API_KEY','app-secret')
-    monkeypatch.setenv('PATH','/Applications/Codex.app/Contents/bin:/usr/bin:/bin')
+    system_path=[str(Path(os.environ['SystemRoot'])/'System32'),os.environ['SystemRoot']] if os.name=='nt' else ['/usr/bin','/bin']
+    monkeypatch.setenv('PATH',os.pathsep.join([str(tmp_path/'Applications/Codex.app/Contents/bin'),*system_path]))
     home=tmp_path/'own-profile';binary=tmp_path/'package/bin/codex';binary.parent.mkdir(parents=True)
-    monkeypatch.setattr('codex_deepseek.cli.adapter_command',lambda:['/usr/bin/printf','OWN_COMMAND'])
+    monkeypatch.setattr('codex_deepseek.cli.adapter_command',lambda:[sys._base_executable if os.name=='nt' else sys.executable,'-I','-X','utf8','-c',"import sys;sys.stdout.write('OWN_COMMAND')"])
+    if os.name=='nt':
+        from codex_deepseek.windows_launchers import profile_launchers
+        package=tmp_path/'selected-package/codex_deepseek';package.mkdir(parents=True)
+        (package/'__init__.py').write_text('',encoding='utf-8')
+        (package/'cli.py').write_text("import sys;sys.stdout.write('OWN_COMMAND')",encoding='utf-8')
+        monkeypatch.setattr('codex_deepseek.windows_launchers.profile_launchers',lambda home:profile_launchers(home,package_root=package.parent))
     environment=native_environment(home,'own-token',binary)
     assert environment['CODEX_HOME']==str(home) and environment['CODEX_CA_CERTIFICATE']=='/public/ca.pem'
     assert environment['CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS']=='1'
     assert not {'CODEX_APP_TOOLS_PIPE_PATH','CODEX_SESSION_ID','OPENAI_API_KEY'}&environment.keys()
     assert 'Codex.app' not in environment['PATH']
-    assert subprocess.run(['codex','--version'],env=environment,capture_output=True,text=True).stdout=='OWN_COMMAND'
+    import shutil
+    command=[shutil.which('codex',path=environment['PATH']),'--version']
+    assert subprocess.run(command,env=environment,capture_output=True,text=True).stdout=='OWN_COMMAND'
     untouched=tmp_path/'does-not-exist'
     native_environment(untouched,'',binary,install_shims=False)
     assert not untouched.exists()
@@ -80,12 +89,12 @@ def test_native_diagnostic_paths_cannot_write_into_app_state(tmp_path,monkeypatc
 
 def test_private_helper_imports_ignore_project_pythonpath(tmp_path,monkeypatch):
     import subprocess,os
-    from codex_deepseek.bootstrap import module_command
+    from codex_deepseek.bootstrap import module_command,module_environment
     shadow=tmp_path/'codex_deepseek';shadow.mkdir()
     (shadow/'__init__.py').write_text('raise RuntimeError("PROJECT_IMPORT_INJECTION")')
     monkeypatch.setenv('PYTHONPATH',str(tmp_path))
     # This legitimate helper validates argv before any state or network writes.
-    result=subprocess.run(module_command('codex_deepseek.supervisor'),cwd=tmp_path,capture_output=True,text=True)
+    result=subprocess.run(module_command('codex_deepseek.supervisor'),cwd=tmp_path,env=module_environment(),capture_output=True,text=True)
     assert result.returncode!=0 and 'PROJECT_IMPORT_INJECTION' not in result.stderr
     assert 'supervisor.py' in result.stderr and 'IndexError' in result.stderr
 
@@ -157,6 +166,11 @@ def test_native_hashed_rendezvous_keeps_exact_home_identity(tmp_path,monkeypatch
     home=tmp_path/'own';socket=home/'app-server-control/app-server-control.sock';socket.parent.mkdir(parents=True)
     target=directory/hashlib.sha256(os.fsencode(socket)).hexdigest()
     socket.symlink_to(target)
+    if os.name=='nt':
+        # The native Unix UID rendezvous exception is never a Windows alias.
+        assert not owned_unix_path(socket,home)
+        with pytest.raises(ProtocolError):check_home_ipc(home)
+        return
     assert owned_unix_path(socket,home)
     check_home_ipc(home)
     check_attachment(['app-server','proxy'],home)
@@ -180,16 +194,28 @@ def test_unix_relays_reject_foreign_and_direct_sockets_but_allow_stale_native_al
     logical=home/'app-server-control/app-server-control.sock';logical.parent.mkdir()
     expected=directory/hashlib.sha256(os.fsencode(logical)).hexdigest()
     logical.symlink_to(expected)
-    assert owned_unix_path(logical,home)
-    check_home_ipc(home)
-    check_attachment(['stdio-to-uds',str(logical)],home)
+    if os.name=='nt':
+        assert not owned_unix_path(logical,home)
+        with pytest.raises(ProtocolError):check_attachment(['stdio-to-uds',str(logical)],home)
+    else:
+        assert owned_unix_path(logical,home)
+        check_home_ipc(home)
+        check_attachment(['stdio-to-uds',str(logical)],home)
     logical.unlink()
     import tempfile
     from pathlib import Path
     # macOS sockaddr_un cannot represent pytest's long generated test path.
-    with tempfile.TemporaryDirectory(prefix='cds-',dir='/tmp') as short:
+    with tempfile.TemporaryDirectory(prefix='cds-',dir=None if os.name=='nt' else '/tmp') as short:
         direct_home=Path(short)/'own'
         direct=direct_home/'app-server-control/app-server-control.sock';direct.parent.mkdir(parents=True)
+        if os.name=='nt':
+            # codex-uds uses a regular rendezvous path on Windows, not the
+            # cfg(unix) UID directory or Python's unavailable AF_UNIX.
+            direct.write_bytes(b'fixture native Windows rendezvous')
+            assert owned_unix_path(direct,direct_home)
+            check_home_ipc(direct_home)
+            check_attachment(['app-server','proxy'],direct_home)
+            return
         with socket.socket(socket.AF_UNIX) as receiver:
             receiver.bind(str(direct))
             assert not owned_unix_path(direct,direct_home)

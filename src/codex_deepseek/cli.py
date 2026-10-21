@@ -21,14 +21,16 @@ from .gateway import Gateway, Store
 from .state import migrate_searches
 from .protocol import MODEL, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER
 from .policy import bindings, check_cli, isolated_path
-from .bootstrap import module_command
+from .bootstrap import module_command, module_environment
 from .service import ProviderService
 from .arguments import command_index, app_server_command
 from .native_http import NativeTransport
 from .isolation import check_attachment, check_daemon_package, bind_remote, check_home_ipc
+from .platforms import WINDOWS, EXE, executable, console_entry, private_fd, private_directory, install_signals, replace_file
+from .credentials import SERVICE, credential, setup_key
+from .processes import identity
 
 NATIVE_VERSION = "0.164.0-alpha.7"
-SERVICE = "ai.codex.deepseek.openrouter"
 NATIVE_ENVIRONMENT = {
     'CODEX_CA_CERTIFICATE','CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS','CODEX_APPLY_GIT_CFG',
     'CODEX_TUI_RECORD_SESSION','CODEX_TUI_SESSION_LOG_PATH','CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT',
@@ -38,18 +40,20 @@ NATIVE_OUTPUT_PATHS = {'CODEX_TUI_SESSION_LOG_PATH','CODEX_ROLLOUT_TRACE_ROOT','
 
 
 def data_root() -> Path:
-    return Path.home() / ".local" / "share" / "codex-deepseek"
+    release=Path(sys.prefix).parent
+    if release.parent.name=='releases' and (release/'installation.json').is_file():return release.parent.parent
+    return Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'AppData/Local')))/'codex-deepseek' if WINDOWS else Path.home()/'.local/share/codex-deepseek'
 
 
 def adapter_command():
-    entry=Path(sys.prefix)/'bin/codex-deepseek'
+    entry=console_entry(sys.prefix)
     return [str(entry)] if entry.is_file() else module_command('codex_deepseek.cli')
 
 
 def native_environment(home,token,binary, *, install_shims=True, port=None):
     environment=dict(os.environ)
     for name in list(environment):
-        if (name.startswith('CODEX_') and name not in NATIVE_ENVIRONMENT) or name in {'OPENROUTER_API_KEY','OPENAI_API_KEY'}:
+        if (name.startswith('CODEX_') and name not in NATIVE_ENVIRONMENT) or name in {'OPENROUTER_API_KEY','OPENAI_API_KEY','__PYVENV_LAUNCHER__'}:
             environment.pop(name,None)
     for name in NATIVE_OUTPUT_PATHS:
         if environment.get(name):environment[name]=str(isolated_path(Path(environment[name])))
@@ -57,17 +61,20 @@ def native_environment(home,token,binary, *, install_shims=True, port=None):
                        CODEX_DEEPSEEK_POLICY_HOME=str(home),CODEX_DEEPSEEK_BRIDGE_TOKEN=token)
     if port is not None:environment['CODEX_DEEPSEEK_BRIDGE_PORT']=str(port)
     cli_path=home/'provider-state/cli-path'
-    if install_shims:
+    if install_shims and WINDOWS:
+        from .windows_launchers import profile_launchers
+        cli_path=profile_launchers(home)
+    elif install_shims:
         cli_path.mkdir(parents=True,exist_ok=True,mode=0o700)
         content='#!/bin/sh\nexport CODEX_DEEPSEEK_HOME='+shlex.quote(str(home))+'\nexec '+shlex.join(adapter_command())+' "$@"\n'
         for name in ['codex','codex-deepseek']:
             path=cli_path/name
-            if not path.exists() or path.read_text()!=content:
-                with tempfile.NamedTemporaryFile('w',dir=cli_path,prefix='.entry-',delete=False) as output:
-                    output.write(content);os.fchmod(output.fileno(),0o700);temporary=Path(output.name)
-                os.replace(temporary,path)
+            if not path.exists() or path.read_text(encoding='utf-8')!=content:
+                with tempfile.NamedTemporaryFile('w',encoding='utf-8',dir=cli_path,prefix='.entry-',delete=False) as output:
+                    output.write(content);private_fd(output.fileno(),0o700);temporary=Path(output.name)
+                replace_file(temporary,path)
     inherited=[part for part in environment.get('PATH','').split(os.pathsep) if part and not any(
-        app in str(Path(part).resolve()) for app in ['/ChatGPT.app/Contents/','/Codex.app/Contents/'])]
+        app in Path(part).resolve().as_posix() for app in ['/ChatGPT.app/Contents/','/Codex.app/Contents/'])]
     owned=[cli_path,binary.parent.parent/'codex-path',binary.parent]
     environment['PATH']=os.pathsep.join([str(path) for path in owned if path.is_dir()]+inherited)
     return environment
@@ -80,23 +87,17 @@ def offline_native(arguments):
     return False
 
 
-def credential() -> str:
-    override = os.environ.get("OPENROUTER_API_KEY")
-    if override:
-        return override.strip()
-    result = subprocess.run(["security", "find-generic-password", "-a", "default", "-s", SERVICE, "-w"], capture_output=True, text=True)
-    if result.returncode or not result.stdout.strip():
-        raise RuntimeError("No OpenRouter credential. Run codex-deepseek setup-key, or set OPENROUTER_API_KEY.")
-    return result.stdout.strip()
 
 
 def native() -> Path:
     release=Path(sys.prefix).parent
     try:
-        manifest=json.loads((release/'native-runtime.json').read_text())
-        installation=json.loads((release/'installation.json').read_text())
+        manifest=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+        installation=json.loads((release/'installation.json').read_text(encoding='utf-8'))
         package=Path(installation['native_package']).resolve()
-        required={'bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport','codex-package.json'}
+        required={name+EXE for name in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']}|{'codex-package.json'}
+        if WINDOWS:required|={'codex-resources/codex-windows-sandbox-setup.exe','codex-resources/codex-command-runner.exe'}
+        if sys.platform.startswith('linux'):required.add('codex-resources/bwrap')
         if (manifest.get('status')!='ready' or manifest.get('distribution')!='codex-deepseek-runtime'
             or manifest.get('upstream_version')!=NATIVE_VERSION or not required<=set(manifest['files'])
             or not package.is_relative_to((data_root()/'native').resolve())):
@@ -106,10 +107,10 @@ def native() -> Path:
             if not path.resolve().is_relative_to(package) or path.is_symlink():raise ValueError('Invalid native artifact path')
             with path.open('rb') as stream:actual=hashlib.file_digest(stream,'sha256').hexdigest()
             if actual!=digest:raise ValueError('Native artifact checksum mismatch: '+name)
-        packaged=json.loads((package/'codex-package.json').read_text())
+        packaged=json.loads((package/'codex-package.json').read_text(encoding='utf-8'))
         if packaged.get('patchSha256')!=manifest['patch_sha256']:
             raise ValueError('Native package does not match the dedicated policy patch')
-        return package/'bin/codex'
+        return executable(package/'bin','codex')
     except (OSError,ValueError,KeyError,TypeError) as error:
         raise RuntimeError('Verified dedicated native runtime is unavailable; rerun the installer') from error
 
@@ -123,7 +124,7 @@ def catalog() -> dict:
     path = catalog_path()
     if not path.is_file():
         raise RuntimeError("Pinned model catalog is missing; rerun the installer")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding='utf-8'))
 
 
 def overrides(port: int) -> list[str]:
@@ -155,6 +156,44 @@ def native_arguments(arguments: list[str], port: int) -> tuple[list[str], bool]:
     return list(arguments), not (index is not None and arguments[index] in management)
 
 
+def metadata_delay(headers,attempt):
+    from datetime import datetime,timezone
+    from email.utils import parsedate_to_datetime
+    value=headers.get('Retry-After')
+    if value:
+        try:delay=float(value)
+        except ValueError:
+            try:delay=(parsedate_to_datetime(value)-datetime.now(timezone.utc)).total_seconds()
+            except (ValueError,TypeError,OverflowError):delay=None
+        import math
+        if delay is not None and math.isfinite(delay) and delay>=0:return min(delay,90)
+    return min(2**attempt,10)
+
+
+async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
+    """Poll only idempotent billing metadata; never replay the model probe."""
+    from urllib.parse import urlencode
+    rows=[];generation={};started=asyncio.get_running_loop().time()
+    try:
+        async with asyncio.timeout(timeout):
+            for attempt in range(12):
+                async with transport.request('GET','https://openrouter.ai/api/v1/generation?'+urlencode({'id':response_id}),api_key=key,policy=policy) as response:
+                    status=response.status
+                    if status==200:
+                        body=await response.json()
+                        if not isinstance(body,dict) or not isinstance(body.get('data',{}),dict):raise ValueError('Invalid provider generation metadata envelope')
+                        generation=body.get('data',{})
+                    rows.append({'http_status':status,'provider':generation.get('provider_name'),
+                                 'elapsed_ms':round((asyncio.get_running_loop().time()-started)*1000)})
+                    if generation.get('provider_name'):break
+                    if status not in {200,404,408,429} and status<500:break
+                    delay=metadata_delay(response.headers,attempt)
+                if attempt<11:await asyncio.sleep(delay)
+    except TimeoutError:
+        rows.append({'error':'metadata_deadline_exceeded','elapsed_ms':round((asyncio.get_running_loop().time()-started)*1000)})
+    return generation,rows
+
+
 async def doctor(key: str, gateway, store, home) -> int:
     """Probe the actual native runtime, then verify its billed provider receipt."""
     work=home/'provider-state/doctor-work'
@@ -182,23 +221,14 @@ async def doctor(key: str, gateway, store, home) -> int:
     if process.returncode or answer.strip()!='CONNECTED' or not row or row[3]!='completed':
         raise RuntimeError('Native connectivity probe failed; no successful model/provider receipt was established')
     response_id,policy,selected,_=row
-    generation={}
-    transport=NativeTransport('https://openrouter.ai/api/v1/responses',binary=native().parent/'codex-http-transport')
-    try:
-        from urllib.parse import urlencode
-        async with asyncio.timeout(90):
-            for attempt in range(6):
-                async with transport.request('GET','https://openrouter.ai/api/v1/generation?'+urlencode({'id':response_id}),api_key=key,policy=policy or 'default') as response:
-                    if response.status==200:
-                        generation=(await response.json()).get('data',{})
-                        if generation.get('provider_name'):break
-                if attempt<5:await asyncio.sleep(min(2**attempt,8))
+    transport=NativeTransport('https://openrouter.ai/api/v1/responses',binary=executable(native().parent,'codex-http-transport'))
+    try:generation,verification=await generation_receipt(transport,key,response_id,policy or 'default')
     finally:await transport.close()
     provider=generation.get('provider_name')
     result={'status':'connected' if provider=='DeepSeek' and selected=='deepseek' else 'provider_verification_failed',
             'model':MODEL,'provider':provider,'fallbacks':False,'response_id':response_id,'native_version':NATIVE_VERSION,
-            'native_thread':thread,'network_policy':policy,'text':answer,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER}
-    (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2))
+            'native_thread':thread,'network_policy':policy,'text':answer,'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER}
+    (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2), encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if result['status']=='connected' else 1
 
@@ -217,8 +247,7 @@ async def run(arguments: list[str]) -> int:
         process=await asyncio.create_subprocess_exec(str(binary),*arguments,env=native_environment(runtime_home,'',binary,install_shims=False))
         return await process.wait()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    runtime_home.mkdir(parents=True, exist_ok=True, mode=0o700)
-    runtime_home.chmod(0o700)
+    private_directory(runtime_home)
     from .web_config import ensure_browser
     ensure_browser(runtime_home)
     arguments=bind_remote(arguments,check_attachment(arguments,runtime_home))
@@ -233,10 +262,10 @@ async def run(arguments: list[str]) -> int:
             policy_home=runtime_home/'runtime-policy';policy_home.mkdir(exist_ok=True,mode=0o700)
             policy=policy_home/'config.toml'
             content='\n'.join(key+'='+value for key,value in values.items() if key in expected)+'\n'
-            if not policy.exists() or policy.read_text()!=content:
+            if not policy.exists() or policy.read_text(encoding='utf-8')!=content:
                 temporary=policy.with_name('config.'+str(os.getpid())+'.tmp')
                 with open(temporary,'w',opener=lambda name,flags:os.open(name,flags,0o600)) as output:output.write(content)
-                os.replace(temporary,policy)
+                replace_file(temporary,policy)
             if arguments == ["runtime","doctor"]:
                 return await doctor(credential(), gateway, store, runtime_home)
             if arguments == ["runtime","status"]:
@@ -250,23 +279,26 @@ async def run(arguments: list[str]) -> int:
             binary=native()
             environment=native_environment(runtime_home,gateway.token,binary,port=gateway.port)
             argv, interactive = native_arguments(arguments, gateway.port)
-            read_fd, owner_fd = os.pipe()
+            read_fd, owner_fd = (None,None) if WINDOWS else os.pipe()
+            control='process:'+str(os.getpid())+':'+identity(os.getpid()) if WINDOWS else str(read_fd)
             try:
                 process = await asyncio.create_subprocess_exec(
-                    *module_command('codex_deepseek.supervisor',read_fd,store.path,store.owner,str(binary),*argv),
-                    env=environment, pass_fds=(read_fd,))
+                    *module_command('codex_deepseek.supervisor',control,store.path,store.owner,str(binary),*argv),
+                    env=module_environment(environment), **({} if WINDOWS else {'pass_fds':(read_fd,)}))
             except BaseException:
-                os.close(owner_fd)
+                if owner_fd is not None:os.close(owner_fd)
                 raise
             finally:
-                os.close(read_fd)
+                if read_fd is not None:os.close(read_fd)
             loop = asyncio.get_running_loop()
             def forward(signum):
                 if process.returncode is None:
                     process.send_signal(signum)
-            # Terminal SIGINT already reaches the native child in the same foreground group.
-            loop.add_signal_handler(signal.SIGINT, (lambda: None) if sys.stdin.isatty() else lambda: forward(signal.SIGINT))
-            loop.add_signal_handler(signal.SIGTERM, forward, signal.SIGTERM)
+            # Windows console events reach the native child even with piped stdin.
+            # Translating Ctrl-C into Ctrl-Break changes native cancellation semantics.
+            handlers={signal.SIGINT:(lambda: None) if WINDOWS or sys.stdin.isatty() else lambda:forward(signal.SIGINT),signal.SIGTERM:lambda:forward(signal.SIGTERM)}
+            if WINDOWS:handlers[signal.SIGBREAK]=lambda:None
+            restore_signals=install_signals(loop,handlers)
             try:
                 code = await process.wait()
                 if interactive and "--help" not in arguments and "--version" not in arguments:
@@ -277,9 +309,8 @@ async def run(arguments: list[str]) -> int:
                           "原生提示中的 codex 命令应通过 codex-deepseek 执行，以保持与 App 隔离。", file=sys.stderr)
                 return code
             finally:
-                os.close(owner_fd)
-                for signum in (signal.SIGINT, signal.SIGTERM):
-                    loop.remove_signal_handler(signum)
+                if owner_fd is not None:os.close(owner_fd)
+                restore_signals()
                 if process.returncode is None:
                     process.terminate()
                     try:
@@ -294,10 +325,9 @@ async def run(arguments: list[str]) -> int:
 
 def main() -> None:
     arguments = sys.argv[1:]
-    if arguments in (["setup-key"],["runtime","setup-key"]):
-        # security's native hidden prompt avoids a secret in argv or a plaintext file.
-        raise SystemExit(subprocess.call(["security", "add-generic-password", "-U", "-a", "default", "-s", SERVICE, "-w"]))
     try:
+        if arguments in (["setup-key"],["runtime","setup-key"]):
+            raise SystemExit(setup_key())
         raise SystemExit(asyncio.run(run(arguments)))
     except (RuntimeError, OSError, ValueError) as exc:
         print("codex-deepseek: " + str(exc), file=sys.stderr)

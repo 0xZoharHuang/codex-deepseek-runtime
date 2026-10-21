@@ -9,8 +9,9 @@ import time
 import uuid
 import zstandard
 
-from .protocol import PROVIDER, ProtocolError
+from .protocol import PROVIDER, ProtocolError, native_history_fingerprint
 from .processes import identity, matches, terminate
+from .platforms import private_directory
 
 SCHEMA_VERSION = 3
 
@@ -19,7 +20,7 @@ class Store:
     def __init__(self, path: Path):
         self.path = path
         self.owner = str(uuid.uuid4())
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        private_directory(path.parent)
         self.db = sqlite3.connect(path, timeout=30)
         os.chmod(path, 0o600)
         if self.db.execute('PRAGMA user_version').fetchone()[0] > SCHEMA_VERSION:
@@ -41,7 +42,7 @@ class Store:
         self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('database_id',str(uuid.uuid4())))
         self.database_id=self.db.execute("SELECT value FROM adapter_metadata WHERE key='database_id'").fetchone()[0]
         columns = {row[1] for row in self.db.execute('PRAGMA table_info(receipts)')}
-        for name in ('provider', 'owner_id', 'context_key', 'network_policy'):
+        for name in ('provider', 'owner_id', 'context_key', 'network_policy', 'route_reason'):
             if name not in columns:
                 self.db.execute(f'ALTER TABLE receipts ADD COLUMN {name} TEXT')
         self.db.execute(f'PRAGMA user_version={SCHEMA_VERSION}')
@@ -83,10 +84,10 @@ class Store:
         self.db.execute('INSERT OR REPLACE INTO searches VALUES (?,?)', (key, json.dumps(value)))
         self.db.commit()
 
-    def start(self, provider=PROVIDER, *, context_key=None, network_policy=None):
+    def start(self, provider=PROVIDER, *, context_key=None, network_policy=None, route_reason=None):
         key = str(uuid.uuid4())
-        self.db.execute('INSERT INTO receipts(id,started,status,provider,owner_id,context_key,network_policy) VALUES (?,?,?,?,?,?,?)',
-                        (key, time.time(), 'running', provider, self.owner, context_key, network_policy))
+        self.db.execute('INSERT INTO receipts(id,started,status,provider,owner_id,context_key,network_policy,route_reason) VALUES (?,?,?,?,?,?,?,?)',
+                        (key, time.time(), 'running', provider, self.owner, context_key, network_policy, route_reason))
         self.db.commit()
         return key
 
@@ -95,11 +96,20 @@ class Store:
                         (events.response_id, key, self.owner))
         self.db.commit()
 
+    def has_completed_native_item(self,fingerprint):
+        return self.db.execute('SELECT 1 FROM adapter_metadata WHERE key=?',('native-complete-v1:'+fingerprint,)).fetchone() is not None
+
     def finish(self, key, status, upstream=None, events=None, detail=None):
         self.db.execute('''UPDATE receipts SET finished=?,status=?,upstream_status=?,response_id=?,usage=?,detail=?
                            WHERE id=? AND owner_id=? AND status='running' ''',
                         (time.time(), status, upstream, events.response_id if events else None,
                          json.dumps(events.usage if events else {}), detail, key, self.owner))
+        if status=='completed' and events and getattr(events,'terminal',False) and getattr(events,'status',None)=='completed':
+            for item in getattr(events,'done',{}).values():
+                if item.get('type') not in {'reasoning','function_call'}:continue
+                normalized=events.registry.output(item,final=True)
+                fingerprint=native_history_fingerprint(normalized)
+                if fingerprint:self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('native-complete-v1:'+fingerprint,'completed'))
         self.db.commit()
 
     @staticmethod
@@ -148,7 +158,7 @@ def migrate_searches(legacy: Path, home: Path, store: Store):
     marker=store.path.parent/'migration-v1.json'
     if not legacy.exists() or legacy.resolve()==store.path.resolve():return
     ids=set();issues=[];paths=[];history_state={}
-    try:previous=json.loads(marker.read_text())
+    try:previous=json.loads(marker.read_text(encoding='utf-8'))
     except (OSError,ValueError):previous={}
     if not isinstance(previous,dict):previous={}
     for directory in ('sessions','archived_sessions'):

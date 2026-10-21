@@ -7,11 +7,17 @@ import os
 from pathlib import Path
 import select
 import socket
+import subprocess
 import threading
 import time
 import uuid
 from verify_live import Peer
-from codex_deepseek.cli import native_environment
+from codex_deepseek.cli import native_environment,NATIVE_VERSION
+from install import python_entry,valid_release
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 
 
 def scenario(root,binary,python,catalog):
@@ -29,7 +35,9 @@ def scenario(root,binary,python,catalog):
             if self.path=='/slow':
                 started.set()
                 while not release.wait(.05):
-                    if select.select([self.connection],[],[],0)[0] and not self.connection.recv(1,socket.MSG_PEEK):closed.set();return
+                    try:disconnected=select.select([self.connection],[],[],0)[0] and not self.connection.recv(1,socket.MSG_PEEK)
+                    except (ConnectionResetError,ConnectionAbortedError):disconnected=True
+                    if disconnected:closed.set();return
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers();self.wfile.write(b'<p>DONE</p>')
         def do_POST(self):
             request=json.loads(self.rfile.read(int(self.headers['Content-Length'])));requests.append(request)
@@ -58,11 +66,14 @@ def scenario(root,binary,python,catalog):
     config+='[features]\ncode_mode=false\ncode_mode_only=false\nplugins=false\napps=false\nmemories=false\nmulti_agent=false\n'
     config+='[model_providers.lifetime_fixture]\nname="Owned local model fixture"\nbase_url='+json.dumps(url+'/v1')+'\nwire_api="responses"\nsupports_websockets=false\n'
     config+='[mcp_servers.fixture_web]\ncommand='+json.dumps(str(python))+'\nargs='+json.dumps(['-I','-m','codex_deepseek.web_mcp','--home',str(root/'home'),'--allow-private-host','127.0.0.1'])+'\ndefault_tools_approval_mode="approve"\n'
-    (root/'home/config.toml').write_text(config)
+    (root/'home/config.toml').write_text(config,encoding='utf-8')
     env=native_environment(root/'home','',binary,install_shims=False)
     for k in ['CODEX_DEEPSEEK_POLICY_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_BRIDGE_PORT']:env.pop(k,None)
     peer=None;report={'binary':str(binary),'runtime_home':str(root/'home')}
     try:
+        version=subprocess.run([str(binary),'--version'],env=env,capture_output=True,text=True,encoding='utf-8',timeout=30)
+        if version.returncode or version.stdout.strip()!='codex-cli '+NATIVE_VERSION:raise AssertionError('Native comparison requires the same frozen CLI version')
+        report['version']=version.stdout.strip()
         peer=Peer(root,command=[str(binary)],environment=env)
         tid=peer.new();turn,start=peer.start(tid,'Run the actual browser open tool against the owned slow document.')
         if not started.wait(20):raise AssertionError('Native MCP request never reached HTTP server')
@@ -73,19 +84,30 @@ def scenario(root,binary,python,catalog):
     finally:
         if peer:peer.close()
         release.set();server.shutdown();server.server_close();thread.join(3)
-        (root/'model-fixture-requests.json').write_text(json.dumps(requests,indent=2));(root/'result.json').write_text(json.dumps(report,indent=2))
+        (root/'model-fixture-requests.json').write_text(json.dumps(requests,indent=2),encoding='utf-8');(root/'result.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     return report
 
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--official',type=Path,required=True);p.add_argument('--patched',type=Path,required=True);p.add_argument('--python',type=Path,required=True);p.add_argument('--catalog',type=Path,required=True);p.add_argument('--output',type=Path,required=True);args=p.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());root.mkdir(parents=True)
+    python=args.python.absolute();release=python.parent.parent.parent
+    installation=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    native=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+    if python!=python_entry(release/'venv') or not valid_release(release,installation['adapter_source_sha256'],installation['model_catalog_sha256'],native):
+        raise SystemExit('Native MCP comparison requires an intact installed browser interpreter')
+    digests={name:sha(binary) for name,binary in [('official',args.official),('patched',args.patched)]}
+    if digests['patched']!=native['files']['bin/codex'+('.exe' if native['target']=='x86_64-pc-windows-msvc' else '')]:
+        raise SystemExit('Native MCP comparison binary differs from its installed browser runtime')
+    verifiers={name:sha(Path(__file__).parent/name) for name in ['verify_native_mcp_lifetime.py','verify_live.py','install.py','src/codex_deepseek/cli.py']}
     results={}
     for name,binary in [('official',args.official),('patched',args.patched)]:
-        results[name]=scenario(root/name,binary.resolve(),args.python.resolve(),args.catalog.resolve());print(name,json.dumps(results[name]),flush=True)
+        results[name]=scenario(root/name,binary.resolve(),python,args.catalog.resolve());print(name,json.dumps(results[name]),flush=True)
     fields=['http_closed_on_turn_interrupt','http_closed_on_owner_exit']
-    result={'passed':all(results['official'][k]==results['patched'][k] for k in fields) and results['patched']['http_closed_on_owner_exit'],'results':results,'binary_sha256':{name:hashlib.file_digest(binary.open('rb'),'sha256').hexdigest() for name,binary in [('official',args.official),('patched',args.patched)]},'scope':'Raw native MCP lifetime comparison; model fixture is deterministic, no external model or App credentials used.'}
-    (root/'verdict.json').write_text(json.dumps(result,indent=2));print('EVIDENCE',root,flush=True)
+    unchanged=all(sha(binary)==digests[name] for name,binary in [('official',args.official),('patched',args.patched)]) and all(sha(Path(__file__).parent/name)==digest for name,digest in verifiers.items())
+    unchanged=unchanged and json.loads((release/'installation.json').read_text(encoding='utf-8'))==installation and valid_release(release,installation['adapter_source_sha256'],installation['model_catalog_sha256'],native)
+    result={'passed':all(results['official'][k]==results['patched'][k] for k in fields) and results['patched']['http_closed_on_owner_exit'] and unchanged,'installation':installation,'target':native['target'],'interpreter':str(python),'results':results,'binary_sha256':digests,'verifier_sha256':verifiers,'binary_and_verifier_unchanged':unchanged,'scope':'Raw native MCP lifetime comparison; model fixture is deterministic, no external model or App credentials used.'}
+    (root/'verdict.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print('EVIDENCE',root,flush=True)
     raise SystemExit(0 if result['passed'] else 1)
 
 

@@ -1,0 +1,22 @@
+{
+  "base_patch_sha256": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
+  "combined_patch_sha256": "4bf3c38295c7ca4a5e024161fabc005d1107057229ffb0f2198c3fffd1ed0d57",
+  "files": [
+    {
+      "path": "codex-rs/Cargo.lock",
+      "common_sha256": "4f9cf90b7614da6b50977f2a25e4b7f9e27b3ad594dd50e309373e4efc2aae4c",
+      "fork_sha256": "39f17fd40caaf997cba49854f1d721bceee610bc76c4ecdd0d04779cbe5b37d7"
+    },
+    {
+      "path": "codex-rs/deepseek-http-transport/Cargo.toml",
+      "common_sha256": "dc03ad7ef87c0e993095ea2dadddb810235f027e177462c304ed5e3b2619def9",
+      "fork_sha256": "fc339f4f8ea18a710eab8e77c8e981b8ef3a1432ecade6deac6ff0dd684cbbce"
+    },
+    {
+      "path": "codex-rs/deepseek-http-transport/src/main.rs",
+      "common_sha256": "9927416bd2a4f0e7382798976a46bafa48ea561b5a7f319e96d5ad824d9d26b1",
+      "fork_sha256": "d9def75967d5993198dab52acba48b669d549bd7e965cb720211cc465eeca94b"
+    }
+  ],
+  "external_dependency_versions_unchanged": true
+}

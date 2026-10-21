@@ -53,14 +53,28 @@ async def test_native_custom_dispatch_respects_validation_and_missing_event_reco
     store=Store(root/'state.sqlite')
     try:
         async with Gateway('NO_REAL_CREDENTIAL','LOCAL',store,{}) as gateway:
-            native=native_module.native_helper().parent/'codex'
+            native=native_module.native_helper().parent/('codex.exe' if os.name=='nt' else 'codex')
             assert native.is_file(),'A complete native package is required for real dispatch tests'
             provider='{name="Native SSE fixture",base_url="http://127.0.0.1:'+str(gateway.port)+'/v1",env_key="FIXTURE_TOKEN",wire_api="responses",request_max_retries=0,stream_max_retries=0,capabilities={remote_compaction="unsupported"}}'
             flags=['-c','model_provider="fixture"','-c','model="'+MODEL+'"','-c','model_catalog_json='+json.dumps(str(Path(__file__).resolve().parents[1]/'catalog.json')),'-c','model_providers.fixture='+provider]
             environment={key:value for key,value in os.environ.items() if not key.startswith('CODEX_') and key not in {'OPENAI_API_KEY','OPENROUTER_API_KEY'}}
             environment.update(CODEX_HOME=str(root/'home'),FIXTURE_TOKEN='LOCAL')
+            class PatchPeer(module.Peer):
+                def send(self,message):
+                    if message.get('result',{}).get('decision')=='decline':
+                        callback=next((event for event in self.callbacks if event.get('id')==message.get('id')),None)
+                        if callback and callback.get('method')=='item/fileChange/requestApproval':
+                            assert callback['params']['itemId']=='fixture-call'
+                            changes=[event['params']['item'] for event in self.events if event.get('method')=='item/started' and event.get('params',{}).get('item',{}).get('id')=='fixture-call']
+                            assert changes and changes[-1]['type']=='fileChange'
+                            assert len(changes[-1]['changes'])==1
+                            assert Path(changes[-1]['changes'][0]['path']).resolve()==(root/'work/native-effect.txt').resolve()
+                            # Approve only this test's exact authored in-workspace
+                            # patch; sandbox and arbitrary-command approvals stay denied.
+                            message={**message,'result':{'decision':'accept'}}
+                    return super().send(message)
             def drive():
-                peer=module.Peer(root,command=[str(native)],environment=environment,server_args=['app-server',*flags])
+                peer=PatchPeer(root,command=[str(native)],environment=environment,server_args=['app-server',*flags])
                 try:
                     thread=peer.new();return peer.turn(thread,'Apply the requested local change and report its result. Do not delegate.')
                 finally:peer.close()
@@ -72,6 +86,6 @@ async def test_native_custom_dispatch_respects_validation_and_missing_event_reco
             else:
                 items=await asyncio.to_thread(drive)
                 assert (root/'work/native-effect.txt').read_text()=='NATIVE_EXECUTED\n'
-                assert any(item.get('type')=='fileChange' for item in items)
+                assert any(item.get('type')=='fileChange' and item.get('status')=='completed' for item in items)
                 assert calls==2
     finally:store.close();await runner.cleanup()

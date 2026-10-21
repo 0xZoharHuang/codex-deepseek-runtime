@@ -40,3 +40,4 @@ trio==0.23.2
 trustme==1.2.1
 typing_extensions==4.16.0
 Werkzeug==2.0.3
+colorama==0.4.6; sys_platform == "win32"

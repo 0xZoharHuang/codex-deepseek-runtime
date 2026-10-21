@@ -1,4 +1,5 @@
 """Verify simultaneous strict-schema and serial-tool requirements on the fixed route."""
+from process_acceptance import evidence_root
 import asyncio
 import json
 import os
@@ -12,7 +13,7 @@ from codex_deepseek.state import Store
 from codex_deepseek.native_http import NativeTransport
 
 async def main():
-    root=Path(__file__).resolve().parent.parent/'delivery/evidence/combined-route'/str(uuid.uuid4());root.mkdir(parents=True,mode=0o700)
+    root=evidence_root('combined-route')/str(uuid.uuid4());root.mkdir(parents=True,mode=0o700)
     helper=Path(os.environ['CODEX_DEEPSEEK_TEST_HTTP_BINARY']) if os.environ.get('CODEX_DEEPSEEK_TEST_HTTP_BINARY') else None
     model_catalog=json.loads(Path(os.environ['CODEX_DEEPSEEK_TEST_CATALOG']).read_text()) if os.environ.get('CODEX_DEEPSEEK_TEST_CATALOG') else catalog()
     store=Store(root/'state.sqlite');result={}
