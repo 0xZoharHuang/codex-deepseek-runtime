@@ -85,6 +85,19 @@ def main():
             for name in ['primary','other']:
                 service='Codex DeepSeek MCP Credentials|'+hashlib.sha256(str((root/name/'home').resolve()).encode()).hexdigest()[:32]
                 subprocess.run(['security','delete-generic-password','-s',service],capture_output=True)
+        if args.secrets:
+            import hashlib
+            from codex_deepseek.service import native_active
+            cleanup=[]
+            for name in ['primary','other']:
+                home=(root/name/'home').resolve()
+                if native_active(home):raise RuntimeError('Refusing to remove a fixture encryption key while its native owner is active')
+                account='secrets|'+hashlib.sha256(str(home).encode()).hexdigest()[:16]
+                removed=subprocess.run(['security','delete-generic-password','-s','codex','-a',account],capture_output=True)
+                absent=subprocess.run(['security','find-generic-password','-s','codex','-a',account],capture_output=True)
+                cleanup.append({'home':str(home),'account':account,'delete_exit':removed.returncode,'absent':absent.returncode==44})
+            (root/'fixture-keychain-cleanup.json').write_text(json.dumps(cleanup,indent=2))
+            if not all(r['absent'] for r in cleanup):raise RuntimeError('Fixture encryption key cleanup did not verify absence')
 
         print('EVIDENCE',root,flush=True)
 

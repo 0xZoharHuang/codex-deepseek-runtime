@@ -1,0 +1,295 @@
+{
+  "status": "passed",
+  "version": "0.4.1",
+  "release_tag": "v0.4.1",
+  "audited_v040_commit": "461e77c1dda5af300f0922b6e142c66989ac7d26",
+  "source_id": "98b24d5adbcf145b99ee",
+  "scope": "Frozen macOS arm64 Codex CLI local runtime; model quality and cloud/account entitlements excluded.",
+  "native_runtime_business_reimplemented": false,
+  "new_native_rust_patch": false,
+  "unchanged_protected_native_files": 348,
+  "native_patch_replay_passed": true,
+  "external_cargo_dependencies_unchanged": true,
+  "native_schema_count": 456,
+  "offline_tests": {
+    "python_3_13_3": 162,
+    "python_3_11_9": 162
+  },
+  "standard_native_scenario_gates": 28,
+  "positive_local_rpc_methods": 125,
+  "individual_method_gap_acceptance": {
+    "positive_local_methods": 60,
+    "backend_boundaries": 4
+  },
+  "protocol_fault_cases": [
+    {
+      "kind": "schema",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    },
+    {
+      "kind": "schema-tool-final",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    },
+    {
+      "kind": "schema-tool-before-terminal",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    },
+    {
+      "kind": "schema-multiple",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    },
+    {
+      "kind": "schema-overflow",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    },
+    {
+      "kind": "undeclared-tool",
+      "passed": true,
+      "native_requests": 2,
+      "client_tools_executed": 0
+    }
+  ],
+  "strict_browser_checks": 8,
+  "native_tui_session_recording_and_rollout_tracing": true,
+  "default_entry": {
+    "connected": true,
+    "actual_provider": "DeepSeek",
+    "fallbacks": false,
+    "live_search": true,
+    "actual_mcp_actions": [
+      "click",
+      "find",
+      "open"
+    ],
+    "actual_document_urls": [
+      "https://docs.python.org/3/library/asyncio-stream.html",
+      "https://docs.python.org/3/library/asyncio-task.html"
+    ]
+  },
+  "native_configuration_warnings_preserved": {
+    "upstream_experimental_features": true,
+    "model_metadata_code_mode_warning": true,
+    "actual_successful_native_code_mode_execution_verified": true,
+    "automatic_code_mode_downgrade": false
+  },
+  "real_work": {
+    "jinja": {
+      "passed": true,
+      "cold_resume_after_source_edit": false,
+      "fresh_independent_native_review": true,
+      "unchanged_oracle": true,
+      "validation": [
+        {
+          "suite": "workspace",
+          "exit": 0,
+          "tail": ".. [ 70%]\n........................................................................ [ 78%]\n........................................................................ [ 86%]\n........................................................................ [ 94%]\n.....................................................                    [100%]\n917 passed in 1.77s\n"
+        },
+        {
+          "suite": "upstream-heldout",
+          "exit": 0,
+          "tail": ".. [ 71%]\n........................................................................ [ 79%]\n........................................................................ [ 87%]\n........................................................................ [ 95%]\n............................................                             [100%]\n908 passed in 1.38s\n"
+        }
+      ],
+      "web_research": {
+        "actions": [
+          "click",
+          "find",
+          "open"
+        ],
+        "distinct_urls": 2,
+        "pages": [
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792552966.781419,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792552990.419762,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792553662.997498,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792553666.327093,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792554560.878015,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792554564.872226,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792555797.659585,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792555801.650914,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          }
+        ]
+      },
+      "task_patch_sha256": "7e0b096a710e68c2a17ef58db47382a1a649640af80f123e7adf5d9e63d34d9b",
+      "initial_failures_preserved": true,
+      "final_source_id": "98b24d5adbcf145b99ee"
+    },
+    "httpcore": {
+      "passed": true,
+      "cold_resume_after_source_edit": true,
+      "fresh_independent_native_review": true,
+      "unchanged_oracle": true,
+      "validation": [
+        {
+          "suite": "workspace",
+          "exit": 0,
+          "tail": "during_request[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n223 passed, 6 xpassed in 4.09s\n"
+        },
+        {
+          "suite": "upstream-heldout",
+          "exit": 0,
+          "tail": "yncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n207 passed, 6 xpassed in 3.13s\n127.0.0.1 - - [21/Oct/2026 12:11:16] \"GET / HTTP/1.1\" 200 9509\n"
+        },
+        {
+          "suite": "independent-cancellation",
+          "exit": 0,
+          "tail": "..                                                                       [100%]\n2 passed in 0.29s\n"
+        },
+        {
+          "suite": "real-tcp-0",
+          "exit": 0,
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 37,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 82,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+        },
+        {
+          "suite": "real-tcp-1",
+          "exit": 0,
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 37,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 83,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+        },
+        {
+          "suite": "real-tcp-2",
+          "exit": 0,
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 83,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 86,\n    \"cancelled\": 34,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+        },
+        {
+          "suite": "tls-socket",
+          "exit": 0,
+          "tail": "  \"asyncio\": {\n    \"passed\": true,\n    \"tls_client_hello\": true,\n    \"server_observed_client_eof_after_cancellation\": true,\n    \"queued_requests\": 0,\n    \"connections\": 0\n  },\n  \"trio\": {\n    \"passed\": true,\n    \"tls_client_hello\": true,\n    \"server_observed_client_eof_after_cancellation\": true,\n    \"queued_requests\": 0,\n    \"connections\": 0\n  }\n}\n"
+        }
+      ],
+      "web_research": {
+        "actions": [
+          "click",
+          "find",
+          "open"
+        ],
+        "distinct_urls": 2,
+        "pages": [
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792553415.6789792,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792553420.977468,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792553582.028661,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792553585.524212,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792553587.977487,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792554634.044899,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792554638.70402,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792555813.582178,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792555818.30928,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          }
+        ]
+      },
+      "task_patch_sha256": "6960c2ff74e9d57a2b9eadd762f5430a61002eec395ce2e117f81bbf4d31d245",
+      "initial_failures_preserved": true,
+      "final_source_id": "98b24d5adbcf145b99ee"
+    }
+  },
+  "app_configuration_and_credentials_not_modified_by_task": true,
+  "old_raw_receipts_verified": 18,
+  "old_regular_and_hardlink_members_verified": 36018,
+  "native_source_archive_regular_and_hardlink_members_verified": 37369,
+  "test_fixture_correction": {
+    "kind": "test_fixture_isolation_revalidation",
+    "reason": "The patch replay fixture now initializes its own Git repository so a caller-selected pytest basetemp inside another Git repository cannot make git apply silently skip relative paths. All patch/content assertions remain unchanged.",
+    "runtime_sources_unchanged": true,
+    "native_scenario_verifiers_unchanged": true,
+    "changed_file": "tests/test_acceptance_assertions.py",
+    "old_test_sha256": "efe64a195ad073a735db19d7fa0e34971ebacd97e8f71ad2a532207def21daf3",
+    "new_test_sha256": "8985b7bd44f3f3bd3fb3d33dffe55888daf218939d012914646c3b9232d11e5e",
+    "base_artifact_sha256": "f2cc60459af11270f7239937d7e2732d804d7fda0f417a5fcf21fe80fce4d614",
+    "base_verdict_sha256": "4a4b9bef61480d5b6cf195bfbeaeee463c8a672a463066f288def7042050f66b",
+    "rerun_artifact_sha256": "79dbfdd468aa2f3d67b56c4777c9a64a4688cb1d4dfc59fe0d2ec1857708f7ef",
+    "rerun_verdict_sha256": "79a0166b6602f0164f7fd174b28a95c49b1fe5ce674f9b4203dce9f619ec782b",
+    "minimum_python_junit_sha256": "ae4edaaf4997498788b54b28e251e8009894630af5cebace2a98b09ade0409c2",
+    "original_failure_preserved": true,
+    "runtime_and_all_28_scenarios_passed": true,
+    "all_162_tests_rerun_on_python": [
+      "3.11.9",
+      "3.13.3"
+    ]
+  },
+  "no_adapter_agent_loop_or_automatic_tool_replay": true,
+  "evidence_sha256": {
+    "acceptance": "4e13a6dce5febaa44ab2470fe057cb150a5d50e9f4c678d29b4bdc2d12636808",
+    "rpc_observations": "5d6da89af6596e964f83ea32eb5bc621421ba55a9579c5bf389f8dd2fe29477d",
+    "native_boundary": "aa22f732748be50fd5a845717cfba498c5a4b930aa7e66bc22ff1d6d15bad844",
+    "default_doctor": "3a2e8e4a7b7d920eef62ddda1bd96ebba2da08d1eb812767d9c32d15724a84f5",
+    "default_web": "2a67270226d3cad9cb96f34ddf605e87c8e44f40c5c1cdd6667c02bffd7bc644",
+    "minimum_python_junit": "ae4edaaf4997498788b54b28e251e8009894630af5cebace2a98b09ade0409c2",
+    "old_evidence_readback": "506e5c2db659d1ed2cc8872f880e7e4eb9a14101982aafaecc0768c261a18d1d",
+    "source_archive_readback": "433aa7e13f51c663ffa6759f3b3107ed26ea3760c75243543c2db44aad617d18"
+  },
+  "audit_explanation": "docs/independent-audit-v0.4.0.zh.md"
+}

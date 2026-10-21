@@ -24,6 +24,8 @@ from .policy import isolated_path
 MAX_BODY=10*1024*1024
 MAX_TEXT=4*1024*1024
 CACHE_BUDGET=64*1024*1024
+MAX_LINES=100000
+MAX_LINK_BYTES=10*1024*1024
 
 
 def public_address(value):
@@ -117,7 +119,7 @@ class Browser:
 
     @staticmethod
     def extract(url,body,content_type,encoding):
-        links=[]
+        links=[];link_bytes=0
         if content_type in {'text/html','application/xhtml+xml'}:
             soup=BeautifulSoup(body,'html.parser')
             title=soup.title.get_text(' ',strip=True) if soup.title else url
@@ -128,6 +130,8 @@ class Browser:
                 target=urljoin(link_base,tag['href'])
                 if urlsplit(target).scheme not in {'http','https'}:continue
                 label=tag.get_text(' ',strip=True) or target
+                link_bytes+=len(target.encode())+len(label.encode())
+                if link_bytes>MAX_LINK_BYTES:raise ValueError('Expanded links exceed the 10 MiB metadata limit; no partial page was saved')
                 links.append({'id':len(links)+1,'text':label,'url':target})
                 tag.replace_with(label+' ['+str(len(links))+']')
             raw=soup.get_text('\n',strip=True)
@@ -145,6 +149,7 @@ class Browser:
             visible=line.rstrip('\r\n')
             for start in range(0,max(1,len(visible)),120):
                 lines.append(visible[start:start+120]);offsets.append(offset+start)
+                if len(lines)>MAX_LINES:raise ValueError('Extracted page exceeds the 100000-line limit; no partial page was saved')
             offset+=len(line)
         page={'ref_id':'page_'+uuid.uuid4().hex,'url':url,'title':title,'lines':lines,'links':links,
               'text':raw,'line_offsets':offsets,
@@ -154,8 +159,10 @@ class Browser:
 
     def save(self,page):
         payload=json.dumps(page,ensure_ascii=False)
+        size=len(payload.encode())
+        if size>CACHE_BUDGET:raise ValueError('Page metadata exceeds the cache entry limit; no page reference was saved')
         with self.db:
-            self.db.execute('INSERT INTO pages VALUES(?,?,?,?)',(page['ref_id'],payload,len(payload.encode()),page['retrieved_at']))
+            self.db.execute('INSERT INTO pages VALUES(?,?,?,?)',(page['ref_id'],payload,size,page['retrieved_at']))
             total=self.db.execute('SELECT COALESCE(SUM(bytes),0) FROM pages').fetchone()[0]
             for old,size in self.db.execute('SELECT id,bytes FROM pages ORDER BY created').fetchall():
                 if total<=CACHE_BUDGET:break

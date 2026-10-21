@@ -113,3 +113,24 @@ async def test_html_base_links_literal_find_bounds_and_cache_eviction(tmp_path,m
         with pytest.raises(ValueError,match='evicted'):b.page(page['ref_id'])
         assert b.page(second['ref_id'])['url']=='https://example.com/two'
     finally:await b.close()
+
+
+async def test_oversize_cache_entry_cannot_return_an_already_evicted_reference(tmp_path,monkeypatch):
+    b=Browser(tmp_path)
+    try:
+        saved=b.save(Browser.extract('https://example.com/saved',b'keep','text/plain','utf-8'))
+        monkeypatch.setattr('codex_deepseek.browser.CACHE_BUDGET',1000)
+        large=Browser.extract('https://example.com/large',b'x'*2000,'text/plain','utf-8')
+        with pytest.raises(ValueError,match='cache entry limit'):b.save(large)
+        assert b.page(saved['ref_id'])==saved
+        with pytest.raises(ValueError,match='Unknown'):b.page(large['ref_id'])
+    finally:await b.close()
+
+
+def test_document_expansion_limits_fail_explicitly_without_partial_metadata(monkeypatch):
+    monkeypatch.setattr('codex_deepseek.browser.MAX_LINK_BYTES',100)
+    with pytest.raises(ValueError,match='Expanded links'):
+        Browser.extract('https://example.com/'+'long/'*30,b'<a href="relative">go</a>','text/html','utf-8')
+    monkeypatch.setattr('codex_deepseek.browser.MAX_LINES',5)
+    with pytest.raises(ValueError,match='line limit'):
+        Browser.extract('https://example.com/',b'a\n'*6,'text/plain','utf-8')

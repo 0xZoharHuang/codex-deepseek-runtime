@@ -5,6 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import tomllib
+import xml.etree.ElementTree as ET
 from install import valid_release
 
 SOURCE=Path(__file__).resolve().parent
@@ -21,13 +23,14 @@ def require(value,message):
 
 def main():
     p=argparse.ArgumentParser()
-    for flag in ['entry','regression','methods','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','fixtures']:
+    for flag in ['entry','regression','methods','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','fixtures','rpc-observations']:
         p.add_argument('--'+flag,type=Path,required=True)
     p.add_argument('--output',type=Path,default=SOURCE/'reports');args=p.parse_args()
     entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=load(release/'installation.json');native=load(release/'native-runtime.json')
     require(entry==release/'venv/bin/codex-deepseek','Expected immutable installed entry')
     require(valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native),'Installation integrity failed')
     for name,digest in metadata['source_sha256'].items():require(sha(SOURCE/name)==digest,'Installed runtime source differs: '+name)
+    version=tomllib.loads((SOURCE/'pyproject.toml').read_text())['project']['version']
     evidence={}
     def record(label,path):evidence[label]=sha(path)
     def same_install(a,label):require(a['installation']==metadata,'Mixed runtime installations in '+label)
@@ -37,8 +40,18 @@ def main():
     require(len(regression['gates'])==len(GATES),'Duplicate standard gates')
     for name,digest in artifact['verifier_source_sha256'].items():require(sha(SOURCE/name)==digest,'Verifier changed after standard gates: '+name)
     record('regression_artifact',args.regression/'artifact.json');record('regression_verdict',args.regression/'verdict.json')
-    methods=load(args.methods/'verdict.json');same_install(load(args.methods/'artifact.json'),'per-method acceptance')
-    require(methods['passed'] and methods['positive_local_methods']==60 and methods['backend_boundaries_verified']==4 and not methods['missing'] and not methods['invalid'],'Per-method acceptance incomplete')
+    methods=load(args.methods/'verdict.json');method_artifact=load(args.methods/'artifact.json');same_install(method_artifact,'per-method acceptance')
+    require(methods['passed'] and methods['verifier_and_artifact_unchanged'] and methods['positive_local_methods']==60 and methods['backend_boundaries_verified']==4 and not methods['missing'] and not methods['unexpected'] and not methods['invalid'],'Per-method acceptance incomplete')
+    expected=set(load(SOURCE/'reports/runtime-v0.3-unexercised-local.json')['methods'])
+    require(set(methods['methods'])==expected,'Per-method names differ from the frozen gap inventory')
+    require({g['group'] for g in methods['groups']}==set(method_artifact['groups']) and len(methods['groups'])==7 and all(g['exit']==0 for g in methods['groups']),'Per-method group did not complete')
+    for name,digest in method_artifact['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'Per-method verifier changed: '+name)
+    for name,row in methods['methods'].items():
+        path=(args.methods/row['evidence']).resolve()
+        require(path.is_relative_to(args.methods.resolve()),'Method evidence escaped its run')
+        original=[r for r in load(path) if r['method']==name]
+        require(len(original)==1 and original[0]=={k:v for k,v in row.items() if k!='evidence'},'Per-method postcondition receipt differs: '+name)
+        require(row['status']==('backend_boundary_verified' if name in REMOTE else 'passed'),'Per-method status differs: '+name)
     require({n for n,r in methods['methods'].items() if r['status']=='backend_boundary_verified'}==REMOTE,'Incorrect backend scope classification')
     record('methods_artifact',args.methods/'artifact.json');record('methods_verdict',args.methods/'verdict.json')
     browser=load(args.browser/'results.json');same_install(load(args.browser/'artifact.json'),'native browser')
@@ -53,7 +66,7 @@ def main():
         row=load(path);same_install(row,'protocol recovery');require(row['passed'],'Protocol recovery failed')
         require(row['requests']>=2 and row['continuation_context_observed'] and not row['client_tool_executions'] and row['native_retry_errors'],'Native retry recovery lacks effects evidence')
         recovery.append(row);record('protocol_recovery_'+row['kind'],path)
-    require({r['kind'] for r in recovery}=={'undeclared-tool','schema'} and len(recovery)==2,'Both protocol fault cases are required exactly once')
+    require({r['kind'] for r in recovery}=={'undeclared-tool','schema','schema-multiple','schema-tool-final','schema-tool-before-terminal','schema-overflow'} and len(recovery)==6,'Every protocol fault case is required exactly once')
     lifetime=load(args.native_lifetime/'verdict.json');uv=load(args.user_verification/'verdict.json');schema=load(args.schema)
     expected_native=sha(Path(metadata['native_package'])/'bin/codex')
     for row,label in [(lifetime,'native_lifetime'),(uv,'user_verification')]:
@@ -63,21 +76,25 @@ def main():
     record('native_lifetime',args.native_lifetime/'verdict.json');record('user_verification_boundary',args.user_verification/'verdict.json');record('schema_comparison',args.schema)
     real={}
     for name in ['jinja','httpcore']:
-        root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'];same_install(load(stage/'artifact.json'),name+' final real-task pass')
+        root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
+        require(bool(real_artifact.get('verifier_sha256')),name+' real-task verifier identity is missing')
+        for file,digest in real_artifact['verifier_sha256'].items():require(sha(SOURCE/file)==digest,name+' real-task verifier changed: '+file)
         require(row['passed'] and row['turn_status']=='completed' and row['fresh_review'] and row['oracle_guard']['source_unchanged'] and not row.get('error') and row['diff_check']==0,name+' real task incomplete')
         require(all(v['exit']==0 for v in row['validation']),name+' external regression failed')
         require({'open','find','click'}<=set(row['web_research']['native_completed_actions']) and row['web_research']['distinct_actual_urls']>=2,name+' actual multi-page browsing incomplete')
-        require(row['followup']['source_id']==metadata['source_id'],name+' final real task used another source version')
+        require(row['web_research']['current_turn']['passed'],name+' final real-task turn lacks current native browsing evidence')
+        require((row.get('followup') or row)['source_id']==metadata['source_id'],name+' final real task used another source version')
         if name=='httpcore':require(row['restarted'] and {'real-tcp-0','real-tcp-1','real-tcp-2','tls-socket','independent-cancellation'}<={v['suite'] for v in row['validation']},'HTTPcore cold recovery or stress missing')
         record(name+'_final_results',root/'results.json');record(name+'_final_artifact',stage/'artifact.json');record(name+'_final_patch',root/'agent.patch')
         real[name]={'passed':True,'cold_resume_after_source_edit':row.get('restarted',False),'fresh_independent_native_review':True,'unchanged_oracle':True,'validation':[{'suite':v['suite'],'exit':v['exit'],'tail':v.get('tail','')[-350:].replace(str(root),'<fixture>')} for v in row['validation']],'web_research':{'actions':row['web_research']['native_completed_actions'],'distinct_urls':row['web_research']['distinct_actual_urls'],'pages':row['web_research']['pages']},'task_patch_sha256':sha(root/'agent.patch'),'initial_failures_preserved':True,'final_source_id':metadata['source_id']}
     output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)
-    history=output/'history/v0.3.0';history.mkdir(parents=True,exist_ok=True)
+    previous=load(output/'acceptance.json').get('version') if (output/'acceptance.json').exists() else None
+    history=output/'history'/('v'+(previous or '0.3.0'));history.mkdir(parents=True,exist_ok=True)
     for path in list(output.glob('*.json')):
         if path.name=='runtime-v0.3-unexercised-local.json':continue
         dest=history/path.name
         if not dest.exists():shutil.copy2(path,dest)
-    matrix=load(history/'runtime-method-matrix.json')
+    matrix=load(SOURCE/'reports/history/v0.3.0/runtime-method-matrix.json')
     for row in matrix:
         method=row['method']
         if method in methods['methods']:
@@ -88,12 +105,17 @@ def main():
             row.update(scope='backend_or_account_dependent_native_surface',execution_status='account_unavailable_boundary_verified',execution_evidence='Same-version official/native account gate compared; no real OS credential enrollment or deletion.',upstream_source_note='Native identity() requires a ChatGPT account user ID before creating its platform credential provider.')
         else:row['execution_status']='observed_in_native_scenarios' if row['observed_in_passing_acceptance'] else 'not_applicable_to_frozen_local_scope'
     local=[r for r in matrix if r['scope']=='local_runtime_surface'];require(len(local)==125 and all(r['observed_in_passing_acceptance'] for r in local),'Local method matrix still has an unverified entry')
-    offline=(args.regression/'offline.log').read_text();require('127 passed' in offline,'Unexpected offline regression count')
-    summary={'status':'accepted_for_frozen_macos_local_runtime_scope','version':'0.4.0','source_id':metadata['source_id'],'upstream_version':native['upstream_version'],'upstream_commit':native['upstream_commit'],'model':metadata['model'],'platform':'macOS arm64','native_archive_sha256':metadata['native_archive_sha256'],'adapter_source_sha256':metadata['adapter_source_sha256'],'native_schemas_compared':456,'native_schema_differences':[],'client_methods':len(matrix),'local_methods_positive_evidence':125,'new_local_methods_individually_passed':60,'corrected_backend_entries':4,'user_verification_account_boundaries':5,'all_174_positive_lifecycles_claimed':False,'offline_tests_passed':127,'acceptance_gates':[{'name':r['gate'],'exit':r['exit'],'seconds':r['seconds']} for r in regression['gates']],'additional_acceptance':{'method_gap_list':True,'native_browser':True,'browser_mcp_cancellation':True,'native_mcp_lifetime_comparison':True,'protocol_fault_recovery':True,'os_user_verification_account_boundary':True,'complex_real_tasks':True},'real_work':real,'limits':['Frozen upstream prerelease; macOS arm64 verified, no Windows/Linux platform parity claim.','Model judgment and cloud/account entitlements are outside runtime equivalence.','Cached/indexed OpenAI search, location bias and image-search backend semantics remain explicit compatibility errors on Exa.','Document browsing does not execute JavaScript or use authenticated website sessions.','Native MCP operations can outlive turn interruption; explicit MCP cancellation and owner shutdown have separate passing evidence.','Official macOS native SIGKILL may leave command descendants; unchanged upstream limitation.','All 125 local methods have positive evidence for specified scenarios, not exhaustive input or fault-space coverage.','The prediction endpoint is declared but unimplemented in frozen upstream.'],'evidence_sha256':evidence,'qualification_protocol':'One frozen installed release; 28 standard gates plus individual local-method acceptance, real saved-task continuation with independent feedback, actual browsing and protocol fault recovery. Initial failures are preserved, not relabeled successful.','stable_solution':'docs/stable-solution.zh.md','historical_release_reports':'reports/history/v0.3.0/'}
+    observed=load(args.rpc_observations)
+    require(observed['passed'] and observed['source_id']==metadata['source_id'] and not observed['missing'] and not observed['trace_errors'] and set(observed['methods'])=={r['method'] for r in local},'Positive RPC observations do not cover the current 125 local methods')
+    record('current_local_rpc_observations',args.rpc_observations)
+    suites=ET.parse(args.regression/'offline.xml').getroot();cases=suites.findall('.//testcase')
+    require(len(cases)>=127 and not any(c.find('failure') is not None or c.find('error') is not None or c.find('skipped') is not None for c in cases),'Offline JUnit contains a failure, error, skip or missing baseline cases')
+    offline_count=len(cases)
+    summary={'status':'accepted_for_frozen_macos_local_runtime_scope','version':version,'source_id':metadata['source_id'],'upstream_version':native['upstream_version'],'upstream_commit':native['upstream_commit'],'model':metadata['model'],'platform':'macOS arm64','native_archive_sha256':metadata['native_archive_sha256'],'adapter_source_sha256':metadata['adapter_source_sha256'],'native_schemas_compared':456,'native_schema_differences':[],'client_methods':len(matrix),'local_methods_positive_evidence':125,'new_local_methods_individually_passed':60,'corrected_backend_entries':4,'user_verification_account_boundaries':5,'all_174_positive_lifecycles_claimed':False,'offline_tests_passed':offline_count,'acceptance_gates':[{'name':r['gate'],'exit':r['exit'],'seconds':r['seconds']} for r in regression['gates']],'additional_acceptance':{'method_gap_list':True,'native_browser':True,'browser_mcp_cancellation':True,'native_mcp_lifetime_comparison':True,'protocol_fault_recovery':True,'os_user_verification_account_boundary':True,'complex_real_tasks':True},'real_work':real,'limits':['Frozen upstream prerelease; macOS arm64 verified, no Windows/Linux platform parity claim.','Model judgment and cloud/account entitlements are outside runtime equivalence.','Cached/indexed OpenAI search, location bias and image-search backend semantics remain explicit compatibility errors on Exa.','Document browsing does not execute JavaScript or use authenticated website sessions.','Native MCP operations can outlive turn interruption; explicit MCP cancellation and owner shutdown have separate passing evidence.','Official macOS native SIGKILL may leave command descendants; unchanged upstream limitation.','All 125 local methods have positive evidence for specified scenarios, not exhaustive input or fault-space coverage.','The prediction endpoint is declared but unimplemented in frozen upstream.'],'evidence_sha256':evidence,'qualification_protocol':'One frozen installed release; 28 standard gates plus individual local-method acceptance, real saved-task continuation with independent feedback, actual browsing and protocol fault recovery. Initial failures are preserved, not relabeled successful.','stable_solution':'docs/stable-solution.zh.md','historical_release_reports':'reports/history/v0.3.0/'}
     write=lambda name,value:(output/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
     write('runtime-method-matrix.json',matrix);write('remaining-local-methods.json',{'status':'passed','baseline_gap_count':64,'positive_local_methods':60,'backend_boundary_count':4,'methods':{name:{'status':row['status'],'scope':'backend' if name in REMOTE else 'local','reason':row.get('reason'),'evidence_sha256':sha(args.methods/row['evidence'])} for name,row in methods['methods'].items()}})
     write('native-schema-comparison.json',schema);write('runtime-qualification.json',summary);write('acceptance.json',summary)
-    write('qualification-lineage.json',{'version':'0.4.0','source_id':metadata['source_id'],'runtime_sources_immutable':True,'evidence_sha256':evidence,'initial_failures_preserved':True,'no_automatic_adapter_tool_replay':True,'note':'Native retry and explicit saved-task continuations are separately recorded. Real-task source fixes belong to test workspaces, not the runtime implementation.'})
+    write('qualification-lineage.json',{'version':version,'source_id':metadata['source_id'],'runtime_sources_immutable':True,'evidence_sha256':evidence,'initial_failures_preserved':True,'no_automatic_adapter_tool_replay':True,'note':'Native retry and explicit saved-task continuations are separately recorded. Real-task source fixes belong to test workspaces, not the runtime implementation.'})
     print(json.dumps({'passed':True,'source_id':metadata['source_id'],'positive_local_methods':125,'standard_gates':28,'output':str(output)}),flush=True)
 
 

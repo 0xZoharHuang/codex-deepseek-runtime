@@ -8,385 +8,385 @@
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "model/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "modelProvider/capabilities/read": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "experimentalFeature/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "experimentalFeature/enablement/set": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "permissionProfile/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "collaborationMode/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "mock/experimentalMethod": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "configRequirements/read": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "config/batchWrite": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "memory/status": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "memory/reset": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "hooks/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "skills/extraRoots/set": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "skills/config/write": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "fuzzyFileSearch": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "fuzzyFileSearch/sessionStart": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "fuzzyFileSearch/sessionUpdate": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "fuzzyFileSearch/sessionStop": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c9500eb690c3f29c005403b07c7d2b39f7ed7dd731908e0b341e257877dd59e3"
+      "evidence_sha256": "b0b9addae44d1905491aa9730735af8c07dcb93240c82855990485677a8bfcdb"
     },
     "thread/increment_elicitation": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/decrement_elicitation": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "project/import": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "project/move": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "threadSection/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/metadata/update": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/search": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/searchOccurrences": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/readState/update": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/items/read": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/timeline/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/inject_items": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/shellCommand": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/revert": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/unsubscribe": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "thread/delete": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "f2bdc5559bff19fe51efd1aafd490fcfbeb91ed767fd439e76bbc48cbb631619"
+      "evidence_sha256": "a7e5364fd2c67c55014c5e44927f3db5a2de5d0c4b8d4960783b23682c03f732"
     },
     "process/resizePty": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "process/kill": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "command/exec/terminate": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "environment/add": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "environment/info": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "environment/status": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "thread/backgroundTerminals/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "thread/backgroundTerminals/terminate": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "thread/backgroundTerminals/clean": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "eed99c9395888357a66905c51463b57c89122ed165edfbfd75cad525ffa4489c"
+      "evidence_sha256": "4505166652fd6f7a59177325976d7efc37c2b5f076c9e7fc7c3d3ce259d53bae"
     },
     "marketplace/add": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "plugin/list": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "plugin/search": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "plugin/installed": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "marketplace/upgrade": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "plugin/reconcile": {
       "status": "backend_boundary_verified",
       "scope": "backend",
       "reason": "Frozen upstream reconciles remote installed bundles only with Codex-backend authentication; local marketplace upgrades use marketplace/upgrade.",
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "plugin/skill/read": {
       "status": "backend_boundary_verified",
       "scope": "backend",
       "reason": "Frozen upstream method fetches remote service plugin skill details; local skills remain accessible through native skills/list and filesystem tools.",
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "marketplace/remove": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "2a0870493c6a3a791349081db9aaf374e2ef682537a2e76e33962e4d6e7de9f0"
+      "evidence_sha256": "fec81fc69953131e6b37234dbb4867cee30e5f6c7cbe1a71fe1ad392fbc20425"
     },
     "mcpServer/resource/read": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "862a3fbb52f647f79e60f799c1171443f1a921888b4698e6dbce3124a8b47aad"
+      "evidence_sha256": "aa54e30a58922bd998978646f770f98c63c8addf75e86127f650f1ac509abcac"
     },
     "mcpServer/tool/call": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "862a3fbb52f647f79e60f799c1171443f1a921888b4698e6dbce3124a8b47aad"
+      "evidence_sha256": "aa54e30a58922bd998978646f770f98c63c8addf75e86127f650f1ac509abcac"
     },
     "mcpServer/event/stream/start": {
       "status": "backend_boundary_verified",
       "scope": "backend",
       "reason": "Frozen upstream explicitly restricts this endpoint to hosted Apps; ordinary local MCP subscriptions are not this API contract.",
-      "evidence_sha256": "862a3fbb52f647f79e60f799c1171443f1a921888b4698e6dbce3124a8b47aad"
+      "evidence_sha256": "aa54e30a58922bd998978646f770f98c63c8addf75e86127f650f1ac509abcac"
     },
     "mcpServer/event/stream/stop": {
       "status": "backend_boundary_verified",
       "scope": "backend",
       "reason": "Idempotent stop branch executed; positive hosted-App event-stream lifecycle requires the excluded backend.",
-      "evidence_sha256": "862a3fbb52f647f79e60f799c1171443f1a921888b4698e6dbce3124a8b47aad"
+      "evidence_sha256": "aa54e30a58922bd998978646f770f98c63c8addf75e86127f650f1ac509abcac"
     },
     "externalAgentConfig/detect": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c41ae18511baaaebde96493a9a378c0f7e321b3ea315a13c22f6907f58fa51ef"
+      "evidence_sha256": "cc295ae345aa5bd5c653a0100e42e064f49f114b266f16ff7457162636c52e10"
     },
     "externalAgentConfig/import": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c41ae18511baaaebde96493a9a378c0f7e321b3ea315a13c22f6907f58fa51ef"
+      "evidence_sha256": "cc295ae345aa5bd5c653a0100e42e064f49f114b266f16ff7457162636c52e10"
     },
     "externalAgentConfig/import/recordHistory": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c41ae18511baaaebde96493a9a378c0f7e321b3ea315a13c22f6907f58fa51ef"
+      "evidence_sha256": "cc295ae345aa5bd5c653a0100e42e064f49f114b266f16ff7457162636c52e10"
     },
     "externalAgentConfig/import/readHistories": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "c41ae18511baaaebde96493a9a378c0f7e321b3ea315a13c22f6907f58fa51ef"
+      "evidence_sha256": "cc295ae345aa5bd5c653a0100e42e064f49f114b266f16ff7457162636c52e10"
     },
     "thread/queue/start": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "84c36d6105930ed544fda1585ab13ba4cf8027f05d47915fffdaab6ff37351ba"
+      "evidence_sha256": "fd83a19f3b5efaf5830ce1ea724fb190d76248f877cbfc20aaf94faf325db31e"
     },
     "turn/settings/update": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "84c36d6105930ed544fda1585ab13ba4cf8027f05d47915fffdaab6ff37351ba"
+      "evidence_sha256": "fd83a19f3b5efaf5830ce1ea724fb190d76248f877cbfc20aaf94faf325db31e"
     },
     "thread/approveGuardianDeniedAction": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "84c36d6105930ed544fda1585ab13ba4cf8027f05d47915fffdaab6ff37351ba"
+      "evidence_sha256": "fd83a19f3b5efaf5830ce1ea724fb190d76248f877cbfc20aaf94faf325db31e"
     },
     "rollout/compress": {
       "status": "passed",
       "scope": "local",
       "reason": null,
-      "evidence_sha256": "84c36d6105930ed544fda1585ab13ba4cf8027f05d47915fffdaab6ff37351ba"
+      "evidence_sha256": "fd83a19f3b5efaf5830ce1ea724fb190d76248f877cbfc20aaf94faf325db31e"
     }
   }
 }

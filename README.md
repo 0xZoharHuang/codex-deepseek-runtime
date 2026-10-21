@@ -147,6 +147,9 @@ message completion events are committed only after the provider's completed
 response satisfies the schema; Markdown wrappers and invalid values produce an
 explicit compatibility failure for the native retry mechanism. The adapter does
 not invent, coerce or silently repair a model's structured values.
+Every explicit final-answer message is checked, including responses that also
+contain client tools. Legacy tool commentary remains commentary. Non-finite
+numbers cannot cross the native JSON boundary.
 
 Native compaction uses its plaintext summary path. Opaque OpenAI encrypted state,
 OpenAI-hosted cloud search/cache semantics, Realtime model services, image-generation
@@ -174,7 +177,10 @@ failed downloads and document limits produce tool errors instead of invented tex
 
 The document cache lives in `<home>/web-cache/pages.sqlite` with a 64 MiB logical
 payload budget and oldest-first eviction. Downloads are limited to 10 MiB, text
-to 4 MiB, and PDFs to 200 pages. Responses explicitly report pagination and link
+to 4 MiB, PDFs to 200 pages, extracted display lines to 100,000, and expanded
+link metadata to 10 MiB. An individual page larger than the cache budget fails
+before changing the cache; it cannot return an already-evicted reference.
+Responses explicitly report pagination and link
 truncation. This is a document reader: JavaScript execution, authenticated browser
 sessions and visual browser automation are separate capabilities.
 

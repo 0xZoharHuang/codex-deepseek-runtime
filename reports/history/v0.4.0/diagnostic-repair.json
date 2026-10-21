@@ -1,0 +1,132 @@
+{
+  "kind": "exact_diagnostic_branch_only_repair",
+  "reason": "The internal readonly connectivity probe must work outside a Git repository. Add --skip-git-repo-check only inside runtime doctor; ordinary native exec trust checks remain intact.",
+  "source_delta": {
+    "old_sha256": "e67256543090b0c63f9f3f1be272166cf557054cc748e8a46742cba464bd61ce",
+    "new_sha256": "82c9fe7e1a84a0d48faf5c19dfae633d315112fb6df4a3be111fa7691d161c9f",
+    "exact_replacement": {
+      "from": "arguments=['-a','never','exec','--ephemeral','--json','--sandbox','read-only'",
+      "to": "arguments=['-a','never','exec','--skip-git-repo-check','--ephemeral','--json','--sandbox','read-only'"
+    },
+    "only_this_replacement": true
+  },
+  "component_proof": {
+    "changed_installed_runtime_files": [
+      "src/codex_deepseek/cli.py"
+    ],
+    "exact_declared_replacement_only": true,
+    "normal_cli_ast_sha256_before": "2769a194a31c644a31a56ea7185b2a93fd3820e426a5c3e43019749cb168a967",
+    "normal_cli_ast_sha256_after": "2769a194a31c644a31a56ea7185b2a93fd3820e426a5c3e43019749cb168a967",
+    "native_manifest_unchanged": true,
+    "normalized_console_launcher_unchanged": true,
+    "previous_cli_matches_qualified_installation": true,
+    "new_cli_matches_repaired_installation": true,
+    "passed": true
+  },
+  "runtime_qualification_sha256": "3fd99631fc804a865fdf757785439e7fc4940fd2feebfd0230cd806c89d105da",
+  "final_adapter_source_sha256": {
+    "src/codex_deepseek/__init__.py": "9b17c4e13f2be7c31602e8846e730d1b82afc6b429ef0ff9d4bdfb2441a9b7b5",
+    "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+    "src/codex_deepseek/bootstrap.py": "47d98528a40cf1c20dbdb40970f58b0b112beeaaeb1e8297a8079eb4ae72e033",
+    "src/codex_deepseek/cli.py": "82c9fe7e1a84a0d48faf5c19dfae633d315112fb6df4a3be111fa7691d161c9f",
+    "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+    "src/codex_deepseek/gateway.py": "397ed49e14c7d8bace33e726c950875a7799c630be183ebdcdde71303ea40825",
+    "src/codex_deepseek/isolation.py": "7f040cdf606fb64cf8965982e18db87af21c6e38db9d176edbf68d6591f9601e",
+    "src/codex_deepseek/native_http.py": "17dbb2321e19f0f9cb649a307ce0ce5381f3107fa12d6472672ac6a9efb5d9b5",
+    "src/codex_deepseek/policy.py": "6a1f354801bfa5a6f2fb25ab3c8787abbde84f1e3de2637d2610d2db8e954bf6",
+    "src/codex_deepseek/processes.py": "98aa2b5dcb3146ba776c4fabff7394da0dd43f0268569625db66b4ac1f08b8da",
+    "src/codex_deepseek/protocol.py": "1b161ff4875c0db777d391b1e607798932d475f932682789c9f9fac004fcda59",
+    "src/codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+    "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+    "src/codex_deepseek/service.py": "e21a992caac844b1961fb85f2e84073e943f5f6d18de978e6f7208ecc0120f60",
+    "src/codex_deepseek/state.py": "c8b1761fc720c46c2d62d9eafc249767dd7dd691ab2faa1fe7454740ac85ecb9",
+    "src/codex_deepseek/supervisor.py": "22a658eb8d2b2b551be35dd3bdb68e9ed56d3bf054d7e9a0b6325a15f5d3cdb7"
+  },
+  "checks": {
+    "offline_tests": {
+      "passed": true,
+      "count": 106,
+      "output_sha256": "52dc8420ade3a2e3c1004755d6d93e6dc29c7e9fad61a6c86adf64f4f4f20473"
+    },
+    "same_previously_failed_outside_git_home": {
+      "passed": true,
+      "native_probe": {
+        "status": "connected",
+        "model": "deepseek/deepseek-v4.1-flash-1017",
+        "provider": "DeepSeek",
+        "fallbacks": false,
+        "response_id": "gen-1792524829-piK1IPIoY1eGKH72sSQ2",
+        "native_version": "0.164.0-alpha.7",
+        "native_thread": "01a15ace-3b3a-7ea1-98bd-03262e67ec2c",
+        "network_policy": "default-fallback",
+        "text": "CONNECTED",
+        "structured_provider": "morph/fp8",
+        "serial_provider": "primeintellect"
+      }
+    },
+    "default_profile_actual_native_probe": {
+      "status": "connected",
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "provider": "DeepSeek",
+      "fallbacks": false,
+      "response_id": "gen-1792524921-e64jzHuI5F2rWKOU3xYR",
+      "native_version": "0.164.0-alpha.7",
+      "native_thread": "01a15acf-a3d7-7410-8cd9-7d4c39fe4236",
+      "network_policy": "default-fallback",
+      "text": "CONNECTED",
+      "structured_provider": "morph/fp8",
+      "serial_provider": "primeintellect"
+    },
+    "native_tui": [
+      {
+        "name": "initial",
+        "passed": true,
+        "shared_daemon": true
+      },
+      {
+        "name": "cold-resume",
+        "passed": true,
+        "shared_daemon": true
+      }
+    ],
+    "immutable_installation_repair": {
+      "passed": true,
+      "checks": [
+        {
+          "name": "installation_does_not_activate_before_validation",
+          "passed": true
+        },
+        {
+          "name": "installed_entry_isolated_imports_and_offline_version",
+          "passed": true
+        },
+        {
+          "name": "installed_full_integrity_check",
+          "passed": true
+        },
+        {
+          "name": "corruption_detected",
+          "passed": true
+        },
+        {
+          "name": "repair_creates_new_immutable_release",
+          "passed": true
+        },
+        {
+          "name": "repeated_install_reuses_verified_repair",
+          "passed": true
+        },
+        {
+          "name": "public_launcher_still_preserved",
+          "passed": true
+        }
+      ]
+    },
+    "app_isolation": {
+      "entry_is_verified_release": true,
+      "global_codex_unchanged": true,
+      "default_home_is_not_app_home": true
+    }
+  },
+  "passed": true
+}

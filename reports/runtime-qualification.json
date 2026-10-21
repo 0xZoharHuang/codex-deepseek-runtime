@@ -1,18 +1,18 @@
 {
   "status": "accepted_for_frozen_macos_local_runtime_scope",
-  "version": "0.4.0",
-  "source_id": "5bb99beda707b6c9f558",
+  "version": "0.4.1",
+  "source_id": "98b24d5adbcf145b99ee",
   "upstream_version": "0.164.0-alpha.7",
   "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
   "model": "deepseek/deepseek-v4.1-flash-1017",
   "platform": "macOS arm64",
   "native_archive_sha256": "5d03a08b1e0e2f8605dc4d77a1e775b575cadc331c53c37da5482ee73f0fe623",
   "adapter_source_sha256": {
-    "src/codex_deepseek/__init__.py": "191aee2185304f910134da6875687ae593cafd3b901f2a5154c277ff947b7a42",
+    "src/codex_deepseek/__init__.py": "225fdc9058af509b92295d84ee7567be9e10c59853e9524f4bbc8c23c8fcdccc",
     "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
     "src/codex_deepseek/bootstrap.py": "47d98528a40cf1c20dbdb40970f58b0b112beeaaeb1e8297a8079eb4ae72e033",
-    "src/codex_deepseek/browser.py": "3d2a4baddb3b15199448e3a3bf646e0e5bbf9e1c18d6c515f340b23e8d70ee7e",
-    "src/codex_deepseek/cli.py": "8d84de3e709e8979bcd30d807eb82241424d944e7a279e98d28320d9ce8a30a2",
+    "src/codex_deepseek/browser.py": "06feb7074c3a2c4cddd97efb452b4f9d1fe80ee0ab6138bbdf571212fbcec722",
+    "src/codex_deepseek/cli.py": "78cdd19b9c135b37285406e4c55445854dae25985021e948f1ae53cb19e7b547",
     "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
     "src/codex_deepseek/gateway.py": "6622bb942484432d3861ac19eae3eb59812ea657e9462a0bf7e608fdb73a1760",
     "src/codex_deepseek/isolation.py": "7f040cdf606fb64cf8965982e18db87af21c6e38db9d176edbf68d6591f9601e",
@@ -24,10 +24,10 @@
     "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
     "src/codex_deepseek/service.py": "f844ead258837f91e6820bba21f7e56989130268ccec0d45ddce9bb38b11eece",
     "src/codex_deepseek/state.py": "c8b1761fc720c46c2d62d9eafc249767dd7dd691ab2faa1fe7454740ac85ecb9",
-    "src/codex_deepseek/structured.py": "55ed44847620234e33367e7c399c3481395ecda8e5b7cea27ffea4cb62b078e7",
+    "src/codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
     "src/codex_deepseek/supervisor.py": "22a658eb8d2b2b551be35dd3bdb68e9ed56d3bf054d7e9a0b6325a15f5d3cdb7",
     "src/codex_deepseek/web_config.py": "9b9a748b03ed46e8bad7fcb08bea9b13947d4c89defc25a7438b5380f0660849",
-    "src/codex_deepseek/web_mcp.py": "1d4fba23f69a194e6dfdcd5ec3eb3596d6f9a2cb7a63eefec0aed2dc0480ff6c"
+    "src/codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8"
   },
   "native_schemas_compared": 456,
   "native_schema_differences": [],
@@ -37,147 +37,147 @@
   "corrected_backend_entries": 4,
   "user_verification_account_boundaries": 5,
   "all_174_positive_lifecycles_claimed": false,
-  "offline_tests_passed": 127,
+  "offline_tests_passed": 162,
   "acceptance_gates": [
-    {
-      "name": "native-revocation",
-      "exit": 0,
-      "seconds": 0.36
-    },
-    {
-      "name": "offline",
-      "exit": 0,
-      "seconds": 13.27
-    },
-    {
-      "name": "tui",
-      "exit": 0,
-      "seconds": 37.23
-    },
-    {
-      "name": "plugin",
-      "exit": 0,
-      "seconds": 13.63
-    },
-    {
-      "name": "live",
-      "exit": 0,
-      "seconds": 55.05
-    },
-    {
-      "name": "features",
-      "exit": 0,
-      "seconds": 33.2
-    },
-    {
-      "name": "modes",
-      "exit": 0,
-      "seconds": 29.01
-    },
     {
       "name": "agents-full",
       "exit": 0,
-      "seconds": 15.4
-    },
-    {
-      "name": "agents-nested",
-      "exit": 0,
-      "seconds": 43.37
+      "seconds": 16.21
     },
     {
       "name": "agents-none",
       "exit": 0,
-      "seconds": 15.21
+      "seconds": 14.51
     },
     {
-      "name": "guardian",
+      "name": "agents-nested",
       "exit": 0,
-      "seconds": 15.05
-    },
-    {
-      "name": "runtime-contract",
-      "exit": 0,
-      "seconds": 27.36
-    },
-    {
-      "name": "plan-review",
-      "exit": 0,
-      "seconds": 24.68
-    },
-    {
-      "name": "profiles",
-      "exit": 0,
-      "seconds": 15.86
-    },
-    {
-      "name": "transports",
-      "exit": 0,
-      "seconds": 3.26
-    },
-    {
-      "name": "local-methods",
-      "exit": 0,
-      "seconds": 8.91
-    },
-    {
-      "name": "daemon",
-      "exit": 0,
-      "seconds": 39.98
-    },
-    {
-      "name": "oauth-file",
-      "exit": 0,
-      "seconds": 27.24
-    },
-    {
-      "name": "auth-stores",
-      "exit": 0,
-      "seconds": 56.18
-    },
-    {
-      "name": "oauth-keyring",
-      "exit": 0,
-      "seconds": 26.25
-    },
-    {
-      "name": "oauth-auto",
-      "exit": 0,
-      "seconds": 35.54
-    },
-    {
-      "name": "oauth-secrets",
-      "exit": 0,
-      "seconds": 41.79
-    },
-    {
-      "name": "memory-v2",
-      "exit": 0,
-      "seconds": 66.47
-    },
-    {
-      "name": "goal-sample",
-      "exit": 0,
-      "seconds": 22.34
-    },
-    {
-      "name": "memory-v1",
-      "exit": 0,
-      "seconds": 115.44
+      "seconds": 39.31
     },
     {
       "name": "crash-recovery",
       "exit": 0,
-      "seconds": 23.85
+      "seconds": 32.28
     },
     {
-      "name": "search",
+      "name": "auth-stores",
       "exit": 0,
-      "seconds": 9.05
+      "seconds": 55.08
+    },
+    {
+      "name": "daemon",
+      "exit": 0,
+      "seconds": 38.56
+    },
+    {
+      "name": "features",
+      "exit": 0,
+      "seconds": 41.62
+    },
+    {
+      "name": "goal-sample",
+      "exit": 0,
+      "seconds": 21.99
+    },
+    {
+      "name": "guardian",
+      "exit": 0,
+      "seconds": 14.02
+    },
+    {
+      "name": "local-methods",
+      "exit": 0,
+      "seconds": 10.01
+    },
+    {
+      "name": "live",
+      "exit": 0,
+      "seconds": 42.66
+    },
+    {
+      "name": "memory-v1",
+      "exit": 0,
+      "seconds": 86.56
+    },
+    {
+      "name": "modes",
+      "exit": 0,
+      "seconds": 27.0
+    },
+    {
+      "name": "native-revocation",
+      "exit": 0,
+      "seconds": 0.42
+    },
+    {
+      "name": "memory-v2",
+      "exit": 0,
+      "seconds": 97.04
+    },
+    {
+      "name": "oauth-auto",
+      "exit": 0,
+      "seconds": 24.61
+    },
+    {
+      "name": "oauth-file",
+      "exit": 0,
+      "seconds": 25.31
+    },
+    {
+      "name": "oauth-keyring",
+      "exit": 0,
+      "seconds": 26.12
+    },
+    {
+      "name": "oauth-secrets",
+      "exit": 0,
+      "seconds": 33.3
+    },
+    {
+      "name": "offline",
+      "exit": 0,
+      "seconds": 14.28
+    },
+    {
+      "name": "plugin",
+      "exit": 0,
+      "seconds": 14.55
+    },
+    {
+      "name": "plan-review",
+      "exit": 0,
+      "seconds": 25.13
+    },
+    {
+      "name": "profiles",
+      "exit": 0,
+      "seconds": 15.62
     },
     {
       "name": "routes",
       "exit": 0,
-      "seconds": 27.26
+      "seconds": 18.34
+    },
+    {
+      "name": "search",
+      "exit": 0,
+      "seconds": 8.2
+    },
+    {
+      "name": "transports",
+      "exit": 0,
+      "seconds": 3.17
+    },
+    {
+      "name": "runtime-contract",
+      "exit": 0,
+      "seconds": 29.98
+    },
+    {
+      "name": "tui",
+      "exit": 0,
+      "seconds": 32.01
     }
   ],
   "additional_acceptance": {
@@ -199,12 +199,12 @@
         {
           "suite": "workspace",
           "exit": 0,
-          "tail": ".. [ 70%]\n........................................................................ [ 78%]\n........................................................................ [ 86%]\n........................................................................ [ 94%]\n......................................................                   [100%]\n918 passed in 1.66s\n"
+          "tail": ".. [ 70%]\n........................................................................ [ 78%]\n........................................................................ [ 86%]\n........................................................................ [ 94%]\n.....................................................                    [100%]\n917 passed in 1.77s\n"
         },
         {
           "suite": "upstream-heldout",
           "exit": 0,
-          "tail": ".. [ 71%]\n........................................................................ [ 79%]\n........................................................................ [ 87%]\n........................................................................ [ 95%]\n............................................                             [100%]\n908 passed in 1.44s\n"
+          "tail": ".. [ 71%]\n........................................................................ [ 79%]\n........................................................................ [ 87%]\n........................................................................ [ 95%]\n............................................                             [100%]\n908 passed in 1.38s\n"
         }
       ],
       "web_research": {
@@ -217,44 +217,49 @@
         "pages": [
           {
             "url": "https://jinja.palletsprojects.com/en/stable/templates/",
-            "retrieved_at": 1792547798.276701,
+            "retrieved_at": 1792552966.781419,
             "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
           },
           {
             "url": "https://jinja.palletsprojects.com/en/stable/api/",
-            "retrieved_at": 1792547806.641674,
+            "retrieved_at": 1792552990.419762,
             "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
           },
           {
             "url": "https://jinja.palletsprojects.com/en/stable/templates/",
-            "retrieved_at": 1792549609.0664802,
+            "retrieved_at": 1792553662.997498,
             "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
           },
           {
             "url": "https://jinja.palletsprojects.com/en/stable/api/",
-            "retrieved_at": 1792549614.6149719,
+            "retrieved_at": 1792553666.327093,
             "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
           },
           {
             "url": "https://jinja.palletsprojects.com/en/stable/templates/",
-            "retrieved_at": 1792550245.719073,
-            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
-          },
-          {
-            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
-            "retrieved_at": 1792550252.6101298,
+            "retrieved_at": 1792554560.878015,
             "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
           },
           {
             "url": "https://jinja.palletsprojects.com/en/stable/api/",
-            "retrieved_at": 1792550257.010123,
+            "retrieved_at": 1792554564.872226,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792555797.659585,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792555801.650914,
             "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
           }
         ]
       },
-      "task_patch_sha256": "57cdde8c43c751da2dd34238150b708cf2d57582f321663018992d99f35b78dc",
+      "task_patch_sha256": "7e0b096a710e68c2a17ef58db47382a1a649640af80f123e7adf5d9e63d34d9b",
       "initial_failures_preserved": true,
-      "final_source_id": "5bb99beda707b6c9f558"
+      "final_source_id": "98b24d5adbcf145b99ee"
     },
     "httpcore": {
       "passed": true,
@@ -265,12 +270,12 @@
         {
           "suite": "workspace",
           "exit": 0,
-          "tail": "during_request[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n220 passed, 6 xpassed in 3.82s\n"
+          "tail": "during_request[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n223 passed, 6 xpassed in 4.09s\n"
         },
         {
           "suite": "upstream-heldout",
           "exit": 0,
-          "tail": "tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n207 passed, 6 xpassed in 3.22s\n"
+          "tail": "yncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n207 passed, 6 xpassed in 3.13s\n127.0.0.1 - - [21/Oct/2026 12:11:16] \"GET / HTTP/1.1\" 200 9509\n"
         },
         {
           "suite": "independent-cancellation",
@@ -280,17 +285,17 @@
         {
           "suite": "real-tcp-0",
           "exit": 0,
-          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 36,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 81,\n    \"cancelled\": 39,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 37,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 82,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
         },
         {
           "suite": "real-tcp-1",
           "exit": 0,
-          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 36,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 82,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 37,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 83,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
         },
         {
           "suite": "real-tcp-2",
           "exit": 0,
-          "tail": "{\n  \"asyncio\": {\n    \"completed\": 84,\n    \"cancelled\": 36,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 83,\n    \"cancelled\": 37,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
+          "tail": "{\n  \"asyncio\": {\n    \"completed\": 83,\n    \"cancelled\": 38,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  },\n  \"trio\": {\n    \"completed\": 86,\n    \"cancelled\": 34,\n    \"max_pool_connections\": 3,\n    \"phases\": 4\n  }\n}\n"
         },
         {
           "suite": "tls-socket",
@@ -308,39 +313,54 @@
         "pages": [
           {
             "url": "https://docs.python.org/3/library/asyncio-task.html",
-            "retrieved_at": 1792545551.9987378,
-            "source_sha256": "785e1b47ff7ddd7431c89a708a3b2753d35d9e2fddfa8bd24b95d3d926a9dd62"
-          },
-          {
-            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
-            "retrieved_at": 1792545556.773651,
-            "source_sha256": "fe35de474f4fd8a351be26e19c14d822a3b5f9e34ac6e35cef6595099815f445"
-          },
-          {
-            "url": "https://docs.python.org/3/library/asyncio-task.html",
-            "retrieved_at": 1792549609.4954472,
+            "retrieved_at": 1792553415.6789792,
             "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
           },
           {
             "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
-            "retrieved_at": 1792549619.9349241,
+            "retrieved_at": 1792553420.977468,
             "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
           },
           {
             "url": "https://docs.python.org/3/library/asyncio-task.html",
-            "retrieved_at": 1792550246.46525,
+            "retrieved_at": 1792553582.028661,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792553585.524212,
             "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
           },
           {
             "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
-            "retrieved_at": 1792550251.608493,
+            "retrieved_at": 1792553587.977487,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792554634.044899,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792554638.70402,
+            "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792555813.582178,
+            "source_sha256": "79175720c91ba307c725dbe856668c5bca088aecbfeeca96d91b88d239134e1f"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792555818.30928,
             "source_sha256": "ed4d9c4ad3741d64ecc6ce2cf0b78e96763fda9dfca61d1dd00119d66f741556"
           }
         ]
       },
-      "task_patch_sha256": "cd11f263ed3e67bcb8c23c198592517b6c6509e54546239a43279dfb45976efd",
+      "task_patch_sha256": "6960c2ff74e9d57a2b9eadd762f5430a61002eec395ce2e117f81bbf4d31d245",
       "initial_failures_preserved": true,
-      "final_source_id": "5bb99beda707b6c9f558"
+      "final_source_id": "98b24d5adbcf145b99ee"
     }
   },
   "limits": [
@@ -354,24 +374,29 @@
     "The prediction endpoint is declared but unimplemented in frozen upstream."
   ],
   "evidence_sha256": {
-    "regression_artifact": "4345e7fce21e2320e4914d65cc9da1f7fdeca207105cf8f3b5c30ad62323489f",
-    "regression_verdict": "19ecab6144f8af24cd5af203815ffb330629ba203f2d0326dff087ae02d67c2d",
-    "methods_artifact": "282dfde678812970fcf6cc9f66ba57de488e76193be03ec4a52a6f68eb8a8923",
-    "methods_verdict": "88327d97b7c947024457db87b18b26407eaa23c9e268b975c6a929f739f62ff1",
-    "browser_artifact": "1af36047a6d7702fd65f684e4e9169605cb19b7b83cec1180499a20067c8443d",
-    "browser_results": "c41cbed4bb4a0651dd2a1507761b8c7c19c62b2286a3382dac72524c07885808",
-    "browser_protocol": "7e839d3e01bc200cbe447eaf31dc6b44e32eb0c85bd6cf4cf32ab9bbd9ff8137",
-    "protocol_recovery_schema": "a9b812446e2e9a8c2c8213fc9c78e274b1e750ec150dbaa920f72ec90fe2769d",
-    "protocol_recovery_undeclared-tool": "b1cbe13fbd73655ea398f896258b8df5d0c9ee958017b75efb02ce00480f3495",
-    "native_lifetime": "98eb1f39f9448f78016b63510aa0844d29b29672c884944893a0c5ce43629943",
+    "regression_artifact": "823be63458abdfd42126b9fcb35640ade7d46b8d9504975af4f72035c9c3c79e",
+    "regression_verdict": "81677aca67bc8108d32bf69de77ab3a3bcf8be5e4b0b11192301519ff73209f9",
+    "methods_artifact": "1baf133b8ee733ed1240572b2168061b2936985d7a3bbcc70d1eac6d4ad1fb1d",
+    "methods_verdict": "86d6a93a81d9e8f9b6b9c3cf97c24d12ae4c98623667cf00e103b0d7d5bba306",
+    "browser_artifact": "34091c2f048346868de8a6aa79afcb5f3a5b779477dd29347bb7481f2cfb869f",
+    "browser_results": "987326c191737b289b32a8e50fd8332f3e7e6a4ce696a858bb8290c1adba9143",
+    "browser_protocol": "9d957113b9af1d48961107e14e17393c6d208cc9c98ecf03abfb78cde17ae52b",
+    "protocol_recovery_schema": "09be6b4fd2fae65b76ea24d4603fe03053d13ad32995ca6075d3574cd53d796c",
+    "protocol_recovery_schema-tool-final": "97dace1c98535c07aa116a569799413942c767b8eca48920c50faaf87c036937",
+    "protocol_recovery_schema-tool-before-terminal": "612d1d7f85272326caf01f69a8b0a8fb7671c8c7b0b95ee185da8bf01d23bb8f",
+    "protocol_recovery_schema-multiple": "afd13a89db3449093b3da24b83004e209cc1a6307e0919c0fd700ff257930d9d",
+    "protocol_recovery_schema-overflow": "361dd86edc9d9cee12075639302872b26a6212ffdfa86af1c1dd65b322600d72",
+    "protocol_recovery_undeclared-tool": "938ad0a9baf3fb7ad354ee8cfb2a92d8a0c7eae08aab3ffe46282cf3c085b467",
+    "native_lifetime": "503bd62c395779d7fc984327bb5f349a3c0300e5eaaacff8728f1066e135be2c",
     "user_verification_boundary": "0b809572ca22c63ad87b1d7cb19ff9538646874acd2a26a8e05551d8fe42023a",
-    "schema_comparison": "e067bd3d2f59b7bddd2fdfd6323e7912a877e8f29ce31cea7f838ccc91d5c7d2",
-    "jinja_final_results": "20f3c3c17ff1d5ecad09bb1400a1f4ad84f1d2abfce78baf6117644b72d43ef1",
-    "jinja_final_artifact": "61893f7c5f562666f268eccb10307972bf71bd1c6732c8b3a6c513c69c24121e",
-    "jinja_final_patch": "57cdde8c43c751da2dd34238150b708cf2d57582f321663018992d99f35b78dc",
-    "httpcore_final_results": "c7f0a5146fe9f37fd5ae53082284b7e0e4af123b770c6a876e2bd3bea81a2e9b",
-    "httpcore_final_artifact": "857b8910cbeb7b80c7eeec9e63c0dc44584730820a864a92f09e39135c1ff2b4",
-    "httpcore_final_patch": "cd11f263ed3e67bcb8c23c198592517b6c6509e54546239a43279dfb45976efd"
+    "schema_comparison": "e7ecdafde489ebdd74f5203897a14e388ddb9765cc26fd97c2c2ca19bf013e4f",
+    "jinja_final_results": "d16125d81585cb0e2677344bd66841c68b6571cfb222b506b023ed958b6a6869",
+    "jinja_final_artifact": "33a16a18dacc7d02801af5ce1af526a3bbcdaea3592a7845f7532017cba1100c",
+    "jinja_final_patch": "7e0b096a710e68c2a17ef58db47382a1a649640af80f123e7adf5d9e63d34d9b",
+    "httpcore_final_results": "9d305cc1c30d44ebbe851069bab1649e6b4c7ae1bdc52d46ab348299f33efc1f",
+    "httpcore_final_artifact": "df44d5c8998239a52810b477c7fe117069f02c1cd138dcd7e8ce057a443ea065",
+    "httpcore_final_patch": "6960c2ff74e9d57a2b9eadd762f5430a61002eec395ce2e117f81bbf4d31d245",
+    "current_local_rpc_observations": "b0963b10ae0f7cabf0d27330d30b4b1249e86a45720170da48454a5336ab5a26"
   },
   "qualification_protocol": "One frozen installed release; 28 standard gates plus individual local-method acceptance, real saved-task continuation with independent feedback, actual browsing and protocol fault recovery. Initial failures are preserved, not relabeled successful.",
   "stable_solution": "docs/stable-solution.zh.md",

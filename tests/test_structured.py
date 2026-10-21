@@ -76,3 +76,40 @@ def test_partial_assistant_text_remains_context_without_impersonating_a_user():
     assert registry.continuation_context
     assert json.loads(prepared['input'][-1]['output'][0]['text'].split('\n',1)[1])==[original]
     assert sum(x.get('role')=='user' for x in prepared['input'])==1
+
+
+@pytest.mark.parametrize('with_tool',[False,True])
+def test_explicit_final_answers_are_checked_even_when_a_tool_is_present(with_tool):
+    invalid={**message('NOT JSON'),'phase':'final_answer'}
+    output=[invalid,message('{"value":1}')]
+    if with_tool:output.append({'type':'function_call','name':'fixture','call_id':'c','arguments':'{}'})
+    guard=StructuredOutput(body())
+    with pytest.raises(ProtocolError,match='not JSON'):
+        guard.events({'type':'response.output_item.done','item':invalid})
+    with pytest.raises(ProtocolError,match='not JSON'):
+        guard.events({'type':'response.completed','response':{'status':'completed','output':output}})
+
+
+def test_all_unphased_final_messages_are_checked_and_commentary_is_not_a_final():
+    with pytest.raises(ProtocolError):
+        StructuredOutput(body()).validate({'status':'completed','output':[message('INVALID'),message('{"value":1}')]})
+    commentary={**message('Working on the task.'),'phase':'commentary'}
+    StructuredOutput(body()).validate({'status':'completed','output':[commentary,message('{"value":1}')]})
+    with pytest.raises(ProtocolError,match='without a final'):
+        StructuredOutput(body()).validate({'status':'completed','output':[commentary]})
+
+
+@pytest.mark.parametrize('value',['1e999','-1e999','NaN','Infinity','-Infinity'])
+def test_nonfinite_numbers_never_reach_native_json_completion(value):
+    b=body();b['text']['format']['schema']['properties']['value']={'type':'number'}
+    with pytest.raises(ProtocolError,match='not JSON'):
+        StructuredOutput(b).validate(response('{"value":'+value+'}'))
+
+
+def test_invalid_explicit_final_is_rejected_before_following_tool_events():
+    guard=StructuredOutput(body())
+    invalid={**message('INVALID'),'phase':'final_answer'}
+    with pytest.raises(ProtocolError):guard.events({'type':'response.output_item.done','item':invalid})
+    # The gateway exits this upstream stream on the error, before reading any
+    # subsequent function-call completion. No adapter tool replay is involved.
+    assert guard.pending==[]

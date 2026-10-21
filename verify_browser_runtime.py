@@ -11,6 +11,7 @@ import threading
 import time
 import uuid
 from verify_live import Peer,text
+from acceptance_assertions import browser_chain
 
 
 def main():
@@ -60,9 +61,9 @@ def main():
         found=call('find',{'ref_id':linked['ref_id'],'pattern':nonce})
         check('cold_native_mcp_page_reference_recovery',found['match_count']==1 and hits==['/start.html','/next.html'],found)
         agent=peer.new();start=len(hits)
-        items=peer.turn(agent,'Use the fixture_web native MCP browser to actually open '+url+', find the phrase "release checkpoint", follow its Migration note link with click, and read the verification token from the linked page. Then use native apply_patch to create browser-result.txt in this workspace containing that exact token followed by an optional final newline. Never read fixture server code or use shell/Python/curl to fetch the URL. Do not delegate. Report the token and source URL.')
+        items=peer.turn(agent,'This is a native browser capability acceptance task. All THREE native fixture_web MCP calls are mandatory in this exact order: (1) open '+url+'; (2) call the find TOOL on the returned page reference with pattern exactly "release checkpoint"; (3) click that page\'s Migration note link and read the verification token from the linked page. Even if open already shows the phrase, you MUST still execute find; visually noticing text is not the required tool call. Then use native apply_patch to create browser-result.txt in this workspace containing that exact token followed by an optional final newline. Never read fixture server code or use shell/Python/curl to fetch the URL. Do not delegate. Report the token and source URL.')
         target=root/'work/browser-result.txt'
-        check('model_native_browse_find_follow_and_file_effect',target.is_file() and target.read_text().strip()==nonce and '/start.html' in hits[start:] and '/next.html' in hits[start:],{'answer':text(items),'hits':hits[start:],'items':items,'file_content':target.read_text() if target.exists() else None})
+        check('model_native_browse_find_follow_and_file_effect',target.is_file() and target.read_text().strip()==nonce and '/start.html' in hits[start:] and '/next.html' in hits[start:] and browser_chain(items,'fixture_web',url,'release checkpoint',nonce),{'answer':text(items),'hits':hits[start:],'items':items,'file_content':target.read_text() if target.exists() else None})
         public=unwrap(peer.call('mcpServer/tool/call',{'threadId':thread,'server':'codex_web','tool':'open','arguments':{'url_or_ref':'https://docs.python.org/3/library/asyncio-task.html'}}))
         public_find=unwrap(peer.call('mcpServer/tool/call',{'threadId':thread,'server':'codex_web','tool':'find','arguments':{'ref_id':public['ref_id'],'pattern':'Changed in version 3.13'}}))
         link=next(x for x in public['links'] if 'library/index.html' in x['url'])

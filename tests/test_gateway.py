@@ -116,3 +116,38 @@ async def test_damaged_trace_configuration_fails_before_upstream_with_terminal_r
                 assert response.status==502 and 'SECRET' not in await response.text()
         assert store.db.execute('SELECT status FROM receipts').fetchall()==[('adapter_error',)]
     finally:store.close()
+
+
+@pytest.mark.parametrize('stream',[False,True])
+@pytest.mark.parametrize('fault',['earlier-final','final-with-tool','nonfinite','tool-before-terminal'])
+async def test_structured_faults_never_publish_native_message_completion(fake_upstream,tmp_path,stream,fault):
+    import json
+    def message(text,identity,**kw):return dict(type='message',id=identity,role='assistant',content=[{'type':'output_text','text':text}],**kw)
+    bad=message('{"value":1e999}' if fault=='nonfinite' else 'INVALID','bad',phase='final_answer')
+    output=[bad]
+    if fault=='earlier-final':output.append(message('{"value":1}','good'))
+    if fault in {'final-with-tool','tool-before-terminal'}:output.append({'type':'function_call','id':'fc','call_id':'c','name':'fixture','arguments':'{}'})
+    terminal={'id':'r','status':'completed','output':output}
+    async def provider(request):
+        if not stream:return web.json_response(terminal)
+        events=[{'type':'response.created','response':{'id':'r','status':'in_progress','output':[]}},
+                {'type':'response.output_item.added','output_index':0,'item':{**bad,'content':[]}},
+                {'type':'response.output_text.delta','item_id':'bad','delta':bad['content'][0]['text']},
+                {'type':'response.output_item.done','output_index':0,'item':bad},
+                {'type':'response.completed','response':terminal}]
+        if fault=='tool-before-terminal':events.insert(-1,{'type':'response.output_item.done','output_index':1,'item':output[-1]})
+        return web.Response(text=''.join('data: '+json.dumps(event)+'\n\n' for event in events),content_type='text/event-stream')
+    fake_upstream.append(provider)
+    store=Store(tmp_path/'state.sqlite')
+    body={'model':MODEL,'input':'Fixture','stream':stream,'tools':[{'type':'function','name':'fixture','parameters':{'type':'object'}}],
+          'text':{'format':{'type':'json_schema','name':'fixture','strict':True,'schema':{'type':'object','properties':{'value':{'type':'number'}},'required':['value'],'additionalProperties':False}}}}
+    try:
+        async with Gateway('SECRET','LOCAL',store,{}) as gateway,aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',json=body,headers={'Authorization':'Bearer LOCAL'}) as response:
+                if stream:
+                    events=[json.loads(line[6:]) for line in (await response.text()).splitlines() if line.startswith('data: ')]
+                    assert events[-1]['type']=='response.failed'
+                    assert not any(e['type'] in {'response.completed','response.output_item.done'} for e in events)
+                else:assert response.status==502
+        assert store.db.execute('SELECT status FROM receipts').fetchall()==[('adapter_error',)]
+    finally:store.close()

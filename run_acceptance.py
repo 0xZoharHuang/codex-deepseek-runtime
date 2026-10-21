@@ -82,7 +82,8 @@ def main():
         for future in as_completed(futures):
             result=future.result();results.append(result);(root/'results.json').write_text(json.dumps(results,indent=2));print(json.dumps(result),flush=True)
     unchanged=digest(entry)==attestation['entry_sha256'] and json.loads((release/'installation.json').read_text())==metadata
-    verifier_unchanged=all((SOURCE/name).is_file() and digest(SOURCE/name)==value for name,value in verifier_hashes.items())
+    current_files=[*SOURCE.glob('*.py'),*(SOURCE/'tests').rglob('*.py'),*(SOURCE/'src').rglob('*.py')]
+    verifier_unchanged={str(path.relative_to(SOURCE)):digest(path) for path in current_files}==verifier_hashes
     verdict={'passed':all(row['exit']==0 for row in results) and unchanged and verifier_unchanged,'verifier_source_unchanged':verifier_unchanged,'all_gates_selected':set(selected)==set(gates),'entry_unchanged':unchanged,'gates':results}
     (root/'verdict.json').write_text(json.dumps(verdict,indent=2));print('EVIDENCE',root,flush=True)
     raise SystemExit(0 if verdict['passed'] else 1)

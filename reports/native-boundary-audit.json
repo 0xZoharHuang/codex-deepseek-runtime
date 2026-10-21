@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "native_patch_sha256": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
+  "native_patch_replayed_against_exact_base": true,
+  "all_patched_source_hashes_match": true,
+  "full_source_inventory_regular_files": 9353,
+  "changed_native_files": [
+    "codex-rs/Cargo.lock",
+    "codex-rs/Cargo.toml",
+    "codex-rs/cli/src/main.rs",
+    "codex-rs/config/src/isolated_provider.rs",
+    "codex-rs/config/src/lib.rs",
+    "codex-rs/config/src/loader/managed_requirements.rs",
+    "codex-rs/config/src/loader/mod.rs",
+    "codex-rs/core/src/tools/spec_plan.rs",
+    "codex-rs/deepseek-http-transport/Cargo.toml",
+    "codex-rs/deepseek-http-transport/src/main.rs",
+    "codex-rs/deepseek-http-transport/tests/native_policy.rs",
+    "codex-rs/ext/guardian-v2/src/async_scorer/sampler.rs",
+    "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
+    "codex-rs/ext/guardian-v2/src/async_scorer/startup.rs",
+    "codex-rs/http-client/src/client_builder.rs",
+    "codex-rs/http-client/src/dedicated_transport.rs",
+    "codex-rs/http-client/src/lib.rs",
+    "codex-rs/http-client/src/network_policy.rs",
+    "codex-rs/http-client/src/outbound_proxy.rs",
+    "codex-rs/http-client/src/route_aware_client_pool/execution.rs",
+    "codex-rs/rmcp-client/src/oauth.rs",
+    "codex-rs/stdio-to-uds/Cargo.toml",
+    "codex-rs/stdio-to-uds/src/lib.rs"
+  ],
+  "archive_only_added_license": {
+    "codex-rs/vendor/bubblewrap/LICENSE": "b7993225104d90ddd8024fd838faf300bea5e83d91203eab98e29512acebd69c"
+  },
+  "unchanged_protected_runtime_files": 348,
+  "protected_prefixes": [
+    "codex-rs/core/src/session/",
+    "codex-rs/core/src/agent/",
+    "codex-rs/core/src/tasks/",
+    "codex-rs/core/src/tools/handlers/",
+    "codex-rs/app-server/src/thread_",
+    "codex-rs/app-server/src/codex_message_processor",
+    "codex-rs/linux-sandbox/",
+    "codex-rs/windows-sandbox-rs/",
+    "codex-rs/macos-sandbox/"
+  ],
+  "external_cargo_packages_unchanged": true,
+  "capability_exposure_adjustment": "core/src/tools/spec_plan.rs changes v2 descendant tool availability only; handlers and scheduling stay upstream.",
+  "guardian_adjustment": "Auxiliary classifier model selection only; native classification and approval remain upstream.",
+  "current_source_patch_matches_v040": true
+}

@@ -14,6 +14,7 @@ import sqlite3
 import threading
 import time
 from verify_live import Peer
+from acceptance_assertions import current_browser_evidence,complete_work_patch
 
 BASE = Path(__file__).resolve().parent.parent / 'delivery/real-work'
 COMPACTION_LIMIT = 500000
@@ -45,6 +46,10 @@ def scenario(name):
     root = BASE/name
     if (root/'results.json').exists():
         raise RuntimeError(f'Existing acceptance evidence at {root}; prepare a fresh fixture directory')
+    entry=Path(os.environ.get('CODEX_DEEPSEEK_TEST_ENTRY') or Path.home()/'.local/bin/codex-deepseek').resolve()
+    metadata=json.loads((entry.parent.parent.parent/'installation.json').read_text())
+    verifiers=[Path(__file__),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py')]
+    (root/'artifact.json').write_text(json.dumps({'entry':str(entry),'entry_sha256':hashlib.sha256(entry.read_bytes()).hexdigest(),'installation':metadata,'verifier_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in verifiers}},indent=2))
     (root/'home').mkdir(exist_ok=True)
     (root/'home/config.toml').write_text(f'''model_reasoning_effort = "high"
 model_auto_compact_token_limit = {COMPACTION_LIMIT}
@@ -72,7 +77,7 @@ multi_agent_v2 = true
     oracle_before=oracle_sources()
     peer = None
     started = time.monotonic()
-    report = {'case': name, 'scope': 'native-runtime', 'started': time.time(), 'restarted': False}
+    report = {'case': name, 'scope': 'native-runtime', 'source_id':metadata['source_id'],'started': time.time(), 'restarted': False}
     (root/'task.txt').write_text(common+task)
     try:
         oracle.chmod(0)
@@ -123,10 +128,11 @@ multi_agent_v2 = true
     report['validation']=[run_test(root,'workspace',['-q','tests'],pp),run_test(root,'upstream-heldout',['-q',str(root/'oracle/tests')],pp)]
     if name=='httpcore':
         report['validation'].append(run_test(root,'independent-cancellation',['-q',str(root/'cancellation_regression.py')],pp))
-        report['validation'].extend([run_script(root,'real-tcp','network_stress.py'),run_script(root,'tls-socket','tls_socket_regression.py')])
+        report['validation'].extend(run_script(root,'real-tcp-'+str(i),'network_stress.py') for i in range(3))
+        report['validation'].append(run_script(root,'tls-socket','tls_socket_regression.py'))
     report['diff_check']=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True).returncode
     report['diff_stat']=subprocess.run(['git','diff','--stat'],cwd=work,capture_output=True,text=True).stdout
-    (root/'agent.patch').write_text(subprocess.run(['git','diff','--binary'],cwd=work,capture_output=True,text=True).stdout)
+    (root/'agent.patch').write_bytes(complete_work_patch(work))
     report['reviewers']=[]
     database=next((root/'home').glob('state_*.sqlite'))
     with sqlite3.connect(database) as db:
@@ -140,6 +146,7 @@ multi_agent_v2 = true
             completions=[event['payload'] for event in events if event.get('type')=='event_msg' and event.get('payload',{}).get('type')=='task_complete']
             report['reviewers'].append({'thread':child,'agent_path':agent_path,'completed':bool(completions),'final_message':completions[-1].get('last_agent_message') if completions else None})
     reviewer_completed=any(item['completed'] for item in report['reviewers'])
+    report['fresh_review']=reviewer_completed
     browser=root/'home/web-cache/pages.sqlite';pages=[]
     if browser.exists():
         with sqlite3.connect(browser) as db:
@@ -148,7 +155,8 @@ multi_agent_v2 = true
     browser_calls=[event['params']['item'] for event in persisted_events if event.get('method')=='item/completed' and event.get('params',{}).get('item',{}).get('type')=='mcpToolCall' and event['params']['item'].get('server')=='codex_web']
     completed_actions=sorted({call['tool'] for call in browser_calls if call.get('status')=='completed' and not call.get('error')})
     report['web_research']={'required':REQUIRE_WEB_RESEARCH,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':completed_actions}
-    report['passed']=report['oracle_guard']['source_unchanged'] and reviewer_completed and report.get('turn_status')=='completed' and not report.get('error') and report['diff_check']==0 and all(t['exit']==0 for t in report['validation']) and (not REQUIRE_WEB_RESEARCH or (report['web_research']['distinct_actual_urls']>=2 and {'open','find','click'}<=set(completed_actions)))
+    report['web_research']['current_turn']=current_browser_evidence(persisted_events,report.get('thread'))
+    report['passed']=report['oracle_guard']['source_unchanged'] and reviewer_completed and report.get('turn_status')=='completed' and not report.get('error') and report['diff_check']==0 and all(t['exit']==0 for t in report['validation']) and (not REQUIRE_WEB_RESEARCH or report['web_research']['current_turn']['passed'])
     (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     log(name,report)
     return report

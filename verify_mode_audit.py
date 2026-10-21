@@ -34,7 +34,16 @@ def main():
         # Per-thread overrides select hybrid mode, while the profile remains direct.
         hybrid=peer.new(config={'features.code_mode':True,'features.code_mode_only':False})
         items=peer.turn(hybrid,'Do not delegate or search. Use Code Mode to call the native exec_command tool with `printf HYBRID_MODE_OK`. Report the actual result.')
-        passed('native_hybrid_code_mode_selection','HYBRID_MODE_OK' in text(items) and any(item.get('type')=='commandExecution' for item in items),text(items))
+        hybrid_payloads=[event['payload'] for path in (root/'home/sessions').rglob('*.jsonl') if hybrid in path.name for line in path.read_text().splitlines() if (event:=json.loads(line)).get('type')=='response_item']
+        code_calls={item['call_id'] for item in hybrid_payloads if item.get('type')=='custom_tool_call' and item.get('name')=='exec' and 'exec_command' in item.get('input','')}
+        successful_code=[]
+        for item in hybrid_payloads:
+            if item.get('type')!='custom_tool_call_output' or item.get('call_id') not in code_calls or not isinstance(item.get('output'),list):continue
+            for part in item['output']:
+                try:value=json.loads(part.get('text',''))
+                except ValueError:continue
+                if isinstance(value,dict) and value.get('exit_code')==0 and value.get('output')=='HYBRID_MODE_OK':successful_code.append(item['call_id'])
+        passed('native_hybrid_code_mode_selection',bool(successful_code) and 'HYBRID_MODE_OK' in text(items) and any(item.get('type')=='commandExecution' and 'HYBRID_MODE_OK' in item.get('aggregatedOutput','') for item in items),{'native_successful_code_mode_call_ids':successful_code,'answer':text(items)})
         # V1 lifecycle uses the original Native tool implementation and fork context.
         v1=peer.new(config={'features.multi_agent':True,'features.multi_agent_v2':False,'features.code_mode':True,'features.code_mode_only':True})
         items=peer.turn(v1,'You are explicitly authorized to create one native child agent for this test. Spawn exactly one child with task: do not use tools or delegate, reply exactly LEGACY_CHILD_417. Wait for its actual completion, close it, then report its returned answer. Do not simulate its answer or create descendants.')

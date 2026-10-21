@@ -204,8 +204,10 @@ def main():
         fork = peer.call("thread/fork", {"threadId": thread})["thread"]["id"]
         items = peer.turn(fork, "Without tools or delegation, repeat the marker and color you inherited.")
         passed("native_fork", "SESSION-3b71" in text(items) and "teal" in text(items), text(items))
+        callback_start=len(peer.callbacks)
         items = peer.turn(thread, "Do not delegate. Use request_user_input to ask which fixture color to choose, with Blue as the first option and Green second. Wait for the answer, then repeat the selected option.")
-        passed("native_user_input", bool(peer.callbacks) and "Blue" in text(items), text(items))
+        actual_questions=[e for e in peer.callbacks[callback_start:] if e.get('method')=='item/tool/requestUserInput' and e.get('params',{}).get('threadId')==thread and e['params'].get('questions')]
+        passed("native_user_input", bool(actual_questions) and "Blue" in text(items), {'callbacks':actual_questions,'answer':text(items)})
         items = peer.turn(thread, "Do not delegate. Search the live web for the official DeepSeek API documentation website using the built-in web search tool, then cite its URL.")
         passed("native_web_search_event", any(i.get('type')=='webSearch' for i in items) and "deepseek" in text(items).lower(), text(items))
         long_thread = peer.new()

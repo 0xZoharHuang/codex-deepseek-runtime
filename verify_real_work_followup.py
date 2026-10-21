@@ -12,6 +12,7 @@ import uuid
 from verify_live import Peer
 from verify_real_work import run_test,run_script
 from install import valid_release
+from acceptance_assertions import current_browser_evidence,complete_work_patch
 
 
 def sha(path):
@@ -40,7 +41,8 @@ def main():
     for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt')]:
         if path.is_file():shutil.copy2(path,attempt/path.name)
     feedback=args.feedback.read_text();(attempt/'feedback.txt').write_text(feedback)
-    (attempt/'artifact.json').write_text(json.dumps({'entry':str(entry),'entry_sha256':sha(entry),'installation':metadata,'previous_report_sha256':sha(attempt/'results.json'),'feedback_sha256':sha(args.feedback)},indent=2))
+    verifiers=[Path(__file__),Path(__file__).with_name('verify_real_work.py'),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py')]
+    (attempt/'artifact.json').write_text(json.dumps({'entry':str(entry),'entry_sha256':sha(entry),'installation':metadata,'previous_report_sha256':sha(attempt/'results.json'),'feedback_sha256':sha(args.feedback),'verifier_sha256':{p.name:sha(p) for p in verifiers}},indent=2))
     parent=previous['thread'];before_reviewers={x['thread']:x['completed_turns'] for x in reviewers(root,parent)}
     oracle=root/'oracle';mode=oracle.stat().st_mode&0o777
     def oracle_sources():return {str(p.relative_to(oracle)):sha(p) for p in oracle.rglob('*') if p.is_file() and not any(x in {'__pycache__','.pytest_cache','.git'} for x in p.parts)}
@@ -74,8 +76,10 @@ def main():
         with sqlite3.connect(root/'home/web-cache/pages.sqlite') as db:pages=[{k:page.get(k) for k in ['url','retrieved_at','source_sha256']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
     diff=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True)
     report={**previous,'turn_status':status,'error':error,'validation':validation,'diff_check':diff.returncode,'diff_stat':subprocess.check_output(['git','diff','--stat'],cwd=work,text=True),'reviewers':reviews,'fresh_review':fresh,'oracle_guard':{'source_unchanged':unchanged and previous['oracle_guard']['source_unchanged']},'web_research':{'required':True,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':actions},'followup':{'evidence':str(attempt.relative_to(root)),'previous_report_sha256':sha(attempt/'results.json'),'reason':'Native saved-task continuation after explicit independent acceptance feedback','seconds':round(time.monotonic()-started,2),'source_id':metadata['source_id']}}
-    report['passed']=status=='completed' and not error and unchanged and fresh and diff.returncode==0 and all(x['exit']==0 for x in validation) and {'open','find','click'}<=set(actions) and len({p['url'] for p in pages})>=2
-    (root/'agent.patch').write_text(subprocess.check_output(['git','diff','--binary'],cwd=work,text=True));(root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    current=current_browser_evidence(peer.events,parent,start) if peer and status else {'passed':False}
+    report['web_research']['current_turn']=current
+    report['passed']=status=='completed' and not error and unchanged and fresh and diff.returncode==0 and all(x['exit']==0 for x in validation) and current['passed']
+    (root/'agent.patch').write_bytes(complete_work_patch(work));(root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items() if k not in {'reviewers','final_messages','validation','web_research'}}),flush=True);print('EVIDENCE',attempt,flush=True)
     raise SystemExit(0 if report['passed'] else 1)
 

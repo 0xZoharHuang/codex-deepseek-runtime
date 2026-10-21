@@ -1,0 +1,45 @@
+{
+  "version": "0.4.0",
+  "status": "closed_after_frozen_artifact_acceptance",
+  "previous_history": "reports/history/v0.3.0/audit-history.json",
+  "issues": [
+    {
+      "issue": "Search excerpts were previously mistaken for complete browsing",
+      "resolution": "Added official-SDK native MCP open/find/click with actual fetch hashes, public HTTPS, cold references, explicit cancellation and native-lifetime comparison."
+    },
+    {
+      "issue": "Initial 64-method list mixed local operations and hosted-backend contracts",
+      "resolution": "60 local positive operations individually verified; 4 hosted Apps/remote-plugin boundaries corrected and separately checked. Five OS-verification methods also require an account identity in upstream and were compared at their unavailable-account gate."
+    },
+    {
+      "issue": "Incomplete response history was interpreted as assistant prefill or rejected",
+      "resolution": "Retain exact output in labeled nonexecuting context; select compatible context route before request; native retry recovered in fault-injection tests."
+    },
+    {
+      "issue": "Provider could publish Markdown instead of strict JSON",
+      "resolution": "Validate final schema locally before message completion. Invalid values are never repaired or coerced into success; native retry recovered after a controlled fault."
+    },
+    {
+      "issue": "Supervisor startup could race worker SQLite schema creation",
+      "resolution": "Unknown ownership conservatively retains service. Deterministic delayed-schema real-process and corrupt-database tests pass."
+    },
+    {
+      "issue": "Parent final prose omitted a completed child answer",
+      "resolution": "Native completion and exact parent-context delivery are mandatory. Parent summarization is a separate model-quality metric; both fork modes revalidated. Original failure retained."
+    },
+    {
+      "issue": "One generation metadata lookup unavailable after completed request",
+      "resolution": "Original route proof remains failed; unchanged route verifier rerun established all provider generation receipts."
+    },
+    {
+      "issue": "Real HTTPcore independent TCP stress exposed an ownership race after cancellation fix",
+      "resolution": "Saved native task resumed with explicit acceptance feedback, production code and deterministic regression repaired, reviewer repeated, full suites plus three stress runs and TLS checks passed."
+    },
+    {
+      "issue": "Browser private-IP guard rejected macOS VPN Fake-IP DNS",
+      "resolution": "Hostname-only exception requires a matching kernel TUN route in benchmark IP range; literal private/reserved destinations remain blocked. Public HTTPS verified."
+    }
+  ],
+  "runtime_business_patch_changed_since_v0_3": false,
+  "raw_failures_preserved_privately": true
+}

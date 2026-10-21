@@ -20,7 +20,9 @@ from codex_deepseek.service import native_active
 def session(entry,root,arguments,target,expected,label):
     pid,fd=pty.fork()
     if pid==0:
-        environment={**os.environ,'TERM':'xterm-256color','CODEX_DEEPSEEK_HOME':str(root/'home')}
+        environment={**os.environ,'TERM':'xterm-256color','CODEX_DEEPSEEK_HOME':str(root/'home'),
+                     'CODEX_TUI_RECORD_SESSION':'1','CODEX_TUI_SESSION_LOG_PATH':str(root/(label+'-native-session.jsonl')),
+                     'CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT':'1','CODEX_ROLLOUT_TRACE_ROOT':str(root/'native-rollout-traces')}
         os.execvpe(str(entry),[str(entry),*arguments],environment)
     birth=identity(pid);transcript=bytearray();exited=False
     existing={str(p):p.stat().st_size for p in (root/'home/sessions').rglob('*.jsonl')}
@@ -62,7 +64,14 @@ def session(entry,root,arguments,target,expected,label):
                 try:transcript.extend(os.read(fd,65536))
                 except OSError:pass
         assert exited,'TUI did not exit normally'
-        return {'name':label,'passed':True,'bytes':len(transcript),'shared_daemon':True,'daemon_pid':record['pid']}
+        native_log=root/(label+'-native-session.jsonl')
+        records=[json.loads(line) for line in native_log.read_text().splitlines()]
+        assert records and records[0]['kind']=='session_start' and records[0]['model_provider_id']=='deepseek_runtime'
+        assert native_log.stat().st_mode&0o777==0o600
+        traces=[p for p in (root/'native-rollout-traces').rglob('*') if p.is_file()]
+        assert traces,'Native rollout tracing was silently disabled'
+        return {'name':label,'passed':True,'bytes':len(transcript),'shared_daemon':True,'daemon_pid':record['pid'],
+                'native_session_log_records':len(records),'native_rollout_trace_files':len(traces)}
     finally:
         (root/(label+'.pty')).write_bytes(transcript)
         if not exited:

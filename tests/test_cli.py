@@ -51,6 +51,33 @@ def test_native_environment_removes_app_ipc_but_preserves_public_ca_and_patch_fl
     assert not untouched.exists()
 
 
+def test_native_diagnostic_and_terminal_controls_survive_app_isolation(tmp_path,monkeypatch):
+    from codex_deepseek.cli import native_environment
+    values={'CODEX_APPLY_GIT_CFG':'core.autocrlf=false','CODEX_TUI_RECORD_SESSION':'1',
+            'CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT':'1','CODEX_TUI_ROUNDED':'0',
+            'CODEX_TUI_SESSION_LOG_PATH':str(tmp_path/'session.jsonl'),
+            'CODEX_ROLLOUT_TRACE_ROOT':str(tmp_path/'traces'),
+            'CODEX_ANALYTICS_EVENTS_CAPTURE_FILE':str(tmp_path/'analytics.jsonl')}
+    for name,value in values.items():monkeypatch.setenv(name,value)
+    monkeypatch.setenv('CODEX_APP_TOOLS_PIPE_PATH','/app/private/socket')
+    monkeypatch.setenv('OPENROUTER_API_KEY','never-forward-this-key')
+    result=native_environment(tmp_path/'profile','local-token',tmp_path/'bin/codex',install_shims=False)
+    assert all(result.get(name)==value for name,value in values.items())
+    assert 'CODEX_APP_TOOLS_PIPE_PATH' not in result and 'OPENROUTER_API_KEY' not in result
+
+
+def test_native_diagnostic_paths_cannot_write_into_app_state(tmp_path,monkeypatch):
+    import pytest
+    from pathlib import Path
+    from codex_deepseek.cli import native_environment,NATIVE_OUTPUT_PATHS
+    from codex_deepseek.protocol_errors import ProtocolError
+    for name in NATIVE_OUTPUT_PATHS:
+        with monkeypatch.context() as selected:
+            selected.setenv(name,str(Path.home()/'.codex/must-not-be-written'))
+            with pytest.raises(ProtocolError,match='Codex App'):
+                native_environment(tmp_path/'profile','local-token',tmp_path/'bin/codex',install_shims=False)
+
+
 def test_private_helper_imports_ignore_project_pythonpath(tmp_path,monkeypatch):
     import subprocess,os
     from codex_deepseek.bootstrap import module_command

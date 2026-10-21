@@ -29,6 +29,12 @@ from .isolation import check_attachment, check_daemon_package, bind_remote, chec
 
 NATIVE_VERSION = "0.164.0-alpha.7"
 SERVICE = "ai.codex.deepseek.openrouter"
+NATIVE_ENVIRONMENT = {
+    'CODEX_CA_CERTIFICATE','CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS','CODEX_APPLY_GIT_CFG',
+    'CODEX_TUI_RECORD_SESSION','CODEX_TUI_SESSION_LOG_PATH','CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT',
+    'CODEX_TUI_ROUNDED','CODEX_ROLLOUT_TRACE_ROOT','CODEX_ANALYTICS_EVENTS_CAPTURE_FILE',
+}
+NATIVE_OUTPUT_PATHS = {'CODEX_TUI_SESSION_LOG_PATH','CODEX_ROLLOUT_TRACE_ROOT','CODEX_ANALYTICS_EVENTS_CAPTURE_FILE'}
 
 
 def data_root() -> Path:
@@ -43,8 +49,10 @@ def adapter_command():
 def native_environment(home,token,binary, *, install_shims=True, port=None):
     environment=dict(os.environ)
     for name in list(environment):
-        if (name.startswith('CODEX_') and name not in {'CODEX_CA_CERTIFICATE','CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS'}) or name in {'OPENROUTER_API_KEY','OPENAI_API_KEY'}:
+        if (name.startswith('CODEX_') and name not in NATIVE_ENVIRONMENT) or name in {'OPENROUTER_API_KEY','OPENAI_API_KEY'}:
             environment.pop(name,None)
+    for name in NATIVE_OUTPUT_PATHS:
+        if environment.get(name):environment[name]=str(isolated_path(Path(environment[name])))
     environment.update(CODEX_HOME=str(home),CODEX_DEEPSEEK_HOME=str(home),
                        CODEX_DEEPSEEK_POLICY_HOME=str(home),CODEX_DEEPSEEK_BRIDGE_TOKEN=token)
     if port is not None:environment['CODEX_DEEPSEEK_BRIDGE_PORT']=str(port)
