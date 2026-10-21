@@ -1,387 +1,253 @@
-# Codex CLI runtime with DeepSeek
+# Codex CLI + DeepSeek
 
-An isolated distribution of the native Codex CLI runtime, using a pinned DeepSeek
-model through OpenRouter. Tools, sandboxing, approvals, sessions, MCP, Skills,
-Hooks, Code Mode, queues, goals and subagent scheduling run in the native Codex
-implementation. The adapter does not execute agent tools or replace the agent loop.
+**保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**
 
-**Acceptance:** a green unit test or a development-binary run is not a release
-acceptance receipt. Consult the acceptance report shipped with the release for
-the exact installed artifact, gates and any remaining limits.
+你仍然用 Codex 的终端界面、命令与文件工具、审批和沙箱、会话恢复、MCP、Code Mode 与子智能体。这个项目提供独立安装、模型协议转换和必要的系统适配；模型给出的工具调用仍交给原生 Codex 执行。
 
-The frozen upstream baseline is `0.164.0-alpha.7`, commit
-`fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`. This is an upstream prerelease.
-中文运行与验收说明见 [稳定方案](docs/STABLE_PLAN.zh-CN.md).
-Target-specific acceptance is recorded under `reports/platforms/<target>/`.
-The published v0.4.1 evidence covers macOS arm64; Windows x86_64 and Linux x86_64
-are additional v0.5 qualification targets. Their implementation or native build
-alone does not establish acceptance. An independent Python 3.11+ is required. The model is
-`deepseek/deepseek-v4.1-flash-1017`, rather than a floating latest alias.
+*An isolated native Codex CLI distribution for DeepSeek through OpenRouter. The native runtime owns tool execution, permissions, sessions and agent scheduling.*
 
-## Install and run
+> **发布准备状态：**以下是 v0.5.0 的使用说明草稿，Windows 最终验收仍在进行。v0.5.0 标签与下载资产须在三平台验收完成后统一发布；此时不要将下列安装命令理解为已上线。当前公开的 v0.4.1 验收范围是 macOS arm64。
 
-The installer requires the release's hash-pinned native manifest and archive.
-It creates an immutable Python environment and a complete native package, checks
-both, then atomically updates the dedicated `~/.local/bin/codex-deepseek` entry
-(`codex-deepseek.exe` on Windows). `--no-activate` installs an independently
-verifiable candidate without changing that entry. `--root /separate/runtime`
-selects a separate installation root; native state defaults to its `codex-home`.
+## 它怎样工作
+
+```text
+你的终端 / 脚本 / 编辑器客户端
+             |
+             v
+      codex-deepseek 独立入口
+      独立安装、配置、会话与凭据
+             |
+             v
+      原生 Codex CLI runtime
+             |
+             +--> 文件与命令、终端 I/O、审批、系统沙箱
+             +--> 会话、恢复、压缩、队列、目标、后台进程
+             +--> Code Mode、Skills、Hooks、MCP、子智能体
+             |
+             +--> 模型请求 --> 协议适配 --> 原生 HTTP --> OpenRouter
+             |                  ^                           |
+             |                  |                           v
+             +<-- 模型事件/工具调用 <--------------------- DeepSeek
+             |
+             +--> 原生 MCP --> codex_web --> 实际网页 / PDF
+```
+
+适配层处理请求和事件格式、提供方选择、系统凭据与进程通信。它不另建 agent loop，不替原生 runtime 调度工具、审批命令或管理子智能体，也不因网络错误重新执行工具操作。联网搜索使用 OpenRouter Exa；打开网页、页内查找和跟随链接通过随包提供的 MCP 文档读取器完成。
+
+这里的“等价”指**固定版本 Codex CLI 的本地 runtime 机制**。DeepSeek 的代码质量、推理水平和模态能力由模型决定；OpenAI 的云服务及账户权益需要相应服务，换模型不会获得这些权益。
+
+## 支持范围与验收状态
+
+| 平台 | 当前结论 | 运行条件与证据 |
+| --- | --- | --- |
+| macOS Apple Silicon | 固定目标 runtime 验收通过 | 独立 Python 3.11+；[平台报告](reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
+| Linux x86_64 GNU | 固定目标 runtime 验收通过 | Ubuntu 24.04 上验证；glibc、OpenSSL 3、`libcap.so.2`；[平台报告](reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
+| Windows x86_64 | **最终验收进行中** | 原生 Windows Python 3.11+；最终 OS、沙箱及凭据结论待平台报告填入 |
+
+原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
+
+验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
+
+## 安装并运行
+
+准备 Git、独立 Python 3.11+ 和有可用额度的 OpenRouter key。不要使用 Codex App 或 ChatGPT App 内置的 Python。安装器下载当前平台的固定原生归档，检查 SHA-256 和完整文件清单，然后建立独立 Python 环境；正常使用不需要编译 Rust。
+
+### macOS
+
+在终端执行：
 
 ```sh
-python3 install.py --native-archive /path/to/verified-native-release.tar.gz
+git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+cd codex-deepseek
+python3 --version
+python3 install.py
+export PATH="$HOME/.local/bin:$PATH"
 codex-deepseek runtime setup-key
 codex-deepseek runtime doctor
-cd /path/to/project
+cd /path/to/your/project
 codex-deepseek
-codex-deepseek exec "Implement the change and verify it"
+```
+
+`setup-key` 使用系统隐藏输入提示，把 key 保存到 macOS Keychain。`doctor` 会实际发起一次模型请求并核对 OpenRouter 的模型和提供方记录，因此会产生 API 用量。
+
+### Linux
+
+使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
+
+```sh
+git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+cd codex-deepseek
+python3 --version
+python3 install.py
+export PATH="$HOME/.local/bin:$PATH"
+codex-deepseek runtime setup-key
+codex-deepseek runtime doctor
+cd /path/to/your/project
+codex-deepseek
+```
+
+无桌面的 SSH/CI 会话使用下文的进程环境方式提供 key。Linux 包已包含原生 Codex 构建的 `bwrap` 沙箱资源，无需另装或替换项目自己的沙箱。
+
+### Windows PowerShell
+
+以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
+
+```powershell
+git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+Set-Location codex-deepseek
+python --version
+python install.py
+$env:Path = "$HOME\.local\bin;$env:Path"
+codex-deepseek.exe runtime setup-key
+codex-deepseek.exe runtime doctor
+Set-Location C:\path\to\your\project
+codex-deepseek.exe
+```
+
+运行目录默认在 `$env:LOCALAPPDATA\codex-deepseek`，命令入口在 `$HOME\.local\bin\codex-deepseek.exe`。`setup-key` 保存到 Windows Credential Manager。某些 SSH 网络登录没有可用凭据库，应使用安全的进程环境，或回到交互式登录设置凭据。Windows 的沙箱设置由原生 Codex 负责，遵循其提示和系统权限要求。
+
+以上 PATH 设置只影响当前终端。需要长期使用时，将用户的 `.local/bin` 加入自己的终端 PATH。无需覆盖现有 `codex` 命令。
+
+### 下载受限或先安装候选版本
+
+可以预先下载与当前源码发布版本匹配的原生归档，再让安装器校验：
+
+```sh
+python3 install.py --native-archive /path/to/codex-deepseek-native-0.5.0-aarch64-apple-darwin.tar.gz
+```
+
+另外两份文件名是 `codex-deepseek-native-0.5.0-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.5.0-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+
+`--root <独立安装目录> --no-activate` 只安装候选版本，不切换用户入口。随后直接运行该目录 `releases/<内容标识>/venv/bin/codex-deepseek`；Windows 对应 `venv\Scripts\codex-deepseek.exe`。安装结果的 `installation.json` 记录实际入口、版本、原生资产和依赖身份。
+
+## Key、配置与 Codex App 隔离
+
+优先使用 `runtime setup-key`。系统存储名称为 `ai.codex.deepseek.openrouter`，账户为 `default`。启动进程中的 `OPENROUTER_API_KEY` 如已设置，会优先于系统存储；SSH/CI 应由自己的秘密管理系统注入，不要把 key 写进命令参数、仓库或配置文件。
+
+macOS/Linux 需要临时输入一次 key 而不落盘时，可用独立 Python 隐藏读取，再启动 CLI；示例中的命令行本身不含 key：
+
+```sh
+python3 -c 'import getpass,os,subprocess; os.environ["OPENROUTER_API_KEY"]=getpass.getpass("OpenRouter key: "); raise SystemExit(subprocess.call(["codex-deepseek","runtime","doctor"]))'
+```
+
+Windows SSH/CI 同样读取启动进程中的 `OPENROUTER_API_KEY`；由 CI 的 secret 注入或受控父进程设置，不要用包含明文 key 的 PowerShell 命令或 `setx` 持久化。
+
+原生 `login` / `logout` 管的是 Codex 自己的账户存储，不负责配置这里的 OpenRouter key。提供方 key 在启动原生工具前从环境移除；模型操作使用独立的本地通信凭据。
+
+| 内容 | 默认位置或行为 |
+| --- | --- |
+| macOS/Linux 安装根目录 | `~/.local/share/codex-deepseek` |
+| Windows 安装根目录 | `%LOCALAPPDATA%\codex-deepseek` |
+| 不可变版本 / 原生资产 | `<安装根>/releases/` / `<安装根>/native/` |
+| 默认配置与会话 | `<安装根>/codex-home/`，其中 `config.toml` 使用原生配置格式 |
+| 提供方回执 | `<home>/provider-state/adapter.sqlite` |
+| 网页缓存 | `<home>/web-cache/pages.sqlite` |
+
+入口会清除继承的 App IPC/会话身份，使用独立 `CODEX_HOME`，拒绝与 `~/.codex` 重叠的状态或跟踪目录。由这个 runtime 启动的命令若再次调用 `codex`，profile 内的命令入口会让它继续使用本安装。不要自行把命令硬编码到另一份 Codex/App 的可执行文件。
+
+多个项目需要完全分开的运行状态时，可另外设置 `CODEX_DEEPSEEK_HOME`：
+
+```sh
+CODEX_DEEPSEEK_HOME="$HOME/.local/share/codex-deepseek/project-a-home" codex-deepseek
+```
+
+PowerShell 对应 `$env:CODEX_DEEPSEEK_HOME = "$env:LOCALAPPDATA\codex-deepseek\project-a-home"`，再执行 `codex-deepseek.exe`。这些 home 分开保存会话、MCP 凭据和服务状态；OpenRouter 提供方 key 仍按上述系统存储或进程环境读取。
+
+项目规则、项目工具和共享 `~/.agents/skills` 保留原生行为；独立 home 不是虚拟机。为保持 App 隔离，`codex-deepseek app` 会被明确拒绝。连接外部远程 app-server 时，服务器的配置、身份与权限由该服务器管理，不能用本机隔离来担保远端。
+
+## 日常使用与能力证据
+
+```sh
+codex-deepseek -C /path/to/project -s workspace-write -a on-request
+codex-deepseek exec "修复这个项目的问题，运行相关测试并解释结果"
 codex-deepseek resume --last
+codex-deepseek fork --last
+codex-deepseek review --uncommitted
+codex-deepseek agents
+codex-deepseek --search "查阅官方文档，打开原文、查找相关段落，再跟随链接核实"
+codex-deepseek mcp list
 codex-deepseek app-server
 ```
 
-`runtime doctor` runs an actual native Codex turn and verifies its provider using
-OpenRouter generation metadata. The native Codex `doctor` command remains
-available under its original name. `--help` and `--version` require no API key,
-provider service or state-directory writes.
+安装时的默认权限是 `workspace-write` 和 `on-request`。沙箱、人工审批、Guardian 自动审查、Hooks 信任等仍使用原生实现与配置；不要为让某个命令通过而把全局权限改成无限制。子智能体由任务中的原生协作机制创建和管理，`agents` 用来浏览共享本地 daemon 的会话。
 
-Provider credentials use macOS Keychain, Windows Credential Manager or Linux
-Secret Service, with the dedicated identity `ai.codex.deepseek.openrouter` and
-account `default`. Linux interactive setup requires `secret-tool` and an unlocked
-Secret Service session. Windows SSH network logons can lack a credential vault;
-use a secure process environment there, or set the key from an interactive Windows
-sign-in session. `OPENROUTER_API_KEY` can be supplied by the launching
-environment; it is removed before launching native agent tools. No key belongs in
-argv, Git, configuration, traces or a public acceptance report.
+下表列的是已验收 Mac/Linux 范围中的代表性能力与取证入口；**Windows 应以最终 Windows 平台报告为准**。报告涵盖指定场景，不能视为穷尽所有输入和故障。
 
-## App isolation
+| 能力 | 实现与验证要点 | 证据入口 |
+| --- | --- | --- |
+| 文件、命令与终端 | 原生文件修改、命令退出码、PTY 输入/尺寸、后台会话、Ctrl-C 后继续、原生停止和实际进程清理 | [Mac runtime](reports/platforms/aarch64-apple-darwin/runtime-qualification.json)、[Linux runtime](reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
+| 沙箱与审批 | 原生命令沙箱、允许/拒绝的真实文件效果、人工/Guardian 审批、网络权限撤销；Linux 捆绑 bwrap 校验 | 同上，`native_source_audit`、`acceptance_gates`、`linux_bundled_sandbox_resources` |
+| 会话与协作 | 保存、恢复、fork、压缩、原生子智能体生命周期；真实代码编辑后的中断与冷恢复 | 同上，`real_work` 与 `native_terminal_lifecycles` |
+| Code Mode 与工具协议 | 原生直接/混合工具、v1/v2 协作、动态发现、命名空间、自定义工具、流式参数、结构化结果校验 | 同上，`acceptance_gates` |
+| 图像与结构化结果 | 原生图像附件/工具输入链路、JSON Schema 输出验证；图像理解和任务正确率由模型决定 | 同上，features 验收与协议恢复证据 |
+| MCP、Skills、Hooks | 原生加载、权限、调用和生命周期；OAuth/PKCE、冷启动、File/Keyring/Auto/Secrets 凭据隔离 | 同上，标准验收及独立凭据证据 |
+| daemon、队列、目标与记忆 | 原生本地调度和持久化；服务崩溃恢复保持端口，在途未知结果保留为未知 | 同上，相关标准验收和本地方法 |
+| 联网搜索与文档导航 | Exa 实时搜索；实际 open → find → click 链路、页面引用冷恢复、真实 HTTP 与取消 | 同上，browser/search 验收及 `real_work.web_research` |
+| 客户端接口 | stdio、WebSocket、适用平台的 Unix socket；全部原生 Schema 对照与逐方法正向效果 | [Mac 方法矩阵](reports/platforms/aarch64-apple-darwin/runtime-method-matrix.json)、[Linux 方法矩阵](reports/platforms/x86_64-unknown-linux-gnu/runtime-method-matrix.json)；[Schema 对照](reports/platforms/aarch64-apple-darwin/native-schema-comparison.json) |
 
-| Item | Location or behavior |
-|---|---|
-| Entrypoint | `~/.local/bin/codex-deepseek`; existing global `codex` stays separate |
-| Native artifacts | `~/.local/share/codex-deepseek/native/<archive digest>/` |
-| Immutable adapter and catalog | `~/.local/share/codex-deepseek/releases/<source digest>/` |
-| Default native home | `~/.local/share/codex-deepseek/codex-home/` |
-| Additional profile | Set `CODEX_DEEPSEEK_HOME` to a separate directory |
-| Provider receipts and search replay | `<home>/provider-state/adapter.sqlite` |
-| Native MCP credentials | Native File, Keyring, Auto and Secrets modes; direct MCP Keychain service is namespaced by isolated home |
-| CLI authentication | Native storage modes; native account keys are already scoped to CODEX_HOME |
+网页工具 `codex_web.open` 读取实际 HTML、文本或 PDF，返回行号、原始 URL、内容摘要与链接编号；`find` 查找同一已读取文档，`click` 跟随其中真实存在的链接。引用在同一 home 内持久保存。它不执行网页 JavaScript、不继承浏览器登录态；搜索摘要不会被当作已成功打开原文。
 
-The Linux GNU package is built and exercised on Ubuntu 24.04 with glibc,
-OpenSSL 3 and libcap.so.2; it is not a statically linked musl distribution.
-On Windows the default installation root is `%LOCALAPPDATA%/codex-deepseek`.
-Profile directories inherit a protected owner-and-SYSTEM ACL. The Windows
-profile-local commands are standard Python console `.exe` launchers, preserving
-Unicode paths and arguments without CMD expansion or its environment-length limit.
-
-The launcher removes inherited App IPC/session identities, binds an independent
-CODEX_HOME, and rejects state/trace paths overlapping `~/.codex`. Profile-local
-`codex` shims keep nested shell invocations on this distribution. Private Python
-helpers use isolated imports, so a project `PYTHONPATH` cannot replace them.
-
-Local WebSocket attachment requires a live, kernel-owned listener registered in
-this home. Local aliases are resolved to that verified endpoint. Explicit Unix
-proxy sockets must lie within this home. Explicit external remote servers retain
-the native remote-client behavior; their identity and configuration belong to
-the operator of that server. The App-launching subcommand is excluded by the
-requested isolation boundary.
-
-Project rules, project tools and shared `~/.agents/skills` follow native CLI
-behavior. A separate home is state isolation, not a virtual machine.
-
-## Native package and patch boundary
-
-The package contains the patched native CLI, matching official Code Mode Host,
-bundled ripgrep, a small native HTTP transport, license notices and build receipts.
-`native/codex-runtime.patch` applies to the exact upstream source archive. External
-Cargo dependency versions remain locked. Native public schemas are compared
-against the same-version official binary, including experimental methods.
-Windows adds `native/windows-transport.patch` for the custom HTTP helper's native
-parent-process handle. Its source hashes and combined patch identity are recorded
-separately; the common runtime patch is unchanged. The Windows package also includes
-the native sandbox setup, command runner, deny probe and sandbox service binaries.
-
-The source changes are limited to:
-
-- An opt-in provider boundary applied at native configuration loading, covering
-  stdio, Unix/WebSocket daemon and direct WebSocket requests. System/enterprise
-  requirements retain precedence; incompatible policy fails clearly.
-- Overridable factory defaults for Code Mode, v2 collaboration and live search.
-  User settings can select direct/hybrid tools and v1/v2 collaboration. The
-  model catalog does not silently force a tool mode.
-- WebSocket framing for `app-server proxy`, whose current control socket speaks
-  WebSocket, while retaining the separate raw `stdio-to-uds` command.
-- Guardian v2's auxiliary classifier model follows the selected DeepSeek model
-  in this distribution. The native classifier and approval implementation remain.
-- Native HTTP egress with the caller's resolved proxy policy, native certificates,
-  pooled connections and cancellation. The provider's loopback URL is treated as
-  IPC; application destination checks and revocation retain the logical upstream
-  destination. Transport advice such as `Retry-After` crosses the adapter.
-- Home-scoped MCP direct-Keychain identity, preserving native credential-store
-  choices without sharing the App's MCP login entries.
-
-`build_native.py` extracts verified sources into a fresh directory, applies and
-checks the patch, and builds with Rust 1.95.0. `package_native.py` creates a
-reproducible archive with an explicit file manifest. A rebuild can have a different
-binary hash due to compiler/absolute-path effects; source, compiler, flags and
-output hashes are recorded rather than claiming bit-identical independent builds.
-
-```sh
-python3 build_native.py --work /separate/build-cache --output /separate/native-package --jobs 2
-python3 package_native.py --package /separate/native-package \
-  --archive /separate/native-release.tar.gz --manifest native/runtime.json \
-  --url https://your-reviewed-release/native-release.tar.gz
-```
-
-## Provider routes and semantics
-
-Every request fixes the same model and uses explicit `provider.only`,
-`allow_fallbacks=false` and `require_parameters=true`.
-
-| Request capability | Selected provider |
-|---|---|
-| Ordinary model requests | Official `deepseek` |
-| Strict JSON-schema output | `morph/fp8` |
-| Tools plus explicit `parallel_tool_calls=false` | `primeintellect` |
-| Thinking with native peer, incomplete or unattested model history and hosted web search together | `morph/fp8` |
-
-These are capability selections before sending the request. A provider error does
-not cause adapter retries or replay tool effects. Native retry settings remain
-configurable and native retry behavior remains native. Official-route limitations
-and comparison probes are documented in `upstream/README.md`.
-The selected route and reason are stored with each request receipt. Completed
-validated model items have semantic fingerprints recorded locally; interrupted or
-imported history without completion evidence uses the compatible route when hosted
-search is present. No reasoning or tool result is dropped to force the official
-route. Native compaction that removes those historical items restores the ordinary
-official-route selection.
-
-Custom tools preserve grammar/regex validation and native call identities.
-Namespaced tools retain authoritative namespaces. Historical tool calls do not
-make unavailable tools callable. Peer messages retain author, recipient and type
-as tool context; transport metadata is labeled and is not claimed to be model
-reasoning. SSE terminal, item identity and incremental arguments are checked.
-Unknown or unrepresentable semantics fail explicitly instead of disappearing.
-
-Interrupted native responses can leave trailing plaintext reasoning or assistant
-output in sampling history. DeepSeek does not accept unfinished assistant prefill. The wire
-adapter retains the exact plaintext as an explicitly labeled, nonexecuting context
-envelope; native saved history remains unchanged. The compatible context route is
-selected before sending that request, just as for peer context. No transport
-context tool is exposed for execution and the adapter does not retry agent steps.
-
-Structured responses are validated locally against their JSON Schema without
-network schema retrieval. Text deltas and tool arguments remain streamed. Final
-message completion events are committed only after the provider's completed
-response satisfies the schema; Markdown wrappers and invalid values produce an
-explicit compatibility failure for the native retry mechanism. The adapter does
-not invent, coerce or silently repair a model's structured values.
-Every explicit final-answer message is checked, including responses that also
-contain client tools. Legacy tool commentary remains commentary. Non-finite
-numbers cannot cross the native JSON boundary.
-
-Native compaction uses its plaintext summary path. Opaque OpenAI encrypted state,
-OpenAI-hosted cloud search/cache semantics, Realtime model services, image-generation
-models, ChatGPT Apps/marketplace entitlements and cloud task accounts require their
-respective backend/model capabilities. Runtime equivalence does not grant those
-services or claim equal model judgment. Live web search uses OpenRouter Exa;
-unsupported location/cache options report a compatibility error.
-
-## Document browsing through native MCP
-
-The distribution registers a `codex_web` stdio server in its isolated home's
-configuration. The server uses the official MCP Python SDK; native Codex still
-discovers, approves, dispatches, logs and cancels its calls. No agent tools run in
-the model protocol bridge. Native hosted live search continues to use OpenRouter
-Exa. Search excerpts are never represented as a successful page open.
-
-The browser provides `open(url_or_ref, start_line, num_lines)`,
-`find(ref_id, pattern, case_sensitive, context_lines)` and `click(ref_id, link_id)`.
-Open retrieves actual HTML, text or PDF bytes and returns numbered text lines,
-source URL, retrieval time, content hash and numbered links. Find searches the
-saved document, including phrases across display-line boundaries. Click resolves
-an actual saved link and fetches its target. Persistent page references survive
-native MCP process restarts within that isolated home. Unavailable references,
-failed downloads and document limits produce tool errors instead of invented text.
-
-The document cache lives in `<home>/web-cache/pages.sqlite` with a 64 MiB logical
-payload budget and oldest-first eviction. Downloads are limited to 10 MiB, text
-to 4 MiB, PDFs to 200 pages, extracted display lines to 100,000, and expanded
-link metadata to 10 MiB. An individual page larger than the cache budget fails
-before changing the cache; it cannot return an already-evicted reference.
-Responses explicitly report pagination and link
-truncation. This is a document reader: JavaScript execution, authenticated browser
-sessions and visual browser automation are separate capabilities.
-
-Public HTTP(S) addresses are supported by default, with private-address and
-redirect validation. The reader uses system certificate trust and configured
-HTTP(S) proxies, without website cookies or implicit `.netrc` login credentials.
-macOS VPN Fake-IP DNS in `198.18.0.0/15` is accepted for hostnames only when a
-kernel route confirms a TUN interface; literal reserved addresses remain blocked.
-The resolution mode is included in the fetched-page evidence.
-This MCP server has its own declared network capability, as native MCP servers do;
-command sandbox networking and hosted search are separate native permission paths.
-Operators can explicitly configure another named server with `--allow-private-host`
-for an intranet. The bundled configuration never enables that option.
-
-The launcher maintains only the bundled server's command and arguments, preserving
-other MCP servers, user comments, tool settings and explicit disablement. Disable
-the bundled reader using the native configuration:
+默认文档读取面向公共 HTTP(S) 地址，检查地址和重定向，缓存有容量限制，分页/截断会显式说明。它使用原生 MCP 的权限路径；MCP、托管搜索和 shell 的联网权限是不同路径。需要停用它可在独立 `config.toml` 中设置：
 
 ```toml
 [mcp_servers.codex_web]
 enabled = false
 ```
 
-Dependency locks include the SDK, parsers and build tools. Regenerate them with
-`uv pip compile --universal --generate-hashes --only-binary :all: --python-version 3.11
---output-file requirements.lock pyproject.toml build-requirements.in`.
+## 为什么有时不是官方 DeepSeek 路由
 
-## Lifetimes and recovery
+所有请求仍固定同一个 DeepSeek 模型。提供方在发送前按能力选择，优先级从上到下：
 
-A socket-owning service watchdog retains the profile's gateway endpoint across a
-worker crash. Native sessions and the managed daemon keep it alive; unused services
-exit after the idle window. It holds a lifetime lease and keeps a validated backup
-of ownership metadata. Native HTTP helpers die with their parent and can restart
-for the next request; in-flight requests are not replayed.
+| 请求条件 | 提供方 | 回执原因 |
+| --- | --- | --- |
+| 有工具，且明确要求 `parallel_tool_calls=false` | `primeintellect` | `explicit_serial_tools` |
+| JSON Schema 结构化输出 | `morph/fp8` | `strict_json_schema` |
+| 同时包含思考、托管网页搜索，以及原生 peer/未完成续接/缺少完成证明的模型历史 | `morph/fp8` | `native_peer_or_continuation_with_hosted_tools` 或 `unattested_native_history_with_hosted_tools` |
+| 其余普通请求 | **官方 `deepseek`** | `official_default` |
 
-The native-process supervisor monitors a private parent pipe on Unix and a
-kernel-validated parent identity on Windows. Windows console Ctrl-C/Ctrl-Break
-continue to reach native Codex directly; wrappers do not translate these events.
-Wrapper termination
-asks native Codex to shut down its owned work. Yielded command sessions follow
-native lifetimes: interrupting a turn does not mean every background command exits.
-MCP calls also retain upstream lifetimes: turn interruption stops sampling but can
-leave an already dispatched MCP read in progress. A same-version official/native
-comparison verifies this behavior and owner-exit connection cleanup. When the MCP
-client explicitly sends a cancellation notification, the browser cancels its HTTP
-request. These are separately tested guarantees, not one blanket abort claim.
-A direct SIGKILL of native Codex leaves command descendants on the audited upstream
-macOS baseline as well; it is recorded as an upstream limitation, not a passing
-cleanup guarantee. Signal only recorded PID plus kernel birth identity.
+每个请求设置 `provider.only`、`allow_fallbacks=false`、`require_parameters=true`。提供方报错不会触发适配层换路由重试；原生重试和取消仍由原生 runtime 负责。上面几种组合来自实际提供方差异复现，见 [互操作说明](upstream/README.md)。
 
-An unknown model result stays unknown in receipts. Provider completion is distinct
-from native delivery and actual tool effects. Native events/files are authoritative
-for those effects. Concurrent profiles use separate databases, services and tokens.
-Changes to runtime or credential/network environment while a profile has active
-native work require closing that work or using another home, preventing mixed
-versions inside one daemon.
+适配层保留调用 ID、工具输出和能表达的思考内容；不靠丢历史来强行通过官方路由。无法表达的语义、无效工具或不符合 Schema 的结果会显式报错。原生压缩移除相关历史后，普通请求可以重新使用官方路由。OpenAI 与 DeepSeek 的思考档位并非同一模型能力，档位按适配器的明确映射发送。
 
-## Verification and publication gates
+OpenAI 的加密远程状态、专属缓存搜索、Realtime/图片生成模型、ChatGPT Apps/Marketplace 与云任务账户等不包含在本地 runtime 等价范围内。Exa 不支持的缓存、位置偏好或图片搜索后端语义会返回明确兼容性错误。普通本地后台命令、队列和子智能体并不因此被替换或禁用。
 
-Offline tests must use a verified or explicitly built native HTTP helper:
+## 诊断、升级与清理
+
+先使用以下命令区分版本、配置和实际模型连接：
 
 ```sh
-CODEX_DEEPSEEK_TEST_HTTP_BINARY=/verified/package/bin/codex-http-transport \
-  PYTHONPATH=src python3 -m pytest tests -q
+codex-deepseek --version
+codex-deepseek runtime status
+codex-deepseek runtime doctor
+codex-deepseek doctor
 ```
 
-Live verifiers create fresh private homes, invoke paid APIs and preserve events,
-receipts and actual effects. They cover native permissions, user/Guardian approval,
-MCP OAuth/PKCE and cold credentials, direct/Code Mode tools, dynamic discovery,
-images, structured output, daemon/queue/goals, sampling cancellation, process IO,
-crash/restart and memory v1/v2. Never substitute an arithmetic reply for a tool or
-lifecycle effect. A fixture may authorize its own disposable hook explicitly;
-production hook trust remains native.
+`--help` / `--version` 不需要 key；`runtime status` 查看本发行包的绑定和目录，`runtime doctor` 做真实提供方验证，最后一条 `doctor` 是原生 Codex 的诊断命令。不要公开贴出含私人路径、项目正文或 token 的原始日志。显式开启 `CODEX_DEEPSEEK_TRACE_DIR` 会记录敏感请求上下文，只用于受控排查。
 
-Real-work fixtures use pre-fix snapshots of Jinja and HTTPcore, separate upstream
-fixed oracles, pinned/hash-verified dependencies and independent cancellation,
-TCP and TLS regressions. The HTTPcore workflow interrupts after source edits and
-cold-resumes; both tasks run in separate homes and must actually use their native
-reviewer. Regression and oracle tests run outside the model. Each fixture has
-a Python-3.11-only `pyproject.toml` and universal `uv.lock`; use `uv export --locked
---no-dev --no-emit-project --format requirements-txt --output-file dependencies.lock`
-inside that fixture directory to reproduce its hash-locked dependencies.
-Acceptance explicitly requires that cold restart, the independent oracle read
-denial and restored contents, every required suite, and a fresh reviewer result.
-Browser evidence must come from the final parent turn and form an ordered,
-reference-linked open/find/click chain; earlier turns and reviewer browsing do
-not satisfy it.
+| 现象 | 处理 |
+| --- | --- |
+| 找不到命令 | 检查 `.local/bin` 是否在当前终端 PATH，或直接使用不可变版本入口。 |
+| 缺少 key / Windows 凭据库不可用 | 运行 `runtime setup-key`；SSH/CI 用安全进程环境。检查是否有旧的 `OPENROUTER_API_KEY` 覆盖系统存储。 |
+| 原生产物或缓存摘要不符 | 保留异常文件，重新取得匹配版本的源码和归档，交给安装器验证；不要关闭摘要检查。 |
+| Linux 缺少动态库或 venv | 安装与系统匹配的 glibc/OpenSSL 3/libcap 运行库及 Python venv 支持；当前验证目标是 Ubuntu 24.04 GNU。 |
+| 模型未宣告 Code Mode 元数据的提醒 | 当前 catalog 不强制工具模式，提醒来自原生检查；模式使用情况见报告，不通过隐藏提醒制造通过。 |
+| 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
+
+升级时获取新发布版本，在新的不可变目录安装，先用 `--no-activate` 和独立 home 运行诊断，再执行不带该参数的安装完成入口切换。停止当前工作后可用原生命令管理本发行包 daemon：
 
 ```sh
-python3 prepare_real_work.py --output /fresh/fixtures --python /path/to/python3.11
-python3 verify_real_work.py --fixtures /fresh/fixtures
+codex-deepseek app-server daemon stop
+codex-deepseek app-server daemon update --from-cli --yes
 ```
 
-Use `--require-web-research` to require both real workflows to perform actual
-open/find/click against official documentation in addition to code changes and
-full independent validation. `verify_real_work_followup.py` resumes the same saved
-task after explicit acceptance feedback, preserving the failed attempt and requiring
-a fresh native reviewer, unchanged oracles and external suite reruns. HTTPcore
-follow-up acceptance repeats the real TCP stress three times.
+使用本项目的安装器升级；通用上游更新路径会被拒绝，以免移除提供方隔离。回退可直接运行保留的旧版本不可变入口，或从对应旧源码/归档运行安装器恢复入口；先备份需要的 home，不承诺未来上游状态格式可以任意降级。
 
-`verify_remaining_methods.py` verifies the fixed v0.3 gap list method by method.
-Sixty are local operations with checked state or effects. Four original entries
-are remote-backend contracts (hosted-App event streams and remote-plugin service
-operations); their account boundary is checked explicitly and never counted as a
-positive local lifecycle. Five native user-verification methods also require a
-ChatGPT account identity before accessing OS credentials: the same-version
-official/native comparison exercises only their unavailable-account guard, without
-enrolling, deleting or prompting for a real credential. The method matrix records
-these corrected scopes and all other account/platform exclusions.
-The complete frozen inventory has 174 client methods. The applicable local set
-contains 129 methods on macOS/Linux and 131 on Windows, including the separately
-tested local API-key account lifecycle and Windows sandbox lifecycle. These are
-required coverage counts, not a claim that a new build has already passed.
+取消一个采样轮次不等于清空所有后台工作。后台终端和已发出的 MCP 调用遵循原生生命周期；要清理应结束其实际拥有者，不能仅看到界面停止就认定子进程全部退出。上游直接遭到强杀也存在自身清理边界，报告保留这些事实。
 
-```sh
-python3 verify_remaining_methods.py --entry /immutable/release/venv/bin/codex-deepseek \
-  --output /private/method-acceptance --jobs 2
-```
+确认没有活跃会话、daemon 或构建进程后，可清理本项目的构建缓存、重复下载和临时测试环境。保留正在使用的版本、必要回退包、用户会话和关键验收回执；不要批量删除 `~/.codex`、其他 WSL 发行版或其他项目。更完整的运行与验收步骤见 [稳定方案](docs/STABLE_PLAN.zh-CN.md)。
 
-`verify_protocol_recovery.py` injects one invalid upstream response per native
-session, then observes native retry and real-model recovery. It verifies that
-undeclared tools and invalid JSON never execute tools or become final native
-results. `verify_browser_runtime.py`, `verify_browser_protocol.py` and
-`verify_native_mcp_lifetime.py` cover actual HTTP effects, public HTTPS, cold page
-references, native model-driven navigation, explicit MCP cancellation and the
-official native interruption baseline.
+## 源码与许可证
 
-The complete acceptance runner requires an actual immutable installed entry and
-independently built native policy and keyring-cleanup probes. Build each against
-the same verified native source using `build_native_probe.py --source-root
-/native/source --target-dir /native/target --output /new/probe-output --kind network`
-or `--kind secret-key`. Both probes use native runtime implementations and create
-no release runtime entrypoints. The network probe requires observable upstream
-cancellation. The keyring probe removes only credentials belonging to a marked,
-inactive acceptance fixture and verifies absence through the native store.
-Pass their paths as `--native-probe` and `--keyring-probe` to `run_acceptance.py`.
-The standard plan has 30 gates; exact pytest collection, artifact identity and
-per-target skip applicability are checked alongside the exit codes.
+项目源码采用 Apache-2.0。原生修改见 [公共补丁](native/codex-runtime.patch) 与 [Windows 传输补丁](native/windows-transport.patch)，构建和打包入口是 `build_native.py` / `package_native.py`。源码审计对照固定上游清单与补丁重放；外部 Cargo 依赖版本保持锁定。不同编译环境可能产生不同二进制摘要，不宣称跨机器构建天然逐字节一致。
 
-Windows privileged sandbox setup is tested only in the separately provisioned
-disposable Windows guest. Its supplemental receipt must identify the same full
-source, dependencies, model catalog and native manifest as the host-tested
-installation. Deployment paths can differ; the evidence retains both identities.
-
-```sh
-python3 run_acceptance.py --entry /immutable/release/venv/bin/codex-deepseek \
-  --native-probe /verified/native-policy-test-executable \
-  --keyring-probe /verified/native-keyring-test-executable \
-  --fixtures /fresh/fixtures --output /private/acceptance --jobs 2
-```
-
-`CODEX_DEEPSEEK_TEST_ENTRY` selects an explicit development or installed entry for
-live verifiers. Published acceptance must identify the actual immutable installed
-release, not only a mutable source wrapper. `CODEX_DEEPSEEK_TRACE_DIR` optionally
-stores sensitive project/context bodies; unset preserves daemon tracing and an
-explicitly empty value disables it. Do not publish raw traces, OAuth tokens,
-private profiles or user file paths.
-
-## Updates, rollback and cleanup
-
-The installer never repairs an active artifact in place. A damaged native package
-or adapter gets a new immutable repair directory; the previous launcher is retained
-until the new release passes integrity checks. Help/version and daemon stop/version
-work without starting a replacement provider service. To update a stopped daemon
-from this distribution, use `app-server daemon update --from-cli --yes`. The generic
-production updater is rejected because it would remove the provider isolation patch.
-
-Keep one verified release and rollback material only as needed. After all native
-owners and services are stopped, generated Rust targets, duplicate downloads and
-disposable fixture virtual environments may be removed. Preserve source patches,
-build/acceptance receipts, required user sessions and compressed failure evidence.
-Measure physical disk recovery with `df`; overlapping `du` totals are not proof of
-space reclaimed. Never bulk-delete `~/.codex` or another project's environment.
-
-The source is Apache-2.0. See `THIRD_PARTY_NOTICES.md` and native package notices.
-Upstream patches and interoperability reports are review material; they do not
-imply acceptance by OpenAI or OpenRouter.
+包内保留 Codex、ripgrep、Rust/Python 依赖的许可证与归属；Linux bubblewrap 同时提供原始许可证、对应源代码和构建出处，Windows 启动器保留 distlib 许可证。详见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [LICENSE](LICENSE)。[上游补充材料](upstream/README.md) 是可审查的补丁与复现说明，不代表已被 OpenAI 或 OpenRouter 接受。

@@ -77,3 +77,23 @@ def test_same_archive_name_with_new_digest_preserves_both_cached_artifacts(tmp_p
     for source,manifest,package in builds:
         assert installer.valid_native(package,manifest)
         assert (root/'downloads'/manifest['archive']['sha256'][:24]/source.name).read_bytes()==source.read_bytes()
+
+
+def test_build_staging_excludes_unattested_bytecode_and_previous_builds(tmp_path,monkeypatch):
+    source=tmp_path/'checkout';source.mkdir();monkeypatch.setattr(installer,'SOURCE',source)
+    expected={'pyproject.toml':b'[project]\nname="fixture"\n','src/fixture/__init__.py':b'VALUE=1\n'}
+    for name,payload in {**expected,'src/fixture/__pycache__/__init__.cpython-313.pyc':b'stale bytecode',
+                         'build/lib/fixture/removed.py':b'stale source',
+                         'src/fixture.egg-info/SOURCES.txt':b'stale inventory'}.items():
+        path=source/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(payload)
+    hashes={name:hashlib.sha256(payload).hexdigest() for name,payload in expected.items()}
+    staged=installer.stage_build_source(hashes,tmp_path/'staged')
+    actual={p.relative_to(staged).as_posix():p.read_bytes() for p in staged.rglob('*') if p.is_file()}
+    assert actual==expected
+
+
+def test_build_staging_rejects_a_changed_source_snapshot(tmp_path,monkeypatch):
+    source=tmp_path/'checkout';source.mkdir();monkeypatch.setattr(installer,'SOURCE',source)
+    (source/'module.py').write_bytes(b'changed source')
+    with pytest.raises(SystemExit,match='Source changed before packaging: module.py'):
+        installer.stage_build_source({'module.py':hashlib.sha256(b'original source').hexdigest()},tmp_path/'staged')

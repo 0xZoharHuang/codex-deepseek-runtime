@@ -12,6 +12,31 @@ def request(tools, **more):
     return {"model": MODEL, "input": [], "tools": tools, **more}
 
 
+def test_schema_format_requirement_preserves_native_tools_history_and_streaming():
+    import copy
+    from codex_deepseek.protocol import STRUCTURED_FORMAT_INSTRUCTION
+    body=request([{'type':'function','name':'lookup','parameters':{'type':'object'}}],
+                 instructions='Original native policy.',stream=True,
+                 input=[{'role':'user','content':[{'type':'input_text','text':'Read the data, then answer.'}]}])
+    plain,_=prepare(body);original=copy.deepcopy(body)
+    schema={'type':'object','properties':{'value':{'type':'integer'}},'required':['value'],'additionalProperties':False}
+    body['text']={'format':{'type':'json_schema','name':'result','strict':True,'schema':schema}}
+    frozen=copy.deepcopy(body);structured,_=prepare(body)
+    assert body==frozen
+    assert structured['tools']==plain['tools'] and structured['input']==plain['input']
+    assert structured['stream'] is True and structured['text']==body['text']
+    assert structured['instructions']==original['instructions']+'\n\n'+STRUCTURED_FORMAT_INSTRUCTION
+    assert plain['instructions']==original['instructions']
+    again,_=prepare({**body,'instructions':structured['instructions']})
+    assert again['instructions']==structured['instructions']
+
+
+@pytest.mark.parametrize('instructions',[False,0,[],{}])
+def test_schema_instruction_hint_does_not_coerce_invalid_instructions(instructions):
+    with pytest.raises(ProtocolError,match='instructions must be text'):
+        prepare(request([],instructions=instructions,text={'format':{'type':'json_schema','schema':{'type':'object'}}}))
+
+
 def test_custom_tool_roundtrip_preserves_source_call_pair_and_namespace():
     original = {"type": "namespace", "name": "functions", "tools": [
         {"type": "custom", "name": "exec", "description": "Run JavaScript", "format": {"type": "text"}}]}

@@ -120,7 +120,9 @@ def valid_release(release,source_hashes,catalog_hash,native_manifest=None):
         if not valid_native(Path(metadata['native_package']),stored):return False
         imports='import aiohttp,lark,zstandard,mcp,bs4,tomlkit,pypdf,codex_deepseek.cli,codex_deepseek.web_mcp'
         if WINDOWS:imports+=';import distlib;from codex_deepseek.windows_launchers import DISTLIB_VERSION;assert distlib.__version__==DISTLIB_VERSION'
-        return subprocess.run([str(python_entry(environment)),'-I','-c',imports],cwd=release,capture_output=True,timeout=15).returncode==0
+        # Cold imports on a clean, constrained Windows VM can take over 25s.
+        # Keep verification bounded without rejecting a healthy environment.
+        return subprocess.run([str(python_entry(environment)),'-I','-c',imports],cwd=release,capture_output=True,timeout=120).returncode==0
     except (OSError,ValueError,KeyError,TypeError,StopIteration,subprocess.TimeoutExpired):return False
 
 
@@ -133,6 +135,17 @@ def source_identity():
     digest=hashlib.sha256()
     for path in files:digest.update(path.relative_to(SOURCE).as_posix().encode()+b'\0'+path.read_bytes()+b'\0')
     return digest.hexdigest()[:20],{path.relative_to(SOURCE).as_posix():sha(path) for path in files}
+
+
+def stage_build_source(files,destination):
+    """Build only attested source, never checkout bytecode or old build output."""
+    destination=Path(destination);destination.mkdir()
+    for name,digest in files.items():
+        payload=(SOURCE/name).read_bytes()
+        if hashlib.sha256(payload).hexdigest()!=digest:
+            raise SystemExit('Source changed before packaging: '+name)
+        path=destination/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(payload)
+    return destination
 
 
 def activate_windows(root,release,bin_dir):
@@ -194,7 +207,9 @@ def install(root,*,native_archive=None,wheelhouse=None,activate=True):
         python=str(python_entry(environment))
         options=['--no-index','--find-links',str(Path(wheelhouse).resolve())] if wheelhouse else []
         subprocess.run([python,'-I','-m','pip','install','--disable-pip-version-check','--require-hashes','--only-binary=:all:',*options,'-r',str(SOURCE/'requirements.lock')],check=True)
-        subprocess.run([python,'-I','-m','pip','install','--disable-pip-version-check','--no-build-isolation','--no-deps',str(SOURCE)],check=True)
+        with tempfile.TemporaryDirectory(prefix='codex-deepseek-build-') as temporary:
+            staged=stage_build_source(all_hashes,Path(temporary)/'source')
+            subprocess.run([python,'-I','-m','pip','install','--disable-pip-version-check','--no-build-isolation','--no-deps',str(staged)],check=True)
         entry=console_entry(environment)
         if WINDOWS:
             program='from codex_deepseek.windows_launchers import make_installed_entry;make_installed_entry('+repr(str(entry))+')'

@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import secrets
 import shlex
 import signal
@@ -96,13 +96,24 @@ def native() -> Path:
         installation=json.loads((release/'installation.json').read_text(encoding='utf-8'))
         package=Path(installation['native_package']).resolve()
         required={name+EXE for name in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']}|{'codex-package.json'}
-        if WINDOWS:required|={'codex-resources/codex-windows-sandbox-setup.exe','codex-resources/codex-command-runner.exe'}
+        if WINDOWS:
+            required|={name+EXE for name in ['bin/codex-windows-sandbox-setup','bin/codex-command-runner',
+                'bin/codex-windows-managed-deny-probe','bin/codex-windows-sandbox-service',
+                'codex-resources/codex-windows-sandbox-setup','codex-resources/codex-command-runner']}
         if sys.platform.startswith('linux'):required.add('codex-resources/bwrap')
         if (manifest.get('status')!='ready' or manifest.get('distribution')!='codex-deepseek-runtime'
             or manifest.get('upstream_version')!=NATIVE_VERSION or not required<=set(manifest['files'])
             or not package.is_relative_to((data_root()/'native').resolve())):
             raise ValueError('Invalid dedicated native package boundary')
         for name,digest in manifest['files'].items():
+            relative=PurePosixPath(name)
+            if relative.is_absolute() or '..' in relative.parts or '\\' in name or ':' in name:
+                raise ValueError('Invalid native artifact path')
+            # Installation verifies the entire archive, including legal notices.
+            # Reopening thousands of non-executable notices at every helper
+            # launch can exhaust native startup deadlines on slower storage.
+            # Every executable, resource and runtime manifest still gets hashed.
+            if relative.parts and relative.parts[0]=='licenses':continue
             path=package/name
             if not path.resolve().is_relative_to(package) or path.is_symlink():raise ValueError('Invalid native artifact path')
             with path.open('rb') as stream:actual=hashlib.file_digest(stream,'sha256').hexdigest()
@@ -194,7 +205,7 @@ async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
     return generation,rows
 
 
-async def doctor(key: str, gateway, store, home) -> int:
+async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
     """Probe the actual native runtime, then verify its billed provider receipt."""
     work=home/'provider-state/doctor-work'
     work.mkdir(exist_ok=True,mode=0o700)
@@ -218,16 +229,23 @@ async def doctor(key: str, gateway, store, home) -> int:
     thread=next((event.get('thread_id') for event in events if event.get('type')=='thread.started'),None)
     answer=''.join(event.get('item',{}).get('text','') for event in events if event.get('type')=='item.completed' and event.get('item',{}).get('type')=='agent_message')
     row=store.db.execute("SELECT response_id,network_policy,provider,status FROM receipts WHERE context_key=? ORDER BY started DESC LIMIT 1",(thread,)).fetchone() if thread else None
-    if process.returncode or answer.strip()!='CONNECTED' or not row or row[3]!='completed':
+    if (process.returncode or not answer.strip() or not row or row[3]!='completed'
+            or not isinstance(row[0],str) or not row[0]):
         raise RuntimeError('Native connectivity probe failed; no successful model/provider receipt was established')
     response_id,policy,selected,_=row
-    transport=NativeTransport('https://openrouter.ai/api/v1/responses',binary=executable(native().parent,'codex-http-transport'))
+    transport=NativeTransport('https://openrouter.ai/api/v1/responses',binary=executable(native_binary.parent,'codex-http-transport'))
     try:generation,verification=await generation_receipt(transport,key,response_id,policy or 'default')
     finally:await transport.close()
     provider=generation.get('provider_name')
-    result={'status':'connected' if provider=='DeepSeek' and selected=='deepseek' else 'provider_verification_failed',
+    generation_id=generation.get('id');generation_model=generation.get('model')
+    verified=(generation_id==response_id
+              and generation_model in (MODEL,'deepseek/deepseek-v4.1-flash-20261017')
+              and provider=='DeepSeek' and selected=='deepseek')
+    result={'status':'connected' if verified else 'provider_verification_failed',
             'model':MODEL,'provider':provider,'fallbacks':False,'response_id':response_id,'native_version':NATIVE_VERSION,
-            'native_thread':thread,'network_policy':policy,'text':answer,'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER}
+            'generation_id':generation_id,'generation_model':generation_model,'selected_provider':selected,
+            'native_thread':thread,'network_policy':policy,'text':answer,'echo_expected':'CONNECTED','echo_exact_match':answer.strip()=='CONNECTED',
+            'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER}
     (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2), encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if result['status']=='connected' else 1
@@ -251,11 +269,14 @@ async def run(arguments: list[str]) -> int:
     from .web_config import ensure_browser
     ensure_browser(runtime_home)
     arguments=bind_remote(arguments,check_attachment(arguments,runtime_home))
-    check_daemon_package(arguments,runtime_home,native())
+    # This invocation uses one immutable native package. Verify it once here;
+    # every subsequent run (including the doctor's child) verifies independently.
+    binary=native()
+    check_daemon_package(arguments,runtime_home,binary)
     store = Store(runtime_home / 'provider-state' / 'adapter.sqlite')
     try:
         migrate_searches(root / 'adapter.sqlite', runtime_home, store)
-        async with ProviderService(runtime_home,catalog_path(),native_binary=native()) as gateway:
+        async with ProviderService(runtime_home,catalog_path(),native_binary=binary) as gateway:
             values = dict(arg.split('=',1) for arg in overrides(gateway.port)[1::2])
             expected = bindings(tomllib.loads('value='+values['model_providers.deepseek_runtime'])['value'],catalog_path(),runtime_home)
             check_cli(arguments,expected)
@@ -267,16 +288,15 @@ async def run(arguments: list[str]) -> int:
                 with open(temporary,'w',opener=lambda name,flags:os.open(name,flags,0o600)) as output:output.write(content)
                 replace_file(temporary,policy)
             if arguments == ["runtime","doctor"]:
-                return await doctor(credential(), gateway, store, runtime_home)
+                return await doctor(credential(), gateway, store, runtime_home,native_binary=binary)
             if arguments == ["runtime","status"]:
-                print(json.dumps({"native": str(native()), "version": NATIVE_VERSION, "model": MODEL,
+                print(json.dumps({"native": str(binary), "version": NATIVE_VERSION, "model": MODEL,
                                   "provider": "deepseek", "structured_provider": STRUCTURED_PROVIDER,
                                   "serial_provider": SERIAL_PROVIDER,
                                   "peer_hosted_provider": PEER_HOSTED_PROVIDER,
                                   "fallbacks": False, "state": str(store.path), "runtime_home":str(runtime_home),
                                   "release_environment":sys.prefix,"model_catalog":str(catalog_path())}, indent=2))
                 return 0
-            binary=native()
             environment=native_environment(runtime_home,gateway.token,binary,port=gateway.port)
             argv, interactive = native_arguments(arguments, gateway.port)
             read_fd, owner_fd = (None,None) if WINDOWS else os.pipe()
@@ -330,7 +350,7 @@ def main() -> None:
             raise SystemExit(setup_key())
         raise SystemExit(asyncio.run(run(arguments)))
     except (RuntimeError, OSError, ValueError) as exc:
-        print("codex-deepseek: " + str(exc), file=sys.stderr)
+        print("codex-deepseek: " + (str(exc) or type(exc).__name__), file=sys.stderr)
         raise SystemExit(1)
 
 

@@ -6,6 +6,24 @@ import subprocess
 import sys
 import pytest
 
+
+@pytest.mark.skipif(os.name!='nt',reason='Windows socket ownership handshake')
+@pytest.mark.parametrize('reply,exception',[(None,TimeoutError),({'ready':True,'pid':999},RuntimeError),({'ready':True,'pid':431},None)])
+def test_slow_socket_worker_handshake_keeps_identity_check(monkeypatch,reply,exception):
+    from types import SimpleNamespace
+    import codex_deepseek.windows_sockets as sockets
+    waits=[]
+    class Messages:
+        def __init__(self,stream):pass
+        def read(self,seconds):waits.append(seconds);return reply
+    monkeypatch.setattr(sockets,'Messages',Messages)
+    listener=SimpleNamespace(setblocking=lambda flag:None)
+    process=SimpleNamespace(stdout=None,pid=431)
+    if exception:
+        with pytest.raises(exception):sockets.Broker(listener,process)
+    else:assert sockets.Broker(listener,process).process is process
+    assert waits==[120]
+
 # A real console is created per probe so broadcasts cannot reach the calling
 # shell/App. The endpoint is local and never emits commands or uses an API key.
 PROBE = r"""from pathlib import Path

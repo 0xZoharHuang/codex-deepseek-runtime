@@ -22,6 +22,12 @@ import urllib.request
 from .processes import identity,matches,terminate
 from .bootstrap import module_command, module_environment
 
+# Windows can cold-load both supervisor and worker from a newly installed
+# environment. Keep the outer deadline longer than the worker's handshake;
+# successful readiness still requires a matching process and authenticated health.
+STARTUP_SECONDS = 180 if WINDOWS else 20
+RECOVERY_SECONDS = 120 if WINDOWS else 10
+
 
 def code_id(catalog,native_binary=None):
     digest=hashlib.sha256((sys.prefix+'\0'+sys.version).encode())
@@ -139,7 +145,7 @@ def ensure(home,catalog,native_binary=None):
                 if native_active(home):raise RuntimeError('The provider runtime or its network/credential environment changed. Close native sessions and stop this profile daemon, or use a separate isolated home')
                 terminate(old['pid'],old['birth'])
             else:
-                end=time.monotonic()+10
+                end=time.monotonic()+RECOVERY_SECONDS
                 while time.monotonic()<end:
                     if healthy(old):
                         atomic_json(descriptor_path(home),old)
@@ -154,7 +160,7 @@ def ensure(home,catalog,native_binary=None):
             for name in ['CODEX_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_TRACE_DIR']:environment.pop(name,None)
             process=subprocess.Popen(module_command('codex_deepseek.service',home,catalog,str(native_binary) if native_binary else ''),
                 stdin=subprocess.DEVNULL,stdout=log,stderr=log,env=module_environment(environment),**({'creationflags':subprocess.CREATE_NEW_PROCESS_GROUP|subprocess.DETACHED_PROCESS} if WINDOWS else {'start_new_session':True}))
-        birth=identity(process.pid);end=time.monotonic()+20
+        birth=identity(process.pid);end=time.monotonic()+STARTUP_SECONDS
         while time.monotonic()<end:
             value=read_descriptor(home)
             if value.get('pid')==process.pid and value.get('code_id')==expected and healthy(value):return value

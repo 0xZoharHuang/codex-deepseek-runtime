@@ -214,6 +214,8 @@ def expected_offline_skips(target):
             result['test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time['+name+']']='Native Windows daemon creation FILETIME record'
         for parameters in ['0-1-SIGINT','1-3221225786-SIGBREAK']:
             result['test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status['+parameters+']']='Windows console control events; requires a Windows native package'
+        for parameters in ['None-TimeoutError','reply1-RuntimeError','reply2-None']:
+            result['test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check['+parameters+']']='Windows socket ownership handshake'
         for name in ['test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation',
                      'test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably',
                      'test_locked_activation_fails_atomically_and_preserves_current_receipt']:

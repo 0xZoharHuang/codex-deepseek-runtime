@@ -52,7 +52,10 @@ class HandoffError(RuntimeError):pass
 class Broker:
     def __init__(self,listener,process):
         self.listener=listener;self.listener.setblocking(False);self.process=process;self.messages=Messages(process.stdout);self.sequence=0
-        ready=self.messages.read(20)
+        # Cold imports in a clean Windows user profile can exceed 20 seconds.
+        # Waiting longer never authorizes a different process or a partial reply.
+        ready=self.messages.read(120)
+        if ready is None:raise TimeoutError('Windows socket worker startup exceeded 120 seconds before its owned control channel was ready')
         if ready!={'ready':True,'pid':process.pid}:raise RuntimeError('Windows socket worker did not establish its owned control channel')
 
     def accept(self,timeout=.1):

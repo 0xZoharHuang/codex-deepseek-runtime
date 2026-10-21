@@ -1,0 +1,392 @@
+{
+  "status": "passed",
+  "baseline_gap_count": 64,
+  "positive_local_methods": 60,
+  "backend_boundary_count": 4,
+  "methods": {
+    "server/diagnostics": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "model/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "modelProvider/capabilities/read": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "experimentalFeature/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "experimentalFeature/enablement/set": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "permissionProfile/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "collaborationMode/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "mock/experimentalMethod": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "configRequirements/read": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "config/batchWrite": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "memory/status": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "memory/reset": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "hooks/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "skills/extraRoots/set": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "skills/config/write": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "fuzzyFileSearch": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "fuzzyFileSearch/sessionStart": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "fuzzyFileSearch/sessionUpdate": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "fuzzyFileSearch/sessionStop": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c5838b8ca64338437a4ccf4480997a9c5efc45ca11a8ca8651d47bef21d35768"
+    },
+    "thread/increment_elicitation": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/decrement_elicitation": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "project/import": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "project/move": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "threadSection/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/metadata/update": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/search": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/searchOccurrences": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/readState/update": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/items/read": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/timeline/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/inject_items": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/shellCommand": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/revert": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/unsubscribe": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "thread/delete": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "b512e6cf23f62bdf5b63dfb90c44646199a89ba0e3b7078e20e224b66a976633"
+    },
+    "process/resizePty": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "process/kill": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "command/exec/terminate": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "environment/add": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "environment/info": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "environment/status": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "thread/backgroundTerminals/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "thread/backgroundTerminals/terminate": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "thread/backgroundTerminals/clean": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "343605f36e8b2ab850c409b4c9a59a1a5cbe26039c30bb624779222e841be962"
+    },
+    "marketplace/add": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "plugin/list": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "plugin/search": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "plugin/installed": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "marketplace/upgrade": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "plugin/reconcile": {
+      "status": "backend_boundary_verified",
+      "scope": "backend",
+      "reason": "Frozen upstream reconciles remote installed bundles only with Codex-backend authentication; local marketplace upgrades use marketplace/upgrade.",
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "plugin/skill/read": {
+      "status": "backend_boundary_verified",
+      "scope": "backend",
+      "reason": "Frozen upstream method fetches remote service plugin skill details; local skills remain accessible through native skills/list and filesystem tools.",
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "marketplace/remove": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "2b6e138c6e27b3b1b844c638f983c9fed3c70aee5d5ff273e6ae5eab0a3e1e91"
+    },
+    "mcpServer/resource/read": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "a563764dc802fc56ea551ccde2a64ce7185fd70e8d777a033de508f8202e0d69"
+    },
+    "mcpServer/tool/call": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "a563764dc802fc56ea551ccde2a64ce7185fd70e8d777a033de508f8202e0d69"
+    },
+    "mcpServer/event/stream/start": {
+      "status": "backend_boundary_verified",
+      "scope": "backend",
+      "reason": "Frozen upstream explicitly restricts this endpoint to hosted Apps; ordinary local MCP subscriptions are not this API contract.",
+      "evidence_sha256": "a563764dc802fc56ea551ccde2a64ce7185fd70e8d777a033de508f8202e0d69"
+    },
+    "mcpServer/event/stream/stop": {
+      "status": "backend_boundary_verified",
+      "scope": "backend",
+      "reason": "Idempotent stop branch executed; positive hosted-App event-stream lifecycle requires the excluded backend.",
+      "evidence_sha256": "a563764dc802fc56ea551ccde2a64ce7185fd70e8d777a033de508f8202e0d69"
+    },
+    "externalAgentConfig/detect": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "4ce835cc51b3214253616b96fd5754532ce66b624c825bb0b30804f4d28fe73e"
+    },
+    "externalAgentConfig/import": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "4ce835cc51b3214253616b96fd5754532ce66b624c825bb0b30804f4d28fe73e"
+    },
+    "externalAgentConfig/import/recordHistory": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "4ce835cc51b3214253616b96fd5754532ce66b624c825bb0b30804f4d28fe73e"
+    },
+    "externalAgentConfig/import/readHistories": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "4ce835cc51b3214253616b96fd5754532ce66b624c825bb0b30804f4d28fe73e"
+    },
+    "thread/queue/start": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c1da6fef58657a235f28a57ada65b91ff6d68976014df4b326020ae3ce43e966"
+    },
+    "turn/settings/update": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c1da6fef58657a235f28a57ada65b91ff6d68976014df4b326020ae3ce43e966"
+    },
+    "thread/approveGuardianDeniedAction": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c1da6fef58657a235f28a57ada65b91ff6d68976014df4b326020ae3ce43e966"
+    },
+    "rollout/compress": {
+      "status": "passed",
+      "scope": "local",
+      "reason": null,
+      "evidence_sha256": "c1da6fef58657a235f28a57ada65b91ff6d68976014df4b326020ae3ce43e966"
+    }
+  }
+}

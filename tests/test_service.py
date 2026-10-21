@@ -9,6 +9,48 @@ from codex_deepseek.processes import matches,terminate
 from codex_deepseek.service import ensure,healthy,native_active,read_descriptor
 
 
+def test_cold_windows_startup_waits_for_authenticated_health_without_relaunch(tmp_path,monkeypatch):
+    """A cold worker can take 26s; a descriptor alone is never readiness."""
+    from types import SimpleNamespace
+    import codex_deepseek.service as service
+    clock=[0.0];launched=[];terminated=[]
+    value={'pid':431,'birth':'fixture','code_id':'a'*64}
+    monkeypatch.setattr(service,'STARTUP_SECONDS',180)
+    monkeypatch.setattr(service,'code_id',lambda *args:'a'*64)
+    monkeypatch.setattr(service,'read_descriptor',lambda home:value if launched else {})
+    monkeypatch.setattr(service,'matches',lambda *args:False)
+    monkeypatch.setattr(service,'identity',lambda pid:'fixture')
+    monkeypatch.setattr(service,'healthy',lambda metadata:clock[0]>=26)
+    monkeypatch.setattr(service.time,'monotonic',lambda:clock[0])
+    monkeypatch.setattr(service.time,'sleep',lambda seconds:clock.__setitem__(0,clock[0]+seconds))
+    def launch(*args,**kwargs):
+        launched.append(args)
+        return SimpleNamespace(pid=431,poll=lambda:None)
+    monkeypatch.setattr(service.subprocess,'Popen',launch)
+    monkeypatch.setattr(service,'terminate',lambda *args:terminated.append(args))
+    assert ensure(tmp_path/'home',tmp_path/'catalog')==value
+    assert 26<=clock[0]<27 and len(launched)==1 and not terminated
+
+
+def test_startup_timeout_still_terminates_only_its_owned_process(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    import pytest
+    import codex_deepseek.service as service
+    clock=[0.0];terminated=[]
+    monkeypatch.setattr(service,'STARTUP_SECONDS',180)
+    monkeypatch.setattr(service,'code_id',lambda *args:'a'*64)
+    monkeypatch.setattr(service,'read_descriptor',lambda home:{})
+    monkeypatch.setattr(service,'matches',lambda *args:False)
+    monkeypatch.setattr(service,'identity',lambda pid:'exact-birth')
+    monkeypatch.setattr(service,'healthy',lambda metadata:False)
+    monkeypatch.setattr(service.time,'monotonic',lambda:clock[0])
+    monkeypatch.setattr(service.time,'sleep',lambda seconds:clock.__setitem__(0,clock[0]+seconds))
+    monkeypatch.setattr(service.subprocess,'Popen',lambda *args,**kwargs:SimpleNamespace(pid=431,poll=lambda:None))
+    monkeypatch.setattr(service,'terminate',lambda *args:terminated.append(args))
+    with pytest.raises(RuntimeError,match='failed startup'):ensure(tmp_path/'home',tmp_path/'catalog')
+    assert 180<=clock[0]<181 and terminated==[(431,'exact-birth')]
+
+
 def test_profile_service_reuses_identity_and_recovers_worker_without_port_change(tmp_path,monkeypatch,assert_private):
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
     home=tmp_path/'private-home';home.mkdir(mode=0o700)

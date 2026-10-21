@@ -218,11 +218,16 @@ def test_only_exact_os_inapplicable_cases_may_skip():
     linux=acceptance.expected_offline_skips('x86_64-unknown-linux-gnu')
     mac=acceptance.expected_offline_skips('aarch64-apple-darwin')
     windows=acceptance.expected_offline_skips('x86_64-pc-windows-msvc')
-    assert len(linux)==8 and len(mac)==9 and len(windows)==1
+    assert len(linux)==11 and len(mac)==12 and len(windows)==1
     assert not any('terminal_acceptance' in key or 'test_activation_preserves_unrelated' in key for key in mac)
     assert set(mac)-set(linux)==set(windows)
     assert 'test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]' in linux
     assert len([name for name in linux if name.startswith('test_windows_launchers::')])==3
+    handshake={name:reason for name,reason in linux.items() if 'test_slow_socket_worker_handshake_keeps_identity_check' in name}
+    assert handshake=={
+        'test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check['+parameters+']':'Windows socket ownership handshake'
+        for parameters in ['None-TimeoutError','reply1-RuntimeError','reply2-None']}
+    assert not set(handshake)&set(windows)
 
 
 @pytest.mark.parametrize('change',['equal','missing','changed','both_empty','extra'])

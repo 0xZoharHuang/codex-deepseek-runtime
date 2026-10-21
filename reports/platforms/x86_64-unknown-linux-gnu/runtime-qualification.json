@@ -1,0 +1,1480 @@
+{
+  "status": "accepted_for_frozen_target_local_runtime_scope",
+  "version": "0.5.0",
+  "source_id": "94c01b01aa57087becee",
+  "target": "x86_64-unknown-linux-gnu",
+  "platform": "Linux x86_64 GNU",
+  "upstream_version": "0.164.0-alpha.7",
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "baseline_matrix_sha256": "95845b7f973fc9401888a5429ef6a09a94ac388bf12c80ad7b301a2e0c6f3a43",
+  "model": "deepseek/deepseek-v4.1-flash-1017",
+  "native_archive_sha256": "18a1ad940111ef627a6a1b8a75254ba5b1a3d927377307690ada2996af450871",
+  "adapter_source_sha256": {
+    "src/codex_deepseek/__init__.py": "618cf4af36eb9872807ffb96c20f84bac88262d96171ac344520ad7d30e15f8e",
+    "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+    "src/codex_deepseek/bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+    "src/codex_deepseek/browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+    "src/codex_deepseek/cli.py": "71384eb5e13d9ef2955e2e128b024ab98dd956258d8fd55b18066837c2a80308",
+    "src/codex_deepseek/credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+    "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+    "src/codex_deepseek/gateway.py": "71056a32bb329318afb2e156a8142e86eb5b622ee0ddb5fd2a0f25328e8245c0",
+    "src/codex_deepseek/isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+    "src/codex_deepseek/native_http.py": "8af97a371fc6e1881d2cbd99e47b6cb04438ff1089b79d4e9f76a02aebb23a28",
+    "src/codex_deepseek/platforms.py": "96bec6d68bf4871d2406b9b9c064b2c5a8485831407175d60032f9858a27b5bb",
+    "src/codex_deepseek/policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+    "src/codex_deepseek/processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+    "src/codex_deepseek/protocol.py": "22c96ede19f27598b8681c0d3da48dc97d6d3f429f1c660c335cc684c5803211",
+    "src/codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+    "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+    "src/codex_deepseek/service.py": "f341a205bfc6aaf72badaa719b119303e502c112f685158069f345380ed4d386",
+    "src/codex_deepseek/state.py": "d6f00dabf3e4eace6943177730cefdd393c3e380600631ef44a2f4d0853212b1",
+    "src/codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+    "src/codex_deepseek/supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+    "src/codex_deepseek/web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+    "src/codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+    "src/codex_deepseek/windows_launchers.py": "aa635c5bde5805b37576edfc8a2661ad88f23e5042947fa6a7f07a55201e61c5",
+    "src/codex_deepseek/windows_sockets.py": "4e6080d38d470e33820177c4ef4e9fe9d266fc0ff90742cea76bf776e023a42c"
+  },
+  "native_schemas_compared": 456,
+  "native_schema_differences": [],
+  "client_methods": 174,
+  "native_source_audit": {
+    "upstream_source_files": 9353,
+    "unchanged_protected_runtime_files": 348,
+    "external_cargo_packages_unchanged": true,
+    "patch_replay_passed": true,
+    "patch_sha256": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
+    "declared_changed_files": [
+      "codex-rs/Cargo.lock",
+      "codex-rs/Cargo.toml",
+      "codex-rs/cli/src/main.rs",
+      "codex-rs/config/src/isolated_provider.rs",
+      "codex-rs/config/src/lib.rs",
+      "codex-rs/config/src/loader/managed_requirements.rs",
+      "codex-rs/config/src/loader/mod.rs",
+      "codex-rs/core/src/tools/spec_plan.rs",
+      "codex-rs/deepseek-http-transport/Cargo.toml",
+      "codex-rs/deepseek-http-transport/src/main.rs",
+      "codex-rs/deepseek-http-transport/tests/native_policy.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/sampler.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/startup.rs",
+      "codex-rs/http-client/src/client_builder.rs",
+      "codex-rs/http-client/src/dedicated_transport.rs",
+      "codex-rs/http-client/src/lib.rs",
+      "codex-rs/http-client/src/network_policy.rs",
+      "codex-rs/http-client/src/outbound_proxy.rs",
+      "codex-rs/http-client/src/route_aware_client_pool/execution.rs",
+      "codex-rs/rmcp-client/src/oauth.rs",
+      "codex-rs/stdio-to-uds/Cargo.toml",
+      "codex-rs/stdio-to-uds/src/lib.rs"
+    ]
+  },
+  "browser_sandbox_mode": "workspace-write",
+  "linux_bundled_sandbox_resources": {
+    "bundled_resource_forced": true,
+    "native_inside_write": true,
+    "native_outside_write_denied": true,
+    "tampered_bwrap_rejected_before_execution": true,
+    "bwrap_sha256": "56fa8fdae4643daccc90892e908a52b9afb06db58fe10df5903dc495f0311510"
+  },
+  "native_terminal_lifecycles": {
+    "tui": {
+      "passed": true,
+      "terminal": "pty",
+      "backend": "shared",
+      "same_thread_cold_resume": true,
+      "sandbox_mode": "workspace-write"
+    },
+    "tui-interrupt": {
+      "passed": true,
+      "terminal": "pty",
+      "backend": "shared",
+      "same_session_continued_after_ctrl_c": true,
+      "background_retained_until_native_stop": true,
+      "native_stop_kernel_cleanup_verified": true,
+      "sandbox_mode": "workspace-write"
+    }
+  },
+  "local_methods_positive_evidence": 129,
+  "new_local_methods_individually_passed": 60,
+  "rpc_raw_witness_reconstruction": {
+    "raw_native_sessions_reconstructed": 60,
+    "methods_reconstructed": 129
+  },
+  "rpc_non_rpc_producers": {
+    "search": "Direct Gateway/NativeTransport search, HTTP and citation checks; no native Peer or JSON-RPC producer. Its standard gate remains required."
+  },
+  "local_account_variants_verified": [
+    "account/login/cancel",
+    "account/login/start",
+    "account/logout",
+    "account/read"
+  ],
+  "windows_sandbox_lifecycle_verified": false,
+  "supplemental_lifecycle_lineage": {
+    "local_account": {
+      "content_equivalent": true,
+      "deployment_relocated": false,
+      "entry": "<linux-validation-root>/runtime/releases/94c01b01aa57087becee/venv/bin/codex-deepseek",
+      "entry_sha256": "a3ff63af45bcb5d5963821aca1070a917268fc67dc4119c87a3d500e96be8da7",
+      "release_environment": "<linux-validation-root>/runtime/releases/94c01b01aa57087becee/venv",
+      "native_package": "<linux-validation-root>/runtime/native/18a1ad940111ef627a6a1b8a",
+      "source_id": "94c01b01aa57087becee",
+      "native_manifest_sha256": "479867d244bca3c041f5b644725c1ffe32f56361087595294311cbb48a64a5f0"
+    }
+  },
+  "native_probes": {
+    "revocation": {
+      "path": "<linux-validation-root>/build/target/release/deps/deepseek_policy_revocation-b424f1662c20822b",
+      "sha256": "dc1565f9f783986c21fdb1b6d1a4352b74bf76ffd6c76cb69f6c1132dd2d152b"
+    },
+    "keyring": {
+      "path": "<linux-validation-root>/build/target/release/deps/deepseek_fixture_secret_key-5bf43f19e6a7587c",
+      "sha256": "92c9bb52f8a38d69dfe77514767a8cde51f35a0f272c729cded139fd53998aa4"
+    }
+  },
+  "corrected_backend_entries": 4,
+  "user_verification_account_boundaries": 5,
+  "all_174_positive_lifecycles_claimed": false,
+  "offline_tests_passed": 439,
+  "offline_platform_inapplicable": {
+    "test_platforms::test_extended_paths_cannot_alias_codex_app_state": "Win32 extended-length directory aliases",
+    "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]": "Native Windows daemon creation FILETIME record",
+    "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]": "Native Windows daemon creation FILETIME record",
+    "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]": "Windows console control events; requires a Windows native package",
+    "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]": "Windows console control events; requires a Windows native package",
+    "test_windows_launchers::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation": "Exercises Windows PE executable launchers",
+    "test_windows_launchers::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably": "Exercises Windows PE executable launchers",
+    "test_windows_launchers::test_locked_activation_fails_atomically_and_preserves_current_receipt": "Exercises Windows PE executable launchers"
+  },
+  "qa_producer_consumer_lineage": {
+    "producer": "explicit_frozen_snapshot",
+    "producer_source": "<linux-validation-root>/final-qa-b89685d4c2d4a281",
+    "producer_snapshot_sha256": "b89685d4c2d4a281bf8198cc4cb8bd008416d839d05283021b86acc859fc9617",
+    "producer_manifest_sha256": "8e920921e11ff7533d1d65083b01a8b6be66109d5537c99d79e1cc9f6677c192",
+    "producer_python_sha256": "d823fb65a5d9467565246f47fe77824a375db787c9bcb1bd356da50edfcda870",
+    "consumer_sha256": "3e1af54df450b66594bf732a00f3d8d89e59170b2e18e0a4f11af63ef5447722",
+    "changed_qa_files": [
+      "assemble_release_acceptance.py",
+      "tests/test_complex_runtime.py",
+      "tests/test_platform_verifiers.py",
+      "tests/test_qualification_scope.py",
+      "tests/test_terminal_acceptance.py",
+      "verify_complex_runtime.py",
+      "verify_remaining_local.py",
+      "verify_rpc_observations.py",
+      "verify_tui_audit.py",
+      "verify_tui_interrupt.py"
+    ],
+    "unchanged_installed_product_source_files": 70,
+    "terminal_revalidation": {
+      "replacement_root": "<linux-validation-root>/final-current-84ea-linux-terminal/fa70a569-b2f6-49e7-9901-66ed4fc3e091",
+      "original_failed_gates": [
+        "tui"
+      ],
+      "original_terminal_gates": [
+        {
+          "gate": "tui",
+          "exit": 1,
+          "seconds": 27.89,
+          "log": "tui.log"
+        },
+        {
+          "gate": "tui-interrupt",
+          "exit": 0,
+          "seconds": 31.98,
+          "log": "tui-interrupt.log"
+        }
+      ],
+      "replacement_gates": [
+        {
+          "gate": "tui",
+          "exit": 0,
+          "seconds": 49.06,
+          "log": "tui.log"
+        },
+        {
+          "gate": "tui-interrupt",
+          "exit": 0,
+          "seconds": 30.83,
+          "log": "tui-interrupt.log"
+        }
+      ],
+      "replacement_artifact_sha256": "572f602e2553e1d09e9bb01ac84ba4bf6eb09b54da836a656c9f22d779c12207",
+      "replacement_verdict_sha256": "ad40feb69b0980d48796bb3cc322dd08966afb02fd1d8d896f489942e11d4148",
+      "original_results_preserved": true,
+      "execution_source_sha256": {
+        "credential_acceptance.py": "c388aa079f3241faedce00d2967e0079d839a180e83a9d198875e1bc17920ed8",
+        "install.py": "378e0617e0a462181596af5a03a7f7d2adeffb5055ad2b225c52bf0d6bdeb804",
+        "process_acceptance.py": "71066899d22ab5aab8a89513b7bafb704456ea47737f0c39a480a17ad505177f",
+        "run_acceptance.py": "4b607d1bfa6a2d8a4ee7d53c6fc3a16be39b94021bd621e1214820f4228d6304",
+        "src/codex_deepseek/__init__.py": "618cf4af36eb9872807ffb96c20f84bac88262d96171ac344520ad7d30e15f8e",
+        "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+        "src/codex_deepseek/bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+        "src/codex_deepseek/browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+        "src/codex_deepseek/cli.py": "71384eb5e13d9ef2955e2e128b024ab98dd956258d8fd55b18066837c2a80308",
+        "src/codex_deepseek/credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+        "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+        "src/codex_deepseek/gateway.py": "71056a32bb329318afb2e156a8142e86eb5b622ee0ddb5fd2a0f25328e8245c0",
+        "src/codex_deepseek/isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+        "src/codex_deepseek/native_http.py": "8af97a371fc6e1881d2cbd99e47b6cb04438ff1089b79d4e9f76a02aebb23a28",
+        "src/codex_deepseek/platforms.py": "96bec6d68bf4871d2406b9b9c064b2c5a8485831407175d60032f9858a27b5bb",
+        "src/codex_deepseek/policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+        "src/codex_deepseek/processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+        "src/codex_deepseek/protocol.py": "22c96ede19f27598b8681c0d3da48dc97d6d3f429f1c660c335cc684c5803211",
+        "src/codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+        "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+        "src/codex_deepseek/service.py": "f341a205bfc6aaf72badaa719b119303e502c112f685158069f345380ed4d386",
+        "src/codex_deepseek/state.py": "d6f00dabf3e4eace6943177730cefdd393c3e380600631ef44a2f4d0853212b1",
+        "src/codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+        "src/codex_deepseek/supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+        "src/codex_deepseek/web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+        "src/codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+        "src/codex_deepseek/windows_launchers.py": "aa635c5bde5805b37576edfc8a2661ad88f23e5042947fa6a7f07a55201e61c5",
+        "src/codex_deepseek/windows_sockets.py": "4e6080d38d470e33820177c4ef4e9fe9d266fc0ff90742cea76bf776e023a42c",
+        "terminal_acceptance.py": "c2b65caa47769066e40cec38ed30409bcb82dcd28595832da01a16fefc314d3b",
+        "verify_tui_audit.py": "72d40ba2053e2edac63dae40028718162a1bd2652b22081a09281672812d2a45",
+        "verify_tui_interrupt.py": "b209c19f2c80493051af727b0c2d7598248103a3539d7864cdf3e7459f93c9eb"
+      },
+      "other_qa_changes_rechecked_by_current_offline": [
+        "assemble_release_acceptance.py",
+        "tests/test_complex_runtime.py",
+        "tests/test_qualification_scope.py",
+        "verify_complex_runtime.py"
+      ]
+    },
+    "method_producers": {
+      "five_execution_producers_current": true,
+      "scope_helper_from_regression_snapshot": {
+        "file": "assemble_release_acceptance.py",
+        "producer_source": "<linux-validation-root>/final-qa-84ea49093961537d",
+        "producer_sha256": "64c5d8535e72dc701ab6e9fb907c9a3c0de59e32ced113b4ea0a3db7bfe32a09",
+        "consumer_sha256": "3e1af54df450b66594bf732a00f3d8d89e59170b2e18e0a4f11af63ef5447722"
+      }
+    },
+    "original_offline": {
+      "tests_passed": 367,
+      "platform_inapplicable": {
+        "test_platforms::test_extended_paths_cannot_alias_codex_app_state": "Win32 extended-length directory aliases",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]": "Native Windows daemon creation FILETIME record",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]": "Native Windows daemon creation FILETIME record",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]": "Windows console control events; requires a Windows native package",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]": "Windows console control events; requires a Windows native package",
+        "test_windows_launchers::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_locked_activation_fails_atomically_and_preserves_current_receipt": "Exercises Windows PE executable launchers"
+      },
+      "artifact_sha256": "a865966a7961fd6f106586608634462fd612ec652506874c1b529f6d55945f17",
+      "verdict_sha256": "ebf7a6dc34efc480169f233184542892efe9d353bd909f3cab406fe5ddb361d5",
+      "collection_sha256": "9f4772e2a2ff679ee84b7df28a751376adf077a4819bf48d8d1f74633992c9a3",
+      "junit_sha256": "412fbb06d81b0d0c34807341795750906e6ad4033b2e881a5bf19c300b217e51"
+    },
+    "current_offline": {
+      "tests_passed": 439,
+      "platform_inapplicable": {
+        "test_platforms::test_extended_paths_cannot_alias_codex_app_state": "Win32 extended-length directory aliases",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]": "Native Windows daemon creation FILETIME record",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]": "Native Windows daemon creation FILETIME record",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]": "Windows console control events; requires a Windows native package",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]": "Windows console control events; requires a Windows native package",
+        "test_windows_launchers::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_locked_activation_fails_atomically_and_preserves_current_receipt": "Exercises Windows PE executable launchers"
+      },
+      "artifact_sha256": "fcb17850317f9d5fa2a6db1854f86bd609fce405d24575cae75d3175924299e4",
+      "verdict_sha256": "1be29b7c8441afa42b6290f71bf719987caad50b8fc40bac48032ab9ecf5cef5",
+      "collection_sha256": "803611db26a4766481df7a1e62c91cad8fb07381443c9243100bef7698c97ceb",
+      "junit_sha256": "07f6870029e8105315c405647c63b6d80874d191fac07120bc00e97b4a12faf2"
+    }
+  },
+  "acceptance_gates": [
+    {
+      "name": "native-revocation",
+      "exit": 0,
+      "seconds": 0.41,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "offline",
+      "exit": 0,
+      "seconds": 30.89,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "auth-stores",
+      "exit": 0,
+      "seconds": 68.08,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "oauth-file",
+      "exit": 0,
+      "seconds": 61.25,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "oauth-keyring",
+      "exit": 0,
+      "seconds": 59.46,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "oauth-auto",
+      "exit": 0,
+      "seconds": 62.91,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "local-account",
+      "exit": 0,
+      "seconds": 24.67,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "oauth-secrets",
+      "exit": 0,
+      "seconds": 67.11,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "agents-full",
+      "exit": 0,
+      "seconds": 22.81,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "agents-none",
+      "exit": 0,
+      "seconds": 18.83,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "crash-recovery",
+      "exit": 0,
+      "seconds": 31.8,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "agents-nested",
+      "exit": 0,
+      "seconds": 59.56,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "daemon",
+      "exit": 0,
+      "seconds": 46.49,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "features",
+      "exit": 0,
+      "seconds": 45.51,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "guardian",
+      "exit": 0,
+      "seconds": 15.67,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "goal-sample",
+      "exit": 0,
+      "seconds": 27.44,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "local-methods",
+      "exit": 0,
+      "seconds": 8.64,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "live",
+      "exit": 0,
+      "seconds": 56.56,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "memory-v1",
+      "exit": 0,
+      "seconds": 101.72,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "memory-v2",
+      "exit": 0,
+      "seconds": 83.3,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "modes",
+      "exit": 0,
+      "seconds": 38.26,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "plan-review",
+      "exit": 0,
+      "seconds": 25.62,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "plugin",
+      "exit": 0,
+      "seconds": 15.37,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "routes",
+      "exit": 0,
+      "seconds": 16.17,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "profiles",
+      "exit": 0,
+      "seconds": 32.7,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "search",
+      "exit": 0,
+      "seconds": 8.03,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "transports",
+      "exit": 0,
+      "seconds": 2.63,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "runtime-contract",
+      "exit": 0,
+      "seconds": 33.13,
+      "producer": "original_frozen_run"
+    },
+    {
+      "name": "tui",
+      "exit": 0,
+      "seconds": 49.06,
+      "producer": "current_terminal_revalidation"
+    },
+    {
+      "name": "tui-interrupt",
+      "exit": 0,
+      "seconds": 30.83,
+      "producer": "current_terminal_revalidation"
+    }
+  ],
+  "additional_acceptance": {
+    "method_gap_list": true,
+    "local_account_lifecycle": true,
+    "native_browser": true,
+    "browser_mcp_cancellation": true,
+    "native_mcp_lifetime_comparison": true,
+    "protocol_fault_recovery": true,
+    "os_user_verification_account_boundary": true,
+    "complex_real_tasks": true
+  },
+  "real_work": {
+    "jinja": {
+      "passed": true,
+      "sandbox_mode": "workspace-write",
+      "native_sandbox_lifecycle_verified_separately": false,
+      "cold_resume_after_source_edit": false,
+      "fresh_independent_native_review": true,
+      "unchanged_oracle": true,
+      "validation": [
+        {
+          "suite": "workspace",
+          "exit": 0,
+          "tail": "jinja2/utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<fixture>/work/src/jinja2/visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n913 passed in 1.44s\n"
+        },
+        {
+          "suite": "upstream-heldout",
+          "exit": 0,
+          "tail": "jinja2/utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<fixture>/work/src/jinja2/visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n908 passed in 1.34s\n"
+        }
+      ],
+      "web_research": {
+        "actions": [
+          "click",
+          "find",
+          "open"
+        ],
+        "distinct_urls": 2,
+        "pages": [
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792578309.7754827,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792578328.7722836,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+            "retrieved_at": 1792582286.6036408,
+            "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5"
+          },
+          {
+            "url": "https://jinja.palletsprojects.com/en/stable/api/",
+            "retrieved_at": 1792582293.854008,
+            "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+          }
+        ]
+      },
+      "task_patch_sha256": "a55ea9e47622abfd5213ff0e96544d8d955a0672e192563683c136c15e68c628",
+      "initial_failures_preserved": true,
+      "final_source_id": "94c01b01aa57087becee",
+      "runtime_mechanisms_passed": true,
+      "application_task_outcome": {
+        "original_report_passed": true,
+        "turn_status": "completed",
+        "controller_error": null,
+        "suites": [
+          {
+            "suite": "workspace",
+            "exit": 0,
+            "tail": "a5dc3c2cdc4\"}, \"jinja2.loaders\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/loaders.py\", \"sha256\": \"c08ae7c63bdc6ea8795705b6f0d4a47e8b620eaf2a342c4839215b1948922c1e\"}, \"jinja2.meta\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/meta.py\", \"sha256\": \"3930cf91a16f5361e0bf1fba6a4cfbd79e05f012166919af25c045bf0a291f0c\"}, \"jinja2.nativetypes\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/nativetypes.py\", \"sha256\": \"ec620600b54981dc8bf34a1925d4146947f04ade6ada549265b5edd1d35ffcce\"}, \"jinja2.nodes\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/nodes.py\", \"sha256\": \"9b50eecdcafaaa1648f0943a57226050d8a78c07f96d0ce28d29839ccb2f531f\"}, \"jinja2.optimizer\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/optimizer.py\", \"sha256\": \"ac99c246543ba59b04126321b100e00bfa4ac831f13f94cf4bacd53c6b2072ef\"}, \"jinja2.parser\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/parser.py\", \"sha256\": \"94b385cb7b0498773921a1074621f5b1056721dda6a14433872789653b5d637d\"}, \"jinja2.runtime\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/runtime.py\", \"sha256\": \"80393e1af76b8895ea82c19b1e0adc2933f4629eb33d7ce1ceb2290851f78c05\"}, \"jinja2.sandbox\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/sandbox.py\", \"sha256\": \"330d9a8ad958d88f256bb15885c5f6606f41b5461c2e70f41a1ddddbd7035ab6\"}, \"jinja2.tests\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/tests.py\", \"sha256\": \"54bb018551675a0f8fc52073d4c8519cd5a03f5a2f5e4de778ed452d031e0bd4\"}, \"jinja2.utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n913 passed in 1.44s\n",
+            "output_sha256": "e005da3fc6b4e3d8826f95015b187c62bd232e5e125d26ec70b9b7449b5cfba5",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "upstream-heldout",
+            "exit": 0,
+            "tail": "a5dc3c2cdc4\"}, \"jinja2.loaders\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/loaders.py\", \"sha256\": \"c08ae7c63bdc6ea8795705b6f0d4a47e8b620eaf2a342c4839215b1948922c1e\"}, \"jinja2.meta\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/meta.py\", \"sha256\": \"3930cf91a16f5361e0bf1fba6a4cfbd79e05f012166919af25c045bf0a291f0c\"}, \"jinja2.nativetypes\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/nativetypes.py\", \"sha256\": \"ec620600b54981dc8bf34a1925d4146947f04ade6ada549265b5edd1d35ffcce\"}, \"jinja2.nodes\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/nodes.py\", \"sha256\": \"9b50eecdcafaaa1648f0943a57226050d8a78c07f96d0ce28d29839ccb2f531f\"}, \"jinja2.optimizer\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/optimizer.py\", \"sha256\": \"ac99c246543ba59b04126321b100e00bfa4ac831f13f94cf4bacd53c6b2072ef\"}, \"jinja2.parser\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/parser.py\", \"sha256\": \"94b385cb7b0498773921a1074621f5b1056721dda6a14433872789653b5d637d\"}, \"jinja2.runtime\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/runtime.py\", \"sha256\": \"80393e1af76b8895ea82c19b1e0adc2933f4629eb33d7ce1ceb2290851f78c05\"}, \"jinja2.sandbox\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/sandbox.py\", \"sha256\": \"330d9a8ad958d88f256bb15885c5f6606f41b5461c2e70f41a1ddddbd7035ab6\"}, \"jinja2.tests\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/tests.py\", \"sha256\": \"54bb018551675a0f8fc52073d4c8519cd5a03f5a2f5e4de778ed452d031e0bd4\"}, \"jinja2.utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<linux-validation-root>/real-work-linux-final/jinja/work/src/jinja2/visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n908 passed in 1.34s\n",
+            "output_sha256": "98427018d3d00ce1fcc666cddd027f3cdcb819414b0339780102ac024c6bb988",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          }
+        ],
+        "diff_check": 0,
+        "application_task_passed": true
+      },
+      "runtime_mechanisms": {
+        "immutable_artifact": {
+          "passed": true,
+          "source_id": "94c01b01aa57087becee",
+          "native_manifest_sha256": "97f8452b3194b17fe7836d640f1c9ee7b968dac50c3264a767e45b8c6149105f"
+        },
+        "verifier_provenance": {
+          "passed": true,
+          "active_producer_sha256": {
+            "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+            "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+            "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+            "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+            "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+            "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+          },
+          "historical_producers": [
+            {
+              "verify_real_work.py": "7b249ac48b3256d4651582316de19773b290cce4ece71a2b9f41a9ea45b94358",
+              "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+              "acceptance_assertions.py": "f5ef661d9706dc443dbd87b790b5edf381f40b9c902a515e2794d87d60b7349c"
+            },
+            {
+              "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+              "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+              "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+              "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+              "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+              "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+            }
+          ],
+          "previous_report_link": true
+        },
+        "isolated_launch": {
+          "passed": true
+        },
+        "native_lifecycle": {
+          "passed": true,
+          "interrupts": [],
+          "cold_resumes": [
+            {
+              "connection": 1,
+              "thread_id": "01a15dfd-8995-7912-a860-daea40befcb9",
+              "continued_tool_ids": [
+                "exec-7564ce47-cd69-45d4-b25f-d3f6f6c44bb5",
+                "exec-dc409787-a74f-438c-9a77-f79683801089"
+              ],
+              "passed": true
+            }
+          ],
+          "defects": []
+        },
+        "file_effect": {
+          "passed": true,
+          "patch_sha256": "a55ea9e47622abfd5213ff0e96544d8d955a0672e192563683c136c15e68c628",
+          "files": {
+            "src/jinja2/idtracking.py": "1437da4c0bfb6d92010ab77f98f9875b0b4bef7f203d6f8944aab583397588f0",
+            "tests/test_core_tags.py": "5955a853297b9d10784b69e89d1bbeddb4952ce5a9d15e5d82f539c39ca0cc7c",
+            "tests/test_idtracking.py": "55af0a8efe488eaa1dd96bd8cd25ba43622b96b6a71a5c0fbebfa08b65995931"
+          }
+        },
+        "nonzero_tool_output_delivery": {
+          "passed": true,
+          "proofs": [
+            {
+              "item_id": "exec-3ea51fb3-19c4-47c9-abf8-b32f27f5811d",
+              "thread_id": "01a15dfd-8995-7912-a860-daea40befcb9",
+              "exit_code": 1,
+              "output_sha256": "45eae4cee8759730cdaf4904c3066165c0f34b899470f8cfeedba7d843637315",
+              "provider_call_ids": [
+                "call_00_s6tLW6ecFuSzvvnrPwBJ0063"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-84582d23-88a1-4577-a63d-e0e8cdc80e48",
+              "thread_id": "01a15dfd-8995-7912-a860-daea40befcb9",
+              "exit_code": 1,
+              "output_sha256": "4f0bbcf0e4005471aad4cca458a0635265ea018528e2ab7970afbf0b13912dc7",
+              "provider_call_ids": [
+                "call_00_eCNBtmEAH63rHqWTb6sM8975"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            }
+          ],
+          "scope": "Exact native nonzero command output delivered in model input. Numeric exit delivery and explicit model-selected output-only projections are recorded separately; representative failure round trips."
+        },
+        "reviewer_lifecycle": {
+          "passed": true,
+          "reviewers": [
+            {
+              "thread_id": "01a15e00-8905-7e33-9f0c-2599059a6a4b",
+              "agent_path": "/root/reviewer",
+              "rollout_sha256": "1cfe6c5e39462283612225aeefa727263c7918a3a0b63179d900431295c37351",
+              "delivered_call_ids": [
+                "peer_9f3141db8e0856962392aa80a3194c9d"
+              ],
+              "completed_turn_ids": [
+                "01a15e00-890a-71a3-bb95-85dedd35955b"
+              ],
+              "passed": true
+            },
+            {
+              "thread_id": "01a15e3b-8856-7611-8a96-2f4863ec7d49",
+              "agent_path": "/root/final_reviewer",
+              "rollout_sha256": "243015a006a76182efc91f32cd5d4eb58f8d78a6649b161385e1b86f3d3b462b",
+              "delivered_call_ids": [
+                "peer_9be7adbe1c8fe3e95398aaaff5848f10"
+              ],
+              "completed_turn_ids": [
+                "01a15e3b-8865-7313-a25e-4d7d5e11c674"
+              ],
+              "passed": true
+            }
+          ]
+        },
+        "linked_browser_navigation": {
+          "turn_id": "01a15e3a-dbb0-7db3-b85a-b7554f2aaf34",
+          "native_completed_actions": [
+            "click",
+            "find",
+            "open"
+          ],
+          "pages": [
+            {
+              "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+              "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5",
+              "retrieved_at": 1792582286.6036408
+            },
+            {
+              "url": "https://jinja.palletsprojects.com/en/stable/api/",
+              "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c",
+              "retrieved_at": 1792582293.854008
+            },
+            {
+              "url": "https://jinja.palletsprojects.com/en/stable/api/",
+              "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c",
+              "retrieved_at": 1792582293.854008
+            }
+          ],
+          "distinct_actual_urls": 2,
+          "positive_find": true,
+          "required": true,
+          "linked_chains": [
+            {
+              "source_ref": "page_cfe6facdf91e42ef903874e29ee03071",
+              "source_url": "https://jinja.palletsprojects.com/en/stable/templates/",
+              "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5",
+              "link_id": 80,
+              "link_url": "https://jinja.palletsprojects.com/en/stable/api/#jinja2.Undefined",
+              "target_url": "https://jinja.palletsprojects.com/en/stable/api/",
+              "target_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+            }
+          ],
+          "passed": true
+        },
+        "provider_transport": {
+          "passed": true,
+          "receipt_rows_sha256": "63315bb270f56a5a4dffd98beb28bf0f32b972ba940fce504820997d96c2c4ea",
+          "routes": [
+            "{\"provider\": \"deepseek\", \"route_reason\": \"official_default\", \"status\": \"completed\", \"upstream_status\": 200}",
+            "{\"provider\": \"morph/fp8\", \"route_reason\": \"native_peer_or_continuation_with_hosted_tools\", \"status\": \"completed\", \"upstream_status\": 200}"
+          ]
+        },
+        "controlled_inputs": {
+          "passed": true,
+          "sha256": {
+            "upstream.json": "5bf22daf2ae8f42ef13201e227dfb4ef047d76cd90799afb5b99565f0b03942f",
+            "archives.json": "bc73436d4648249b5e197562a63249ec2e94be07231e0646a7bf30d49bf8af17",
+            "dependencies.lock": "9b50caaf986fa630300b0e0efc6d08c37c12f2f466d63f4959def0819bafbcc4",
+            "dependencies-frozen.txt": "636f36a627c453304c317b83e38cd810b940a01f313b71ab621ea779f56e9f48"
+          }
+        },
+        "oracle_isolation": {
+          "passed": true,
+          "recorded_guard": {
+            "mechanism": "posix-mode",
+            "read_probe_denied": true,
+            "restored_probe_unchanged": true,
+            "source_unchanged": true
+          },
+          "current_tree_sha256": "65c10d8b8ab62333637850e652ac9e107480fc8db67875845b7c60698caacd43",
+          "provenance": "Historical before/after and denied-read observations from hash-matched task verifier; current tree bound separately."
+        },
+        "suite_execution_evidence": {
+          "passed": true
+        },
+        "native_host_execution": {
+          "passed": true,
+          "platform": "linux",
+          "observed_command_count": 55,
+          "forbidden_commands": [],
+          "malformed_commands": [],
+          "scope": "Observed native commandExecution items; not a system-wide process audit.",
+          "declared_python": "<linux-validation-root>/real-work-linux-final/jinja/tools311/bin/python",
+          "native_python_observed": true
+        },
+        "passed": true
+      }
+    },
+    "httpcore": {
+      "passed": false,
+      "sandbox_mode": "workspace-write",
+      "native_sandbox_lifecycle_verified_separately": false,
+      "cold_resume_after_source_edit": true,
+      "fresh_independent_native_review": true,
+      "unchanged_oracle": true,
+      "validation": [
+        {
+          "suite": "workspace",
+          "exit": 0,
+          "tail": "during_request[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n221 passed, 6 xpassed in 3.36s\n"
+        },
+        {
+          "suite": "upstream-heldout",
+          "exit": 1,
+          "tail": "_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n3 failed, 204 passed, 6 xpassed in 3.21s\n"
+        },
+        {
+          "suite": "independent-cancellation",
+          "exit": 0,
+          "tail": "core/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<fixture>/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n\n2 passed in 0.27s\n"
+        },
+        {
+          "suite": "real-tcp-0",
+          "exit": 0,
+          "tail": "/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<fixture>/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n"
+        },
+        {
+          "suite": "real-tcp-1",
+          "exit": 0,
+          "tail": "/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<fixture>/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n"
+        },
+        {
+          "suite": "real-tcp-2",
+          "exit": 0,
+          "tail": "/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<fixture>/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n"
+        },
+        {
+          "suite": "tls-socket",
+          "exit": 0,
+          "tail": "/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<fixture>/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n"
+        }
+      ],
+      "web_research": {
+        "actions": [
+          "click",
+          "find",
+          "open"
+        ],
+        "distinct_urls": 2,
+        "pages": [
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792578927.9781199,
+            "source_sha256": "4ad70bcda6e58666d7b9bb0c4e934ee8967395787ab51dda42ca64ced724db80"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792578935.590485,
+            "source_sha256": "01efe8027e7aeeaba30e266e1726ca77d7f7dd59626a933bccba21498f022696"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-task.html",
+            "retrieved_at": 1792581922.2405694,
+            "source_sha256": "4ad70bcda6e58666d7b9bb0c4e934ee8967395787ab51dda42ca64ced724db80"
+          },
+          {
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+            "retrieved_at": 1792581931.821135,
+            "source_sha256": "01efe8027e7aeeaba30e266e1726ca77d7f7dd59626a933bccba21498f022696"
+          }
+        ]
+      },
+      "task_patch_sha256": "6d379a1c895f0333147c8f6cf5bae93ce0bf15e0d43a1c19ac833dd2ec524f28",
+      "initial_failures_preserved": true,
+      "final_source_id": "94c01b01aa57087becee",
+      "runtime_mechanisms_passed": true,
+      "application_task_outcome": {
+        "original_report_passed": false,
+        "turn_status": "completed",
+        "controller_error": null,
+        "suites": [
+          {
+            "suite": "workspace",
+            "exit": 0,
+            "tail": "0125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n\n=================================== XPASSES ====================================\n=========================== short test summary info ============================\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n221 passed, 6 xpassed in 3.36s\n",
+            "output_sha256": "6a0dae93c5ba35a4761cb9f7cd86b6fffeaefacae3d4c40c31d99c3d3fdee3c7",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "upstream-heldout",
+            "exit": 1,
+            "tail": "tionPool [Requests: 1 active, 0 queued | Connections: 1 active, 0 idle]>\"\n                )\n                response.read()\n    \n            assert response.status == 200\n            assert response.content == b\"Hello, world!\"\n            info = [repr(c) for c in pool.connections]\n            assert info == [\n                \"<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 2]>\"\n            ]\n            assert (\n                repr(pool)\n                == \"<ConnectionPool [Requests: 0 active, 0 queued | Connections: 0 active, 1 idle]>\"\n            )\n    \n            # Sending a request to a different origin will not reuse the existing IDLE connection.\n            with pool.stream(\"GET\", \"http://example.com/\") as response:\n                info = [repr(c) for c in pool.connections]\n>               assert info == [\n                    \"<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 2]>\",\n                    \"<HTTPConnection ['http://example.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>\",\n                ]\nE               assert ['<HTTPConnec...t Count: 2]>'] == ['<HTTPConnec...t Count: 1]>']\nE                 \nE                 At index 0 diff: \"<HTTPConnection ['http://example.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>\" != \"<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 2]>\"\nE                 Use -v to get more diff\n\n../oracle/tests/_sync/test_connection_pool.py:84: AssertionError\n=================================== XPASSES ====================================\n=========================== short test summary info ============================\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[asyncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[asyncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[asyncio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_handshake[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_request[trio]\nXPASS ../oracle/tests/test_cancellations.py::test_h2_timeout_during_response[trio]\n3 failed, 204 passed, 6 xpassed in 3.21s\n",
+            "output_sha256": "6841ab304906c8d7c2f8713c96c775003d5a73955eff3dfd3060517549d209f2",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "independent-cancellation",
+            "exit": 0,
+            "tail": "63285a4b9e936bf12beceb3da78b77e08\"}, \"httpcore._sync.connection\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection.py\", \"sha256\": \"1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58\"}, \"httpcore._sync.connection_pool\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection_pool.py\", \"sha256\": \"861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835\"}, \"httpcore._sync.http11\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http11.py\", \"sha256\": \"cf4b310125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n\n2 passed in 0.27s\n",
+            "output_sha256": "8813d48fb0792009df62e5395011c1dd8fc927ac5392f52367c4d2306e063468",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "real-tcp-0",
+            "exit": 0,
+            "tail": "95ad4b089d6c2d078a863285a4b9e936bf12beceb3da78b77e08\"}, \"httpcore._sync.connection\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection.py\", \"sha256\": \"1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58\"}, \"httpcore._sync.connection_pool\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection_pool.py\", \"sha256\": \"861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835\"}, \"httpcore._sync.http11\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http11.py\", \"sha256\": \"cf4b310125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n",
+            "output_sha256": "70eba27b1cc20668950842eff43632131b96df5207f9d793a7266c41712c72c7",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "real-tcp-1",
+            "exit": 0,
+            "tail": "95ad4b089d6c2d078a863285a4b9e936bf12beceb3da78b77e08\"}, \"httpcore._sync.connection\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection.py\", \"sha256\": \"1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58\"}, \"httpcore._sync.connection_pool\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection_pool.py\", \"sha256\": \"861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835\"}, \"httpcore._sync.http11\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http11.py\", \"sha256\": \"cf4b310125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n",
+            "output_sha256": "247347b268d9a87250d201818e24c33a6d744c86df9ca06a08dcc659a21a19a6",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "real-tcp-2",
+            "exit": 0,
+            "tail": "95ad4b089d6c2d078a863285a4b9e936bf12beceb3da78b77e08\"}, \"httpcore._sync.connection\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection.py\", \"sha256\": \"1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58\"}, \"httpcore._sync.connection_pool\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection_pool.py\", \"sha256\": \"861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835\"}, \"httpcore._sync.http11\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http11.py\", \"sha256\": \"cf4b310125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n",
+            "output_sha256": "8f1bad4763adb52f15b6ad44a2c448704e5402c5a9faff4fe622b8bb4ae951cd",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          },
+          {
+            "suite": "tls-socket",
+            "exit": 0,
+            "tail": "95ad4b089d6c2d078a863285a4b9e936bf12beceb3da78b77e08\"}, \"httpcore._sync.connection\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection.py\", \"sha256\": \"1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58\"}, \"httpcore._sync.connection_pool\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/connection_pool.py\", \"sha256\": \"861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835\"}, \"httpcore._sync.http11\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http11.py\", \"sha256\": \"cf4b310125cc621992743033d678fdc0d3b705f4747a6a00d36ed4928e3434a5\"}, \"httpcore._sync.http2\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http2.py\", \"sha256\": \"964a477ac1a4af0cc8038a072f20a525fe4803044b71a00532799f7c06a100ae\"}, \"httpcore._sync.http_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/http_proxy.py\", \"sha256\": \"f36a229fcbe3b766bb626995bf3eec5c465206e6a32be9870c5f84c2747fa49d\"}, \"httpcore._sync.interfaces\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/interfaces.py\", \"sha256\": \"10ce0f4dffab824725ce2b0572b4f2c751bc170adaa1f7c4f2b6dc90ece75ffa\"}, \"httpcore._sync.socks_proxy\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_sync/socks_proxy.py\", \"sha256\": \"4f5dd049c79e1008353ccf5887b364f83a2a236f13214a834bef4edce482f547\"}, \"httpcore._synchronization\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_synchronization.py\", \"sha256\": \"00102d1cd0044af66abb8dc53ff9532a9b89f386dabd46c0668376abc1345b7a\"}, \"httpcore._trace\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_trace.py\", \"sha256\": \"6a47f93ec595ab7ad98ea9979e2a26539f4e637ecaec91e878d0c2438194f381\"}, \"httpcore._utils\": {\"file\": \"<linux-validation-root>/real-work-linux-final/httpcore/work/httpcore/_utils.py\", \"sha256\": \"f503e1e626f82629565f8741082fd73bac1d058e1bd246d41a07d5dd07c100d7\"}}, \"package\": \"httpcore\", \"passed\": true}\n",
+            "output_sha256": "e25ce617680c52e56e51a764c781f874de50b90cb8604a69eb1b204edfa57b2a",
+            "source_imports_verified": true,
+            "receipt_matches_report": true,
+            "output_matches_report": true
+          }
+        ],
+        "diff_check": 0,
+        "application_task_passed": false
+      },
+      "runtime_mechanisms": {
+        "immutable_artifact": {
+          "passed": true,
+          "source_id": "94c01b01aa57087becee",
+          "native_manifest_sha256": "97f8452b3194b17fe7836d640f1c9ee7b968dac50c3264a767e45b8c6149105f"
+        },
+        "verifier_provenance": {
+          "passed": true,
+          "active_producer_sha256": {
+            "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+            "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+            "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+            "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+            "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+            "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+          },
+          "historical_producers": [
+            {
+              "verify_real_work.py": "7b249ac48b3256d4651582316de19773b290cce4ece71a2b9f41a9ea45b94358",
+              "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+              "acceptance_assertions.py": "f5ef661d9706dc443dbd87b790b5edf381f40b9c902a515e2794d87d60b7349c"
+            },
+            {
+              "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+              "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+              "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+              "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+              "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+              "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+            }
+          ],
+          "previous_report_link": true
+        },
+        "isolated_launch": {
+          "passed": true
+        },
+        "native_lifecycle": {
+          "passed": true,
+          "interrupts": [
+            {
+              "connection": 0,
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "turn_id": "01a15e03-806b-76e3-9c33-a2d2470dd5c9",
+              "status": "interrupted",
+              "error": null,
+              "passed": true
+            }
+          ],
+          "cold_resumes": [
+            {
+              "connection": 1,
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "continued_tool_ids": [
+                "exec-02694d60-5ceb-490f-9183-229120a6855d",
+                "exec-053f4b4b-7705-414c-8487-a202cc52e40a",
+                "exec-06a14a8b-e396-41d3-b85c-f30b497c3129",
+                "exec-07a27b83-933f-4d8e-87fc-b157807bf0d6",
+                "exec-0d4dea3b-1daa-4055-b95a-754b5574c242",
+                "exec-188000f7-c02c-4a52-9c42-d627e058bfc9",
+                "exec-27def699-95ad-48d9-b848-6f41176ff158",
+                "exec-2be6f62e-5edf-43f7-8814-8152a9d6ee4c",
+                "exec-31b4c85c-9e43-4d42-816c-713e17544e8f",
+                "exec-34e0e728-8458-44c4-aead-f46dd9d80db4",
+                "exec-545184a4-f0c0-4655-88bb-0477e5611a39",
+                "exec-55b54416-1bcc-48e8-868f-dbdfd8c2334f",
+                "exec-588062f2-9a79-4879-9cf4-2ffc8d5df687",
+                "exec-59fddc4b-22e8-4227-8336-ed3fd26216d9",
+                "exec-5c746b7c-e530-4e0b-a48a-5d27152a0aa5",
+                "exec-64e2c12d-cc75-46d4-a945-838e1c1d6c5c",
+                "exec-76077039-ae52-4556-bc37-7875347659e6",
+                "exec-7ca26ad7-6330-4031-bce7-dbcc86a5db52",
+                "exec-7db7b1a7-e6f3-4c15-8ab5-eb3760897f1b",
+                "exec-912bd303-dc7a-4d03-ad92-ae8dedcf6cf4",
+                "exec-9706c23f-eb55-44e9-ae8b-d71bee52f571",
+                "exec-a14f201a-b9f8-470d-bec7-8ccb4b0bee98",
+                "exec-cf630e36-bd4f-4d5c-b174-8fcbe3241faa",
+                "exec-d52cc884-d34f-49ef-b657-6873691b9920",
+                "exec-d69dbcfd-bc3d-44c3-b748-31fbc1ea8bb4",
+                "exec-ec277285-4f12-43df-8cb9-76d26b2f7aec",
+                "exec-f8424081-5840-47da-89ef-8fc03539f8f1"
+              ],
+              "passed": true
+            },
+            {
+              "connection": 2,
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "continued_tool_ids": [
+                "exec-034ee036-e763-4b08-9ebc-dba199365fa2",
+                "exec-05f27155-2692-416c-9570-c70d376cf430",
+                "exec-09526761-e3db-4378-b02c-16b6b842b519",
+                "exec-0bf93b58-734e-4ed0-b2be-2166887020da",
+                "exec-17da0f37-0ba6-4427-a616-5064f6ebd8ab",
+                "exec-1d2f8f8f-c6f4-4ce2-99fe-c06bb8d24d81",
+                "exec-20ded2f2-d2ae-4ed5-a29d-ec44d8871a44",
+                "exec-2f4a4f14-8d60-42e1-a7a3-853b05ef7fe5",
+                "exec-3804a907-5144-4087-bb36-043d480c3b18",
+                "exec-3e393097-c6ce-4ff0-8aef-85027d4ee276",
+                "exec-4614e31a-b527-42e0-8d98-236ae42cac85",
+                "exec-47bcb2e1-063f-491e-85cd-772acb1e94be",
+                "exec-47cf88cc-936f-40dd-bc96-f7a8022604c1",
+                "exec-480fe4a7-5f71-499b-ab19-f05a562bf739",
+                "exec-4b9cddba-d71d-49b8-89e8-a9e67141ad08",
+                "exec-4c16ca6a-76fd-49a7-a225-c0b940537c19",
+                "exec-4cb82c45-190f-4fb5-b1b7-06255713a8b7",
+                "exec-4f248ccb-216a-4b4d-ad44-1f5859e23439",
+                "exec-50f66374-6e56-4f65-8f5e-e7ffc2900b94",
+                "exec-5204b1ab-897b-46d9-9e2f-6f14d1586e70",
+                "exec-5bb8cdb8-a0e7-44fe-b33d-77f1bb85579d",
+                "exec-5c123dc1-3c2a-4b8f-b417-5375312b8309",
+                "exec-5d76ccb8-85d9-421e-b95d-83ff5b2d35df",
+                "exec-61c3d238-852d-4a95-808d-e1a49410fd0c",
+                "exec-629933c8-ab5b-47a5-8b55-7ef608715ec6",
+                "exec-65a81abb-0460-4702-9e5f-744629ce7b4c",
+                "exec-6a549dae-b3c9-48ac-b82d-8422f6f8acae",
+                "exec-6ada0f1a-de08-4dfb-8a3d-5b24987d5113",
+                "exec-701c2e2d-880e-4956-9b08-b697bdee29d1",
+                "exec-7318e3e9-e1da-4db5-9ebb-db4a0a3b6a2e",
+                "exec-74352ce2-d3c2-49df-a3f3-733b170362e2",
+                "exec-88ebd0a6-8b5d-4e41-9081-090cf6dd9f97",
+                "exec-8ab79209-1b85-42fa-9aed-eb7273c9b7fc",
+                "exec-8c5a2a66-b8c9-4cf9-9dd5-c04c194870b0",
+                "exec-8e16f8ff-8751-4987-b0db-42c130d69919",
+                "exec-9280f2ed-dd84-4c24-83b4-a3b32933ecfd",
+                "exec-945c0bca-5523-4c2f-89cd-111b56c62030",
+                "exec-979a941a-57ab-4a97-95b2-7b8bfef5b7c1",
+                "exec-9d6d9a2f-e583-45de-b585-1ee692d0e5c2",
+                "exec-a484bb6a-b91a-4476-bddb-74dc95d8fa2c",
+                "exec-a48e5756-2ee6-4929-a89a-486e48282c15",
+                "exec-a7d3fbba-325b-401a-bcf9-51f1641ad094",
+                "exec-aac1cc26-c6be-445d-b007-4d6047f92944",
+                "exec-ab224d41-de1c-4f7f-b450-4706b14460ff",
+                "exec-aefc21de-42c1-4306-8f67-7db6ce873efd",
+                "exec-b009f00a-53ec-4b71-b0e6-d767b005ee4b",
+                "exec-b3742262-5b58-43a5-a6c7-588ba1e344d7",
+                "exec-be288257-8f3d-4399-9c55-de4b01212811",
+                "exec-c3f36b06-315c-42f3-8273-bac2dd5a19ba",
+                "exec-cafc7339-f512-48ea-a3fa-a84e290e378b",
+                "exec-cbb4105d-c4e6-4848-bd13-d288978a42c6",
+                "exec-ce77183e-dd61-4945-a2cc-0b42fcc0f8e2",
+                "exec-d3c0adfe-58f3-4fae-8163-628a28cf05e4",
+                "exec-d8141c6a-47c7-4090-9fd7-a6e84a2f4094",
+                "exec-da2db6c0-9575-4bbf-ba1e-e2385e02109d",
+                "exec-db0214f0-457d-477f-b293-e20cab3138c8",
+                "exec-deaf5568-bb92-49b9-942d-32343b1526a2",
+                "exec-e10f40bf-42fe-4602-ab8c-aa631bd04009",
+                "exec-e242cfc4-d9ea-4a8d-9405-6d9c71802d47",
+                "exec-e4f898df-bf13-407e-b6e0-a32cfad59d63",
+                "exec-e7ff99db-3627-48f1-a817-1ccc00ebbd9d",
+                "exec-e949f40c-98de-48e7-ab20-563b087242ca",
+                "exec-ef3fbc03-7ac4-4a68-bafa-0265fa64c051",
+                "exec-f34190aa-1dd5-4e62-a07f-58b954ba5b2d",
+                "exec-fa03e6c6-e06f-4571-8022-63d0dc3c45db",
+                "exec-fe767644-938f-49ff-ac86-8ea2935f7d8f"
+              ],
+              "passed": true
+            }
+          ],
+          "defects": []
+        },
+        "file_effect": {
+          "passed": true,
+          "patch_sha256": "6d379a1c895f0333147c8f6cf5bae93ce0bf15e0d43a1c19ac833dd2ec524f28",
+          "files": {
+            "httpcore/_async/connection.py": "57ce029f10a9cb7d801ff9477d073d92c4ffec956b6b68f6d70de49632142324",
+            "httpcore/_async/connection_pool.py": "cde2d3f01cdb2cd772f35bf05a7f44f8d86bf96bac90bb6b3498f81f962939d7",
+            "httpcore/_backends/anyio.py": "c9bba316d552744cc0b6fec9a52b89941cd83ed91adcc512944d876c86f4fb01",
+            "httpcore/_backends/trio.py": "1665f29e9a38a4988861ed9d26d6fda98c4f7defd3321346f835f498941f500a",
+            "httpcore/_sync/connection.py": "1591012b4af7d5d3d4b71518e2edb857a69b2238b8f046ffac4c915e4d989c58",
+            "httpcore/_sync/connection_pool.py": "861d365d48a428e8636c82a598149cf57162696e173d680adeca99ed9b9f9835",
+            "tests/_async/test_connection_pool.py": "95d9865ac1fdb7e3d5f6f2c0e84f15dc404d11c7800269a6e7e955111aa09cb9",
+            "tests/_sync/test_connection_pool.py": "c8bcfcdf451433766b62c1e320acab5bef2e1d159ed6fbed28782214611cad74",
+            "tests/test_cancellations.py": "d57c21077209d43d266f8cf066d0a9d4e33d21372699a567fa45dd1292aecbaf",
+            "tests/test_connection_pool_repr.py": "8b57f5d39f4f8166f4d108e5ccf3a0ccc75a1de4adbb64eff5e8763fff70222c"
+          }
+        },
+        "nonzero_tool_output_delivery": {
+          "passed": true,
+          "proofs": [
+            {
+              "item_id": "exec-e4ea8282-1b93-49cc-9593-c1799e615b34",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "05443e2404ba4fc6e22e8c8002dce77741daa8a6b20e6c9e4464232c4489592f",
+              "provider_call_ids": [
+                "call_00_fGmfkIydzj3FbdpMVJA64299"
+              ],
+              "projections": [
+                "output_and_exit_code"
+              ],
+              "model_received_numeric_exit_code": true
+            },
+            {
+              "item_id": "exec-5e6fc168-3385-4317-accf-a7a68949c1e9",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "4c7d4994764778e9b7661ff65be5872546668f8a180c0b4d5ddb96669de5ebb2",
+              "provider_call_ids": [
+                "call_00_tJZ0g2FuUGKkRxejD4MR7039"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-9558689b-1df2-4731-a2eb-975a3572cd58",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "9c543a84c0e9ab520b0774120f7c35a3df448e54f4e7f017efffb44b1f3c951b",
+              "provider_call_ids": [
+                "call_00_kHRNEeWoofY1WuGJkUwi0183"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-497b1f31-76af-412a-8ff8-819c28adec43",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "68552bfed17ab20142cbfc5f3ed3a7647439468bcc5c3602f75f2959ecfa7403",
+              "provider_call_ids": [
+                "call-e1dcb8da-c880-46a4-a852-4db085fc008f"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-9ce37a11-950e-4feb-9884-6544333cb072",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "675b8a16e5101873e0dabb3143d230d801e905e6cc79e3f66072b5b1790d7233",
+              "provider_call_ids": [
+                "call-a4460213-e3ec-490b-9ad8-3671ee18d0ac"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-5539d1da-0fe9-46db-94c9-9afdb7de85d9",
+              "thread_id": "01a15e03-805c-7561-9cd5-32c4e50e4db8",
+              "exit_code": 1,
+              "output_sha256": "e82da33a2fdc2956a6bcf116e0a29ece0551e9661e0c74abc3d427d5caaefc40",
+              "provider_call_ids": [
+                "call-467181a8-1623-4c2d-af72-f164490043ca"
+              ],
+              "projections": [
+                "output_and_exit_code"
+              ],
+              "model_received_numeric_exit_code": true
+            },
+            {
+              "item_id": "exec-ab23027e-93af-4325-876b-e922d6a16906",
+              "thread_id": "01a15e0a-ffc6-7b60-a7ba-c4399aca1982",
+              "exit_code": 1,
+              "output_sha256": "faacec09a222b2aed23490e7f7bb8c05c9c1336b561e08d30009b4ee571a0735",
+              "provider_call_ids": [
+                "call-2ce6d795-b27b-4157-b0c8-43467528ad22"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            },
+            {
+              "item_id": "exec-38e8444b-63b6-4f02-af8c-dbbadff40437",
+              "thread_id": "01a15e0a-ffc6-7b60-a7ba-c4399aca1982",
+              "exit_code": 1,
+              "output_sha256": "253d78226d311ae24668cb3cd2f37645db90da3e8920de1bf2c69880a5c0c54d",
+              "provider_call_ids": [
+                "call-ec1e6326-522a-496b-92bd-67178fadd0b4"
+              ],
+              "projections": [
+                "model_selected_output_only"
+              ],
+              "model_received_numeric_exit_code": false
+            }
+          ],
+          "scope": "Exact native nonzero command output delivered in model input. Numeric exit delivery and explicit model-selected output-only projections are recorded separately; representative failure round trips."
+        },
+        "reviewer_lifecycle": {
+          "passed": true,
+          "reviewers": [
+            {
+              "thread_id": "01a15e0a-ffc6-7b60-a7ba-c4399aca1982",
+              "agent_path": "/root/cancellation_reviewer",
+              "rollout_sha256": "d89f8bd327e2cc34b0ab23fb9b44b08e64247488b9dde8b3b93f20f248a406a1",
+              "delivered_call_ids": [
+                "peer_480bb2c2a358b446c5799ace46b6a7b4",
+                "peer_c389760b608e52331a0e3bbecb98cb50"
+              ],
+              "completed_turn_ids": [
+                "01a15e0a-ffd7-7ef2-bb69-63e67a7feff1",
+                "01a15e35-5804-7c42-a8f1-51ec5ad84c51"
+              ],
+              "passed": true
+            }
+          ]
+        },
+        "linked_browser_navigation": {
+          "turn_id": "01a15e2b-c9ce-7731-ba62-3290a6911104",
+          "native_completed_actions": [
+            "click",
+            "find",
+            "open"
+          ],
+          "pages": [
+            {
+              "url": "https://docs.python.org/3/library/asyncio-task.html",
+              "source_sha256": "4ad70bcda6e58666d7b9bb0c4e934ee8967395787ab51dda42ca64ced724db80",
+              "retrieved_at": 1792581922.2405694
+            },
+            {
+              "url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+              "source_sha256": "01efe8027e7aeeaba30e266e1726ca77d7f7dd59626a933bccba21498f022696",
+              "retrieved_at": 1792581931.821135
+            }
+          ],
+          "distinct_actual_urls": 2,
+          "positive_find": true,
+          "required": true,
+          "linked_chains": [
+            {
+              "source_ref": "page_3f679e8f07754bf8bffa0304e47716ae",
+              "source_url": "https://docs.python.org/3/library/asyncio-task.html",
+              "source_sha256": "4ad70bcda6e58666d7b9bb0c4e934ee8967395787ab51dda42ca64ced724db80",
+              "link_id": 82,
+              "link_url": "https://docs.python.org/3/library/asyncio-exceptions.html#asyncio.CancelledError",
+              "target_url": "https://docs.python.org/3/library/asyncio-exceptions.html",
+              "target_sha256": "01efe8027e7aeeaba30e266e1726ca77d7f7dd59626a933bccba21498f022696"
+            }
+          ],
+          "passed": true
+        },
+        "provider_transport": {
+          "passed": true,
+          "receipt_rows_sha256": "7c71c95802c2a3af31c287d37c228b8f827426c557a4bd6ad82fea18e2120bbd",
+          "routes": [
+            "{\"provider\": \"deepseek\", \"route_reason\": \"official_default\", \"status\": \"cancelled\", \"upstream_status\": 200}",
+            "{\"provider\": \"deepseek\", \"route_reason\": \"official_default\", \"status\": \"completed\", \"upstream_status\": 200}",
+            "{\"provider\": \"morph/fp8\", \"route_reason\": \"native_peer_or_continuation_with_hosted_tools\", \"status\": \"completed\", \"upstream_status\": 200}",
+            "{\"provider\": \"morph/fp8\", \"route_reason\": \"unattested_native_history_with_hosted_tools\", \"status\": \"completed\", \"upstream_status\": 200}"
+          ]
+        },
+        "controlled_inputs": {
+          "passed": true,
+          "sha256": {
+            "upstream.json": "5a60a367fb86b5bbbb6976478c61db8d7dce5dd9b2820bd6100ddad8332cf549",
+            "archives.json": "ea47a3e8a1a05159859de118f9c920cf62c4bf6da9370c46c2e592ae96435024",
+            "dependencies.lock": "f2e5dce99391e879840e042210e89cebe49ba9bce7c4fe54feb113e3bcffa967",
+            "dependencies-frozen.txt": "7061a294fe571ce1432ba5de4e9be82bf18fe87559ccfe6a86dfddaea6c7858b",
+            "cancellation_regression.py": "d9b1189c6c8c7936d1358445ce9408dceca63cdcfa0e35f6fd79083bed180bd9",
+            "network_stress.py": "fdeb219ed58443d1e906498e82ce9c03b29b7f0abc4fc1c5cb553aa7a2ffd384",
+            "tls_socket_regression.py": "473c27b5e5606ba5ee334413d73d496e8a40b8cd4f9daf1e84fc3d7f406917c9"
+          }
+        },
+        "oracle_isolation": {
+          "passed": true,
+          "recorded_guard": {
+            "mechanism": "posix-mode",
+            "read_probe_denied": true,
+            "restored_probe_unchanged": true,
+            "source_unchanged": true
+          },
+          "current_tree_sha256": "25203afebb60c83d9cdcd37e61242b3f7633516a57cfd254c9dc6f81aa3a2a8d",
+          "provenance": "Historical before/after and denied-read observations from hash-matched task verifier; current tree bound separately."
+        },
+        "suite_execution_evidence": {
+          "passed": true
+        },
+        "native_host_execution": {
+          "passed": true,
+          "platform": "linux",
+          "observed_command_count": 296,
+          "forbidden_commands": [],
+          "malformed_commands": [],
+          "scope": "Observed native commandExecution items; not a system-wide process audit.",
+          "declared_python": "<linux-validation-root>/real-work-linux-final/httpcore/tools311/bin/python",
+          "native_python_observed": true
+        },
+        "passed": true
+      }
+    }
+  },
+  "limits": [
+    "Qualification applies to the frozen Linux x86_64 GNU target and its current artifact identities.",
+    "Model judgment and cloud/account entitlements are outside runtime equivalence.",
+    "Local account RPC evidence covers API-key storage/read/logout and no-active-login cancellation, not hosted OAuth.",
+    "Cached/indexed OpenAI search, location bias and image-search backend semantics remain explicit compatibility errors on Exa.",
+    "Document browsing does not execute JavaScript or use authenticated website sessions.",
+    "Native MCP operations can outlive turn interruption; explicit MCP cancellation and owner shutdown have separate passing evidence.",
+    "All applicable local methods have positive evidence for specified scenarios, not exhaustive input or fault-space coverage.",
+    "The prediction endpoint is declared but unimplemented in frozen upstream.",
+    "Runtime acceptance does not assert that every model-generated third-party code change passed its business tests; each original application outcome is retained."
+  ],
+  "evidence_sha256": {
+    "native_source_audit": "193350744206e5425a51ef4a4a6f3dd748fb2786cf7d9419752089b5eaa1404a",
+    "linux_resources_artifact.json": "3d1c70edd218461091b1068c31ff68b6294060374f2c2ed04c84bc2adbb33fd4",
+    "linux_resources_verdict.json": "91e7412e10eb91ed2b6d2944535f787fb96eb435cb0debf75198d83bfd794cfb",
+    "linux_resources_native-sandbox.txt": "71f8c1248cb41b54fcb95e7017486c4ed5df6d2300c86f44b67b19cdb599cf79",
+    "linux_resources_native-digest-rejection.txt": "5b1ddadcf2c2ea05f49e2c3c59e2120e4c230536d3653d34c2851e340149e103",
+    "linux_resources_outside.txt": "fdd5b18d0d6e7d3c33870cff243d12410eaf09faaf2fdee173a03fc61414ea81",
+    "standard_gate_log_native-revocation": "b390d45b29d0ff7d74265a7cfac058c0b5eb9a0eed2308eba55f3cf7ea69cad2",
+    "standard_gate_log_offline": "fb7f07acaf2ad12766d539f1f3a975fed574a0c53c9b40ab08e301731f9990c1",
+    "standard_gate_log_auth-stores": "ac46c5414935f6ef0f3cbf3f1bd606863b50bba3cd0b6fd97d1cd3b275becc69",
+    "standard_gate_log_oauth-file": "f63460daa97aeb6f5a7c3854e54ca6cc684619f48335b1d958d2265b3db3d033",
+    "standard_gate_log_oauth-keyring": "c5eeaa277d2d2e2747aaf58bff5308c1d6cab17da4da182955f0e23a4eccc6c5",
+    "standard_gate_log_oauth-auto": "6dfa5b51726e65513116a95012e540c7318562c9bd0dbec8a5ecd58e5a7fcc2f",
+    "standard_gate_log_local-account": "1f0d67190ad99649970f6b7a5ab6db92694797bfecf00f4899f6787c281e3824",
+    "standard_gate_log_oauth-secrets": "07a1c066f60e63e2a9472ed9b02a3c247722fed2b2585859dde545ed2d069431",
+    "standard_gate_log_agents-full": "d8868e6c4d40e2b502bccc8a912a266c72a0edf069147479cd965869f4026a01",
+    "standard_gate_log_agents-none": "e33138dd598fbaa48a10f92a52e3692eb6b33427c81bbbdf5b968bcaa2083780",
+    "standard_gate_log_crash-recovery": "0d0dae110a6a883128e233f5c49a9abbb693464299b178fd8ec22c1f49911d6f",
+    "standard_gate_log_agents-nested": "bcf4b52c69da6c32de5177bdd7fa05da47946a1467715198d0dd68cd43311271",
+    "standard_gate_log_daemon": "5873b9d12f1406e66fc0aa5dcae99c7c2a4c4e7d0f72b68742339327faa283d3",
+    "standard_gate_log_features": "8e9dd036c263331cad47c475bf26b2051a8dcab25bb4fafd865dcac97e4c10ed",
+    "standard_gate_log_guardian": "d3adb561fe72d17f04f499faffc885a148d2d31c1690e367ec0f0afe4ec7398e",
+    "standard_gate_log_goal-sample": "77be3b8569681a43951db3fe0b1b9d4f19c8993bc3a6924b5e2f4990a9e522ab",
+    "standard_gate_log_local-methods": "9e5b90e4f80cf1745da494fdee798a9336237f589da52241a9e837306adce65b",
+    "standard_gate_log_live": "5111bda4167641b15610f937cea3315e7abfb552a01b9dd69d982f263a490bdf",
+    "standard_gate_log_memory-v1": "8dbdf368b1a9aa1559d486af8f80d5ece2a1de23d0e9e6e0edf87b8be2f00823",
+    "standard_gate_log_memory-v2": "9d67a04c5cf1df52f969cf2da4dab4a2c697e4e695215f01ff23795b888d45bc",
+    "standard_gate_log_modes": "5149529be090f41ae19c300eee17417f86151990de43374ba1210bb0bb06bc92",
+    "standard_gate_log_plan-review": "1382cea668bee02a9674a630d9b9763eb5b7c4d65173454d2288adb28a0c00e8",
+    "standard_gate_log_plugin": "66baa1d2912ed2bae6daf2115a6c4a11e22e09d2e92032d43b511bcc0ad6d87b",
+    "standard_gate_log_routes": "9a3fe1527c57fdf21940e0cfcfb927282bb08d0ce53d020df742a82d8b072f5e",
+    "standard_gate_log_profiles": "285fa56c1047033b3b67f71e7f60555a35da272eb8626849799e651cbf75a6c2",
+    "standard_gate_log_search": "ae63307bf5ca98c3be5c599da3e10da1ad6c2c7c9545341b4cbac37917281bb8",
+    "standard_gate_log_transports": "c162bf5d8023a45250c67000d2033b0cf8173e2c97d3eccde51f7976eb29919f",
+    "standard_gate_log_runtime-contract": "1b7a539b177ef8d584f2a01f734c784d03598c66eda4139e97687c8e9a0b3c09",
+    "standard_gate_log_tui": "09da13ff25aecd3c3b1d54d2172c6cb1907b47fd152e5a24073b584c518f1cc0",
+    "standard_gate_log_tui-interrupt": "63e2ccc497f98ea9c24504d48d9fccb101bb8b001779b302b344f9d60763c8c0",
+    "terminal_replacement_artifact.json": "572f602e2553e1d09e9bb01ac84ba4bf6eb09b54da836a656c9f22d779c12207",
+    "terminal_replacement_verdict.json": "ad40feb69b0980d48796bb3cc322dd08966afb02fd1d8d896f489942e11d4148",
+    "terminal_replacement_tui.log": "cccc8f5c8ebb92b146741ea1f5ed2ede35c108796cc92fa32949c027db7ebd9d",
+    "terminal_replacement_tui-interrupt.log": "3f05968d590fc1ce95cd8e3bf6a394fa937d2269da3e0ca7d838dd08222c5d39",
+    "regression_artifact": "a865966a7961fd6f106586608634462fd612ec652506874c1b529f6d55945f17",
+    "regression_verdict": "ebf7a6dc34efc480169f233184542892efe9d353bd909f3cab406fe5ddb361d5",
+    "methods_artifact": "ae6ad78048716c588987ca88e31346258ed46f0a2d4a7d05dd9d223c89c1d7e0",
+    "methods_verdict": "89cbcbc00360b794bd448faacbe53209f04a40ec0141cb0f268695818dfebde3",
+    "local_account_artifact.json": "9f747e30d25cbc90289e604708d5ea98385a92d84fef04e702cd2e04c17eee54",
+    "local_account_verdict.json": "c88d2cd4c47a02fccaf61c14df98d4c542fdf26384ac0e1cae177340e3952840",
+    "local_account_results.json": "f8612cc04f3505f45049741245df47264245bc39d53d7bb331eb77ce92ba0266",
+    "tui_qa-source.json": "a97884f07e861e9c82ac0fe89ca1cf223ba46717f098ca7ad9877da15b9be5f8",
+    "tui_results.json": "f786be04690bea8cd50d22fb5668580e319810db87146a54d0e41a59117fdd16",
+    "tui_home/config.toml": "84cef9b7b5f7295173067eec97f840c66ae8f8811ee808cbd25ed23abb71b1fe",
+    "tui_initial.pty": "dc4120a34b6db14a12efbf0f2883cb5cb8a5f5ff03efa1b2910eeba3010fdb83",
+    "tui_cold-resume.pty": "88a496cdf1579c80935d19c9f83124905c469c12c2160382791aef60262d653c",
+    "tui_initial-native-session.jsonl": "5c63ec430b8060d94e0aac0fa59ef188b5f7c3adb5944ec1d7259116a9e4de91",
+    "tui_cold-resume-native-session.jsonl": "8e253f7ba2cb2267daf4042f36299d8ffd34c95f63543baf0ca0154872d6074e",
+    "tui_work/tui-first.txt": "5a3f60e017f9e2196bdfc2b01e5d139e499457d82906ee70299ac3e197f3eaf4",
+    "tui_work/tui-resumed.txt": "96827204f91b72d6b7741772d23eddb214ee96c4c1ad1b3302094a8f7d9ecc3b",
+    "tui-interrupt_qa-source.json": "408129869744731fcb92c62df7daee13ac135df0b39da0542f2c5ce18232d960",
+    "tui-interrupt_results.json": "e5ea6b1f53828849e511d001ab6a0ee61fbbcd8f835446eaa3212746c4a3239b",
+    "tui-interrupt_home/config.toml": "92ab1a789ad8593e17bfb3e3c00efceb2f35fced764e55b4974132843f7fe52f",
+    "tui-interrupt_transcript.pty": "add5707cfd5ef2872557136915b4a96af432cf0f78a594d19cc1c9cda8c8c94a",
+    "tui-interrupt_native-session.jsonl": "19a631260603bcdaae0f77ed06280d5480f8bd957e06429c1ebafb84dfb4a053",
+    "tui-interrupt_work/after-interrupt.txt": "72b0acaa7b9f965389335d15bd14cffa45456d5b0c01a037f88d4166a2df58fe",
+    "tui-interrupt_home/sessions/2026/10/21/rollout-2026-10-21T19-52-47-01a15e4e-88f5-7773-9001-f59fb66eb5c4.jsonl": "637345265857c0be3fede5529ad2c970a3b3b3ed466ddd53157318986c445877",
+    "browser_artifact": "7af1059aae47de0882dd9c8378ee04f0382294c9adc67dd6561cdb953e346be2",
+    "browser_results": "b9c63a041f8f32906fcc89e22dea567e3663881aff7a04993609ac858c1de3cc",
+    "browser_verdict": "6731f68b4339bf9a7d0bd9fee2302a1b4932ccd02a640853e52f7ee1dcc4d4bf",
+    "browser_protocol": "11c9f83d30cfdf1990b91ad478c24d960c0411419723563d40eb977b13429c2e",
+    "protocol_recovery_schema-tool-before-terminal": "a9fc079ad1b59cfc97d8c07d869359ab1ae5a6862e7744567459ee3f3c6088f3",
+    "protocol_recovery_schema-tool-before-terminal_artifact": "a0922d8afded43e0df4dfead7c57284000ecb17f88fb119a91d258cfe3585be8",
+    "protocol_recovery_schema-tool-before-terminal_request-bodies.json": "88b973a019e8ad2081f9a7b2e2c86488ab324c5f12a727642d19d12d8f5adc89",
+    "protocol_recovery_schema-tool-before-terminal_receipts.json": "9e02b49bb763dcfac8c97ac31318ad9ab7e456da5826264c212fa6bef730b02f",
+    "protocol_recovery_schema-tool-before-terminal_observed.json": "1e6fc13ab8805fe6410a042c264e81918ce190e25cb873dac2045a2e59ee0a2f",
+    "protocol_recovery_schema-tool-before-terminal_client-requests.jsonl": "3e4c34d7f3c1f7ba8e194e13b601ca6171b64dd8d0e400bf5b06f79f6832971b",
+    "protocol_recovery_schema-tool-before-terminal_state.sqlite": "2851b82f84dc4e77880f492fc002c7f8e6f9abfed7d8a4e5eb8500701acb46c7",
+    "protocol_recovery_schema-tool-before-terminal_events-1792579902116738062.json": "8b761cc27136ad88b90df25ef5a7f1ab27803c5ab00a1c74569b5c48863928a4",
+    "protocol_recovery_schema-tool-before-terminal_launch-1792579896555912661.json": "2d508ecb7d56a9388f0c9d188622784adc8877f70a0276a36f51c52c85ad25ab",
+    "protocol_recovery_schema": "ed00217d160732824d3e82c27b9b2a815715f82b4011e37173e9209bbfce30fd",
+    "protocol_recovery_schema_artifact": "59cb7be9beab4e1bd381de01ddd68ebcd593ffe4e9f7403285d62b0bd33c0e0b",
+    "protocol_recovery_schema_request-bodies.json": "be42db883d80985d7f1ea686f85bd3e29732d3dc562da2a929f9368fdeef9e36",
+    "protocol_recovery_schema_receipts.json": "a395fb95eb57467471c2a8b16c809d395f9ac99745518d88d895ab1d5af457c4",
+    "protocol_recovery_schema_observed.json": "6cf2c8a0d572c9aaea0ec5aaee9f4bf13159c6eb1fed8958c0fc5d3711cfe39e",
+    "protocol_recovery_schema_client-requests.jsonl": "1d629ccce10cd173d2c4de475e72399d3f728e9dacfb3c23d1b3dc4f065e4c12",
+    "protocol_recovery_schema_state.sqlite": "1ee40a9c39f73b6e84bf718716254cc397ea9ea88ff39f9273d8945db553c0b3",
+    "protocol_recovery_schema_events-1792579880177560752.json": "feb3988831ad0514175814ffd01395b8a75d1c720ee0d1c2649149546f6f5fa2",
+    "protocol_recovery_schema_launch-1792579877101996940.json": "881f4e02c70d8fb2c137dde2236a0b5c55160e6e88a3e5a252efcb8cd908aa6a",
+    "protocol_recovery_schema-overflow": "f5a51e933bc2e8a98b5330d8eaf26e30f8262dffb96eced6a2f48bd6179208fb",
+    "protocol_recovery_schema-overflow_artifact": "45eb5e03c7dabe7b92844d03de582e901619d1132adf26d020e72ee8b4261bb4",
+    "protocol_recovery_schema-overflow_request-bodies.json": "114c98485b213d7fdb5c0175bfc4dafb3b31aa0be181376f87e054c1d4d8453e",
+    "protocol_recovery_schema-overflow_receipts.json": "c015eb4e24f9bf3b843de1269443e8180ac9d998dee4559e006b4903f16c627a",
+    "protocol_recovery_schema-overflow_observed.json": "2af3c545ec80bad9124f9128ec6d6dab6bc41f4724883862ac7f85bb5bc6d0da",
+    "protocol_recovery_schema-overflow_client-requests.jsonl": "3fc0b9bae41ef5e8b8869884e83def1634db930d204dbbfb6dab67120fbe8984",
+    "protocol_recovery_schema-overflow_state.sqlite": "7e02f12ee0ea9803318402b9366132c7370b0693d47e3af4e112407b5d0aaaa7",
+    "protocol_recovery_schema-overflow_events-1792579916519254696.json": "31db372aa64ba410f6a7085d30a25e9fa5174378f1856d50f4fccd2560bed267",
+    "protocol_recovery_schema-overflow_launch-1792579905401838132.json": "0ca947be632f752cf5d8b5c9bedb02f34bcd9c4c02ada955f7d6314817c4c1fb",
+    "protocol_recovery_schema-multiple": "fda5d30393fdc0e9b09c4c518b58a50e559fb068b8d00127f479e451c7b35180",
+    "protocol_recovery_schema-multiple_artifact": "afffde6bbb58c8c5e3ad121b816f5f1f958e432b96fe1e2e18806e76a6f04270",
+    "protocol_recovery_schema-multiple_request-bodies.json": "c58eb58e97f44830ff0633fb24cf9e6e9d4b8407b51da52c5bcafe38a4da35ce",
+    "protocol_recovery_schema-multiple_receipts.json": "f5ca9865b82859ba632130d694203994b2ee3da6eeadb33caeec4308a2a86869",
+    "protocol_recovery_schema-multiple_observed.json": "4ea3e2f77945ad3e43cbe3bb2a2b9b9585c5451b79935c9054505b470690a1c1",
+    "protocol_recovery_schema-multiple_client-requests.jsonl": "9be507311f303487f05f296bcb378b6f31db675652b8ec5082b473de5b1cb362",
+    "protocol_recovery_schema-multiple_state.sqlite": "fcc9fbe531ef6ac081081624330f084602214e6c4caaad9ac2d8eb2d4559c10b",
+    "protocol_recovery_schema-multiple_events-1792579886625460225.json": "bce4c09a53053a1454018faba2e44370b017d67d2fecdea0e1f5f9b7f67b9383",
+    "protocol_recovery_schema-multiple_launch-1792579883485718483.json": "a006468e57da07b9d5459fe7b897c3d40a7f38ac7c26f15245df69b8fd4ca2cd",
+    "protocol_recovery_schema-tool-final": "776a5da53e447fd004228f2402029bcf58109c4e2b8ad6b1323a7b041b910dc7",
+    "protocol_recovery_schema-tool-final_artifact": "3f61897a2573edb5de2988f3d66dd7f6eaf2def8e21733b11ccc1d3d298a7563",
+    "protocol_recovery_schema-tool-final_request-bodies.json": "ac5ed96315b9fce20072d7142472f1b85785883b29a18c43e7f92bc1ccb74bd2",
+    "protocol_recovery_schema-tool-final_receipts.json": "8542e0a8635cd0d61cd1f15cec0df92b46ed5351268f67e65d54e3733dff2126",
+    "protocol_recovery_schema-tool-final_observed.json": "3425ebdc703d948435a2dadb65bfb087559bae5e609117945f784a5112be2132",
+    "protocol_recovery_schema-tool-final_client-requests.jsonl": "76625e0e194126baf41ad5ae0481d93b99a45b36034f4c8cc1630787ce7a98e4",
+    "protocol_recovery_schema-tool-final_state.sqlite": "5b485f6613cb9c1b370a67cc049bc8b29dca780769946ef332c762773bbdd875",
+    "protocol_recovery_schema-tool-final_events-1792579893226847390.json": "a2018286fa4765dee05befd7041104cbbcbbfea7bbcf07cd8ee60a7885c16788",
+    "protocol_recovery_schema-tool-final_launch-1792579889921846590.json": "58f12bd45a72b42aae5357c2e3eb56695aafce1ce5a379344b92ee929b51b7a9",
+    "protocol_recovery_undeclared-tool": "633b0ddb0d257d779155c3382241cd5dc57595340db14e34ae943cb17b72ef9f",
+    "protocol_recovery_undeclared-tool_artifact": "4ee4379658d936cc13fdbcad451d3621e680f4221f367730ece5ae7d7901ad13",
+    "protocol_recovery_undeclared-tool_request-bodies.json": "8f4de2a9bccc9bef173352459980d76483f5df5e9932f5a9d037766d057378c6",
+    "protocol_recovery_undeclared-tool_receipts.json": "bee68176e894fff495dbf1464145152287f34e0f829795bb74bcca86aa9afff1",
+    "protocol_recovery_undeclared-tool_observed.json": "d58b1f2c3964642c714d7de94a3de86d332a05972f0f4289c38168d9470c8720",
+    "protocol_recovery_undeclared-tool_client-requests.jsonl": "6830dbcf20b350700a51b341997c9b811d5ee0453adabfb476399394bfaf6b90",
+    "protocol_recovery_undeclared-tool_state.sqlite": "17aaf8809f984be0be296f329b3fb993bb8f82506f6a8ad6ff64bc5cff937afb",
+    "protocol_recovery_undeclared-tool_events-1792579873691183205.json": "259ab41d722f02561df02deebc1530b751f05ce889da75969f8de9957eeda9e9",
+    "protocol_recovery_undeclared-tool_launch-1792579870302463963.json": "37f4a17add4cbf2f611afcec168944efd58ac23432df63dc39a05732415c9306",
+    "native_lifetime": "c0b40d46757b48449aea55e6c7be9340bddc94852b4578be289db9eccb4f16bb",
+    "user_verification_boundary": "9ceab73f9aed584ba89bd95c64e69287b72ec2c06f5543b122ecdf0dabccb18d",
+    "schema_comparison": "c7f60693e4b0c1e8a3d470bc46a669a38c18162e64c52fc070d5ec624c933deb",
+    "jinja_complex_runtime": "88f81c460dd2aeaae51dd2c701ae2a288dc0af3b24d92ae95052236c5bc1f28d",
+    "jinja_imports_workspace": "7a224592d206f0dec682af82800b4bc04d4b682cd9fc581969d98b8abcd2d667",
+    "jinja_imports_upstream-heldout": "7a224592d206f0dec682af82800b4bc04d4b682cd9fc581969d98b8abcd2d667",
+    "jinja_native_events_0": "28628ff38cd2c195a996715729e68ca30659e696821e72a751c84ad4bcdc06ab",
+    "jinja_native_events_1": "92a20ddef27b0c87758c5c4458923fa8a2da5667668c24698e9f376880b1272f",
+    "jinja_final_results": "7a1fe612494c7a983558dc22991124b7396f79321af9d7783517ebb26139fac8",
+    "jinja_final_artifact": "4b34fa72386618a959a52d14724fca4aca280110e06712255f6df1b3db62a9c0",
+    "jinja_final_patch": "a55ea9e47622abfd5213ff0e96544d8d955a0672e192563683c136c15e68c628",
+    "httpcore_complex_runtime": "62b9b52e67253de3b336ce59addfc4c0fbc64bbb43e19b369bab8e9c9fcc1679",
+    "httpcore_imports_workspace": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_upstream-heldout": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_independent-cancellation": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_real-tcp-0": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_real-tcp-1": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_real-tcp-2": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_imports_tls-socket": "98e556ea480ea3abaddc6e6b44ab39b71b419dd1ae7b693b53f7a819b1ee3b8c",
+    "httpcore_native_events_0": "cc0ee11d70ab320fffa0972e1afff1019fb17fd8bd981fc47c85cf1ff6b852c7",
+    "httpcore_native_events_1": "9d411ea3248cc4fda433b71c220f443ba1039baed0c9a0a553a0aa15bf01026a",
+    "httpcore_native_events_2": "8d764bc4ff29d0e1284e75381a0197bf204c48606a3d37160478a203859852cc",
+    "httpcore_final_results": "e7c59184c21c99ca2ee774071bc5c93c02a817b654acd68f4902e2d4c24857e8",
+    "httpcore_final_artifact": "4418a08279208d0cf72249af71305dd854965e843acb18717b723dfe0aaefbd9",
+    "httpcore_final_patch": "6d379a1c895f0333147c8f6cf5bae93ce0bf15e0d43a1c19ac833dd2ec524f28",
+    "current_local_rpc_observations": "130af6cb115db7419a659e35104bf38aaa1f5e399b52befaeb52b9206e1ae7d2",
+    "original_offline_artifact.json": "a865966a7961fd6f106586608634462fd612ec652506874c1b529f6d55945f17",
+    "original_offline_verdict.json": "ebf7a6dc34efc480169f233184542892efe9d353bd909f3cab406fe5ddb361d5",
+    "original_offline_offline-collection.json": "9f4772e2a2ff679ee84b7df28a751376adf077a4819bf48d8d1f74633992c9a3",
+    "original_offline_offline.xml": "412fbb06d81b0d0c34807341795750906e6ad4033b2e881a5bf19c300b217e51",
+    "current_offline_artifact.json": "fcb17850317f9d5fa2a6db1854f86bd609fce405d24575cae75d3175924299e4",
+    "current_offline_verdict.json": "1be29b7c8441afa42b6290f71bf719987caad50b8fc40bac48032ab9ecf5cef5",
+    "current_offline_offline-collection.json": "803611db26a4766481df7a1e62c91cad8fb07381443c9243100bef7698c97ceb",
+    "current_offline_offline.xml": "07f6870029e8105315c405647c63b6d80874d191fac07120bc00e97b4a12faf2"
+  },
+  "qualification_protocol": "One frozen installed target; exact standard gates plus per-method postconditions, local account and applicable sandbox lifecycles, complex saved tasks, actual browsing and protocol fault recovery. Initial failures remain preserved. Third-party application outcomes remain separate from independently reconstructed runtime mechanism proofs.",
+  "stable_solution": "docs/STABLE_PLAN.zh-CN.md",
+  "historical_release_reports": "reports/history/v0.3.0/"
+}

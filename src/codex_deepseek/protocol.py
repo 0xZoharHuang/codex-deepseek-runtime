@@ -17,6 +17,11 @@ PROVIDER = "deepseek"
 STRUCTURED_PROVIDER = "morph/fp8"
 SERIAL_PROVIDER = "primeintellect"
 PEER_HOSTED_PROVIDER = STRUCTURED_PROVIDER
+STRUCTURED_FORMAT_INSTRUCTION = (
+    "Response format requirement: Produce the final assistant answer as raw JSON matching the requested JSON Schema. "
+    "Do not wrap the JSON in Markdown fences or add explanatory text outside it. "
+    "Tool calls retain their normal protocol; this requirement applies to the final assistant answer."
+)
 
 
 def native_history_fingerprint(item):
@@ -369,6 +374,15 @@ def prepare(body: dict, search_store: Any = None) -> tuple[dict, Registry]:
     if not isinstance(text, dict) or not isinstance(text.get('format') or {}, dict):
         raise ProtocolError("Responses text format must be an object")
     structured = (text.get('format') or {}).get("type") == "json_schema"
+    if structured:
+        # Some endpoints implement strict schema as a prompt hint. Make the
+        # native wire-format requirement explicit without removing tools or
+        # altering history. StructuredOutput still rejects any invalid final.
+        instructions=result.get('instructions')
+        if instructions is None:instructions=''
+        if not isinstance(instructions,str):raise ProtocolError('Responses instructions must be text')
+        if not instructions.endswith(STRUCTURED_FORMAT_INSTRUCTION):
+            result['instructions']=instructions+('\n\n' if instructions else '')+STRUCTURED_FORMAT_INSTRUCTION
     result["store"] = False
     reasoning = result.get("reasoning") or {}
     effort = reasoning.get("effort", "high")
