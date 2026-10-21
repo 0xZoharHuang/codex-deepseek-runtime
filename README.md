@@ -120,7 +120,7 @@ Every request fixes the same model and uses explicit `provider.only`,
 | Ordinary model requests | Official `deepseek` |
 | Strict JSON-schema output | `morph/fp8` |
 | Tools plus explicit `parallel_tool_calls=false` | `primeintellect` |
-| Thinking, native peer context and hosted web search together | `morph/fp8` |
+| Thinking, native peer or incomplete-response context, and hosted web search together | `morph/fp8` |
 
 These are capability selections before sending the request. A provider error does
 not cause adapter retries or replay tool effects. Native retry settings remain
@@ -134,12 +134,73 @@ as tool context; transport metadata is labeled and is not claimed to be model
 reasoning. SSE terminal, item identity and incremental arguments are checked.
 Unknown or unrepresentable semantics fail explicitly instead of disappearing.
 
+Interrupted native responses can leave trailing plaintext reasoning or assistant
+output in sampling history. DeepSeek does not accept unfinished assistant prefill. The wire
+adapter retains the exact plaintext as an explicitly labeled, nonexecuting context
+envelope; native saved history remains unchanged. The compatible context route is
+selected before sending that request, just as for peer context. No transport
+context tool is exposed for execution and the adapter does not retry agent steps.
+
+Structured responses are validated locally against their JSON Schema without
+network schema retrieval. Text deltas and tool arguments remain streamed. Final
+message completion events are committed only after the provider's completed
+response satisfies the schema; Markdown wrappers and invalid values produce an
+explicit compatibility failure for the native retry mechanism. The adapter does
+not invent, coerce or silently repair a model's structured values.
+
 Native compaction uses its plaintext summary path. Opaque OpenAI encrypted state,
 OpenAI-hosted cloud search/cache semantics, Realtime model services, image-generation
 models, ChatGPT Apps/marketplace entitlements and cloud task accounts require their
 respective backend/model capabilities. Runtime equivalence does not grant those
 services or claim equal model judgment. Live web search uses OpenRouter Exa;
 unsupported location/cache options report a compatibility error.
+
+## Document browsing through native MCP
+
+The distribution registers a `codex_web` stdio server in its isolated home's
+configuration. The server uses the official MCP Python SDK; native Codex still
+discovers, approves, dispatches, logs and cancels its calls. No agent tools run in
+the model protocol bridge. Native hosted live search continues to use OpenRouter
+Exa. Search excerpts are never represented as a successful page open.
+
+The browser provides `open(url_or_ref, start_line, num_lines)`,
+`find(ref_id, pattern, case_sensitive, context_lines)` and `click(ref_id, link_id)`.
+Open retrieves actual HTML, text or PDF bytes and returns numbered text lines,
+source URL, retrieval time, content hash and numbered links. Find searches the
+saved document, including phrases across display-line boundaries. Click resolves
+an actual saved link and fetches its target. Persistent page references survive
+native MCP process restarts within that isolated home. Unavailable references,
+failed downloads and document limits produce tool errors instead of invented text.
+
+The document cache lives in `<home>/web-cache/pages.sqlite` with a 64 MiB logical
+payload budget and oldest-first eviction. Downloads are limited to 10 MiB, text
+to 4 MiB, and PDFs to 200 pages. Responses explicitly report pagination and link
+truncation. This is a document reader: JavaScript execution, authenticated browser
+sessions and visual browser automation are separate capabilities.
+
+Public HTTP(S) addresses are supported by default, with private-address and
+redirect validation. The reader uses system certificate trust and configured
+HTTP(S) proxies, without website cookies or implicit `.netrc` login credentials.
+macOS VPN Fake-IP DNS in `198.18.0.0/15` is accepted for hostnames only when a
+kernel route confirms a TUN interface; literal reserved addresses remain blocked.
+The resolution mode is included in the fetched-page evidence.
+This MCP server has its own declared network capability, as native MCP servers do;
+command sandbox networking and hosted search are separate native permission paths.
+Operators can explicitly configure another named server with `--allow-private-host`
+for an intranet. The bundled configuration never enables that option.
+
+The launcher maintains only the bundled server's command and arguments, preserving
+other MCP servers, user comments, tool settings and explicit disablement. Disable
+the bundled reader using the native configuration:
+
+```toml
+[mcp_servers.codex_web]
+enabled = false
+```
+
+Dependency locks include the SDK, parsers and build tools. Regenerate them with
+`uv pip compile --generate-hashes --only-binary :all: --python-version 3.11
+--output-file requirements.lock pyproject.toml build-requirements.in`.
 
 ## Lifetimes and recovery
 
@@ -152,6 +213,11 @@ for the next request; in-flight requests are not replayed.
 The native-process supervisor monitors a private parent pipe. Wrapper termination
 asks native Codex to shut down its owned work. Yielded command sessions follow
 native lifetimes: interrupting a turn does not mean every background command exits.
+MCP calls also retain upstream lifetimes: turn interruption stops sampling but can
+leave an already dispatched MCP read in progress. A same-version official/native
+comparison verifies this behavior and owner-exit connection cleanup. When the MCP
+client explicitly sends a cancellation notification, the browser cancels its HTTP
+request. These are separately tested guarantees, not one blanket abort claim.
 A direct SIGKILL of native Codex leaves command descendants on the audited upstream
 macOS baseline as well; it is recorded as an upstream limitation, not a passing
 cleanup guarantee. Signal only recorded PID plus kernel birth identity.
@@ -190,6 +256,36 @@ reviewer. Regression and oracle tests run outside the model.
 python3 prepare_real_work.py --output /fresh/fixtures --python /path/to/python3.11
 python3 verify_real_work.py --fixtures /fresh/fixtures
 ```
+
+Use `--require-web-research` to require both real workflows to perform actual
+open/find/click against official documentation in addition to code changes and
+full independent validation. `verify_real_work_followup.py` resumes the same saved
+task after explicit acceptance feedback, preserving the failed attempt and requiring
+a fresh native reviewer, unchanged oracles and external suite reruns. HTTPcore
+follow-up acceptance repeats the real TCP stress three times.
+
+`verify_remaining_methods.py` verifies the fixed v0.3 gap list method by method.
+Sixty are local operations with checked state or effects. Four original entries
+are remote-backend contracts (hosted-App event streams and remote-plugin service
+operations); their account boundary is checked explicitly and never counted as a
+positive local lifecycle. Five native user-verification methods also require a
+ChatGPT account identity before accessing OS credentials: the same-version
+official/native comparison exercises only their unavailable-account guard, without
+enrolling, deleting or prompting for a real credential. The method matrix records
+these corrected scopes and all other account/platform exclusions.
+
+```sh
+python3 verify_remaining_methods.py --entry /immutable/release/venv/bin/codex-deepseek \
+  --output /private/method-acceptance --jobs 2
+```
+
+`verify_protocol_recovery.py` injects one invalid upstream response per native
+session, then observes native retry and real-model recovery. It verifies that
+undeclared tools and invalid JSON never execute tools or become final native
+results. `verify_browser_runtime.py`, `verify_browser_protocol.py` and
+`verify_native_mcp_lifetime.py` cover actual HTTP effects, public HTTPS, cold page
+references, native model-driven navigation, explicit MCP cancellation and the
+official native interruption baseline.
 
 The complete acceptance runner requires an actual immutable installed entry and
 an independently built native policy test probe. Build the probe from the same

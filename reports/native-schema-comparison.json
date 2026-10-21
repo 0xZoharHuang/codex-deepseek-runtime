@@ -1,8 +1,10 @@
 {
-  "baseline": "official verified 0.164.0-alpha.7 binary",
-  "fork": "final optimized installed 0.3.0 native release",
+  "baseline": "same-version official alpha.7 binary",
+  "fork": "unchanged alpha.7 native package used in adapter 0.4.0",
   "schemas_compared": 456,
   "differences": [],
   "passed": true,
-  "client_methods": 174
+  "client_methods": 174,
+  "official_binary_sha256": "e349f53217acccb5138ba9abb2235b126010e439cf6a7eef96262a16aa95c3b9",
+  "patched_binary_sha256": "a5c93856621c12c89aed65f13c54fd39a56396c3296d0b6d300841157e8d5362"
 }

@@ -43,3 +43,34 @@ parameter support and its Responses translation agree on these requests. No
 OpenRouter proprietary server patch is claimed here. The runtime tests preserve
 failed attempts and successful provider/generation evidence privately; published
 reports include sanitized model, route, status and capability evidence only.
+
+### Incomplete-response continuation and strict output
+
+The 0.4.0 audit also reproduced a complete native request whose input ended in
+plaintext reasoning retained after a rejected undeclared tool call. The official
+DeepSeek endpoint returned 400; unchanged requests on alternative providers could
+interpret that suffix as assistant prefill. A labeled, nonexecuting continuation
+context preserves the exact historical output without allowing it to become a
+partial final answer. The compatible context/search route is selected before the
+request; no failed tool action is replayed by the bridge.
+
+One full native image/history/JSON-schema request also returned Markdown-fenced
+JSON despite `strict=true`. Subsequent controlled probes reproduced provider
+variability. `structured.py` validates the requested schema locally before native
+message completion, without coercing values or fetching remote schema resources.
+Native sampling retry remains the recovery mechanism.
+
+`verify_protocol_recovery.py --entry /immutable/release/venv/bin/codex-deepseek
+--output /private/recovery` is a reviewable reproduction of both recovery contracts:
+it injects one explicit upstream fault, then forwards the native retry to the real
+fixed model. It checks actual native errors, continuation evidence and final output,
+and rejects any client-tool execution. It does not claim an OpenRouter server fix.
+
+### Native MCP interruption lifetime
+
+The official and patched alpha.7 binaries were run with the same deterministic local
+model fixture and SDK browser. Both stop the turn on interrupt while the dispatched
+MCP request can continue; both close the connection when its owner exits. The
+SDK browser separately cancels HTTP on explicit MCP cancellation notifications.
+`verify_native_mcp_lifetime.py` and `verify_browser_protocol.py` preserve that
+distinction. No business-layer cancellation behavior is silently replaced.

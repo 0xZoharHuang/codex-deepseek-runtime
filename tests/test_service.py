@@ -69,3 +69,48 @@ def test_corrupt_descriptor_recovers_backup_without_second_watchdog(tmp_path,mon
         with pytest.raises(RuntimeError,match='lease is held'):ensure(home,catalog)
         assert matches(value['pid'],value['birth'])
     finally:terminate(value['pid'],value['birth'],timeout=8)
+
+
+def test_schema_initialization_window_retains_service_until_ownership_is_known(tmp_path):
+    import sqlite3
+    from codex_deepseek.state import Store
+    home=tmp_path/'profile';state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
+    with sqlite3.connect(state) as db:db.execute('PRAGMA journal_mode=WAL')
+    assert native_active(home) is True
+    with sqlite3.connect(state) as db:
+        db.execute('CREATE TABLE searches(id TEXT PRIMARY KEY,item TEXT NOT NULL)')
+    assert native_active(home) is True
+    store=Store(state)
+    try:assert native_active(home) is False
+    finally:store.close()
+
+
+def test_unreadable_ownership_database_does_not_authorize_runtime_replacement(tmp_path):
+    home=tmp_path/'profile';state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
+    state.write_bytes(b'NOT_A_SQLITE_DATABASE')
+    assert native_active(home) is True
+    assert state.read_bytes()==b'NOT_A_SQLITE_DATABASE'
+
+
+def test_real_supervisor_survives_worker_schema_publication_delay(tmp_path,monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import sqlite3
+    monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
+    home=tmp_path/'profile';state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
+    blocker=sqlite3.connect(state);blocker.execute('PRAGMA journal_mode=WAL');blocker.execute('BEGIN IMMEDIATE')
+    value=None
+    try:
+        with ThreadPoolExecutor(1) as pool:
+            future=pool.submit(ensure,home,Path(__file__).resolve().parents[1]/'catalog.json')
+            deadline=time.monotonic()+5
+            while not read_descriptor(home).get('worker_pid') and time.monotonic()<deadline:time.sleep(.02)
+            descriptor=read_descriptor(home)
+            assert matches(descriptor.get('pid'),descriptor.get('birth'))
+            time.sleep(.35)
+            assert not future.done(),'The service must wait for the worker schema rather than die or fake readiness'
+            blocker.rollback()
+            value=future.result(15)
+            assert healthy(value) and not native_active(home)
+    finally:
+        blocker.close()
+        if value:terminate(value['pid'],value['birth'],timeout=8)

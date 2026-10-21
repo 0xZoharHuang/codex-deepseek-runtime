@@ -1,4 +1,4 @@
 """Provider compatibility for Codex, without replacing its execution runtime."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 

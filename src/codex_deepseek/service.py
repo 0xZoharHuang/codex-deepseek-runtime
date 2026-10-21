@@ -85,10 +85,15 @@ def native_active(home):
     """Only inspect this profile's recorded kernel identities and daemon PID file."""
     state=Path(home)/'provider-state/adapter.sqlite'
     if state.exists():
-        with sqlite3.connect(state,timeout=5) as db:
-            try:rows=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE closed IS NULL AND native_pid IS NOT NULL').fetchall()
-            except sqlite3.OperationalError:rows=[]
-            requests=db.execute("SELECT pid,birth FROM runtime_owners WHERE owner_id IN (SELECT owner_id FROM receipts WHERE status='running')").fetchall()
+        try:
+            with sqlite3.connect(state,timeout=5) as db:
+                rows=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE closed IS NULL AND native_pid IS NOT NULL').fetchall()
+                requests=db.execute("SELECT pid,birth FROM runtime_owners WHERE owner_id IN (SELECT owner_id FROM receipts WHERE status='running')").fetchall()
+        except sqlite3.Error:
+            # The worker can have created the file without publishing its schema
+            # yet. Unknown ownership must retain the service, never crash its
+            # supervisor or authorize replacement of a possibly active runtime.
+            return True
         if any(matches(pid,birth) for pid,birth in rows):return True
         if any(matches(pid,birth) for pid,birth in requests):return True
     for name in ['daemon.pid','app-server.pid']:

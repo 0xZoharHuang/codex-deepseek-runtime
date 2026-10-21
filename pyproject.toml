@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codex-deepseek-runtime"
-version = "0.3.0"
+version = "0.4.0"
 description = "An isolated native Codex runtime distribution for DeepSeek through OpenRouter"
 readme = "README.md"
 license-files = ["LICENSE", "licenses/**/*.txt", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.11"
-dependencies = ["aiohttp==3.13.2", "lark==1.3.1", "zstandard==0.25.0"]
+dependencies = ["aiohttp==3.13.2", "lark==1.3.1", "zstandard==0.25.0", "mcp==2.3.0", "beautifulsoup4==4.15.0", "tomlkit==0.15.2", "pypdf==6.21.1", "truststore==0.10.5", "jsonschema==4.26.0"]
 
 [project.optional-dependencies]
 test = ["pytest==9.0.2", "pytest-asyncio==1.3.0"]

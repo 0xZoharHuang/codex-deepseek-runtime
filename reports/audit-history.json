@@ -1,47 +1,45 @@
 {
-  "original_failures_preserved": true,
-  "runtime_fixes": [
-    "Removed redundant provider CLI overrides that forced native TUI into embedded mode.",
-    "Preserved native exact hashed Unix socket rendezvous and stale-root recovery while rejecting foreign/direct socket attachments.",
-    "Validated the hidden stdio-to-uds positional attachment path.",
-    "Preserved native ephemeral WebSocket port zero using kernel-owned endpoint registration.",
-    "Cleared provider-side defer_loading only after actual native tool discovery, preserving current schemas and grammar.",
-    "Fixed the dedicated connectivity probe outside Git without altering ordinary exec trust behavior."
-  ],
-  "verifier_scope_correction": {
-    "topic": "Native memory v1/v2",
-    "original_observation": "Native extraction, consolidation and cold injection succeeded; opaque random project identifiers were not always retained by the model summary.",
-    "runtime_pass_criterion": "Generated native summary content must appear exactly in the fresh cold thread input, with source-bound artifacts and native model pins. Identifier retention is recorded separately as model quality.",
-    "patch": "memory-verifier-scope.patch",
-    "lineage": "qualification-lineage.json"
-  },
-  "real_work": [
+  "version": "0.4.0",
+  "status": "closed_after_frozen_artifact_acceptance",
+  "previous_history": "reports/history/v0.3.0/audit-history.json",
+  "issues": [
     {
-      "name": "httpcore",
-      "passed": true,
-      "total_seconds": 839.25,
-      "cold_resume_during_source_edits": true,
-      "continuation_after_wall_clock_budget": false,
-      "continuation": null,
-      "independent_native_reviewers_completed": 1
+      "issue": "Search excerpts were previously mistaken for complete browsing",
+      "resolution": "Added official-SDK native MCP open/find/click with actual fetch hashes, public HTTPS, cold references, explicit cancellation and native-lifetime comparison."
     },
     {
-      "name": "jinja",
-      "passed": true,
-      "total_seconds": 2046.3600000000001,
-      "cold_resume_during_source_edits": false,
-      "continuation_after_wall_clock_budget": true,
-      "continuation": {
-        "reason": "native cold continuation after a bounded model-workflow timeout",
-        "model_reasoning_effort": "low",
-        "oracle_sources_unchanged": true,
-        "seconds": 242.92
-      },
-      "independent_native_reviewers_completed": 1
+      "issue": "Initial 64-method list mixed local operations and hosted-backend contracts",
+      "resolution": "60 local positive operations individually verified; 4 hosted Apps/remote-plugin boundaries corrected and separately checked. Five OS-verification methods also require an account identity in upstream and were compared at their unavailable-account gate."
+    },
+    {
+      "issue": "Incomplete response history was interpreted as assistant prefill or rejected",
+      "resolution": "Retain exact output in labeled nonexecuting context; select compatible context route before request; native retry recovered in fault-injection tests."
+    },
+    {
+      "issue": "Provider could publish Markdown instead of strict JSON",
+      "resolution": "Validate final schema locally before message completion. Invalid values are never repaired or coerced into success; native retry recovered after a controlled fault."
+    },
+    {
+      "issue": "Supervisor startup could race worker SQLite schema creation",
+      "resolution": "Unknown ownership conservatively retains service. Deterministic delayed-schema real-process and corrupt-database tests pass."
+    },
+    {
+      "issue": "Parent final prose omitted a completed child answer",
+      "resolution": "Native completion and exact parent-context delivery are mandatory. Parent summarization is a separate model-quality metric; both fork modes revalidated. Original failure retained."
+    },
+    {
+      "issue": "One generation metadata lookup unavailable after completed request",
+      "resolution": "Original route proof remains failed; unchanged route verifier rerun established all provider generation receipts."
+    },
+    {
+      "issue": "Real HTTPcore independent TCP stress exposed an ownership race after cancellation fix",
+      "resolution": "Saved native task resumed with explicit acceptance feedback, production code and deterministic regression repaired, reviewer repeated, full suites plus three stress runs and TLS checks passed."
+    },
+    {
+      "issue": "Browser private-IP guard rejected macOS VPN Fake-IP DNS",
+      "resolution": "Hostname-only exception requires a matching kernel TUN route in benchmark IP range; literal private/reserved destinations remain blocked. Public HTTPS verified."
     }
   ],
-  "earlier_exploratory_failure": {
-    "case": "HTTPcore",
-    "reason": "A separate earlier high-effort exploratory workflow reached its 30-minute budget; retained as a model-workflow observation and not counted as a passing release workflow."
-  }
+  "runtime_business_patch_changed_since_v0_3": false,
+  "raw_failures_preserved_privately": true
 }

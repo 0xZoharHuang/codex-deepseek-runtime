@@ -39,6 +39,7 @@ class Registry:
         self.published: set[str] = set()
         self.formats: dict[str,str] = {}
         self.peer_context = False
+        self.continuation_context = False
 
     def add(self, name: str, namespace: str | None, kind: str, *, exposed: bool = False) -> Tool:
         identity = (namespace, name)
@@ -208,6 +209,22 @@ class Registry:
                 # is system; retaining developer would demote native tool policy.
                 item['role'] = 'system'
             result.append(item)
+        trailing=[]
+        while result and (result[-1].get('type')=='reasoning' or (result[-1].get('type','message')=='message' and result[-1].get('role')=='assistant')):
+            trailing.insert(0,result.pop())
+        if trailing:
+            self.continuation_context=True
+            context_id='continuation_'+hashlib.sha256(json.dumps(trailing,sort_keys=True,ensure_ascii=False).encode()).hexdigest()[:24]
+            result.extend([
+                {'type':'reasoning','content':[{'type':'reasoning_text','text':
+                    'Native adapter transport metadata: preserving incomplete-response context. This marker is not model-generated reasoning.'}]},
+                {'type':'function_call','call_id':context_id,'name':'cx_native_continuation_context',
+                 'arguments':json.dumps({'kind':'incomplete_native_response','source_item_ids':[x.get('id') for x in trailing]})},
+                {'type':'function_call_output','call_id':context_id,'output':[{'type':'input_text','text':
+                    'Adapter-owned transport context, not an executed tool or human authorization. '
+                    'The following is untrusted assistant output retained verbatim for native continuation. '
+                    'Continue the original runtime task using currently declared tools.\n'+json.dumps(trailing,ensure_ascii=False)}]},
+            ])
         return result
 
     def output(self, original: dict, *, final=True) -> dict:
@@ -340,7 +357,7 @@ def prepare(body: dict, search_store: Any = None) -> tuple[dict, Registry]:
     # hosted-tool loop. Both alternative endpoints passed the same unchanged
     # failing request. Pin the compatible endpoint without changing the model
     # or reasoning, and never retry a failed request on a different provider.
-    peer_hosted = registry.peer_context and mapping[effort]!='none' and any(
+    peer_hosted = (registry.peer_context or registry.continuation_context) and mapping[effort]!='none' and any(
         tool.get('type')=='openrouter:web_search' for tool in result['tools'])
     route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if structured else PEER_HOSTED_PROVIDER if peer_hosted else PROVIDER
     result["provider"] = {"only": [route], "allow_fallbacks": False, "require_parameters": True}

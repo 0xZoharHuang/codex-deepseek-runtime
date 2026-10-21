@@ -32,6 +32,17 @@ def test_native_archive_repair_is_immutable_and_reused(tmp_path):
     assert installer.native_package(root,manifest,source)==repaired
 
 
+def test_verified_native_package_does_not_redownload_deleted_archive(tmp_path,monkeypatch):
+    root=tmp_path/'private';root.mkdir()
+    files={name:b'#!/bin/sh\nexit 0\n' for name in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']}
+    source=tmp_path/'native.tar.gz';manifest=archive_at(source,files)
+    package=installer.native_package(root,manifest,source)
+    (root/'downloads'/source.name).unlink();manifest['archive']['url']='https://must-not-contact.invalid/native.tar.gz'
+    def forbidden(*args,**kwargs):raise AssertionError('Unnecessary network download')
+    monkeypatch.setattr(installer.urllib.request,'urlopen',forbidden)
+    assert installer.native_package(root,manifest)==package
+
+
 def test_native_archive_rejects_paths_even_when_outer_hash_matches(tmp_path):
     root=tmp_path/'private';root.mkdir();source=tmp_path/'native.tar.gz'
     manifest=archive_at(source,{'../escape':b'no'})

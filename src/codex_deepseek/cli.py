@@ -211,6 +211,8 @@ async def run(arguments: list[str]) -> int:
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     runtime_home.mkdir(parents=True, exist_ok=True, mode=0o700)
     runtime_home.chmod(0o700)
+    from .web_config import ensure_browser
+    ensure_browser(runtime_home)
     arguments=bind_remote(arguments,check_attachment(arguments,runtime_home))
     check_daemon_package(arguments,runtime_home,native())
     store = Store(runtime_home / 'provider-state' / 'adapter.sqlite')

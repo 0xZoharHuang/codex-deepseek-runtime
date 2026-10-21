@@ -19,6 +19,14 @@ and commits; test snapshots, private OAuth credentials and raw user traces are n
 part of the compact source release. SPDX texts come from the pinned
 `spdx/license-list-data` revision recorded in `native/license-data.json`.
 
+The bundled document browser uses the official Model Context Protocol Python SDK
+(`mcp` and `mcp-types`, MIT), Beautiful Soup (MIT), Soup Sieve (MIT), pypdf (BSD-3-Clause),
+TOML Kit (MIT) and truststore (MIT). Structured-output verification uses jsonschema
+and referencing (MIT). All transitive Python versions and distribution hashes are
+pinned in `requirements.lock`; their distribution metadata and original license
+files remain in the immutable installed environment. These are installed
+dependencies, not copied source incorporated into the native Codex binary.
+
 The source patch and build recipes are available alongside this distribution so
 native changes can be independently inspected. Public upstream contributions are
 separately labeled; local patches do not imply upstream endorsement.

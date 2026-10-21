@@ -67,7 +67,7 @@ def main():
                 if payload.get('type')=='custom_tool_call' and 'view_image' in source and re.search(r'''["']?detail["']?\s*:\s*["']original["']''',source):
                     original_requested=True
         check('native_original_detail_image_tool',original_requested and 'black' in answer and 'white' in answer,answer)
-        schema={'type':'object','properties':{'marker':{'type':'string','enum':['STRUCTURED_NATIVE']},'value':{'type':'integer'}},'required':['marker','value'],'additionalProperties':False}
+        schema={'type':'object','properties':{'marker':{'type':'string','enum':['STRUCTURED_NATIVE']},'value':{'type':'integer','enum':[437]}},'required':['marker','value'],'additionalProperties':False}
         items=peer.turn(thread,'Without tools or delegation, output marker STRUCTURED_NATIVE and integer value 437 in the required JSON schema.',outputSchema=schema)
         answer=json.loads(text(items))
         check('native_structured_output',answer=={'marker':'STRUCTURED_NATIVE','value':437},answer)

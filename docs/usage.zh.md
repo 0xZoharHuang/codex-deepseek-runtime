@@ -59,13 +59,34 @@ WebSocket 的端口 0 也保留，由系统分配后通过原生进程的内核�
 
 普通调用使用官方 DeepSeek 路由；已验证无法由官方端点处理的参数组合，
 在请求前选择同一固定模型的兼容端点：严格结构化输出用 Morph，明确串行工具
-约束用 Prime Intellect，Thinking + hosted search + peer 上下文组合用 Morph。
+约束用 Prime Intellect，Thinking + hosted search + peer 或未完成回答上下文组合用 Morph。
 禁止 provider fallback，不通过失败后重放工具动作来换路由。generation 记录
 可以核对实际模型和提供商。
 
 固定基线、构建哈希、复杂工程验证和逐方法证据范围见随发布提供的
 `reports/acceptance.json` 与 `reports/runtime-method-matrix.json`。
 矩阵区分实际场景调用、保留的原生处理器、后端/平台依赖和上游未实现方法。
+
+## 网页读取
+
+原生 live 搜索继续由 OpenRouter Exa 提供；打开具体网页、页内查找和跟随链接由
+随包注册的 `codex_web` MCP 工具完成。`open` 真正抓取网页，返回页面引用、编号
+文本、链接和源数据哈希；`find` 查该页面的文字；`click` 根据实际链接编号继续
+读取。页面引用可以在相同独立 home 的 MCP 进程重启后继续使用，受缓存淘汰限制。
+它是 HTML/文本/PDF 文档读取器，不执行 JavaScript，也不使用登录浏览器的 cookies。
+关闭或调整它使用原生 MCP 配置；其他用户 MCP 配置、注释和显式禁用会保留。
+
+```toml
+[mcp_servers.codex_web]
+enabled = false
+```
+
+turn interrupt 与 MCP cancellation 是不同事件。按同版官方 CLI 的原生行为，
+中断采样后，已经发出的 MCP 请求可能仍在执行；关闭所有者会关闭请求。读取器
+收到 MCP 的显式 cancellation 通知时会取消 HTTP。不要将这三种情况合并成
+“任意中断都立即停止所有工具”。
+
+完整架构、安装、验收和维护流程见 [固定运行方案](stable-solution.zh.md)。
 
 升级必须通过本发行包的验证安装器。原生生产 updater 会覆盖专用补丁，因此被
 明确拒绝；先停止当前 home 的 daemon，再安装通过验收的新发行包，必要时用

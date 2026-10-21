@@ -1,0 +1,8 @@
+{
+  "baseline": "official verified 0.164.0-alpha.7 binary",
+  "fork": "final optimized installed 0.3.0 native release",
+  "schemas_compared": 456,
+  "differences": [],
+  "passed": true,
+  "client_methods": 174
+}

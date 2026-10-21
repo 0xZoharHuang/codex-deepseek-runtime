@@ -1,0 +1,1394 @@
+[
+  {
+    "method": "initialize",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "server/diagnostics",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "userVerification/status",
+    "scope": "native_os_user_verification_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "userVerification/enroll",
+    "scope": "native_os_user_verification_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "userVerification/delete",
+    "scope": "native_os_user_verification_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "userVerification/verify",
+    "scope": "native_os_user_verification_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "userVerification/cancel",
+    "scope": "native_os_user_verification_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/resume",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/fork",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/sample",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/sample/cancel",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/archive",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/delete",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/unsubscribe",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/increment_elicitation",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/decrement_elicitation",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/name/set",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/prediction/request",
+    "scope": "declared_but_unimplemented_in_frozen_upstream",
+    "native_schema_identical": true,
+    "upstream_source_note": "Native message_processor.rs returns method_not_found for this method",
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/goal/set",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/goal/get",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/goal/clear",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/add",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/delete",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/reorder",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/queue/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/metadata/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/attachment/add",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/attachment/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/attachmentOwner/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/attachment/remove",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/section/move",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/settings/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/memoryMode/set",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "memory/status",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "memory/reset",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "rollout/compress",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/unarchive",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/compact/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/shellCommand",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/approveGuardianDeniedAction",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/backgroundTerminals/clean",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/backgroundTerminals/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/backgroundTerminals/terminate",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/revert",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "project/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "project/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "project/create",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "project/import",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "project/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "project/move",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "project/delete",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "threadSection/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "threadSection/create",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "threadSection/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "threadSection/delete",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/search",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/searchOccurrences",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/loaded/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/readState/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/turns/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/items/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/items/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/inject_items",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "skills/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "skills/extraRoots/set",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "hooks/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "marketplace/add",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "marketplace/remove",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "marketplace/upgrade",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/search",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/installed",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/reconcile",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "plugin/skill/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/share/save",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/share/updateTargets",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/share/list",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/share/checkout",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/share/delete",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "app/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "app/list",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "app/installed",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "fs/readFile",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/writeFile",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/createDirectory",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/getMetadata",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/readDirectory",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/remove",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/copy",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/watch",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "fs/unwatch",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "skills/config/write",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "plugin/install",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "plugin/uninstall",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "turn/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "turn/settings/update",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "turn/steer",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "turn/interrupt",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "thread/realtime/start",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/realtime/appendAudio",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/realtime/appendText",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/realtime/appendSpeech",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/realtime/stop",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/timeline/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "thread/realtime/listVoices",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "review/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "model/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/gatewayOAuth/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/gatewayOAuth/login",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/gatewayOAuth/cancel",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "modelProvider/capabilities/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "experimentalFeature/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "permissionProfile/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "experimentalFeature/enablement/set",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/enable",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/disable",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/status/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/pairing/start",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/pairing/status",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/client/list",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "remoteControl/client/revoke",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "collaborationMode/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "mock/experimentalMethod",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "environment/add",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "environment/info",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "environment/status",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "mcpServer/oauth/login",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "config/mcpServer/reload",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "mcpServerStatus/list",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "mcpServer/resource/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "mcpServer/event/stream/start",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "mcpServer/event/stream/stop",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "mcpServer/tool/call",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "windowsSandbox/setupStart",
+    "scope": "other_platform_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "windowsSandbox/readiness",
+    "scope": "other_platform_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/login/start",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/bedrock/discover",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/bedrock/setup",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/bedrock/checkGovCloudRequirements",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/login/cancel",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/logout",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/rateLimits/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/rateLimitResetCredit/consume",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/usage/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/workspaceMessages/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/sendAddCreditsNudgeEmail",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "feedback/upload",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "command/exec",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "command/exec/write",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "command/exec/terminate",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "command/exec/resize",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "process/spawn",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "process/writeStdin",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "process/kill",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "process/resizePty",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "config/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "externalAgentConfig/detect",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "externalAgentConfig/import",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "externalAgentConfig/import/recordHistory",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "externalAgentConfig/import/readHistories",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "config/value/write",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": true,
+    "execution_evidence": "passing scenario logs and native events"
+  },
+  {
+    "method": "config/batchWrite",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "configRequirements/read",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "account/read",
+    "scope": "backend_or_account_dependent_native_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "fuzzyFileSearch",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "fuzzyFileSearch/sessionStart",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "fuzzyFileSearch/sessionUpdate",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  },
+  {
+    "method": "fuzzyFileSearch/sessionStop",
+    "scope": "local_runtime_surface",
+    "native_schema_identical": true,
+    "upstream_source_note": null,
+    "observed_in_passing_acceptance": false,
+    "execution_evidence": "unchanged native handler inherited; not individually exercised"
+  }
+]

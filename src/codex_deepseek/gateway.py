@@ -17,6 +17,7 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 
 from .state import Store
 from .native_http import NativeTransport, network_policy, response_headers
+from .structured import StructuredOutput
 
 UPSTREAM = "https://openrouter.ai/api/v1/responses"
 
@@ -140,6 +141,7 @@ class Gateway:
         try:
             body = await request.json()
             payload, registry = prepare(body, self.store)
+            structured = StructuredOutput(body)
             transport_policy=network_policy(request.headers)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
@@ -175,6 +177,7 @@ class Gateway:
                 if not body.get("stream"):
                     result = await upstream.json()
                     validate_response(result)
+                    structured.validate(result)
                     result["output"] = [registry.output(item) for item in result.get("output", [])]
                     events.response_id = result.get("id")
                     events.usage = result.get("usage") or {}
@@ -183,19 +186,20 @@ class Gateway:
                 response = web.StreamResponse(headers={**transport_headers,"Content-Type": "text/event-stream", "Cache-Control": "no-store",
                                                         "X-Adapter-Request-Id": receipt})
                 await response.prepare(request)
-                async for event in sse_events(upstream.content):
-                    normalized_events = events.transform(event)
-                    if event.get('type') == 'response.created':
-                        self.store.progress(receipt, events)
-                    if events.terminal:
-                        # This receipt describes the upstream model result. Native
-                        # logs remain authoritative for delivery and tool effects.
-                        self.store.finish(receipt, events.status, status, events)
-                    for normalized in normalized_events:
-                        await response.write(encode_sse(normalized))
-                    if events.terminal:
-                        await response.write_eof()
-                        return response
+                async for original in sse_events(upstream.content):
+                    for event in structured.events(original):
+                        normalized_events = events.transform(event)
+                        if event.get('type') == 'response.created':
+                            self.store.progress(receipt, events)
+                        if events.terminal:
+                            # The receipt describes the upstream model result;
+                            # native logs remain authoritative for tool effects.
+                            self.store.finish(receipt, events.status, status, events)
+                        for normalized in normalized_events:
+                            await response.write(encode_sse(normalized))
+                        if events.terminal:
+                            await response.write_eof()
+                            return response
                 if not events.terminal:
                     raise ProtocolError("Upstream disconnected without a terminal Responses event")
                 await response.write_eof()

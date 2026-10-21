@@ -43,7 +43,12 @@ def valid_native(package,manifest):
 
 
 def native_package(root,manifest,archive_override=None):
-    info=manifest['archive'];checksum=info['sha256'];downloads=root/'downloads';downloads.mkdir(exist_ok=True)
+    info=manifest['archive'];checksum=info['sha256']
+    target=root/'native'/checksum[:24]
+    candidates=[target,*sorted(target.parent.glob(target.name+'-repair-*'),reverse=True)]
+    reusable=next((candidate for candidate in candidates if valid_native(candidate,manifest)),None)
+    if reusable and not archive_override:return reusable
+    downloads=root/'downloads';downloads.mkdir(exist_ok=True)
     archive=downloads/info['filename']
     if archive_override:
         supplied=Path(archive_override).resolve()
@@ -55,9 +60,6 @@ def native_package(root,manifest,archive_override=None):
         if sha(staging)!=checksum:raise SystemExit('Downloaded native archive checksum mismatch')
         os.replace(staging,archive)
     if sha(archive)!=checksum:raise SystemExit('Cached native archive checksum mismatch; preserving it for inspection')
-    target=root/'native'/checksum[:24]
-    candidates=[target,*sorted(target.parent.glob(target.name+'-repair-*'),reverse=True)]
-    reusable=next((candidate for candidate in candidates if valid_native(candidate,manifest)),None)
     if reusable:return reusable
     if target.exists():target=target.with_name(target.name+'-repair-'+uuid.uuid4().hex[:10])
     target.mkdir(parents=True,mode=0o700)
@@ -88,7 +90,7 @@ def valid_release(release,source_hashes,catalog_hash,native_manifest=None):
         stored=json.loads((release/'native-runtime.json').read_text())
         if native_manifest is not None and stored!=native_manifest:return False
         if not valid_native(Path(metadata['native_package']),stored):return False
-        return subprocess.run([str(environment/'bin/python'),'-I','-c','import aiohttp,lark,zstandard,codex_deepseek.cli'],cwd=release,capture_output=True,timeout=15).returncode==0
+        return subprocess.run([str(environment/'bin/python'),'-I','-c','import aiohttp,lark,zstandard,mcp,bs4,tomlkit,pypdf,codex_deepseek.cli,codex_deepseek.web_mcp'],cwd=release,capture_output=True,timeout=15).returncode==0
     except (OSError,ValueError,KeyError,TypeError,StopIteration,subprocess.TimeoutExpired):return False
 
 

@@ -18,6 +18,7 @@ from verify_live import Peer
 BASE = Path(__file__).resolve().parent.parent / 'delivery/real-work'
 COMPACTION_LIMIT = 500000
 PRINT_LOCK = threading.Lock()
+REQUIRE_WEB_RESEARCH = False
 
 
 def log(name, value):
@@ -60,6 +61,10 @@ multi_agent_v2 = true
         shutil.copyfile(root/'tls_socket_regression.py',root/'work/acceptance_tls_socket.py')
         task = '''Production async connection-pool cancellation bug: cancelling a request while an expired idle connection is being closed can leak the request in the queue and leave the pool unusable. A mock stream whose aclose awaits 50ms, keepalive_expiry=1ms, and a second request cancelled after 10ms reproduces it after the first response and an idle period. Repair cancellation safety across acquisition, connection cleanup, response-stream closure, and queue reassignment, considering both asyncio and trio and consistency with the sync implementation. Add real deterministic regressions, ensure no requests remain queued after cancellation, and verify a subsequent request succeeds. Preserve fairness and pool limits. Run the complete tests directory.'''
         task += ' Also fix cancellation during TLS initialization so the raw TCP stream is closed, not merely removed from the pool. A real-socket reproduction is supplied as acceptance_tls_socket.py in your workspace. Preserve its assertions and use the real network backend; add an appropriate regression and verify both asyncio and Trio.'
+    if REQUIRE_WEB_RESEARCH:
+        url='https://jinja.palletsprojects.com/en/stable/templates/' if name=='jinja' else 'https://docs.python.org/3/library/asyncio-task.html'
+        phrase='Assignments' if name=='jinja' else 'Task cancellation'
+        task+=' Before finalizing the fix, use the bundled codex_web MCP browser to actually open '+url+', use find to locate '+repr(phrase)+', and use click to follow a relevant link to a DIFFERENT documentation page. Read that page and relate the documentation to the fix. Cite both documentation URLs in your final explanation. Search excerpts and shell/curl fetches do not satisfy this browser acceptance. Official documentation reading is explicitly allowed; the prohibition on fetching upstream code or patches still applies.'
     oracle=root/'oracle'
     oracle_mode=oracle.stat().st_mode&0o777
     def oracle_sources():
@@ -135,7 +140,15 @@ multi_agent_v2 = true
             completions=[event['payload'] for event in events if event.get('type')=='event_msg' and event.get('payload',{}).get('type')=='task_complete']
             report['reviewers'].append({'thread':child,'agent_path':agent_path,'completed':bool(completions),'final_message':completions[-1].get('last_agent_message') if completions else None})
     reviewer_completed=any(item['completed'] for item in report['reviewers'])
-    report['passed']=report['oracle_guard']['source_unchanged'] and reviewer_completed and report.get('turn_status')=='completed' and not report.get('error') and report['diff_check']==0 and all(t['exit']==0 for t in report['validation'])
+    browser=root/'home/web-cache/pages.sqlite';pages=[]
+    if browser.exists():
+        with sqlite3.connect(browser) as db:
+            pages=[{key:page.get(key) for key in ['url','source_sha256','retrieved_at']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
+    persisted_events=[event for path in root.glob('events-*.json') for event in json.loads(path.read_text())]
+    browser_calls=[event['params']['item'] for event in persisted_events if event.get('method')=='item/completed' and event.get('params',{}).get('item',{}).get('type')=='mcpToolCall' and event['params']['item'].get('server')=='codex_web']
+    completed_actions=sorted({call['tool'] for call in browser_calls if call.get('status')=='completed' and not call.get('error')})
+    report['web_research']={'required':REQUIRE_WEB_RESEARCH,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':completed_actions}
+    report['passed']=report['oracle_guard']['source_unchanged'] and reviewer_completed and report.get('turn_status')=='completed' and not report.get('error') and report['diff_check']==0 and all(t['exit']==0 for t in report['validation']) and (not REQUIRE_WEB_RESEARCH or (report['web_research']['distinct_actual_urls']>=2 and {'open','find','click'}<=set(completed_actions)))
     (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     log(name,report)
     return report
@@ -146,9 +159,11 @@ if __name__=='__main__':
     parser.add_argument('--fixtures',type=Path,default=BASE)
     parser.add_argument('--compaction-limit',type=int,default=COMPACTION_LIMIT,
                         help='Use 90000 only for deliberate repeated-compaction stress testing')
+    parser.add_argument('--require-web-research',action='store_true')
     options=parser.parse_args()
     BASE=options.fixtures.resolve()
     COMPACTION_LIMIT=options.compaction_limit
+    REQUIRE_WEB_RESEARCH=options.require_web_research
     with ThreadPoolExecutor(max_workers=2) as pool:
         results=list(pool.map(scenario,['httpcore','jinja']))
     (BASE/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))

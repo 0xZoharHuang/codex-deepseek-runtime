@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import hashlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -19,7 +20,7 @@ def digest(path):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');args=parser.parse_args()
     entry=args.entry.expanduser().resolve()
     release=entry.parent.parent.parent
     metadata=json.loads((release/'installation.json').read_text())
@@ -32,7 +33,7 @@ def main():
     output=lambda name:str(root/name)
     gates={
         'tui':[sys.executable,str(SOURCE/'verify_tui_audit.py'),'--entry',str(entry),'--output',output('tui')],
-        'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve())],
+        'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),*(['--require-web-research'] if args.require_web_research else [])],
         'native-revocation':[sys.executable,str(SOURCE/'verify_native_revocation.py'),'--probe',str(args.native_probe.resolve()),'--http-binary',environment['CODEX_DEEPSEEK_TEST_HTTP_BINARY'],'--output',output('native-revocation')],
         'offline':[sys.executable,'-m','pytest','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
         'live':[sys.executable,str(SOURCE/'verify_live.py'),'--agents','--output',output('live')],
@@ -67,7 +68,8 @@ def main():
     verifier_hashes={str(path.relative_to(SOURCE)):digest(path) for path in verifier_files}
     for name,expected in metadata['adapter_source_sha256'].items():
         if digest(SOURCE/name)!=expected:raise SystemExit('Mutable source does not match the installed runtime: '+name)
-    attestation={'entry':str(entry),'entry_sha256':digest(entry),'release':str(release),'installation':metadata,'native_manifest':json.loads((release/'native-runtime.json').read_text()),'selected_gates':selected,'verifier_source_sha256':verifier_hashes,'started':time.time()}
+    controller={'python':sys.executable,'prefix':sys.prefix,'version':sys.version,'packages':{name:importlib.metadata.version(name) for name in ['aiohttp','lark','zstandard','pytest','pytest-asyncio','mcp','jsonschema']}}
+    attestation={'entry':str(entry),'entry_sha256':digest(entry),'release':str(release),'installation':metadata,'native_manifest':json.loads((release/'native-runtime.json').read_text()),'selected_gates':selected,'verifier_source_sha256':verifier_hashes,'controller_environment':controller,'started':time.time()}
     (root/'artifact.json').write_text(json.dumps(attestation,indent=2))
     results=[]
     def run(name):

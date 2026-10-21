@@ -1,41 +1,44 @@
 {
-  "kind": "scoped_verifier_revalidation",
-  "reason": "Memory runtime acceptance verifies exact generated-file injection rather than opaque identifier retention by the model. The Jinja model workflow continued from its saved session after the 30-minute budget, retaining the original timeout and rerunning its complete external validation. All native and adapter runtime bytes stayed unchanged.",
-  "runtime_unchanged": true,
-  "changed_verifiers": [
-    "verify_memory_audit.py"
-  ],
-  "added_verification_utilities": [
-    "assemble_scoped_acceptance.py",
-    "verify_real_work_resume.py"
-  ],
-  "base_artifact_sha256": "0c4f6b07e357484d5f61c6a25751e5263600ba6b5081f6ba3bd6c51b4764b921",
-  "base_verdict_sha256": "b9a20395e1505ac44271f1c3d1232ad3eac4c43e802ac8bd570e0bd8b52da87b",
-  "revalidation_stages": [
-    {
-      "artifact_sha256": "3cb0bf688332bd5ad1dd0533c824275b875d0e5de24db4c90e9576146c9e0594",
-      "verdict_sha256": "bcca5a335b337a6e13a9effd44c60937a17db881fdef8f3a23919753ad411c3a",
-      "gates": [
-        "memory-v1",
-        "memory-v2"
-      ],
-      "protocol": "scoped installed-artifact gate rerun"
-    },
-    {
-      "artifact_sha256": "49e1ce21f99b2c01b2c652c39a0f5fd1f28ea4023dc216dc1eb575cd95235dd2",
-      "verdict_sha256": "4a43ae1ebe290cd79af9b4b30c19b108e73561dc15faf30344fdd6af94d254e0",
-      "gates": [
-        "real-work"
-      ],
-      "protocol": "saved native workflow continuation with original failure retained"
-    }
-  ],
-  "previous_verifier_sha256": "d9f85cd5ebdab2d8285f8eafde6ee193939c001a5a045ce91b5cfb25b29a0cf6",
-  "current_verifier_sha256": "f1a0bd29dbadaf2102a3bf9615225c20fef242a887a26ae163c592b37fd10aff",
-  "failed_original_gates": [
-    "memory-v1",
-    "memory-v2",
-    "real-work"
-  ],
-  "original_failures_preserved": true
+  "version": "0.4.0",
+  "source_id": "5bb99beda707b6c9f558",
+  "runtime_sources_immutable": true,
+  "evidence_sha256": {
+    "regression_artifact": "4345e7fce21e2320e4914d65cc9da1f7fdeca207105cf8f3b5c30ad62323489f",
+    "regression_verdict": "19ecab6144f8af24cd5af203815ffb330629ba203f2d0326dff087ae02d67c2d",
+    "methods_artifact": "282dfde678812970fcf6cc9f66ba57de488e76193be03ec4a52a6f68eb8a8923",
+    "methods_verdict": "88327d97b7c947024457db87b18b26407eaa23c9e268b975c6a929f739f62ff1",
+    "browser_artifact": "1af36047a6d7702fd65f684e4e9169605cb19b7b83cec1180499a20067c8443d",
+    "browser_results": "c41cbed4bb4a0651dd2a1507761b8c7c19c62b2286a3382dac72524c07885808",
+    "browser_protocol": "7e839d3e01bc200cbe447eaf31dc6b44e32eb0c85bd6cf4cf32ab9bbd9ff8137",
+    "protocol_recovery_schema": "a9b812446e2e9a8c2c8213fc9c78e274b1e750ec150dbaa920f72ec90fe2769d",
+    "protocol_recovery_undeclared-tool": "b1cbe13fbd73655ea398f896258b8df5d0c9ee958017b75efb02ce00480f3495",
+    "native_lifetime": "98eb1f39f9448f78016b63510aa0844d29b29672c884944893a0c5ce43629943",
+    "user_verification_boundary": "0b809572ca22c63ad87b1d7cb19ff9538646874acd2a26a8e05551d8fe42023a",
+    "schema_comparison": "e067bd3d2f59b7bddd2fdfd6323e7912a877e8f29ce31cea7f838ccc91d5c7d2",
+    "jinja_final_results": "20f3c3c17ff1d5ecad09bb1400a1f4ad84f1d2abfce78baf6117644b72d43ef1",
+    "jinja_final_artifact": "61893f7c5f562666f268eccb10307972bf71bd1c6732c8b3a6c513c69c24121e",
+    "jinja_final_patch": "57cdde8c43c751da2dd34238150b708cf2d57582f321663018992d99f35b78dc",
+    "httpcore_final_results": "c7f0a5146fe9f37fd5ae53082284b7e0e4af123b770c6a876e2bd3bea81a2e9b",
+    "httpcore_final_artifact": "857b8910cbeb7b80c7eeec9e63c0dc44584730820a864a92f09e39135c1ff2b4",
+    "httpcore_final_patch": "cd11f263ed3e67bcb8c23c198592517b6c6509e54546239a43279dfb45976efd"
+  },
+  "initial_failures_preserved": true,
+  "no_automatic_adapter_tool_replay": true,
+  "note": "Native retry and explicit saved-task continuations are separately recorded. Real-task source fixes belong to test workspaces, not the runtime implementation.",
+  "agent_scope_revalidation": {
+    "reason": "Verify native delivery, child completion and follow-up context independently of whether the parent model repeats both values in its final prose. Parent echo remains reported as a separate model-quality metric. The routes gate is repeated unchanged because one upstream generation-metadata lookup was unavailable; model request/response and routing receipts had completed, and the original missing-metadata result remains failed.",
+    "changed_verifier": "verify_agents.py",
+    "old_verifier_sha256": "feeca96cd92201a9abd4d603cdce85404ff0c8f01dcac9ae87ecee56157933d2",
+    "new_verifier_sha256": "7f96f45a13da0c3a29fbf9fbaa66527e7dffb22229ad4f0613da08f856c3d559",
+    "runtime_sources_unchanged": true,
+    "original_failed_gates": [
+      "agents-none",
+      "routes"
+    ],
+    "original_failure_preserved": true,
+    "base_artifact_sha256": "aec85f1675647edc68e3a6fcb1a730ce3ed3df865b022ae3f50c637df60cc6b3",
+    "base_verdict_sha256": "5f0eb27cfc0a7529a299ea951986f77968452764d31639de60b84b21f023c58c",
+    "rerun_artifact_sha256": "9773275530ac28c3cf9f043250c91c3fe7c7424f1b2052bdf10fb4494f97d8b2",
+    "rerun_verdict_sha256": "313f4d68877b661294ecfb1ff9fc920bff9d370da8ab033aacfec42050b6c752"
+  }
 }
