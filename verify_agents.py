@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import uuid
 
-from verify_live import Peer, prepare, text
+from verify_live import Peer, prepare, text,qa_sandbox_mode
 from acceptance_assertions import parent_deliveries
 
 
@@ -13,12 +13,10 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--fork',choices=['none','all'],default='none')
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write')
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode())
     args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4())
-    prepare(root)
-    config=root/'home/config.toml'
-    config.write_text('sandbox_mode='+json.dumps(args.sandbox_mode)+'\n'+config.read_text(encoding='utf-8'),encoding='utf-8')
+    prepare(root,sandbox_mode=args.sandbox_mode)
     peer=Peer(root)
     try:
         thread=peer.new(sandbox=args.sandbox_mode)

@@ -66,7 +66,7 @@ def yielded_background_session(rollout,fixture_name):
 
 
 def run(entry,output,sandbox_mode):
-    root=output.resolve()/str(uuid.uuid4());private_directory(root)
+    root=output.resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()));private_directory(root)
     qa_snapshot=write_qa_receipt(root,entry,['verify_tui_interrupt.py','verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','process_acceptance.py'])
     home=root/'home';home.mkdir();work=root/'work';work.mkdir()
     (home/'config.toml').write_text('model_reasoning_effort="low"\napproval_policy="never"\nsandbox_mode='+json.dumps(sandbox_mode)+'\n[tui]\nanimations=false\n[projects.'+json.dumps(str(work))+']\ntrust_level="trusted"\n',encoding='utf-8')

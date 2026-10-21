@@ -13,7 +13,7 @@ import argparse
 from codex_deepseek.processes import matches,terminate
 from codex_deepseek.platforms import comparison_path
 from codex_deepseek.service import healthy,read_descriptor
-from verify_live import Peer,text
+from verify_live import Peer,text,qa_sandbox_mode
 from verify_tui_audit import expected_backend
 from process_acceptance import python_command
 
@@ -33,9 +33,9 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,default=ENTRY);parser.add_argument('--output',type=Path,default=BASE/'delivery/independent-audit/daemon');args=parser.parse_args()
     if os.name=='nt' and expected_backend()=='embedded':
         raise SystemExit('Positive native Windows daemon acceptance requires a non-elevated terminal; this administrator token is native-ineligible. Run this gate in the disposable guest with its non-elevated account.')
-    ENTRY=args.entry.resolve();ROOT=args.output.resolve()/str(uuid.uuid4())
+    ENTRY=args.entry.resolve();ROOT=args.output.resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()))
     (ROOT/'home').mkdir(parents=True,mode=0o700)
-    (ROOT/'home/config.toml').write_text('model_reasoning_effort="low"\nsandbox_mode="workspace-write"\napproval_policy="on-request"\n[features]\ncode_mode=true\ncode_mode_host=true\nmulti_agent_v2=true\n', encoding='utf-8')
+    (ROOT/'home/config.toml').write_text('model_reasoning_effort="low"\nsandbox_mode='+json.dumps(qa_sandbox_mode())+'\napproval_policy="on-request"\n[features]\ncode_mode=true\ncode_mode_host=true\nmulti_agent_v2=true\n', encoding='utf-8')
     (ROOT/'work').mkdir(exist_ok=True);results=[];peer=None
     def management(command):
         result=subprocess.run([str(ENTRY),'app-server','daemon',command],env={**os.environ,'CODEX_DEEPSEEK_HOME':str(ROOT/'home')},capture_output=True,text=True,encoding='utf-8',timeout=45)
@@ -44,7 +44,7 @@ def main():
         return result
     def connect():return Peer(ROOT,command=[str(ENTRY)],server_args=['app-server','proxy'])
     def passed(name,condition,detail):
-        record={'name':name,'passed':bool(condition),'detail':detail};results.append(record)
+        record={'name':name,'passed':bool(condition),'sandbox_mode':qa_sandbox_mode(),'detail':detail};results.append(record)
         (ROOT/'results.json').write_text(json.dumps(results,indent=2,ensure_ascii=False), encoding='utf-8');print(json.dumps(record,ensure_ascii=False),flush=True)
         if not condition:raise AssertionError(name)
     try:
@@ -63,7 +63,7 @@ def main():
                {'bytes':len(payload),'sha256':hashlib.sha256(actual).hexdigest()})
         config=peer.call('config/read',{'includeLayers':False})
         (ROOT/'effective-config.json').write_text(json.dumps(config,indent=2), encoding='utf-8')
-        started=peer.call('thread/start',{'cwd':str(ROOT/'work'),'sandbox':'workspace-write','modelProvider':'openai',
+        started=peer.call('thread/start',{'cwd':str(ROOT/'work'),'sandbox':peer.sandbox_mode,'modelProvider':'openai',
             'config':{'model_providers.deepseek_runtime.base_url':'http://127.0.0.1:1/must-not-be-used'}})
         thread=started['thread']['id']
         passed('native_daemon_request_overrides_cannot_escape_required_provider',started.get('modelProvider')=='deepseek_runtime',{'thread':thread,'effective_provider':started.get('modelProvider')})
@@ -110,8 +110,9 @@ def main():
             time.sleep(.05)
         passed('gateway_worker_restart_keeps_native_daemon_endpoint',after['worker_pid']!=before['worker_pid'] and after['port']==before['port'] and after['token']==before['token'] and healthy(after),{'old_worker':before['worker_pid'],'new_worker':after['worker_pid'],'stable_port':after['port']})
         peer=connect();index=len(peer.events)
-        resumed=peer.call('thread/resume',{'threadId':thread,'cwd':str(ROOT/'work'),'sandbox':'workspace-write','approvalPolicy':'on-request'})
-        passed('cold_proxy_resume_uses_declared_workspace_permissions',resumed.get('sandbox',{}).get('type')=='workspaceWrite' and resumed.get('approvalPolicy')=='on-request' and comparison_path(resumed['cwd'])==comparison_path(ROOT/'work'),{'sandbox':resumed.get('sandbox'),'approvalPolicy':resumed.get('approvalPolicy'),'cwd':resumed.get('cwd')})
+        resumed=peer.call('thread/resume',{'threadId':thread,'cwd':str(ROOT/'work'),'sandbox':peer.sandbox_mode,'approvalPolicy':'on-request'})
+        expected_sandbox={'workspace-write':'workspaceWrite','danger-full-access':'dangerFullAccess'}[peer.sandbox_mode]
+        passed('cold_proxy_resume_uses_declared_workspace_permissions',resumed.get('sandbox',{}).get('type')==expected_sandbox and resumed.get('approvalPolicy')=='on-request' and comparison_path(resumed['cwd'])==comparison_path(ROOT/'work'),{'sandbox_mode':peer.sandbox_mode,'sandbox':resumed.get('sandbox'),'approvalPolicy':resumed.get('approvalPolicy'),'cwd':resumed.get('cwd')})
         items=peer.complete(thread,index)
         queue=peer.call('thread/queue/list',{'threadId':thread})['data']
         passed('queued_task_executes_after_cold_proxy_resume_and_worker_crash',target.is_file() and target.read_text(encoding='utf-8')==nonce and not queue and any(item.get('type') in {'commandExecution','fileChange'} for item in items),{'answer':text(items),'queue_remaining':queue,'tool_item_types':[item.get('type') for item in items]})

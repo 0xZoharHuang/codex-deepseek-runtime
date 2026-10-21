@@ -7,7 +7,7 @@ import subprocess
 import time
 import uuid
 from verify_live import Peer, text
-from process_acceptance import python_command,evidence_root
+from process_acceptance import python_command,shell_command,evidence_root
 
 root=evidence_root('runtime-contract')/str(uuid.uuid4())
 (root/'home').mkdir(parents=True);(root/'work').mkdir()
@@ -15,7 +15,7 @@ subprocess.run(['git','init','-q',str(root/'work')],check=True)
 (root/'home/config.toml').write_text('model_reasoning_effort="high"\n[features]\ncode_mode=false\ncode_mode_only=false\ncode_mode_only_strict_3p_tools=false\n')
 results=[]
 def passed(name, condition, detail):
-    results.append({'name':name,'passed':bool(condition),'detail':detail})
+    results.append({'name':name,'passed':bool(condition),'sandbox_mode':peer.sandbox_mode,'detail':detail})
     (root/'results.json').write_text(json.dumps(results,indent=2,ensure_ascii=False))
     print(json.dumps(results[-1],ensure_ascii=False),flush=True)
     if not condition:raise AssertionError(name)
@@ -55,10 +55,19 @@ try:
     items=peer.turn(fork,'Without calling tools or delegating, recall both exact ledger values from the inherited conversation.')
     passed('fork_cold_resume_compaction_tool_history',all(v in text(items) for v in peer.dynamic_answers.values()),text(items))
     target=root/'must-not-be-created.txt'
+    fixture=root/'work/approval_write.py'
+    fixture.write_text('from pathlib import Path\nimport sys\nPath(sys.argv[1]).write_text("APPROVED")\n',encoding='utf-8')
+    command=shell_command([python_command('')[0],'-I',str(fixture),str(target)])
     approval=peer.new(approvalsReviewer='user',sandbox='read-only')
-    items=peer.turn(approval,f'Do not delegate. Attempt exactly once to use the native exec_command tool with sandbox_permissions=require_escalated to create {target} containing APPROVED. You have permission to request user approval; if the user declines, report declined and stop without trying another route.')
-    declines=[e for e in peer.callbacks if e['method']=='item/commandExecution/requestApproval']
-    passed('native_user_approval_decline_callback',bool(declines) and not target.exists(),{'callbacks':declines,'answer':text(items)})
+    turn,start=peer.start(approval,'Do not delegate. Actually call exec_command exactly once with the command below, sandbox_permissions=require_escalated, and justification="isolated native user approval fixture". The user authorizes requesting approval, not bypassing the reply. If declined, stop without another route. A statement of intent is not a tool call.\n```\n'+command+'\n```')
+    items=peer.complete(approval,start)
+    declines=[e for e in peer.callbacks if e['method']=='item/commandExecution/requestApproval'
+              and e.get('params',{}).get('threadId')==approval and e.get('params',{}).get('turnId')==turn]
+    replies=[json.loads(line) for line in (root/'client-requests.jsonl').read_text(encoding='utf-8').splitlines()]
+    declined=[item for item in items if item.get('type')=='commandExecution' and item.get('status')=='declined']
+    bound=[event for event in declines if any(reply.get('id')==event['id'] and reply.get('result',{}).get('decision')=='decline' for reply in replies)
+           and any(item.get('id')==event['params'].get('itemId') and item.get('command')==event['params'].get('command') for item in declined)]
+    passed('native_user_approval_decline_callback',bool(bound) and not target.exists(),{'callbacks':bound,'thread':approval,'turn':turn,'answer':text(items)})
 finally:
     peer.close()
     print('EVIDENCE',root,flush=True)

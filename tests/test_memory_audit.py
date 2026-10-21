@@ -3,6 +3,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 
@@ -94,6 +95,70 @@ def test_native_shell_edits_do_not_require_the_model_to_choose_a_file_change_too
     source_work['items']=[item for item in source_work['items'] if item.get('type')!='fileChange']
     evidence=audit.source_work_evidence(**source_work)
     assert evidence['passed'] and not evidence['native_completed_file_changes']
+
+
+@pytest.fixture
+def prefixed_verification(tmp_path):
+    workspace=tmp_path/'ledger project';workspace.mkdir()
+    ledger='def credit(db, key, amount):\n    pass\n'
+    (workspace/'ledger.py').write_text(ledger,encoding='utf-8')
+    interpreter='/native/controller/bin/python'
+    verifier=tmp_path/'verify_ledger_fixture.py'
+    exact=shlex.join([interpreter,'-I',str(verifier),str(workspace)])
+    item={'type':'commandExecution','status':'completed','exitCode':0,'cwd':str(workspace),
+          'command':shlex.join(['/bin/bash','-lc','cat ledger.py && '+exact]),
+          'aggregatedOutput':ledger+'NATIVE_LEDGER_VERIFIED\n'}
+    return item,interpreter,verifier,workspace,exact
+
+
+@pytest.mark.parametrize('read_path',['ledger.py','./ledger.py','absolute'])
+def test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix(prefixed_verification,read_path):
+    item,python,verifier,work,exact=prefixed_verification
+    if read_path=='absolute':read_path=str(work/'ledger.py')
+    item['command']=shlex.join(['/bin/bash','-lc',shlex.join(['cat',read_path])+' && '+exact])
+    assert audit.native_verification_commands([item],python,verifier,work)==[item]
+
+
+@pytest.mark.parametrize('script',[
+    'echo {exact}', 'printf NATIVE_LEDGER_VERIFIED # {exact}',
+    'false || {exact}', 'if false; then {exact}; fi; echo NATIVE_LEDGER_VERIFIED',
+    '{exact} | cat', '{exact} > result.txt', '{exact}; echo NATIVE_LEDGER_VERIFIED',
+    'cat ledger.py && {exact} && printf NATIVE_LEDGER_VERIFIED',
+    'cat ledger.py "&&" {exact}', 'cat ledger.py || {exact}',
+    'cat ../ledger.py && {exact}', 'cat ledger.py && false && {exact}',
+    '$(echo {exact})', '{exact}\nprintf NATIVE_LEDGER_VERIFIED',
+    'cat ledger.py && {exact} # extra', 'cat ledger.py && {exact} --extra',
+])
+def test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification(prefixed_verification,script):
+    item,python,verifier,work,exact=prefixed_verification
+    item['command']=shlex.join(['/bin/bash','-lc',script.format(exact=exact)])
+    assert not audit.native_verification_commands([item],python,verifier,work)
+
+
+@pytest.mark.parametrize('failure',['wrong_cwd','missing_ledger','changed_prefix','marker_substring','extra_tail','marker_not_separate'])
+def test_read_prefix_requires_real_matching_contents_and_final_independent_marker(prefixed_verification,failure):
+    item,python,verifier,work,exact=prefixed_verification
+    if failure=='wrong_cwd':item['cwd']=str(work.parent)
+    elif failure=='missing_ledger':(work/'ledger.py').unlink()
+    elif failure=='changed_prefix':item['aggregatedOutput']='unrelated text\nNATIVE_LEDGER_VERIFIED\n'
+    elif failure=='marker_substring':item['aggregatedOutput']+='prefixNATIVE_LEDGER_VERIFIEDsuffix\n'
+    elif failure=='extra_tail':item['aggregatedOutput']+='unrelated tail\n'
+    elif failure=='marker_not_separate':
+        (work/'ledger.py').write_text('no newline',encoding='utf-8')
+        item['aggregatedOutput']='no newlineNATIVE_LEDGER_VERIFIED\n'
+    assert not audit.native_verification_commands([item],python,verifier,work)
+
+
+@pytest.mark.parametrize('wrapped',[False,True])
+def test_exact_windows_host_verifier_remains_supported_without_shell_evaluation(wrapped):
+    python=r'D:\QA folder\python.exe';verifier=r'D:\QA folder\verify_ledger_fixture.py';work=r'D:\QA folder\work'
+    command='& '+' '.join("'"+value+"'" for value in [python,'-I',verifier,work])
+    if wrapped:
+        command='"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe" -Command "'+command.replace('\\','\\\\')+'"'
+    item={'type':'commandExecution','status':'completed','exitCode':0,'command':command,'aggregatedOutput':'NATIVE_LEDGER_VERIFIED\r\n'}
+    assert audit.native_verification_commands([item],python,verifier,work)==[item]
+    for spoof in ['echo '+command,command+'; Write-Output NATIVE_LEDGER_VERIFIED',command+' | Write-Output','if ($false) { '+command+' }']:
+        assert not audit.native_verification_commands([{**item,'command':spoof}],python,verifier,work)
 
 
 def message(role,text):

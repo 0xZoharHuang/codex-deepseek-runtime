@@ -1,4 +1,5 @@
 """Real owned WebSocket listener, native policy, safe tuning and attachment boundary."""
+from verify_live import qa_sandbox_mode
 import argparse
 import asyncio
 import json
@@ -71,9 +72,9 @@ async def audit(root,endpoint,sandbox_mode):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True,mode=0o700);(root/'work').mkdir()
-    (root/'home/config.toml').write_text('model_reasoning_effort="low"\n[model_providers.deepseek_runtime]\nrequest_max_retries=7\nstream_idle_timeout_ms=900000\n', encoding='utf-8')
+    (root/'home/config.toml').write_text('sandbox_mode='+json.dumps(args.sandbox_mode)+'\nmodel_reasoning_effort="low"\n[model_providers.deepseek_runtime]\nrequest_max_retries=7\nstream_idle_timeout_ms=900000\n', encoding='utf-8')
     endpoint='ws://127.0.0.1:0'
     with (root/'stderr.txt').open('w',encoding='utf-8') as log:
         process=subprocess.Popen([str(args.entry.resolve()),'app-server','--listen',endpoint],env={**os.environ,'CODEX_DEEPSEEK_HOME':str(root/'home')},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=log)

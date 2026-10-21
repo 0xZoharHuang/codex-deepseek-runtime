@@ -10,7 +10,7 @@ import time
 import uuid
 import argparse
 
-from verify_live import Peer
+from verify_live import Peer,qa_command_sandbox
 from codex_deepseek.processes import identity,matches,terminate
 
 
@@ -29,7 +29,7 @@ def main():
     try:
         pidfile=root/'work/pids.jsonl'
         body=f'import json,os,pathlib,subprocess,time; target=pathlib.Path({str(pidfile)!r});target.write_text(json.dumps([os.getpid()]));child=subprocess.Popen(["sleep","120"]);target.write_text(json.dumps([os.getpid(),child.pid]));child.wait()'
-        peer.send({'id':8001,'method':'command/exec','params':{'command':[sys.executable,'-c',body],'cwd':str(root/'work'),'processId':'raw-native-crash','sandboxPolicy':{'type':'workspaceWrite','writableRoots':[str(root/'work')]},'timeoutMs':130000}})
+        peer.send({'id':8001,'method':'command/exec','params':{'command':[sys.executable,'-c',body],'cwd':str(root/'work'),'processId':'raw-native-crash','sandboxPolicy':qa_command_sandbox(root/'work'),'timeoutMs':130000}})
         end=time.monotonic()+10
         while time.monotonic()<end:
             if pidfile.exists():

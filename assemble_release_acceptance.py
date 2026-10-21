@@ -15,6 +15,7 @@ from acceptance_assertions import real_work_passed,current_browser_evidence
 SOURCE=Path(__file__).resolve().parent
 comparison_path=_support.comparison_path
 GATES={'tui','tui-interrupt','native-revocation','offline','live','plugin','features','modes','agents-nested','agents-full','agents-none','guardian','runtime-contract','plan-review','daemon','profiles','transports','local-methods','local-account','auth-stores','oauth-file','oauth-keyring','oauth-auto','oauth-secrets','memory-v1','memory-v2','goal-sample','crash-recovery','search','routes'}
+OFFLINE_FILES=('offline.xml','offline-collection.json','offline.log')
 REMOTE={'mcpServer/event/stream/start','mcpServer/event/stream/stop','plugin/skill/read','plugin/reconcile'}
 LOCAL_ACCOUNT={'account/login/start','account/read','account/logout','account/login/cancel'}
 WINDOWS_SANDBOX={'windowsSandbox/setupStart','windowsSandbox/readiness'}
@@ -294,6 +295,8 @@ def scope_source_identity(path):
 def validate_standard_gates(artifact,verdict,replacement=None):
     require(verdict.get('entry_unchanged') is True and verdict.get('verifier_source_unchanged') is True
             and verdict.get('native_probes_unchanged') is True,'Original standard run artifact/source/probes changed')
+    if artifact.get('external_offline') is not None:
+        require(verdict.get('external_offline_unchanged') is True,'Referenced offline evidence changed during the standard run')
     rows=verdict.get('gates',[]);selected=artifact.get('selected_gates',[])
     require(len(rows)==len(selected)==len(GATES) and set(selected)==GATES=={row.get('gate') for row in rows},
             'Original run must contain the exact distinct thirty gates')
@@ -360,8 +363,31 @@ def validate_method_verifiers(artifact,snapshot=None,method_snapshot=None):
     return {'five_execution_producers_current':True,'scope_helper_from_regression_snapshot':legacy}
 
 
+def offline_file_hashes(root):
+    return {name:sha(Path(root)/name) for name in OFFLINE_FILES}
+
+
+def validate_windows_controller(controller,*,elevated):
+    token=controller.get('windows_token',{})
+    require(isinstance(token,dict) and isinstance(token.get('sid'),str)
+            and re.fullmatch(r'S-1-\d+(?:-\d+)+',token['sid']) is not None
+            and token.get('elevated') is elevated,'Windows controller token identity/elevation is missing or wrong')
+
+
 def validate_offline_run(root,installation,native,scope,*,current=False,terminal_revalidated=False):
     root=Path(root);artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
+    external=artifact.get('external_offline')
+    if external is not None:
+        require(not current,'A standalone offline receipt cannot import another receipt')
+        validate_windows_controller(artifact.get('controller_environment',{}),elevated=False)
+        proof=external_offline_receipt(external['root'],installation,native,scope)
+        require(external==proof,'External offline execution provenance changed')
+        require(normalized_hashes(artifact.get('verifier_source_sha256',{}))==proof['verifier_source_sha256'],
+                'Runtime and referenced offline execution used different QA source')
+        require(verdict.get('external_offline_unchanged') is True,'External offline evidence was not stable through the runtime run')
+        require(load(root/'results.json')==verdict.get('gates'),'Runtime result rows differ from the terminal verdict')
+        for name in OFFLINE_FILES:
+            require(sha(root/name)==proof['files_sha256'][name],'Imported offline evidence bytes differ: '+name)
     require(artifact.get('installation')==installation and artifact.get('native_manifest')==native
             and artifact.get('target')==scope['target'] and artifact.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,
             'Offline run belongs to another installed target')
@@ -371,6 +397,12 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
             and verdict.get('entry_unchanged') is True and verdict.get('verifier_source_unchanged') is True,'Offline run integrity failed')
     offline=[row for row in verdict.get('gates',[]) if row.get('gate')=='offline']
     require(len(offline)==1 and offline[0].get('exit')==0,'Original/current offline gate did not pass')
+    if external is not None:
+        require(offline[0]=={**proof['gate'],'execution':'separate_complete_offline_run','external_root':proof['root']},
+                'Imported offline gate lost or changed its actual execution origin')
+        require(verdict.get('offline_files_sha256')==offline_file_hashes(root),'Imported offline files changed after runtime completion')
+    elif verdict.get('offline_files_sha256') is not None:
+        require(verdict['offline_files_sha256']==offline_file_hashes(root),'Offline files changed after execution')
     if current:
         require(artifact.get('selected_gates')==['offline'] and len(verdict.get('gates',[]))==1
                 and verdict['gates'][0].get('gate')=='offline' and verdict['gates'][0].get('exit')==0,'Current offline supplement must contain exactly the passing offline gate')
@@ -386,9 +418,42 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
                 'An unexpected offline case was skipped: '+name)
         require(name not in skips,'Duplicate skipped case: '+name);skips[name]=skipped.get('message')
     require(skips==allowed,'Expected platform-specific tests are missing or misclassified')
-    return {'tests_passed':len(cases)-len(skips),'platform_inapplicable':skips,
+    result={'tests_passed':len(cases)-len(skips),'platform_inapplicable':skips,
             'artifact_sha256':sha(root/'artifact.json'),'verdict_sha256':sha(root/'verdict.json'),
             'collection_sha256':sha(collection),'junit_sha256':sha(root/'offline.xml')}
+    if external is not None:result['external_execution']=external
+    return result
+
+
+def external_offline_receipt(root,installation,native,scope):
+    """Windows symlink tests need a capable token; runtime gates keep their own token."""
+    root=Path(root).resolve()
+    require(scope['target']=='x86_64-pc-windows-msvc','External offline execution is a Windows-only qualification path')
+    names=['artifact.json','verdict.json','results.json',*OFFLINE_FILES]
+    require(all((root/name).is_file() and not (root/name).is_symlink()
+                and comparison_path(root/name).parent==comparison_path(root) for name in names),
+            'External offline evidence must be ordinary files within its own run')
+    before={name:sha(root/name) for name in names}
+    artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
+    require('external_offline' not in artifact,'Nested offline evidence is not allowed')
+    validate_windows_controller(artifact.get('controller_environment',{}),elevated=True)
+    expected_entry=PureWindowsPath(installation['release_environment'])/'Scripts'/'codex-deepseek.exe'
+    require(PureWindowsPath(artifact.get('entry',''))==expected_entry
+            and artifact.get('entry_sha256')==installation.get('console_script_sha256')
+            and bool(artifact.get('entry_sha256')),'External offline execution used another installed launcher')
+    require(load(root/'results.json')==verdict.get('gates'),'External offline result rows differ from its terminal verdict')
+    require(verdict.get('offline_files_sha256')=={name:before[name] for name in OFFLINE_FILES},
+            'External offline raw files were not bound at original execution completion')
+    checked=validate_offline_run(root,installation,native,scope,current=True)
+    require(verdict.get('native_probes_unchanged') is True,'External offline probe identity changed')
+    gate=verdict['gates'][0]
+    require(gate.get('log')=='offline.log' and type(gate.get('exit')) is int
+            and 'execution' not in gate and 'external_root' not in gate,'External offline gate is not an original local execution')
+    require(before=={name:sha(root/name) for name in names},'External offline files changed during validation')
+    return {'root':str(root),'execution':'separate_complete_offline_run',
+            'controller_environment':artifact['controller_environment'],
+            'verifier_source_sha256':normalized_hashes(artifact['verifier_source_sha256']),
+            'gate':gate,'validation':checked,'files_sha256':before}
 
 
 def validate_native_source_audit(proof,native):
@@ -745,6 +810,11 @@ def main():
     original_offline=validate_offline_run(args.regression,metadata,native,scope,terminal_revalidated=args.terminal_regression is not None)
     selected_offline=validate_offline_run(args.offline_regression,metadata,native,scope,current=True) if args.offline_regression else original_offline
     qa_lineage['original_offline']=original_offline;qa_lineage['current_offline']=selected_offline
+    if original_offline.get('external_execution'):
+        external=original_offline['external_execution']
+        for name,expected in external['files_sha256'].items():
+            record('external_offline_'+name,Path(external['root'])/name)
+            require(evidence['external_offline_'+name]==expected,'External offline file changed during assembly: '+name)
     for label,directory in [('original_offline',args.regression),('current_offline',args.offline_regression or args.regression)]:
         for name in ['artifact.json','verdict.json','offline-collection.json','offline.xml']:record(label+'_'+name,directory/name)
     offline_count=selected_offline['tests_passed'];skips=selected_offline['platform_inapplicable']

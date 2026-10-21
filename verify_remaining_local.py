@@ -8,6 +8,7 @@ from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import socket
 import threading
@@ -180,7 +181,27 @@ def process_stdout_lines(events,handle):
         params=event.get('params',{})
         if event.get('method')=='process/outputDelta' and params.get('processHandle')==handle and params.get('stream')=='stdout':
             chunks.append(base64.b64decode(params['deltaBase64'],validate=True))
-    return b''.join(chunks).splitlines()
+    # ConPTY emits terminal control sequences even for a plain Python print.
+    # Strip complete OSC strings first (titles are not stdout text), then CSI
+    # controls, after joining chunks so a split escape cannot become evidence.
+    data=b''.join(chunks)
+    data=re.sub(rb'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)',b'',data)
+    data=re.sub(rb'\x1b\[[0-?]*[ -/]*[@-~]',b'',data)
+    return data.splitlines()
+
+
+def scoped_migration_items(result,work):
+    return [item for item in (result.get('items') or result.get('migrationItems') or [])
+            if item.get('itemType')=='AGENTS_MD' and item.get('cwd')==str(work)]
+
+
+def migration_history_recorded(result,work,recorded):
+    return any(row.get('providerId')=='isolated-native-audit' and not row.get('failures')
+               and any(item.get('itemType')=='AGENTS_MD' and item.get('cwd')==str(work)
+                       and item.get('source')==str(work/'CLAUDE.md')
+                       and item.get('target')==str(work/'AGENTS.md')
+                       and item.get('title')==recorded for item in row.get('successes',[]))
+               for row in result.get('data',[]))
 
 
 def processes(a):
@@ -367,10 +388,9 @@ def migration(a):
     def detect():
         result=a.call('externalAgentConfig/detect',{'includeHome':False,'cwds':[str(work)],'maxSessions':0})
         detected.update(result);return result
-    a.verify('externalAgentConfig/detect',detect,lambda r:'AGENTS_MD' in json.dumps(r) and str(work) in json.dumps(r))
+    a.verify('externalAgentConfig/detect',detect,lambda r:bool(scoped_migration_items(r,work)))
     def import_configuration():
-        candidates=detected.get('items') or detected.get('migrationItems') or []
-        selected=[x for x in candidates if x.get('itemType')=='AGENTS_MD' and x.get('cwd')==str(work)]
+        selected=scoped_migration_items(detected,work)
         if not selected:raise AssertionError('No scoped AGENTS_MD migration candidate: '+repr(detected))
         start=len(a.peer.events)
         response=a.call('externalAgentConfig/import',{'migrationItems':selected,'providerId':'isolated-native-audit','source':'runtime-fixture'})
@@ -384,8 +404,8 @@ def migration(a):
         result=a.call('externalAgentConfig/import/recordHistory',{'providerId':'isolated-native-audit','source':'runtime-fixture','itemTypeResults':[{'itemType':'AGENTS_MD','successes':[{'itemType':'AGENTS_MD','cwd':str(work),'source':str(work/'CLAUDE.md'),'target':str(work/'AGENTS.md'),'title':recorded}],'failures':[]}]})
         histories=a.call('externalAgentConfig/import/readHistories',{})
         return {'result':result,'histories':histories}
-    a.verify('externalAgentConfig/import/recordHistory',history_record,lambda r:recorded in json.dumps(r['histories']))
-    a.verify('externalAgentConfig/import/readHistories',lambda:a.call('externalAgentConfig/import/readHistories',{}),lambda r:recorded in json.dumps(r) and str(work) in json.dumps(r))
+    a.verify('externalAgentConfig/import/recordHistory',history_record,lambda r:migration_history_recorded(r['histories'],work,recorded))
+    a.verify('externalAgentConfig/import/readHistories',lambda:a.call('externalAgentConfig/import/readHistories',{}),lambda r:migration_history_recorded(r,work,recorded))
 
 
 def control(a):

@@ -175,7 +175,7 @@ def main():
     if not __debug__:raise SystemExit('Acceptance must run with Python assertions enabled')
     parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
-    root=args.output.resolve()/str(uuid.uuid4());private_directory(root);(root/'home').mkdir();(root/'work').mkdir()
+    root=args.output.resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()));private_directory(root);(root/'home').mkdir();(root/'work').mkdir()
     (root/'home/config.toml').write_text('model_reasoning_effort="low"\napproval_policy="never"\nsandbox_mode='+json.dumps(args.sandbox_mode)+'\n[tui]\nanimations=false\n[projects.'+json.dumps(str(root/'work'))+']\ntrust_level="trusted"\n',encoding='utf-8')
     entry=args.entry.resolve();results=[];backend=expected_backend()
     write_qa_receipt(root,entry,['verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py'])

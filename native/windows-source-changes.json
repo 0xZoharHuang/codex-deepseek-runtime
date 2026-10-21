@@ -1,6 +1,6 @@
 {
   "base_patch_sha256": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
-  "combined_patch_sha256": "4bf3c38295c7ca4a5e024161fabc005d1107057229ffb0f2198c3fffd1ed0d57",
+  "combined_patch_sha256": "8e5f6f809e6945080974e4762de3e0fef3503d1e488ec7c1c9b682ee34f06c57",
   "files": [
     {
       "path": "codex-rs/Cargo.lock",
@@ -16,6 +16,11 @@
       "path": "codex-rs/deepseek-http-transport/src/main.rs",
       "common_sha256": "9927416bd2a4f0e7382798976a46bafa48ea561b5a7f319e96d5ad824d9d26b1",
       "fork_sha256": "d9def75967d5993198dab52acba48b669d549bd7e965cb720211cc465eeca94b"
+    },
+    {
+      "path": "codex-rs/rmcp-client/src/oauth.rs",
+      "common_sha256": "eb558232d2f54cccc02d55de3eb56ebf3276a856c3e0c89e28d4f53c557df2cd",
+      "fork_sha256": "234dd51e5f1d2b85eb3e7994ff5bdb2bc2e7bfc233125b47df0c6b79cd70c44b"
     }
   ],
   "external_dependency_versions_unchanged": true

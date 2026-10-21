@@ -2,7 +2,7 @@
 import json
 import base64
 import os
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
 import sys
 
 sys.path.insert(0,str(Path(__file__).parents[1]))
@@ -11,7 +11,7 @@ from verify_nested_agents import delivered_peer_messages
 from host_execution_acceptance import host_execution_evidence,command_mentions_path
 from verify_daemon_audit import is_daemon_package_file
 from codex_deepseek.platforms import comparison_path
-from verify_remaining_local import process_stdout_lines
+from verify_remaining_local import process_stdout_lines,scoped_migration_items,migration_history_recorded
 
 
 def test_process_resize_joins_own_stdout_chunks_without_accepting_other_streams():
@@ -21,6 +21,24 @@ def test_process_resize_joins_own_stdout_chunks_without_accepting_other_streams(
     assert b'37 111' not in process_stdout_lines([chunk(b'37'),chunk(b' 111\r\n',handle='other')],'owned')
     assert b'37 111' not in process_stdout_lines([chunk(b'37'),chunk(b' 111\r\n',stream='stderr')],'owned')
     assert b'37 111' not in process_stdout_lines([chunk(b'137 1118\n')],'owned')
+    assert b'37 111' in process_stdout_lines([chunk(b'\x1b[25l\x1b[HPTY_READY\x1b[K\r\n37'),chunk(b' 111\x1b[K\r\n')],'owned')
+    for title_end in [b'\x07',b'\x1b\\']:
+        assert b'37 111' not in process_stdout_lines([chunk(b'\x1b]0;\r\n37 111\r\n'+title_end+b'24 80\r\n')],'owned')
+
+
+def test_migration_checks_structured_windows_paths_and_exact_record_identity():
+    work=PureWindowsPath(r'D:\owned\fixture')
+    item={'itemType':'AGENTS_MD','cwd':str(work),'source':str(work/'CLAUDE.md'),
+          'target':str(work/'AGENTS.md'),'title':'EXACT_RECORD'}
+    assert scoped_migration_items({'items':[item]},work)==[item]
+    assert not scoped_migration_items({'items':[{**item,'cwd':str(work)+'-other'}]},work)
+    assert not scoped_migration_items({'items':[{'description':json.dumps(item)}]},work)
+    def history(value):return {'data':[{'providerId':'isolated-native-audit','successes':[value],'failures':[]}]}
+    assert migration_history_recorded(history(item),work,'EXACT_RECORD')
+    for key in ['cwd','source','target','title','itemType']:
+        assert not migration_history_recorded(history({**item,key:item[key]+'-other'}),work,'EXACT_RECORD')
+    wrong=history(item);wrong['data'][0]['providerId']='other'
+    assert not migration_history_recorded(wrong,work,'EXACT_RECORD')
 
 
 def test_daemon_path_ownership_accepts_native_alias_and_rejects_neighbor(tmp_path):

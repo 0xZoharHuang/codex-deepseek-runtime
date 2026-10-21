@@ -12,12 +12,56 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
 import uuid
+
+
+QA_SANDBOX_ENV='CODEX_DEEPSEEK_TEST_SANDBOX_MODE'
+QA_SANDBOX_MODES=('workspace-write','danger-full-access')
+
+
+def qa_sandbox_mode(value=None):
+    """Controller-only selection; the installed adapter strips TEST variables."""
+    selected=os.environ.get(QA_SANDBOX_ENV,'workspace-write') if value is None else value
+    if selected not in QA_SANDBOX_MODES:
+        raise ValueError(f'Invalid QA sandbox mode: {selected!r}')
+    return selected
+
+
+def fixture_sandbox_mode(root):
+    """Supply the QA default only when the fixture has no explicit override."""
+    default=qa_sandbox_mode()
+    path=Path(root)/'home/config.toml'
+    content=path.read_text(encoding='utf-8') if path.exists() else ''
+    configured=tomllib.loads(content).get('sandbox_mode')
+    if configured is None:
+        configured=default
+        path.write_text('sandbox_mode='+json.dumps(default)+'\n'+content,encoding='utf-8')
+    if configured not in (*QA_SANDBOX_MODES,'read-only'):
+        raise ValueError(f'Invalid fixture sandbox mode: {configured!r}')
+    return configured
+
+
+def qa_command_sandbox(workspace):
+    mode=qa_sandbox_mode()
+    return ({'type':'dangerFullAccess'} if mode=='danger-full-access' else
+            {'type':'workspaceWrite','writableRoots':[str(workspace)],'networkAccess':False})
+
+
+def verify_fixture_sandbox(config,expected):
+    value=config.get('config',{})
+    actual=value.get('sandbox_mode')
+    proof={'fixture_sandbox_mode':expected,'native_config_sandbox_mode':actual,
+           'windows_backend_config':value.get('windows'),
+           'scope':'Native configuration readback only; OS backend activation and filesystem enforcement require separate evidence.',
+           'passed':actual==expected}
+    return proof
 
 
 class Peer:
     def __init__(self, root: Path, command=None, environment=None, server_args=None):
         self.root = root
+        self.sandbox_mode = fixture_sandbox_mode(root)
         self.events = []
         self.queue = queue.Queue()
         self.counter = 0
@@ -31,10 +75,12 @@ class Peer:
         env["CODEX_DEEPSEEK_HOME"] = str(root / "home")
         env["CODEX_DEEPSEEK_TRACE_DIR"] = str(root / "adapter-traces")
         env.update(environment or {})
+        env.pop(QA_SANDBOX_ENV,None)
         selected=command or [os.environ.get('CODEX_DEEPSEEK_TEST_ENTRY') or str(Path.home()/".local/bin/codex-deepseek")]
         executable=Path(selected[0]).resolve()
         launch={'command':selected,'server_args':server_args or ['app-server','--strict-config'],'resolved_entry':str(executable),
-                'entry_sha256':hashlib.sha256(executable.read_bytes()).hexdigest() if executable.is_file() else None,'runtime_home':env['CODEX_DEEPSEEK_HOME']}
+                'entry_sha256':hashlib.sha256(executable.read_bytes()).hexdigest() if executable.is_file() else None,'runtime_home':env['CODEX_DEEPSEEK_HOME'],
+                'fixture_sandbox_mode':self.sandbox_mode,'qa_default_sandbox_mode':qa_sandbox_mode()}
         (root/f'launch-{time.time_ns()}.json').write_text(json.dumps(launch,indent=2), encoding='utf-8')
         self.process = subprocess.Popen([*selected, *(server_args or ["app-server", "--strict-config"])],
                                         env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
@@ -45,6 +91,10 @@ class Peer:
             self.call("initialize", {"clientInfo": {"name": "isolated_deepseek_acceptance", "version": "1.0"},
                                      "capabilities": {"experimentalApi": True}})
             self.send({"method": "initialized"})
+            self.sandbox_evidence=verify_fixture_sandbox(self.call('config/read',{'includeLayers':False}),self.sandbox_mode)
+            (root/f'qa-sandbox-{time.time_ns()}.json').write_text(json.dumps(self.sandbox_evidence,indent=2),encoding='utf-8')
+            if not self.sandbox_evidence['passed']:
+                raise AssertionError('Native fixture sandbox configuration differs from the selected QA mode')
         except BaseException:self.close();raise
 
     def send(self, message):
@@ -110,7 +160,13 @@ class Peer:
         return event.get("result", {})
 
     def new(self, **options):
-        return self.call("thread/start", {"cwd": str(self.root / "work"), "approvalPolicy": "on-request", "sandbox": "workspace-write", **options})["thread"]["id"]
+        params={"cwd": str(self.root / "work"), "approvalPolicy": "on-request", "sandbox": self.sandbox_mode, **options}
+        result=self.call("thread/start",params)
+        with (self.root/'qa-thread-sandbox.jsonl').open('a',encoding='utf-8') as evidence:
+            evidence.write(json.dumps({'thread':result['thread']['id'],'requested_sandbox_mode':params['sandbox'],
+                                       'fixture_sandbox_mode':self.sandbox_mode,'native_response_sandbox':result.get('sandbox'),
+                                       'scope':'Native policy selection, not OS enforcement proof.'})+'\n')
+        return result['thread']['id']
 
     def start(self, thread, text, **options):
         start = len(self.events)
@@ -145,7 +201,7 @@ def text(items):
     return "\n".join(item.get("text", "") for item in items if item.get("type") == "agentMessage")
 
 
-def prepare(root):
+def prepare(root,sandbox_mode=None):
     (root / "home").mkdir(parents=True)
     (root / "work").mkdir()
     mcp = root / "fixture_mcp.py"
@@ -162,7 +218,8 @@ for line in sys.stdin:
  else:r={}
  print(json.dumps({'jsonrpc':'2.0','id':x['id'],'result':r}),flush=True)
 ''', encoding='utf-8')
-    config = f'''model_reasoning_effort = "low"
+    config = f'''sandbox_mode = {json.dumps(qa_sandbox_mode(sandbox_mode))}
+model_reasoning_effort = "low"
 web_search = "live"
 [features]
 default_mode_request_user_input = true
@@ -185,7 +242,7 @@ def main():
     results = []
     peer = Peer(root)
     def passed(name, condition, detail):
-        results.append({"name": name, "passed": bool(condition), "detail": detail})
+        results.append({"name": name, "passed": bool(condition), "sandbox_mode":peer.sandbox_mode, "detail": detail})
         (root / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps(results[-1], ensure_ascii=False), flush=True)
         if not condition:

@@ -16,6 +16,18 @@ from credential_acceptance import prepare_home,private_file,clear_fixture_secret
 SOURCE=Path(__file__).resolve().parent
 
 
+def oauth_fixture_config(base,store,secrets_enabled):
+    # Windows enables Secrets by default; absence is not a Direct-backend test.
+    feature_config='[features]\nsecret_auth_storage='+str(secrets_enabled).lower()+'\n'
+    return f'model_reasoning_effort="low"\nmcp_oauth_credentials_store="{store}"\n{feature_config}[mcp_servers.oauth_audit]\nurl={json.dumps(base+"/mcp")}\nstartup_timeout_sec=10\n'
+
+
+def effective_secret_storage(response):
+    rows=[row for row in response.get('data',[]) if row.get('name')=='secret_auth_storage']
+    assert response.get('nextCursor') is None and len(rows)==1 and type(rows[0].get('enabled')) is bool,'Missing unambiguous native Secrets feature readback'
+    return {'enabled':rows[0]['enabled'],'default_enabled':rows[0].get('defaultEnabled'),'stage':rows[0].get('stage')}
+
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--source',action='store_true');parser.add_argument('--native-binary',type=Path);parser.add_argument('--store',choices=['file','keyring','auto'],default='file');parser.add_argument('--secrets',action='store_true');args=parser.parse_args()
     if args.secrets and not os.environ.get('CODEX_DEEPSEEK_TEST_KEYRING_PROBE'):raise SystemExit('Native keyring cleanup probe is required before creating encrypted credential fixtures')
@@ -38,8 +50,7 @@ def main():
         end=time.monotonic()+10
         while not (fixture_root/'ready.json').exists() and time.monotonic()<end:time.sleep(.05)
         ready=json.loads((fixture_root/'ready.json').read_text());base=ready['base']
-        feature_config='[features]\nsecret_auth_storage=true\n' if args.secrets else ''
-        config=f'model_reasoning_effort="low"\nmcp_oauth_credentials_store="{args.store}"\n{feature_config}[mcp_servers.oauth_audit]\nurl={json.dumps(base+"/mcp")}\nstartup_timeout_sec=10\n'
+        config=oauth_fixture_config(base,args.store,args.secrets)
         for name in ['primary','other']:
             target=root/name;prepare_home(target/'home');(target/'work').mkdir()
             (target/'home/config.toml').write_text(config)
@@ -48,7 +59,8 @@ def main():
         two=peer.call('thread/start',{'cwd':str(root/'primary/work'),'config':{'model_providers.deepseek_runtime.base_url':base+'/trap'}})
         peer.call('config/value/write',{'keyPath':'mcp_oauth_credentials_store','value':args.store,'mergeStrategy':'replace'})
         effective=peer.call('config/read',{'includeLayers':False})['config']
-        passed('native_stdio_provider_pin_and_selected_credential_store',one['modelProvider']==two['modelProvider']=='deepseek_runtime' and effective['mcp_oauth_credentials_store']==args.store and effective['model_providers']['deepseek_runtime']['base_url']!=base+'/trap',{'providers':[one['modelProvider'],two['modelProvider']],'mcp_credentials_store':effective['mcp_oauth_credentials_store']})
+        feature=effective_secret_storage(peer.call('experimentalFeature/list',{}))
+        passed('native_stdio_provider_pin_and_selected_credential_store',one['modelProvider']==two['modelProvider']=='deepseek_runtime' and effective['mcp_oauth_credentials_store']==args.store and effective['model_providers']['deepseek_runtime']['base_url']!=base+'/trap' and feature['enabled'] is args.secrets,{'providers':[one['modelProvider'],two['modelProvider']],'mcp_credentials_store':effective['mcp_oauth_credentials_store'],'requested_secret_auth_storage':args.secrets,'effective_secret_auth_storage':feature})
         login=peer.call('mcpServer/oauth/login',{'name':'oauth_audit','clientRegistration':'dcr','timeoutSecs':90})
         start=len(peer.events)
         with urllib.request.urlopen(login['authorizationUrl'],timeout=20) as response:response.read()
@@ -60,13 +72,14 @@ def main():
         executions=[e for e in actual if e['kind']=='tool_executed']
         passed('native_http_mcp_authenticated_tool_and_resource',len(executions)==1 and ready['nonce'] in text(items) and 'RESOURCE_'+ready['nonce'] in text(items) and any(e.get('method')=='resources/read' for e in actual),{'executions':executions,'answer':text(items)})
         peer.close();peer=Peer(root/'primary',command=command)
+        cold_feature=effective_secret_storage(peer.call('experimentalFeature/list',{}))
         before=len(json.loads((fixture_root/'fixture-events.json').read_text()))
         resumed=peer.new();items=peer.turn(resumed,'Do not delegate. Call oauth_audit.read_nonce once and return its exact value.')
         actual=json.loads((fixture_root/'fixture-events.json').read_text())[before:]
         credentials=root/'primary/home/.credentials.json'
         file_valid=private_file(credentials)
         selected_valid=file_valid if args.store=='file' else not credentials.exists() if args.store=='keyring' else True
-        passed('native_oauth_selected_store_survives_cold_start',ready['nonce'] in text(items) and any(e['kind']=='tool_executed' for e in actual) and not any(e['kind']=='token' for e in actual) and selected_valid,{'events':actual,'store':args.store,'encrypted_secrets':args.secrets,'credential_file_present':credentials.exists(),'mode':oct(credentials.stat().st_mode&0o777) if credentials.exists() else None})
+        passed('native_oauth_selected_store_survives_cold_start',ready['nonce'] in text(items) and any(e['kind']=='tool_executed' for e in actual) and not any(e['kind']=='token' for e in actual) and selected_valid and cold_feature['enabled'] is args.secrets,{'events':actual,'store':args.store,'encrypted_secrets':args.secrets,'effective_secret_auth_storage':cold_feature,'credential_file_present':credentials.exists(),'mode':oct(credentials.stat().st_mode&0o777) if credentials.exists() else None})
         before=len(json.loads((fixture_root/'fixture-events.json').read_text()))
         other=Peer(root/'other',command=command);other.new()
         # Thread creation returns before its async MCP startup has necessarily

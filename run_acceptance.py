@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse
 from install import console_entry,_support,source_identity,valid_release
-from assemble_release_acceptance import GATES,KEYRING_PROBE_GATES,qualification_scope
+from assemble_release_acceptance import GATES,KEYRING_PROBE_GATES,qualification_scope,external_offline_receipt,OFFLINE_FILES,offline_file_hashes,validate_windows_controller
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import hashlib
 import importlib.metadata
@@ -10,11 +10,31 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import time
 import uuid
+from verify_live import QA_SANDBOX_ENV,qa_sandbox_mode
 
 SOURCE=Path(__file__).resolve().parent
+SANDBOX_OPTION_VERIFIERS={
+    'verify_tui_audit.py','verify_tui_interrupt.py','verify_real_work.py',
+    'verify_agents.py','verify_nested_agents.py','verify_mode_audit.py',
+    'verify_memory_audit.py','verify_goal_sample_audit.py','verify_transport_audit.py',
+    'verify_profile_audit.py','verify_browser_runtime.py',
+}
+
+
+def sandbox_gate_commands(gates,mode):
+    mode=qa_sandbox_mode(mode)
+    selected={name:list(command) for name,command in gates.items()}
+    for command in selected.values():
+        if len(command)>1 and Path(command[1]).name in SANDBOX_OPTION_VERIFIERS:
+            if '--sandbox-mode' in command:
+                index=command.index('--sandbox-mode')
+                if command[index+1]!=mode:raise ValueError('Conflicting QA gate sandbox modes')
+            else:command.extend(['--sandbox-mode',mode])
+    return selected
 
 
 def pytest_deselected(items):
@@ -41,6 +61,16 @@ def digest(path):
     with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 
 
+def windows_token_identity():
+    if os.name!='nt':return None
+    import win32api,win32con,win32security
+    token=win32security.OpenProcessToken(win32api.GetCurrentProcess(),win32con.TOKEN_QUERY)
+    try:
+        return {'sid':win32security.ConvertSidToStringSid(win32security.GetTokenInformation(token,win32security.TokenUser)[0]),
+                'elevated':bool(win32security.GetTokenInformation(token,win32security.TokenElevation))}
+    finally:token.Close()
+
+
 def native_probe_attestation(selected,revocation,keyring):
     if KEYRING_PROBE_GATES.intersection(selected) and keyring is None:
         raise SystemExit('--keyring-probe is required for native credential cleanup gates')
@@ -53,21 +83,38 @@ def native_probe_attestation(selected,revocation,keyring):
     return probes
 
 
+def import_offline_evidence(external,root):
+    started=time.monotonic()
+    try:
+        for filename in OFFLINE_FILES:
+            shutil.copyfile(Path(external['root'])/filename,root/filename)
+            if digest(root/filename)!=external['files_sha256'][filename]:
+                raise RuntimeError('External offline bytes changed during import: '+filename)
+    except (OSError,RuntimeError) as error:
+        result={'gate':'offline','exit':1,'seconds':round(time.monotonic()-started,2),
+                'log':'offline-import-error.json','execution':'external_offline_import_failed',
+                'external_root':external['root'],'source_gate':external['gate'],'error':str(error)}
+        (root/result['log']).write_text(json.dumps(result,indent=2),encoding='utf-8')
+        return result
+    return {**external['gate'],'execution':'separate_complete_offline_run','external_root':external['root']}
+
+
 def main():
     if not __debug__:raise SystemExit('Acceptance must run with Python assertions enabled')
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');parser.add_argument('--offline-report',type=Path,help='Reuse a separately executed complete Windows offline suite with exact source and installation identity');args=parser.parse_args()
     entry=args.entry.expanduser().resolve()
     release=entry.parent.parent.parent
     metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
     native=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'));scope=qualification_scope(native)
     if entry!=console_entry(release/'venv'):raise SystemExit('Acceptance requires an actual immutable installed entrypoint')
-    root=args.output.expanduser().resolve()/str(uuid.uuid4());root.mkdir(parents=True,mode=0o700)
+    root=args.output.expanduser().resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()));root.mkdir(parents=True,mode=0o700)
     environment={**os.environ,'CODEX_DEEPSEEK_TEST_ENTRY':str(entry),'CODEX_DEEPSEEK_TEST_HTTP_BINARY':str(_support.executable(Path(metadata['native_package'])/'bin','codex-http-transport'))}
     environment['CODEX_DEEPSEEK_TEST_CATALOG']=str(release/'catalog.json')
     environment['PYTHONPATH']=str(SOURCE/'src') # verifier helpers only; installed entry and private helpers use -I.
     environment['PYTHONUTF8']='1'
     environment['CODEX_DEEPSEEK_TEST_EVIDENCE_ROOT']=str(root/'evidence')
     environment['CODEX_DEEPSEEK_TEST_COLLECTION_PATH']=str(root/'offline-collection.json')
+    environment[QA_SANDBOX_ENV]=qa_sandbox_mode(args.sandbox_mode)
     environment.pop('PYTEST_ADDOPTS',None);environment.pop('PYTEST_PLUGINS',None)
     environment.pop('PYTHONOPTIMIZE',None)
     environment.pop('CODEX_DEEPSEEK_HOME',None);environment.pop('CODEX_HOME',None);environment.pop('CODEX_DEEPSEEK_TRACE_DIR',None)
@@ -105,6 +152,7 @@ def main():
         'search':[sys.executable,str(SOURCE/'verify_search_audit.py')],
         'routes':[sys.executable,str(SOURCE/'verify_routes.py')],
     }
+    gates=sandbox_gate_commands(gates,args.sandbox_mode)
     # Real development tasks have their own immutable artifact and oracle checks
     # in the assembler. Keep them explicitly runnable without silently adding an
     # extra gate to the exact standard regression set.
@@ -122,14 +170,24 @@ def main():
     if source_id!=metadata['source_id'] or source_hashes!=metadata['source_sha256'] or not valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native):
         raise SystemExit('The full source/native artifact must match the selected immutable installation')
     controller={'python':sys.executable,'prefix':sys.prefix,'version':sys.version,'optimize':sys.flags.optimize,'packages':{name:importlib.metadata.version(name) for name in ['aiohttp','lark','zstandard','pytest','pytest-asyncio','mcp','jsonschema']}}
-    attestation={'entry':str(entry),'entry_sha256':digest(entry),'release':str(release),'installation':metadata,'native_manifest':native,'target':scope['target'],'tui_sandbox_mode':args.sandbox_mode,'required_local_methods':scope['local_methods'],'baseline_matrix_sha256':scope['baseline_matrix_sha256'],'selected_gates':selected,'native_probes':probes,'evidence_roots':[str(root)],'verifier_source_sha256':verifier_hashes,'controller_environment':controller,'started':time.time()}
+    if os.name=='nt':controller['windows_token']=windows_token_identity()
+    external=None
+    if args.offline_report is not None:
+        if os.name!='nt' or len(selected)!=len(GATES) or set(selected)!=GATES:
+            raise SystemExit('External offline proof requires the complete Windows runtime gate set')
+        validate_windows_controller(controller,elevated=False)
+        external=external_offline_receipt(args.offline_report,metadata,native,scope)
+    attestation={'entry':str(entry),'entry_sha256':digest(entry),'release':str(release),'installation':metadata,'native_manifest':native,'target':scope['target'],'tui_sandbox_mode':args.sandbox_mode,'qa_default_sandbox_mode':args.sandbox_mode,'sandbox_scope':'Default native policy selection; explicit safety/profile overrides are retained. OS enforcement is independently qualified.','required_local_methods':scope['local_methods'],'baseline_matrix_sha256':scope['baseline_matrix_sha256'],'selected_gates':selected,'native_probes':probes,'evidence_roots':[str(root)],'verifier_source_sha256':verifier_hashes,'controller_environment':controller,'started':time.time()}
+    if external is not None:attestation['external_offline']=external
     (root/'artifact.json').write_text(json.dumps(attestation,indent=2),encoding='utf-8')
     results=[]
     def run(name):
+        if name=='offline' and external is not None:
+            return import_offline_evidence(external,root)
         started=time.monotonic()
         with (root/(name+'.log')).open('w',encoding='utf-8') as log:
             process=subprocess.run(gates[name],cwd=SOURCE,env=environment,stdout=log,stderr=log)
-        return {'gate':name,'exit':process.returncode,'seconds':round(time.monotonic()-started,2),'log':name+'.log'}
+        return {'gate':name,'exit':process.returncode,'seconds':round(time.monotonic()-started,2),'log':name+'.log','qa_default_sandbox_mode':args.sandbox_mode}
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures={pool.submit(run,name):name for name in selected}
         for future in as_completed(futures):
@@ -138,8 +196,18 @@ def main():
     current_files=[*SOURCE.glob('*.py'),*(SOURCE/'tests').rglob('*.py'),*(SOURCE/'src').rglob('*.py')]
     verifier_unchanged={str(path.relative_to(SOURCE)):digest(path) for path in current_files}==verifier_hashes
     probes_unchanged=all(Path(p['path']).is_file() and digest(p['path'])==p['sha256'] for p in probes.values())
+    external_unchanged=True;external_error=None
+    if external is not None:
+        try:
+            external_unchanged=(external_offline_receipt(external['root'],metadata,native,scope)==external
+                                and offline_file_hashes(root)=={name:external['files_sha256'][name] for name in OFFLINE_FILES})
+            if not external_unchanged:external_error='External offline execution or imported bytes changed during runtime gates'
+        except (OSError,ValueError,KeyError,SystemExit) as error:
+            external_unchanged=False;external_error=str(error)
     collection=root/'offline-collection.json';collection_hash=digest(collection) if 'offline' in selected and collection.is_file() else None
-    verdict={'passed':all(row['exit']==0 for row in results) and unchanged and verifier_unchanged and probes_unchanged and ('offline' not in selected or collection_hash is not None),'target':scope['target'],'verifier_source_unchanged':verifier_unchanged,'native_probes_unchanged':probes_unchanged,'offline_collection_sha256':collection_hash,'all_gates_selected':set(selected)==GATES,'entry_unchanged':unchanged,'gates':results}
+    offline_hashes=offline_file_hashes(root) if 'offline' in selected and all((root/name).is_file() for name in OFFLINE_FILES) else None
+    verdict={'passed':all(row['exit']==0 for row in results) and unchanged and verifier_unchanged and probes_unchanged and external_unchanged and ('offline' not in selected or offline_hashes is not None),'target':scope['target'],'verifier_source_unchanged':verifier_unchanged,'native_probes_unchanged':probes_unchanged,'offline_collection_sha256':collection_hash,'offline_files_sha256':offline_hashes,'all_gates_selected':set(selected)==GATES,'entry_unchanged':unchanged,'gates':results}
+    if external is not None:verdict.update(external_offline_unchanged=external_unchanged,external_offline_error=external_error)
     (root/'verdict.json').write_text(json.dumps(verdict,indent=2),encoding='utf-8');print('EVIDENCE',root,flush=True)
     raise SystemExit(0 if verdict['passed'] else 1)
 

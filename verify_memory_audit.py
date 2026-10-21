@@ -2,16 +2,18 @@
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
+import re
+import shlex
 import sqlite3
 import subprocess
 import sys
 import time
 import uuid
 
-from verify_live import Peer,text
+from verify_live import Peer,text,qa_sandbox_mode
 from process_acceptance import shell_command
-from host_execution_acceptance import host_execution_evidence,command_mentions_path
+from host_execution_acceptance import host_execution_evidence
 
 
 def model_quality_observation(answer,nonce):
@@ -22,12 +24,112 @@ def model_quality_observation(answer,nonce):
             'outside_runtime_pass_criterion':True}
 
 
+def literal_posix_tokens(command):
+    """Small allowlist grammar, not a shell evaluator or a substring search."""
+    if any(char in command for char in '\r\n\0'):return None
+    tokens=[];word=[];started=False;quote=None;index=0
+    while index<len(command):
+        char=command[index]
+        if quote=="'":
+            if char==quote:quote=None
+            else:word.append(char)
+        elif quote=='"':
+            if char==quote:quote=None
+            elif char in '$`':return None
+            elif char=='\\':
+                index+=1
+                if index==len(command):return None
+                if command[index] not in '$`"\\':word.append('\\')
+                word.append(command[index])
+            else:word.append(char)
+        elif char in ' \t':
+            if started:tokens.append(('word',''.join(word)));word=[];started=False
+        elif char in "'\"":quote=char;started=True
+        elif char=='\\':
+            index+=1
+            if index==len(command):return None
+            word.append(command[index]);started=True
+        elif char=='&' and command[index:index+2]=='&&':
+            if started:tokens.append(('word',''.join(word)));word=[];started=False
+            tokens.append(('operator','&&'));index+=1
+        elif char in '$`;&|()<>*?[]{}!#~':return None
+        else:word.append(char);started=True
+        index+=1
+    if quote:return None
+    if started:tokens.append(('word',''.join(word)))
+    return tokens
+
+
+def literal_powershell_arguments(command):
+    # Preserve the exact host command emitted by shell_command(), including
+    # literal quoted paths. No expression, pipeline, redirection or statements.
+    if any(char in command for char in '\r\n\0'):return None
+    if not command.startswith('& '):return None
+    command=command[2:];arguments=[]
+    token=re.compile(r"'(?:[^']|'')*'|\"(?:[^\"$`]|\"\")*\"|[A-Za-z0-9_./:\\\-]+")
+    while command:
+        found=token.match(command)
+        if not found:return None
+        value=found.group()
+        if value.startswith("'"):value=value[1:-1].replace("''", "'")
+        elif value.startswith('"'):value=value[1:-1].replace('""','"')
+        arguments.append(value)
+        command=command[found.end():]
+        if command and not command[0].isspace():return None
+        command=command.lstrip(' \t')
+    return arguments
+
+
+def verification_command_shape(command,interpreter,verifier,workspace,cwd=None):
+    """Accept only the exact verifier, optionally after reading this ledger."""
+    if not isinstance(command,str):return None
+    expected=[str(interpreter),'-I',str(verifier),str(workspace)]
+    windows=PureWindowsPath(str(interpreter)).is_absolute()
+    try:outer=shlex.split(command)
+    except ValueError:return None
+    if windows:
+        if outer and PureWindowsPath(outer[0]).name.lower() in {'powershell.exe','pwsh.exe'}:
+            if (not PureWindowsPath(outer[0]).is_absolute() or len(outer)<3
+                    or outer[-2].lower()!='-command'
+                    or any(flag.lower() not in {'-noprofile','-nologo','-noninteractive'} for flag in outer[1:-2])):return None
+            command=outer[-1]
+        arguments=literal_powershell_arguments(command)
+        if (not arguments or len(arguments)!=4 or arguments[1]!='-I'
+                or any(PureWindowsPath(arguments[index])!=PureWindowsPath(expected[index]) for index in (0,2,3))):return None
+        return {'ledger_read_prefix':False}
+    shells={'/bin/bash','/bin/zsh','/bin/sh','/usr/bin/bash','/usr/bin/zsh','/usr/bin/sh'}
+    if outer and outer[0] in shells:
+        if len(outer)!=3 or outer[1] not in {'-c','-lc'}:return None
+        command=outer[2]
+    tokens=literal_posix_tokens(command)
+    verifier_tokens=[('word',value) for value in expected]
+    if tokens==verifier_tokens:return {'ledger_read_prefix':False}
+    # One literal file read followed by && is allowed. No other command or
+    # conditional can skip/replace the verifier while still yielding exit 0.
+    if tokens and tokens[-5:]==[('operator','&&'),*verifier_tokens]:
+        prefix=tokens[:-5]
+        allowed_paths={'ledger.py','./ledger.py',str(Path(workspace)/'ledger.py')}
+        if (len(prefix)==2 and prefix[0]==('word','cat') and prefix[1][0]=='word'
+                and prefix[1][1] in allowed_paths and str(cwd)==str(workspace)):
+            return {'ledger_read_prefix':True}
+    return None
+
+
 def native_verification_commands(items,interpreter,verifier,workspace):
-    return [item for item in items if item.get('type')=='commandExecution'
-            and item.get('status')=='completed' and item.get('exitCode')==0
-            and isinstance(item.get('command'),str)
-            and all(command_mentions_path(item['command'],path) for path in (interpreter,verifier,workspace))
-            and item.get('aggregatedOutput','').strip()=='NATIVE_LEDGER_VERIFIED']
+    accepted=[];marker='NATIVE_LEDGER_VERIFIED'
+    for item in items:
+        if (item.get('type')!='commandExecution' or item.get('status')!='completed'
+                or item.get('exitCode')!=0 or not isinstance(item.get('aggregatedOutput'),str)):continue
+        shape=verification_command_shape(item.get('command'),interpreter,verifier,workspace,item.get('cwd'))
+        if shape is None:continue
+        prefix=''
+        if shape['ledger_read_prefix']:
+            try:prefix=(Path(workspace)/'ledger.py').read_text(encoding='utf-8')
+            except (OSError,UnicodeError):continue
+            if prefix and not prefix.endswith('\n'):continue
+        output=item['aggregatedOutput'].replace('\r\n','\n')
+        if output in {prefix+marker,prefix+marker+'\n'}:accepted.append(item)
+    return accepted
 
 
 def source_work_evidence(items,verified,ledger,ledger_hash,fixtures,interpreter,verifier,nonce):
@@ -99,7 +201,7 @@ def cold_memory_evidence(paths,reader,summary_snapshots):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True);parser.add_argument('--version',choices=['v1','v2'],default='v2')
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir()
     (root/'home/config.toml').write_text(f'sandbox_mode="{args.sandbox_mode}"\nmodel_reasoning_effort="low"\n[features]\nmemories=false\n[memories]\nversion="{args.version}"\nmin_rollout_idle_hours=1\nmax_rollouts_per_startup=4\nuse_memories=true\n', encoding='utf-8')
     nonce='MIGRATION_'+uuid.uuid4().hex

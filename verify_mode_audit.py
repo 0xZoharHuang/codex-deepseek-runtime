@@ -6,13 +6,13 @@ from pathlib import Path
 import sys
 import uuid
 
-from verify_live import Peer,text
+from verify_live import Peer,text,qa_sandbox_mode
 from process_acceptance import shell_command
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir()
     (root/'home/config.toml').write_text('sandbox_mode='+json.dumps(args.sandbox_mode)+'\nmodel_reasoning_effort="low"\n[features]\ncode_mode=false\ncode_mode_only=false\nmulti_agent_v2=false\nmulti_agent=false\n', encoding='utf-8')
     results=[];peer=Peer(root)

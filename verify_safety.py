@@ -13,6 +13,26 @@ from codex_deepseek.processes import identity,matches,terminate
 from process_acceptance import python_command,shell_command,fixture_identity,write_process_tree_fixture
 
 
+def approval_execution_evidence(events,thread,turn,marker):
+    """An approved review must lead to that exact item's successful execution."""
+    reviews=[];executions=[]
+    for index,event in enumerate(events):
+        params=event.get('params',{})
+        if params.get('threadId')!=thread or params.get('turnId')!=turn:continue
+        if event.get('method')=='item/autoApprovalReview/completed':
+            if params.get('review',{}).get('status')=='approved' and params.get('action',{}).get('type')=='command':
+                reviews.append((index,params))
+        elif event.get('method')=='item/completed':
+            item=params.get('item',{})
+            if (item.get('type')=='commandExecution' and item.get('status')=='completed'
+                    and item.get('exitCode')==0 and (item.get('aggregatedOutput') or '').strip()==marker):
+                for review_index,review in reviews:
+                    if (review_index<index and review.get('targetItemId')==item.get('id')
+                            and isinstance(item.get('command'),str) and review['action'].get('command')==item['command']):
+                        executions.append({'review':review,'command':item})
+    return {'passed':bool(executions),'thread':thread,'turn':turn,'approved_executions':executions}
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
@@ -25,19 +45,28 @@ def main():
         config.write_text(config.read_text().replace('[features]\n','[features]\nguardianv2 = {enabled=true,persist_scores=true,review_scope={computer_use_only=false,sandboxed_exec_commands=true}}\n'))
     fixture=root/'work/cancellable.py'
     write_process_tree_fixture(fixture,root/'work/processes.json')
+    approval_fixture=root/'work/approval_fixture.py'
+    approval_fixture.write_text('print("APPROVAL_NATIVE_OK")\n',encoding='utf-8')
     peer=Peer(root)
     peer_closed=False
     results=[]
+    thread_sandbox_mode=peer.sandbox_mode
     def check(name,condition,detail):
-        result={'name':name,'passed':bool(condition),'detail':detail};results.append(result)
+        result={'name':name,'passed':bool(condition),'sandbox_mode':thread_sandbox_mode,
+                'fixture_sandbox_mode':peer.sandbox_mode,'detail':detail};results.append(result)
         (root/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps(result,ensure_ascii=False),flush=True)
         if not condition:raise AssertionError(name)
     try:
-        thread=peer.new(approvalsReviewer='auto_review')
-        start=len(peer.events)
-        items=peer.turn(thread,'Do not delegate. This is a user-authorized harmless approval fixture. Call exec_command with cmd `printf APPROVAL_NATIVE_OK`, sandbox_permissions `require_escalated`, and justification `isolated native approval fixture`. Do not replace it with another tool or omit the explicit permission request. Report the actual command result.')
-        reviews=[e for e in peer.events[start:] if e.get('method')=='item/autoApprovalReview/completed']
-        check('native_automatic_approval',bool(reviews) and 'APPROVAL_NATIVE_OK' in text(items),{'reviews':reviews,'answer':text(items)})
+        # Full-access fixtures need no escalation review; this thread must exercise it.
+        thread=peer.new(sandbox='read-only',approvalsReviewer='auto_review')
+        thread_sandbox_mode='read-only'
+        # A script file avoids PowerShell 5.1's legacy native argument handling
+        # stripping quotes inside a Python -c argument.
+        approval_command=shell_command([python_command('')[0],'-I',str(approval_fixture)])
+        turn,start=peer.start(thread,'Do not delegate. This is a user-authorized harmless approval fixture. Call exec_command with the exact native-host Python command below, sandbox_permissions `require_escalated`, and justification `isolated native approval fixture`. Do not replace it with another tool or omit the explicit permission request. Report the actual command result.\n```\n'+approval_command+'\n```')
+        items=peer.complete(thread,start)
+        approval=approval_execution_evidence(peer.events[start:],thread,turn,'APPROVAL_NATIVE_OK')
+        check('native_automatic_approval',approval['passed'],{**approval,'answer':text(items)})
         if args.guardian_v2:
             samples=[]
             for path in (root/'adapter-traces').glob('*-request.json'):
@@ -52,6 +81,7 @@ def main():
             check('native_guardian_v2_completed_classification_and_applied_score',all(row==('completed',200) for row in receipts) and bool(scores),{'receipts':receipts,'scores':scores})
 
         thread=peer.new()
+        thread_sandbox_mode=peer.sandbox_mode
         turn,start=peer.start(thread,'Do not delegate. Run '+shell_command([python_command('')[0],'-I',str(fixture)])+' using exec_command with a long yield. Wait for completion.')
         peer.wait(lambda e:e.get('method')=='item/started' and e.get('params',{}).get('threadId')==thread and e.get('params',{}).get('item',{}).get('type')=='commandExecution',start)
         pids_file=root/'work/processes.json'

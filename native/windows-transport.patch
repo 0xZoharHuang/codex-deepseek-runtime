@@ -53,3 +53,15 @@
              tokio::time::sleep(Duration::from_millis(250)).await;
          }
      };
+--- a/codex-rs/rmcp-client/src/oauth.rs
++++ b/codex-rs/rmcp-client/src/oauth.rs
+@@ -106,7 +106,8 @@
+     let Some(selected) = std::env::var_os("CODEX_DEEPSEEK_POLICY_HOME") else {
+         return Ok(KEYRING_SERVICE.to_owned());
+     };
+-    let home = find_codex_home()?.canonicalize()?;
++    // Use std canonicalization on both sides, including Windows verbatim prefixes.
++    let home = find_codex_home()?.as_path().canonicalize()?;
+     anyhow::ensure!(
+         home.as_path() == std::fs::canonicalize(selected)?.as_path(),
+         "MCP keyring namespace does not match this isolated home"

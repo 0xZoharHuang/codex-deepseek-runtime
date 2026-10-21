@@ -14,7 +14,7 @@ subprocess.run(['git','-c','user.name=Acceptance Fixture','-c','user.email=fixtu
 (work/'calculation.py').write_text('def divide(a, b):\n    return a * b\n')
 peer=Peer(root);results=[]
 def passed(name,ok,detail):
-    results.append({'name':name,'passed':bool(ok),'detail':detail});(root/'results.json').write_text(json.dumps(results,indent=2));print(json.dumps(results[-1]),flush=True)
+    results.append({'name':name,'passed':bool(ok),'sandbox_mode':peer.sandbox_mode,'detail':detail});(root/'results.json').write_text(json.dumps(results,indent=2));print(json.dumps(results[-1]),flush=True)
     if not ok:raise AssertionError(name)
 try:
     thread=peer.new(config={'tools':{'update_plan':{'enabled':True}}});start=len(peer.events)

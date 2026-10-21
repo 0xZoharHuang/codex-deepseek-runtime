@@ -11,7 +11,7 @@ import subprocess
 import threading
 import time
 import uuid
-from verify_live import Peer,text
+from verify_live import Peer,text,qa_sandbox_mode
 from acceptance_assertions import browser_chain
 
 
@@ -26,7 +26,7 @@ def unwrap(result):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--native-lifetime-proof',type=Path,required=True);parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--native-lifetime-proof',type=Path,required=True);parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     lifetime=json.loads(args.native_lifetime_proof.read_text(encoding='utf-8'))
     if not lifetime['passed']:raise SystemExit('A passing same-version official native lifetime comparison is required')
     entry=args.entry.resolve();python=python_entry(entry.parent.parent);release=entry.parent.parent.parent
@@ -55,7 +55,7 @@ def main():
         def log_message(self,*args):pass
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler);worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()
     url='http://127.0.0.1:'+str(server.server_port)+'/start.html'
-    config='model_reasoning_effort="high"\nweb_search="disabled"\n[features]\napps=false\nplugins=false\nmemories=false\nmulti_agent=false\n'
+    config='sandbox_mode='+json.dumps(args.sandbox_mode)+'\nmodel_reasoning_effort="high"\nweb_search="disabled"\n[features]\napps=false\nplugins=false\nmemories=false\nmulti_agent=false\n'
     config+='[mcp_servers.fixture_web]\ncommand='+json.dumps(str(python))+'\nargs='+json.dumps(['-I','-m','codex_deepseek.web_mcp','--home',str(root/'home'),'--allow-private-host','127.0.0.1'])+'\ndefault_tools_approval_mode="approve"\n'
     (root/'home/config.toml').write_text(config,encoding='utf-8')
     peer=None

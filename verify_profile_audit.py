@@ -1,4 +1,5 @@
 """Native profile layering cannot route model traffic past the pinned provider."""
+from verify_live import qa_sandbox_mode
 import argparse
 import asyncio
 import json
@@ -21,14 +22,18 @@ def binding_rejection(stderr):
     return any(phrase in stderr.lower() for phrase in [b'isolated runtime binding',b'isolated binding',b'pins deepseek',b'pinned deepseek',b'configrequirementreadonly'])
 
 
+def profile_sandbox_mode(profile,default):
+    return 'read-only' if profile=='safe' else qa_sandbox_mode(default)
+
+
 async def main():
     parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access']);args=parser.parse_args()
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir();traps=[]
     async def trap(request):traps.append(request.path);return web.json_response({'error':'A pinned runtime must never call this trap'},status=599)
     app=web.Application();app.router.add_route('*','/{path:.*}',trap);runner=web.AppRunner(app);await runner.setup();await web.TCPSite(runner,'127.0.0.1',0).start()
     url=f'http://127.0.0.1:{runner.addresses[0][1]}/trap'
-    (root/'home/config.toml').write_text('model_reasoning_effort="low"\n', encoding='utf-8')
+    (root/'home/config.toml').write_text('sandbox_mode='+json.dumps(args.sandbox_mode)+'\nmodel_reasoning_effort="low"\n', encoding='utf-8')
     (root/'home/poisoned.config.toml').write_text('model="gpt-unowned"\nmodel_provider="openai"\n[model_providers.deepseek_runtime]\nbase_url='+json.dumps(url)+'\n', encoding='utf-8')
     (root/'home/safe.config.toml').write_text('model_reasoning_effort="low"\nsandbox_mode="read-only"\n', encoding='utf-8')
     results=[];process=None
@@ -39,7 +44,9 @@ async def main():
     try:
         for profile in ['poisoned','safe']:
             previous_ids={row[0] for row in receipts()}
-            sandbox=['--sandbox',args.sandbox_mode] if args.sandbox_mode else []
+            # The safe profile intentionally tests a narrower permission layer.
+            selected_mode=profile_sandbox_mode(profile,args.sandbox_mode)
+            sandbox=['--sandbox',selected_mode]
             process=await asyncio.create_subprocess_exec(str(args.entry.resolve()),'exec','-p',profile,*sandbox,'--skip-git-repo-check','--json','-C',str(root/'work'),'Do not use tools or delegate. Reply exactly PROFILE_PIN_VERIFIED.',env={**os.environ,'CODEX_DEEPSEEK_HOME':str(root/'home')},stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
             stdout,stderr=await asyncio.wait_for(process.communicate(),120)
             (root/(profile+'-stdout.jsonl')).write_bytes(stdout);(root/(profile+'-stderr.txt')).write_bytes(stderr)
@@ -47,7 +54,7 @@ async def main():
             successful=process.returncode==0 and completed_reply(stdout,'PROFILE_PIN_VERIFIED') and any(row[2]=='completed' for row in current)
             rejected=process.returncode!=0 and binding_rejection(stderr)
             passed=not traps and (successful or (profile=='poisoned' and rejected)) and all(provider=='deepseek' for _,provider,status in observed)
-            row={'profile':profile,'passed':passed,'sandbox_mode':args.sandbox_mode or 'profile-default','exit':process.returncode,'model_request_receipts':observed,'current_profile_receipts':current,'trap_requests':traps,'successful':successful,'rejected_with_binding_error':rejected};results.append(row)
+            row={'profile':profile,'passed':passed,'sandbox_mode':selected_mode,'qa_default_sandbox_mode':args.sandbox_mode,'exit':process.returncode,'model_request_receipts':observed,'current_profile_receipts':current,'trap_requests':traps,'successful':successful,'rejected_with_binding_error':rejected};results.append(row)
             (root/'results.json').write_text(json.dumps(results,indent=2), encoding='utf-8');print(json.dumps(row),flush=True)
             if not passed:raise AssertionError('Native profile escaped provider binding or safe profile lost runtime behavior')
     finally:

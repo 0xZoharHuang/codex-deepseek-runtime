@@ -589,13 +589,16 @@ def test_frozen_regression_lineage_only_admits_reporting_methods_and_test_change
         with pytest.raises(SystemExit):acceptance.validate_regression_source(artifact,metadata,None if change=='no_explicit_snapshot' else producer,terminal_revalidated=change=='shared_terminal_helper')
 
 
-@pytest.mark.parametrize('change',['none','source','subset','runtime','filtered','junit_missing'])
+@pytest.mark.parametrize('change',['none','source','subset','runtime','filtered','junit_missing','nested_external'])
 def test_current_offline_supplement_requires_full_current_collection_and_exact_target(tmp_path,monkeypatch,change):
     import xml.etree.ElementTree as ET
     source=tmp_path/'source';source.mkdir();(source/'assemble_release_acceptance.py').write_text('current consumer')
     root=tmp_path/'offline';root.mkdir();metadata,native,_=installed();scope={'target':native['target']}
     artifact={'installation':metadata,'native_manifest':native,'target':native['target'],'baseline_matrix_sha256':acceptance.BASELINE_MATRIX_SHA256,
-              'controller_environment':{'optimize':0},'selected_gates':['offline'],'verifier_source_sha256':acceptance.qa_python_hashes(source)}
+              'entry':str(acceptance.PureWindowsPath(metadata['release_environment'])/'Scripts/codex-deepseek.exe'),
+              'entry_sha256':metadata['console_script_sha256'],
+              'controller_environment':{'optimize':0,'windows_token':{'sid':'S-1-5-21-1-2-3-500','elevated':True}},
+              'selected_gates':['offline'],'verifier_source_sha256':acceptance.qa_python_hashes(source)}
     xml=ET.Element('testsuite');items=[]
     for i,(name,reason) in enumerate([('test_current::test_pass',None),*acceptance.expected_offline_skips(native['target']).items()]):
         module,case=name.split('::');classname='tests.'+module;node=ET.SubElement(xml,'testcase',classname=classname,name=case)
@@ -607,13 +610,24 @@ def test_current_offline_supplement_requires_full_current_collection_and_exact_t
     elif change=='runtime':artifact['installation']={**metadata,'source_id':'different'}
     elif change=='filtered':collection['deselected']=1
     elif change=='junit_missing':xml.remove(xml[0])
+    elif change=='nested_external':artifact['external_offline']={'root':str(root)}
     ET.ElementTree(xml).write(root/'offline.xml',encoding='utf-8');(root/'offline-collection.json').write_text(json.dumps(collection))
-    verdict={'passed':True,'entry_unchanged':True,'verifier_source_unchanged':True,'gates':[{'gate':'offline','exit':0}],
+    verdict={'passed':True,'entry_unchanged':True,'verifier_source_unchanged':True,'native_probes_unchanged':True,'gates':[{'gate':'offline','exit':0,'log':'offline.log'}],
              'offline_collection_sha256':acceptance.sha(root/'offline-collection.json')}
+    (root/'offline.log').write_text('complete test execution')
+    verdict['offline_files_sha256']=acceptance.offline_file_hashes(root)
+    (root/'results.json').write_text(json.dumps(verdict['gates']))
     (root/'artifact.json').write_text(json.dumps(artifact));(root/'verdict.json').write_text(json.dumps(verdict));monkeypatch.setattr(acceptance,'SOURCE',source)
-    if change=='none':assert acceptance.validate_offline_run(root,metadata,native,scope,current=True)['tests_passed']==1
+    if change=='none':
+        assert acceptance.validate_offline_run(root,metadata,native,scope,current=True)['tests_passed']==1
+        external=acceptance.external_offline_receipt(root,metadata,native,scope)
+        assert external['execution']=='separate_complete_offline_run'
+        assert external['validation']['tests_passed']==1
+        assert external['files_sha256']['offline.xml']==acceptance.sha(root/'offline.xml')
+        with pytest.raises(SystemExit):acceptance.external_offline_receipt(root,metadata,native,{'target':'aarch64-apple-darwin'})
     else:
         with pytest.raises(SystemExit):acceptance.validate_offline_run(root,metadata,native,scope,current=True)
+        with pytest.raises(SystemExit):acceptance.external_offline_receipt(root,metadata,native,scope)
 
 
 @pytest.mark.parametrize('change',['none','default','wrong_snapshot','execution_helper','missing_helper'])

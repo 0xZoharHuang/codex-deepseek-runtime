@@ -14,7 +14,7 @@ import sys
 import sqlite3
 import threading
 import time
-from verify_live import Peer
+from verify_live import Peer,qa_sandbox_mode
 from acceptance_assertions import current_browser_evidence,complete_work_patch,OracleGuard,real_work_passed,real_work_input_hashes,native_host_execution
 from install import python_entry,_support
 
@@ -65,7 +65,8 @@ def scenario(name):
     verifiers=[Path(__file__),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py'),Path(__file__).with_name('host_execution_acceptance.py'),Path(__file__).with_name('real_work_imports.py')]
     (root/'artifact.json').write_text(json.dumps({'entry':str(entry),'entry_sha256':hashlib.sha256(entry.read_bytes()).hexdigest(),'installation':metadata,'verifier_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in verifiers}},indent=2), encoding='utf-8')
     (root/'home').mkdir(exist_ok=True)
-    (root/'home/config.toml').write_text(f'''model_reasoning_effort = "high"
+    (root/'home/config.toml').write_text(f'''sandbox_mode = {json.dumps(SANDBOX_MODE)}
+model_reasoning_effort = "high"
 model_auto_compact_token_limit = {COMPACTION_LIMIT}
 [sandbox_workspace_write]
 network_access = true
@@ -192,7 +193,7 @@ if __name__=='__main__':
     parser.add_argument('--compaction-limit',type=int,default=COMPACTION_LIMIT,
                         help='Use 90000 only for deliberate repeated-compaction stress testing')
     parser.add_argument('--require-web-research',action='store_true')
-    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=SANDBOX_MODE,
+    parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode(),
                         help='Full-access real-work acceptance must be paired with separate native sandbox enforcement evidence')
     options=parser.parse_args()
     BASE=options.fixtures.resolve()

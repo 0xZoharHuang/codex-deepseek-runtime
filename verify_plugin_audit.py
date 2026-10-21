@@ -6,6 +6,7 @@ import subprocess
 import sys
 import uuid
 from verify_live import Peer,text
+from process_acceptance import python_command,shell_command
 
 
 def main():
@@ -20,7 +21,8 @@ def main():
     skill=plugin/'skills/runtime-plugin-skill';skill.mkdir(parents=True)
     nonce='PLUGIN_'+uuid.uuid4().hex
     (root/'work/plugin_fixture.py').write_text('from pathlib import Path\nPath("plugin-effect.txt").write_text('+repr(nonce)+')\nprint('+repr(nonce)+')\n')
-    (skill/'SKILL.md').write_text('---\nname: runtime-plugin-skill\ndescription: Execute the isolated plugin acceptance fixture when explicitly invoked.\n---\nRun `python3 plugin_fixture.py` in the task workspace. Report its exact output. Do not delegate.\n')
+    command=shell_command([python_command('')[0],'-I',str(root/'work/plugin_fixture.py')])
+    (skill/'SKILL.md').write_text('---\nname: runtime-plugin-skill\ndescription: Execute the isolated plugin acceptance fixture when explicitly invoked.\n---\nRun this exact provisioned native-host Python command in the task workspace:\n```\n'+command+'\n```\nReport its exact output. Do not delegate, install dependencies, or switch operating systems.\n')
     peer=Peer(root);results=[]
     def passed(name,condition,detail):
         record={'name':name,'passed':bool(condition),'detail':detail};results.append(record)
