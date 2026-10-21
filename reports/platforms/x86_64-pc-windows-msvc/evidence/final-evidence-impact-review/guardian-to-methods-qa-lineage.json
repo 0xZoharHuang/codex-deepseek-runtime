@@ -1,0 +1,19 @@
+{
+  "source_id": "3a59a782f017693be2b0",
+  "standard_guardian_qa_sha256": "31be6cbec0be0b6ca34969a330264d402c2f222edc95542e4f3a246c4eff591b",
+  "methods_qa_sha256": "8ec26d0b9d492b57b191a98c00c22af46573946053bf5b7e1ace498f0b4d501f",
+  "exact_qa_delta": {
+    "tests/test_platform_verifiers.py": {
+      "before": "6ee70d88d64ff0c69512d84ad3bd3032e73c03b3c932f4aedf4984aec25e25ee",
+      "after": "85a3188413dcef286156d0fb0eb8c72d599e23d2f87fbf9dd2ecbf044c9d8d1b"
+    },
+    "verify_remaining_local.py": {
+      "before": "ce7299ba2adc19c0c95be509029c06f5ff65366323f685d4090be4d0c497da4f",
+      "after": "570e3e61f95047ff8944978b623389be450c198c21c405d98a16a90a6abd1025"
+    }
+  },
+  "all_product_files_unchanged": true,
+  "all_methods_snapshot_files_verified": true,
+  "methods_runtime_pass_claimed": false,
+  "mapping_complete_claimed": false
+}

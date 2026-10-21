@@ -1,0 +1,98 @@
+{
+  "passed": true,
+  "source_id": "3a59a782f017693be2b0",
+  "target": "x86_64-pc-windows-msvc",
+  "guest": "CDS-QA",
+  "guest_os_observed": "Windows-2025Server-10.0.26100-SP0",
+  "original_guest_root": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e",
+  "artifact_sha256": "76a88b6ae7b527ba0fd1b7aa9d0dbc7c0fd2c4ca93eb9f6dfe4f113fcebd01d2",
+  "verdict_sha256": "681842bf3f87d183316c54ab3c5589911ed1f5b150db9e0ba673927ee8606484",
+  "results_sha256": "41cc857c721e36e694de49227cd5cacae6310acd84d276548736d8eb34da0954",
+  "transfer_receipt_sha256": "877a3024f22883f3cd205f73a76f3728737cf314b3a565dadabdca0de1eb3d05",
+  "verifier_source_sha256": {
+    "verify_windows_sandbox.py": "814743ab665653470696747232e5c7b8390148d0612e5129e33b15ac8673209e",
+    "verify_live.py": "aec707dc79cf8fe67e0337bd9676789892418d17ada8b2e4485f13b457d8b977",
+    "install.py": "5aa6ad8b77af04eb0898630a43884cb77d00e3672e76f0c1696d15dd3952c3a4"
+  },
+  "full_native_manifest_matches_frozen_r3": true,
+  "actual_entry_and_installation_metadata_readback_matches": true,
+  "native_binaries_rehashed_in_this_readback": false,
+  "original_unchanged_gate_performed_full_native_integrity_before_and_after": true,
+  "current_model_receipt_counts": {
+    "unelevated": 0,
+    "elevated": 0
+  },
+  "modes": [
+    {
+      "mode": "unelevated",
+      "native_sessions": 2,
+      "paired_native_methods": [
+        [
+          "config/read",
+          "initialize",
+          "windowsSandbox/readiness",
+          "windowsSandbox/setupStart"
+        ],
+        [
+          "command/exec",
+          "config/read",
+          "initialize",
+          "windowsSandbox/readiness"
+        ]
+      ],
+      "setup_completed": true,
+      "cold_readiness_and_config_persistence": true,
+      "inside_write_actual_bytes": true,
+      "outside_UnauthorizedAccess_verified_by_exact_command_and_result": true,
+      "outside_original_bytes_preserved": true,
+      "model_requests": 0,
+      "source_files": [
+        "unelevated/events-1792609010175563700.json",
+        "unelevated/events-1792609242702639200.json",
+        "unelevated/launch-1792608839920106600.json",
+        "unelevated/launch-1792609010215667000.json",
+        "unelevated/client-requests.jsonl",
+        "unelevated/home/config.toml",
+        "unelevated/outside.txt",
+        "unelevated/work/allowed.txt"
+      ]
+    },
+    {
+      "mode": "elevated",
+      "native_sessions": 2,
+      "paired_native_methods": [
+        [
+          "config/read",
+          "initialize",
+          "windowsSandbox/readiness",
+          "windowsSandbox/setupStart"
+        ],
+        [
+          "command/exec",
+          "config/read",
+          "initialize",
+          "windowsSandbox/readiness"
+        ]
+      ],
+      "setup_completed": true,
+      "cold_readiness_and_config_persistence": true,
+      "inside_write_actual_bytes": true,
+      "outside_UnauthorizedAccess_verified_by_exact_command_and_result": true,
+      "outside_original_bytes_preserved": true,
+      "model_requests": 0,
+      "source_files": [
+        "elevated/events-1792609512365792300.json",
+        "elevated/events-1792609752718833800.json",
+        "elevated/launch-1792609242859850400.json",
+        "elevated/launch-1792609512498722600.json",
+        "elevated/client-requests.jsonl",
+        "elevated/home/config.toml",
+        "elevated/outside.txt",
+        "elevated/work/allowed.txt"
+      ]
+    }
+  ],
+  "new_model_or_sandbox_execution": false,
+  "read_only": true,
+  "scope": "Native sandbox positive lifecycle on Windows Server 2025 guest; not a claim of all Windows runtime gates or every Windows edition."
+}

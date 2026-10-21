@@ -1,0 +1,198 @@
+{
+  "original_guest_root": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e",
+  "remote_read_script_sha256": "4eb17680d1694f685a82f7ee4896843221c551b8232288a5a0e5ad8f18dce2cd",
+  "transport_helper_sha256": "455f7d2e066b67da79f85b5a82c13ff7befd47a391a76c5dd5fce6807690b1d5",
+  "read_only_remote": true,
+  "remote_exit_code": 0,
+  "files": {
+    "artifact.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\artifact.json",
+      "original_sha256": "76a88b6ae7b527ba0fd1b7aa9d0dbc7c0fd2c4ca93eb9f6dfe4f113fcebd01d2",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/artifact.json",
+      "local_sha256": "76a88b6ae7b527ba0fd1b7aa9d0dbc7c0fd2c4ca93eb9f6dfe4f113fcebd01d2",
+      "bytes": 433554
+    },
+    "verdict.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\verdict.json",
+      "original_sha256": "681842bf3f87d183316c54ab3c5589911ed1f5b150db9e0ba673927ee8606484",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/verdict.json",
+      "local_sha256": "681842bf3f87d183316c54ab3c5589911ed1f5b150db9e0ba673927ee8606484",
+      "bytes": 12835
+    },
+    "results.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\results.json",
+      "original_sha256": "41cc857c721e36e694de49227cd5cacae6310acd84d276548736d8eb34da0954",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/results.json",
+      "local_sha256": "41cc857c721e36e694de49227cd5cacae6310acd84d276548736d8eb34da0954",
+      "bytes": 1488
+    },
+    "unelevated/outside.txt": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\outside.txt",
+      "original_sha256": "fdd5b18d0d6e7d3c33870cff243d12410eaf09faaf2fdee173a03fc61414ea81",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/outside.txt",
+      "local_sha256": "fdd5b18d0d6e7d3c33870cff243d12410eaf09faaf2fdee173a03fc61414ea81",
+      "bytes": 8
+    },
+    "unelevated/work/allowed.txt": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\work\\allowed.txt",
+      "original_sha256": "120646bf71f9d7aa39a9969c017090202adfeaeb3429c69e5d2373194794a145",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/work/allowed.txt",
+      "local_sha256": "120646bf71f9d7aa39a9969c017090202adfeaeb3429c69e5d2373194794a145",
+      "bytes": 15
+    },
+    "unelevated/home/config.toml": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\home\\config.toml",
+      "original_sha256": "c69ff0325b60d2f3d69f5cb19d0a9c7a7b1df6c5105400c92e157787b6c9b21f",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/home/config.toml",
+      "local_sha256": "c69ff0325b60d2f3d69f5cb19d0a9c7a7b1df6c5105400c92e157787b6c9b21f",
+      "bytes": 495
+    },
+    "unelevated/client-requests.jsonl": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\client-requests.jsonl",
+      "original_sha256": "015da6591bbc352c73c609a3c7849b2a61886ade934d0f7787f7e9c61590c4ef",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/client-requests.jsonl",
+      "local_sha256": "015da6591bbc352c73c609a3c7849b2a61886ade934d0f7787f7e9c61590c4ef",
+      "bytes": 2153
+    },
+    "unelevated/events-1792609010175563700.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\events-1792609010175563700.json",
+      "original_sha256": "9e406cb1c062b9c575efdfa76358615fcaa856d56ebd0c843f88479fa928ca02",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/events-1792609010175563700.json",
+      "local_sha256": "9e406cb1c062b9c575efdfa76358615fcaa856d56ebd0c843f88479fa928ca02",
+      "bytes": 16183
+    },
+    "unelevated/events-1792609242702639200.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\events-1792609242702639200.json",
+      "original_sha256": "92ec4fd33391f14fa68df824196679b202892092e3b9bfb40565af4c24093cf2",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/events-1792609242702639200.json",
+      "local_sha256": "92ec4fd33391f14fa68df824196679b202892092e3b9bfb40565af4c24093cf2",
+      "bytes": 32115
+    },
+    "unelevated/launch-1792608839920106600.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\launch-1792608839920106600.json",
+      "original_sha256": "a3446630890aec2f63ca88a4e601148693078e58b6f48a85b646343dfa7f3292",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/launch-1792608839920106600.json",
+      "local_sha256": "a3446630890aec2f63ca88a4e601148693078e58b6f48a85b646343dfa7f3292",
+      "bytes": 691
+    },
+    "unelevated/launch-1792609010215667000.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\unelevated\\launch-1792609010215667000.json",
+      "original_sha256": "a3446630890aec2f63ca88a4e601148693078e58b6f48a85b646343dfa7f3292",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/unelevated/launch-1792609010215667000.json",
+      "local_sha256": "a3446630890aec2f63ca88a4e601148693078e58b6f48a85b646343dfa7f3292",
+      "bytes": 691
+    },
+    "elevated/outside.txt": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\outside.txt",
+      "original_sha256": "fdd5b18d0d6e7d3c33870cff243d12410eaf09faaf2fdee173a03fc61414ea81",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/outside.txt",
+      "local_sha256": "fdd5b18d0d6e7d3c33870cff243d12410eaf09faaf2fdee173a03fc61414ea81",
+      "bytes": 8
+    },
+    "elevated/work/allowed.txt": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\work\\allowed.txt",
+      "original_sha256": "120646bf71f9d7aa39a9969c017090202adfeaeb3429c69e5d2373194794a145",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/work/allowed.txt",
+      "local_sha256": "120646bf71f9d7aa39a9969c017090202adfeaeb3429c69e5d2373194794a145",
+      "bytes": 15
+    },
+    "elevated/home/config.toml": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\home\\config.toml",
+      "original_sha256": "f5af02a428a47ed394a69a7792637bb2decf1a4b24efe6c4480e7eb5ee482e88",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/home/config.toml",
+      "local_sha256": "f5af02a428a47ed394a69a7792637bb2decf1a4b24efe6c4480e7eb5ee482e88",
+      "bytes": 491
+    },
+    "elevated/client-requests.jsonl": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\client-requests.jsonl",
+      "original_sha256": "660f2717369bbadaeb3e7d4f84d6fd30aa43ec61c0d5b03f684b711063ba99c9",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/client-requests.jsonl",
+      "local_sha256": "660f2717369bbadaeb3e7d4f84d6fd30aa43ec61c0d5b03f684b711063ba99c9",
+      "bytes": 2141
+    },
+    "elevated/events-1792609512365792300.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\events-1792609512365792300.json",
+      "original_sha256": "a2f5a8eadc8ea8b19ec498e2abb9d1aa87203bac7cbbdabad6d4474caf69636f",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/events-1792609512365792300.json",
+      "local_sha256": "a2f5a8eadc8ea8b19ec498e2abb9d1aa87203bac7cbbdabad6d4474caf69636f",
+      "bytes": 16145
+    },
+    "elevated/events-1792609752718833800.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\events-1792609752718833800.json",
+      "original_sha256": "05c8201e127693027aa76c3474689f6591d80137b4ae14a3e6cbb1794ad15f4a",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/events-1792609752718833800.json",
+      "local_sha256": "05c8201e127693027aa76c3474689f6591d80137b4ae14a3e6cbb1794ad15f4a",
+      "bytes": 32037
+    },
+    "elevated/launch-1792609242859850400.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\launch-1792609242859850400.json",
+      "original_sha256": "b5f597e62dfcb5115babb0fce408d837236a0d610dcae305bfe56fd59bec9275",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/launch-1792609242859850400.json",
+      "local_sha256": "b5f597e62dfcb5115babb0fce408d837236a0d610dcae305bfe56fd59bec9275",
+      "bytes": 689
+    },
+    "elevated/launch-1792609512498722600.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e\\elevated\\launch-1792609512498722600.json",
+      "original_sha256": "b5f597e62dfcb5115babb0fce408d837236a0d610dcae305bfe56fd59bec9275",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/elevated/launch-1792609512498722600.json",
+      "local_sha256": "b5f597e62dfcb5115babb0fce408d837236a0d610dcae305bfe56fd59bec9275",
+      "bytes": 689
+    },
+    "job/job-start.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\job-start.json",
+      "original_sha256": "99ea94940b1d04f2edbdc8a74848b5fa71997e1f2d2e0ad365366f1a91c568b0",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/job/job-start.json",
+      "local_sha256": "99ea94940b1d04f2edbdc8a74848b5fa71997e1f2d2e0ad365366f1a91c568b0",
+      "bytes": 512
+    },
+    "job/job-result.json": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\job-result.json",
+      "original_sha256": "fc850960c5ac5550d7da7db2d4793248a6f4b6f23538a18cd4faa6431c44d194",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/job/job-result.json",
+      "local_sha256": "fc850960c5ac5550d7da7db2d4793248a6f4b6f23538a18cd4faa6431c44d194",
+      "bytes": 1043
+    },
+    "job/install.log": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\install.log",
+      "original_sha256": "ba9d0c29d919c38708174ccfe9d09b080b308094056e00e8638458959c018028",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/job/install.log",
+      "local_sha256": "ba9d0c29d919c38708174ccfe9d09b080b308094056e00e8638458959c018028",
+      "bytes": 10041
+    },
+    "job/job.log": {
+      "original_guest_path": "<windows-guest-validation-root>\\r3\\sandbox-job\\job.log",
+      "original_sha256": "dfee8d46442d6cc4bfb71c32197b4efdf20f319b9a06957b3d1967547c2970e4",
+      "local_relative_path": "1ccf76b4-019e-428e-9779-9cbe7cd20f6e/job/job.log",
+      "local_sha256": "dfee8d46442d6cc4bfb71c32197b4efdf20f319b9a06957b3d1967547c2970e4",
+      "bytes": 32577
+    }
+  },
+  "checks": {
+    "installed_metadata_equals_artifact": true,
+    "installed_native_manifest_equals_artifact": true,
+    "entry_sha256": "c6b5d0ecd11004a95d8f04ab2a85b02fe5a9405f2ac03718bc74c02fa6871f23",
+    "verifier_sha256": {
+      "verify_windows_sandbox.py": "814743ab665653470696747232e5c7b8390148d0612e5129e33b15ac8673209e",
+      "verify_live.py": "aec707dc79cf8fe67e0337bd9676789892418d17ada8b2e4485f13b457d8b977",
+      "install.py": "5aa6ad8b77af04eb0898630a43884cb77d00e3672e76f0c1696d15dd3952c3a4"
+    },
+    "model_receipt_counts": {
+      "unelevated": 0,
+      "elevated": 0
+    },
+    "outside_bytes_preserved": {
+      "unelevated": true,
+      "elevated": true
+    },
+    "inside_bytes": {
+      "unelevated": true,
+      "elevated": true
+    },
+    "guest_hostname": "CDS-QA",
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "python": "3.13.3 (main, May 30 2025, 05:37:00) [MSC v.1943 64 bit (AMD64)]",
+    "original_root": "<windows-guest-validation-root>\\r3\\sandbox-job\\evidence\\1ccf76b4-019e-428e-9779-9cbe7cd20f6e",
+    "failure_file_exists": false,
+    "original_files_unchanged_during_read": true
+  }
+}

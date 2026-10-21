@@ -1,0 +1,1428 @@
+[
+  {
+    "name": "native_direct_mcp_actual_open_find_click",
+    "passed": true,
+    "detail": {
+      "opened": {
+        "ref_id": "page_25d2b7f329174f6aa50be7bbb62bd814",
+        "url": "http://127.0.0.1:50944/start.html",
+        "title": "http://127.0.0.1:50944/start.html",
+        "content_type": "text/html",
+        "retrieved_at": 1792607998.7369525,
+        "source_sha256": "e443c65402e3d407b71b0a6f29a9c2df6f78a809dae1b71fa91e10f4ca0b968c",
+        "javascript_executed": false,
+        "untrusted_content": true,
+        "dns_resolution": {
+          "mode": "system_dns"
+        },
+        "total_lines": 2,
+        "start_line": 0,
+        "content": "L0: release checkpoint: read the linked migration note.\nL1: Migration note [1]",
+        "links": [
+          {
+            "id": 1,
+            "text": "Migration note",
+            "url": "http://127.0.0.1:50944/next.html"
+          }
+        ],
+        "total_links": 1,
+        "links_truncated": false,
+        "content_truncated": false
+      },
+      "found": {
+        "ref_id": "page_25d2b7f329174f6aa50be7bbb62bd814",
+        "url": "http://127.0.0.1:50944/start.html",
+        "pattern": "release checkpoint",
+        "match_count": 1,
+        "matches_truncated": false,
+        "matches": [
+          {
+            "line": 0,
+            "end_line": 0,
+            "content": "L0: release checkpoint: read the linked migration note.\nL1: Migration note [1]"
+          }
+        ],
+        "untrusted_content": true
+      },
+      "linked": {
+        "ref_id": "page_128de2a605a14430a5eb131ce4fc105a",
+        "url": "http://127.0.0.1:50944/next.html",
+        "title": "http://127.0.0.1:50944/next.html",
+        "content_type": "text/html",
+        "retrieved_at": 1792607998.7461557,
+        "source_sha256": "14698569c6400f1691d9ef6e050c2aeb3d6af530712c1a0ae3ee48761ac19dd7",
+        "javascript_executed": false,
+        "untrusted_content": true,
+        "dns_resolution": {
+          "mode": "system_dns"
+        },
+        "total_lines": 2,
+        "start_line": 0,
+        "content": "L0: Migration note\nL1: Verified migration token ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47",
+        "links": [],
+        "total_links": 0,
+        "links_truncated": false,
+        "content_truncated": false,
+        "followed_from": {
+          "ref_id": "page_25d2b7f329174f6aa50be7bbb62bd814",
+          "link_id": 1
+        }
+      },
+      "hits": [
+        "/start.html",
+        "/next.html"
+      ]
+    }
+  },
+  {
+    "name": "cold_native_mcp_page_reference_recovery",
+    "passed": true,
+    "detail": {
+      "ref_id": "page_128de2a605a14430a5eb131ce4fc105a",
+      "url": "http://127.0.0.1:50944/next.html",
+      "pattern": "ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47",
+      "match_count": 1,
+      "matches_truncated": false,
+      "matches": [
+        {
+          "line": 1,
+          "end_line": 1,
+          "content": "L0: Migration note\nL1: Verified migration token ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47"
+        }
+      ],
+      "untrusted_content": true
+    }
+  },
+  {
+    "name": "model_native_browse_find_follow_and_file_effect",
+    "passed": true,
+    "detail": {
+      "answer": "I’ll use the fixture_web MCP tools in the required order, then write the token with `apply_patch`.\nThe linked note returned the token; I’m writing it to `browser-result.txt` now.\nToken: `ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47`\n\nSource URL: http://127.0.0.1:50944/next.html\n\nSaved to `browser-result.txt`.",
+      "hits": [
+        "/start.html",
+        "/next.html"
+      ],
+      "items": [
+        {
+          "type": "userMessage",
+          "id": "01a15fc3-69b6-72c2-94ab-0e004c4935de",
+          "clientId": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a native browser capability acceptance task. All THREE native fixture_web MCP calls are mandatory in this exact order: (1) open http://127.0.0.1:50944/start.html; (2) call the find TOOL on the returned page reference with pattern exactly \"release checkpoint\"; (3) click that page's Migration note link and read the verification token from the linked page. Even if open already shows the phrase, you MUST still execute find; visually noticing text is not the required tool call. Then use native apply_patch to create browser-result.txt in this workspace containing that exact token followed by an optional final newline. Never read fixture server code or use shell/Python/curl to fetch the URL. Do not delegate. Report the token and source URL.",
+              "text_elements": []
+            }
+          ]
+        },
+        {
+          "type": "agentMessage",
+          "id": "msg_tmp_mafed70tt1",
+          "text": "I’ll use the fixture_web MCP tools in the required order, then write the token with `apply_patch`.",
+          "phase": null,
+          "memoryCitation": null,
+          "delivery": null,
+          "questions": null
+        },
+        {
+          "type": "mcpToolCall",
+          "id": "exec-98748e59-9002-4f03-922f-9a8831d6c798",
+          "server": "fixture_web",
+          "tool": "open",
+          "status": "completed",
+          "arguments": {
+            "url_or_ref": "http://127.0.0.1:50944/start.html"
+          },
+          "appContext": null,
+          "mcpAppUi": null,
+          "pluginId": null,
+          "readOnlyHint": true,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"ref_id\": \"page_7b864b04449347cbb486f21480db52dd\",\n  \"url\": \"http://127.0.0.1:50944/start.html\",\n  \"title\": \"http://127.0.0.1:50944/start.html\",\n  \"content_type\": \"text/html\",\n  \"retrieved_at\": 1792608008.227538,\n  \"source_sha256\": \"e443c65402e3d407b71b0a6f29a9c2df6f78a809dae1b71fa91e10f4ca0b968c\",\n  \"javascript_executed\": false,\n  \"untrusted_content\": true,\n  \"dns_resolution\": {\n    \"mode\": \"system_dns\"\n  },\n  \"total_lines\": 2,\n  \"start_line\": 0,\n  \"content\": \"L0: release checkpoint: read the linked migration note.\\nL1: Migration note [1]\",\n  \"links\": [\n    {\n      \"id\": 1,\n      \"text\": \"Migration note\",\n      \"url\": \"http://127.0.0.1:50944/next.html\"\n    }\n  ],\n  \"total_links\": 1,\n  \"links_truncated\": false,\n  \"content_truncated\": false\n}"
+              }
+            ],
+            "structuredContent": null,
+            "_meta": null
+          },
+          "error": null,
+          "durationMs": 9
+        },
+        {
+          "type": "reasoning",
+          "id": "rs_tmp_hox0fej1uhi",
+          "summary": [],
+          "content": [
+            "Must call find exact."
+          ]
+        },
+        {
+          "type": "mcpToolCall",
+          "id": "exec-b6965cb2-c1ef-41c0-a20f-52737b52f509",
+          "server": "fixture_web",
+          "tool": "find",
+          "status": "completed",
+          "arguments": {
+            "ref_id": "page_7b864b04449347cbb486f21480db52dd",
+            "pattern": "release checkpoint"
+          },
+          "appContext": null,
+          "mcpAppUi": null,
+          "pluginId": null,
+          "readOnlyHint": true,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"ref_id\": \"page_7b864b04449347cbb486f21480db52dd\",\n  \"url\": \"http://127.0.0.1:50944/start.html\",\n  \"pattern\": \"release checkpoint\",\n  \"match_count\": 1,\n  \"matches_truncated\": false,\n  \"matches\": [\n    {\n      \"line\": 0,\n      \"end_line\": 0,\n      \"content\": \"L0: release checkpoint: read the linked migration note.\\nL1: Migration note [1]\"\n    }\n  ],\n  \"untrusted_content\": true\n}"
+              }
+            ],
+            "structuredContent": null,
+            "_meta": null
+          },
+          "error": null,
+          "durationMs": 1
+        },
+        {
+          "type": "reasoning",
+          "id": "rs_tmp_4r0g5ep3xfa",
+          "summary": [],
+          "content": [
+            "Now click."
+          ]
+        },
+        {
+          "type": "mcpToolCall",
+          "id": "exec-30d817b1-a4b0-407e-bd1b-adb9e9116592",
+          "server": "fixture_web",
+          "tool": "click",
+          "status": "completed",
+          "arguments": {
+            "ref_id": "page_7b864b04449347cbb486f21480db52dd",
+            "link_id": 1
+          },
+          "appContext": null,
+          "mcpAppUi": null,
+          "pluginId": null,
+          "readOnlyHint": true,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"ref_id\": \"page_5ae9fcb07cea4b24a9dc42ceedf10d55\",\n  \"url\": \"http://127.0.0.1:50944/next.html\",\n  \"title\": \"http://127.0.0.1:50944/next.html\",\n  \"content_type\": \"text/html\",\n  \"retrieved_at\": 1792608013.124332,\n  \"source_sha256\": \"14698569c6400f1691d9ef6e050c2aeb3d6af530712c1a0ae3ee48761ac19dd7\",\n  \"javascript_executed\": false,\n  \"untrusted_content\": true,\n  \"dns_resolution\": {\n    \"mode\": \"system_dns\"\n  },\n  \"total_lines\": 2,\n  \"start_line\": 0,\n  \"content\": \"L0: Migration note\\nL1: Verified migration token ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47\",\n  \"links\": [],\n  \"total_links\": 0,\n  \"links_truncated\": false,\n  \"content_truncated\": false,\n  \"followed_from\": {\n    \"ref_id\": \"page_7b864b04449347cbb486f21480db52dd\",\n    \"link_id\": 1\n  }\n}"
+              }
+            ],
+            "structuredContent": null,
+            "_meta": null
+          },
+          "error": null,
+          "durationMs": 31
+        },
+        {
+          "type": "reasoning",
+          "id": "rs_tmp_omr21tiv0j",
+          "summary": [],
+          "content": [
+            "Now apply_patch exact token newline. Need verify file? apply_patch create. Use tool."
+          ]
+        },
+        {
+          "type": "agentMessage",
+          "id": "msg_tmp_cj48ol786np",
+          "text": "The linked note returned the token; I’m writing it to `browser-result.txt` now.",
+          "phase": null,
+          "memoryCitation": null,
+          "delivery": null,
+          "questions": null
+        },
+        {
+          "type": "fileChange",
+          "id": "exec-6734f4c2-c88d-4ef8-b505-7b64bcd5fbc1",
+          "changes": [
+            {
+              "path": "<windows-short-validation-root>\\x3\\b\\82a005a3-94ce-4a40-a550-63160e1c04ce\\work\\browser-result.txt",
+              "kind": {
+                "type": "add"
+              },
+              "diff": "ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47\n"
+            }
+          ],
+          "status": "completed"
+        },
+        {
+          "type": "reasoning",
+          "id": "rs_tmp_y33d2irjob",
+          "summary": [],
+          "content": [
+            "Need report token and source URL. Could maybe check apply patch succeeded via read? Instructions say don't re-read after apply patch. Fine. Final concise."
+          ]
+        },
+        {
+          "type": "agentMessage",
+          "id": "msg_tmp_i3ngq0qfi5p",
+          "text": "Token: `ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47`\n\nSource URL: http://127.0.0.1:50944/next.html\n\nSaved to `browser-result.txt`.",
+          "phase": null,
+          "memoryCitation": null,
+          "delivery": null,
+          "questions": null
+        }
+      ],
+      "file_content": "ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47\n"
+    }
+  },
+  {
+    "name": "bundled_public_browser_actual_https_find_and_link",
+    "passed": true,
+    "detail": {
+      "opened": {
+        "ref_id": "page_8bcde10387614893ae931e038807e726",
+        "url": "https://docs.python.org/3/library/asyncio-task.html",
+        "title": "Coroutines and tasks — Python 3.15.1 documentation",
+        "content_type": "text/html",
+        "retrieved_at": 1792608017.8193424,
+        "source_sha256": "33cc744d0e056bba451ee265ac5613a9f019672b82bb326537da035b24127db2",
+        "javascript_executed": false,
+        "untrusted_content": true,
+        "dns_resolution": {
+          "mode": "system_dns"
+        },
+        "total_lines": 3401,
+        "start_line": 0,
+        "content": "L0: https://www.python.org/ [1]\nL1: Theme\nL2: Auto\nL3: Light\nL4: Dark\nL5: Table of Contents [2]\nL6: Coroutines and tasks [3]\nL7: Coroutines [4]\nL8: Awaitables [5]\nL9: Creating tasks [6]\nL10: Task cancellation [7]\nL11: Task groups [8]\nL12: Sleeping [9]\nL13: Running tasks concurrently [10]\nL14: Eager task factory [11]\nL15: Shielding from cancellation [12]\nL16: Timeouts [13]\nL17: Waiting primitives [14]\nL18: Running in threads [15]\nL19: Scheduling from other threads [16]\nL20: Introspection [17]\nL21: Task object [18]\nL22: Previous topic\nL23: Runners [19]\nL24: Next topic\nL25: Streams [20]\nL26: This page\nL27: Report a bug [21]\nL28: Improve this page [22]\nL29: Show source [23]\nL30: Navigation\nL31: index [24]\nL32: modules [25]\nL33: |\nL34: next [26]\nL35: |\nL36: previous [27]\nL37: |\nL38: Python [28]\nL39: »\nL40: 3.15.1 Documentation [29]\nL41: »\nL42: The Python standard library [30]\nL43: »\nL44: Networking and Interprocess Communication [31]\nL45: »\nL46: asyncio — Asynchronous I/O [32]\nL47: »\nL48: Coroutines and tasks [33]\nL49: |\nL50: Theme\nL51: Auto\nL52: Light\nL53: Dark\nL54: |\nL55: Coroutines and tasks\nL56: ¶ [34]\nL57: This section outlines high-level asyncio APIs to work with coroutines\nL58: and Tasks.\nL59: Coroutines [35]\nL60: Awaitables [36]\nL61: Creating tasks [37]\nL62: Task cancellation [38]\nL63: Task groups [39]\nL64: Sleeping [40]\nL65: Running tasks concurrently [41]\nL66: Eager task factory [42]\nL67: Shielding from cancellation [43]\nL68: Timeouts [44]\nL69: Waiting primitives [45]\nL70: Running in threads [46]\nL71: Scheduling from other threads [47]\nL72: Introspection [48]\nL73: Task object [49]\nL74: Coroutines [50]\nL75: ¶ [51]\nL76: Source code:\nL77: Lib/asyncio/coroutines.py [52]\nL78: Coroutines [53]\nL79: declared with the async/await syntax is the\nL80: preferred way of writing asyncio applications.  For example, the following\nL81: snippet of code prints “hello”, waits 1 second,\nL82: and then prints “world”:\nL83: >>>\nL84: import\nL85: asyncio\nL86: >>>\nL87: async\nL88: def\nL89: main\nL90: ():\nL91: ...\nL92: print\nL93: (\nL94: 'hello'\nL95: )\nL96: ...\nL97: await\nL98: asyncio\nL99: .",
+        "links": [
+          {
+            "id": 1,
+            "text": "https://www.python.org/",
+            "url": "https://www.python.org/"
+          },
+          {
+            "id": 2,
+            "text": "Table of Contents",
+            "url": "https://docs.python.org/3/contents.html"
+          },
+          {
+            "id": 3,
+            "text": "Coroutines and tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html"
+          },
+          {
+            "id": 4,
+            "text": "Coroutines",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#coroutines"
+          },
+          {
+            "id": 5,
+            "text": "Awaitables",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#awaitables"
+          },
+          {
+            "id": 6,
+            "text": "Creating tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#creating-tasks"
+          },
+          {
+            "id": 7,
+            "text": "Task cancellation",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-cancellation"
+          },
+          {
+            "id": 8,
+            "text": "Task groups",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-groups"
+          },
+          {
+            "id": 9,
+            "text": "Sleeping",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#sleeping"
+          },
+          {
+            "id": 10,
+            "text": "Running tasks concurrently",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#running-tasks-concurrently"
+          },
+          {
+            "id": 11,
+            "text": "Eager task factory",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#eager-task-factory"
+          },
+          {
+            "id": 12,
+            "text": "Shielding from cancellation",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#shielding-from-cancellation"
+          },
+          {
+            "id": 13,
+            "text": "Timeouts",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#timeouts"
+          },
+          {
+            "id": 14,
+            "text": "Waiting primitives",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#waiting-primitives"
+          },
+          {
+            "id": 15,
+            "text": "Running in threads",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#running-in-threads"
+          },
+          {
+            "id": 16,
+            "text": "Scheduling from other threads",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#scheduling-from-other-threads"
+          },
+          {
+            "id": 17,
+            "text": "Introspection",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#introspection"
+          },
+          {
+            "id": 18,
+            "text": "Task object",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-object"
+          },
+          {
+            "id": 19,
+            "text": "Runners",
+            "url": "https://docs.python.org/3/library/asyncio-runner.html"
+          },
+          {
+            "id": 20,
+            "text": "Streams",
+            "url": "https://docs.python.org/3/library/asyncio-stream.html"
+          },
+          {
+            "id": 21,
+            "text": "Report a bug",
+            "url": "https://docs.python.org/3/bugs.html"
+          },
+          {
+            "id": 22,
+            "text": "Improve this page",
+            "url": "https://docs.python.org/3/improve-page-nojs.html"
+          },
+          {
+            "id": 23,
+            "text": "Show source",
+            "url": "https://github.com/python/cpython/blob/3.15/Doc/library/asyncio-task.rst?plain=1"
+          },
+          {
+            "id": 24,
+            "text": "index",
+            "url": "https://docs.python.org/3/genindex.html"
+          },
+          {
+            "id": 25,
+            "text": "modules",
+            "url": "https://docs.python.org/3/py-modindex.html"
+          },
+          {
+            "id": 26,
+            "text": "next",
+            "url": "https://docs.python.org/3/library/asyncio-stream.html"
+          },
+          {
+            "id": 27,
+            "text": "previous",
+            "url": "https://docs.python.org/3/library/asyncio-runner.html"
+          },
+          {
+            "id": 28,
+            "text": "Python",
+            "url": "https://www.python.org/"
+          },
+          {
+            "id": 29,
+            "text": "3.15.1 Documentation",
+            "url": "https://docs.python.org/3/index.html"
+          },
+          {
+            "id": 30,
+            "text": "The Python standard library",
+            "url": "https://docs.python.org/3/library/index.html"
+          },
+          {
+            "id": 31,
+            "text": "Networking and Interprocess Communication",
+            "url": "https://docs.python.org/3/library/ipc.html"
+          },
+          {
+            "id": 32,
+            "text": "asyncio — Asynchronous I/O",
+            "url": "https://docs.python.org/3/library/asyncio.html"
+          },
+          {
+            "id": 33,
+            "text": "Coroutines and tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html"
+          },
+          {
+            "id": 34,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#coroutines-and-tasks"
+          },
+          {
+            "id": 35,
+            "text": "Coroutines",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#coroutines"
+          },
+          {
+            "id": 36,
+            "text": "Awaitables",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#awaitables"
+          },
+          {
+            "id": 37,
+            "text": "Creating tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#creating-tasks"
+          },
+          {
+            "id": 38,
+            "text": "Task cancellation",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-cancellation"
+          },
+          {
+            "id": 39,
+            "text": "Task groups",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-groups"
+          },
+          {
+            "id": 40,
+            "text": "Sleeping",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#sleeping"
+          },
+          {
+            "id": 41,
+            "text": "Running tasks concurrently",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#running-tasks-concurrently"
+          },
+          {
+            "id": 42,
+            "text": "Eager task factory",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#eager-task-factory"
+          },
+          {
+            "id": 43,
+            "text": "Shielding from cancellation",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#shielding-from-cancellation"
+          },
+          {
+            "id": 44,
+            "text": "Timeouts",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#timeouts"
+          },
+          {
+            "id": 45,
+            "text": "Waiting primitives",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#waiting-primitives"
+          },
+          {
+            "id": 46,
+            "text": "Running in threads",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#running-in-threads"
+          },
+          {
+            "id": 47,
+            "text": "Scheduling from other threads",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#scheduling-from-other-threads"
+          },
+          {
+            "id": 48,
+            "text": "Introspection",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#introspection"
+          },
+          {
+            "id": 49,
+            "text": "Task object",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-object"
+          },
+          {
+            "id": 50,
+            "text": "Coroutines",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#id2"
+          },
+          {
+            "id": 51,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#coroutines"
+          },
+          {
+            "id": 52,
+            "text": "Lib/asyncio/coroutines.py",
+            "url": "https://github.com/python/cpython/tree/3.15/Lib/asyncio/coroutines.py"
+          },
+          {
+            "id": 53,
+            "text": "Coroutines",
+            "url": "https://docs.python.org/3/glossary.html#term-coroutine"
+          },
+          {
+            "id": 54,
+            "text": "asyncio.run()",
+            "url": "https://docs.python.org/3/library/asyncio-runner.html#asyncio.run"
+          },
+          {
+            "id": 55,
+            "text": "asyncio.create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 56,
+            "text": "Tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.Task"
+          },
+          {
+            "id": 57,
+            "text": "asyncio.TaskGroup",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup"
+          },
+          {
+            "id": 58,
+            "text": "create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 59,
+            "text": "asyncio.TaskGroup",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup"
+          },
+          {
+            "id": 60,
+            "text": "Awaitables",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#id3"
+          },
+          {
+            "id": 61,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#awaitables"
+          },
+          {
+            "id": 62,
+            "text": "await",
+            "url": "https://docs.python.org/3/reference/expressions.html#await"
+          },
+          {
+            "id": 63,
+            "text": "async def",
+            "url": "https://docs.python.org/3/reference/compound_stmts.html#async-def"
+          },
+          {
+            "id": 64,
+            "text": "asyncio.create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 65,
+            "text": "Future",
+            "url": "https://docs.python.org/3/library/asyncio-future.html#asyncio.Future"
+          },
+          {
+            "id": 66,
+            "text": "loop.run_in_executor()",
+            "url": "https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor"
+          },
+          {
+            "id": 67,
+            "text": "Creating tasks",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#id4"
+          },
+          {
+            "id": 68,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#creating-tasks"
+          },
+          {
+            "id": 69,
+            "text": "Lib/asyncio/tasks.py",
+            "url": "https://github.com/python/cpython/tree/3.15/Lib/asyncio/tasks.py"
+          },
+          {
+            "id": 70,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 71,
+            "text": "coroutine",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#coroutine"
+          },
+          {
+            "id": 72,
+            "text": "Task",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.Task"
+          },
+          {
+            "id": 73,
+            "text": "Task",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.Task"
+          },
+          {
+            "id": 74,
+            "text": "contextvars.Context",
+            "url": "https://docs.python.org/3/library/contextvars.html#contextvars.Context"
+          },
+          {
+            "id": 75,
+            "text": "loop.set_task_factory()",
+            "url": "https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.set_task_factory"
+          },
+          {
+            "id": 76,
+            "text": "get_running_loop()",
+            "url": "https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.get_running_loop"
+          },
+          {
+            "id": 77,
+            "text": "RuntimeError",
+            "url": "https://docs.python.org/3/builtins/exceptions.html#RuntimeError"
+          },
+          {
+            "id": 78,
+            "text": "asyncio.TaskGroup.create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup.create_task"
+          },
+          {
+            "id": 79,
+            "text": "asyncio.TaskGroup",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup"
+          },
+          {
+            "id": 80,
+            "text": "Task cancellation",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#id5"
+          },
+          {
+            "id": 81,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-cancellation"
+          },
+          {
+            "id": 82,
+            "text": "asyncio.CancelledError",
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html#asyncio.CancelledError"
+          },
+          {
+            "id": 83,
+            "text": "asyncio.CancelledError",
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html#asyncio.CancelledError"
+          },
+          {
+            "id": 84,
+            "text": "BaseException",
+            "url": "https://docs.python.org/3/builtins/exceptions.html#BaseException"
+          },
+          {
+            "id": 85,
+            "text": "asyncio.TaskGroup",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup"
+          },
+          {
+            "id": 86,
+            "text": "asyncio.timeout()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.timeout"
+          },
+          {
+            "id": 87,
+            "text": "asyncio.CancelledError",
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html#asyncio.CancelledError"
+          },
+          {
+            "id": 88,
+            "text": "uncancel",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.Task.uncancel"
+          },
+          {
+            "id": 89,
+            "text": "Task groups",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#id6"
+          },
+          {
+            "id": 90,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#task-groups"
+          },
+          {
+            "id": 91,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup"
+          },
+          {
+            "id": 92,
+            "text": "asynchronous context manager",
+            "url": "https://docs.python.org/3/reference/datamodel.html#async-context-managers"
+          },
+          {
+            "id": 93,
+            "text": "create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 94,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup.create_task"
+          },
+          {
+            "id": 95,
+            "text": "asyncio.create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"
+          },
+          {
+            "id": 96,
+            "text": "RuntimeError",
+            "url": "https://docs.python.org/3/builtins/exceptions.html#RuntimeError"
+          },
+          {
+            "id": 97,
+            "text": "loop.create_task()",
+            "url": "https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_task"
+          },
+          {
+            "id": 98,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup.cancel"
+          },
+          {
+            "id": 99,
+            "text": "cancel()",
+            "url": "https://docs.python.org/3/library/asyncio-task.html#asyncio.Task.cancel"
+          },
+          {
+            "id": 100,
+            "text": "asyncio.CancelledError",
+            "url": "https://docs.python.org/3/library/asyncio-exceptions.html#asyncio.CancelledError"
+          }
+        ],
+        "total_links": 326,
+        "links_truncated": true,
+        "content_truncated": true
+      },
+      "find": {
+        "ref_id": "page_8bcde10387614893ae931e038807e726",
+        "url": "https://docs.python.org/3/library/asyncio-task.html",
+        "pattern": "Changed in version 3.13",
+        "match_count": 5,
+        "matches_truncated": false,
+        "matches": [
+          {
+            "line": 810,
+            "end_line": 810,
+            "content": "L808: RuntimeError [96]\nL809: .\nL810: Changed in version 3.13:\nL811: Close the given coroutine if the task group is not active.\nL812: Changed in version 3.14:"
+          },
+          {
+            "line": 1035,
+            "end_line": 1035,
+            "content": "L1033: asyncio.Task.cancelling() [122]\nL1034: .\nL1035: Changed in version 3.13:\nL1036: Improved handling of simultaneous internal and external cancellations\nL1037: and correct preservation of cancellation counts."
+          },
+          {
+            "line": 1135,
+            "end_line": 1135,
+            "content": "L1133: loop\nL1134: parameter.\nL1135: Changed in version 3.13:\nL1136: Raises\nL1137: ValueError [127]"
+          },
+          {
+            "line": 2201,
+            "end_line": 2201,
+            "content": "L2199: Changed in version 3.12:\nL2200: Added support for generators yielding tasks.\nL2201: Changed in version 3.13:\nL2202: The result can now be used as either an\nL2203: asynchronous iterator [203]"
+          },
+          {
+            "line": 3306,
+            "end_line": 3306,
+            "content": "L3304: _must_cancel\nL3305: flag).\nL3306: Changed in version 3.13:\nL3307: Changed to rescind pending cancellation requests upon reaching zero.\nL3308: cancelling"
+          }
+        ],
+        "untrusted_content": true
+      },
+      "clicked": {
+        "ref_id": "page_4815fd6cb90847cbae9ee10b82216916",
+        "url": "https://docs.python.org/3/library/index.html",
+        "title": "The Python standard library — Python 3.15.1 documentation",
+        "content_type": "text/html",
+        "retrieved_at": 1792608018.2053413,
+        "source_sha256": "32a825093031fffdfea156744e069639076ab19127c94d64740681eb1350a5e6",
+        "javascript_executed": false,
+        "untrusted_content": true,
+        "dns_resolution": {
+          "mode": "system_dns"
+        },
+        "total_lines": 386,
+        "start_line": 0,
+        "content": "L0: https://www.python.org/ [1]\nL1: Theme\nL2: Auto\nL3: Light\nL4: Dark\nL5: Previous topic\nL6: Time complexity of operations on built-in types [2]\nL7: Next topic\nL8: Introduction [3]\nL9: This page\nL10: Report a bug [4]\nL11: Improve this page [5]\nL12: Show source [6]\nL13: Navigation\nL14: index [7]\nL15: modules [8]\nL16: |\nL17: next [9]\nL18: |\nL19: previous [10]\nL20: |\nL21: Python [11]\nL22: »\nL23: 3.15.1 Documentation [12]\nL24: »\nL25: The Python standard library [13]\nL26: |\nL27: Theme\nL28: Auto\nL29: Light\nL30: Dark\nL31: |\nL32: The Python standard library\nL33: ¶ [14]\nL34: This library reference manual describes the standard library\nL35: distributed with Python. It also describes some of the optional\nL36: components that are commonly included in Python distributions.\nL37: Elsewhere,\nL38: The Python Language Reference [15]\nL39: describes the exact syntax and\nL40: semantics of the Python language, and\nL41: Python built-ins reference [16]\nL42: describes\nL43: the built-in functions.\nL44: Python’s standard library is extensive, offering a wide range of\nL45: facilities as indicated by the long table of contents listed below. The\nL46: library contains built-in modules (written in C) that provide access to\nL47: system functionality such as file I/O that would otherwise be\nL48: inaccessible to Python programmers, as well as modules written in Python\nL49: that provide standardized solutions for many problems that occur in\nL50: everyday programming. Some of these modules are explicitly designed to\nL51: encourage and enhance the portability of Python programs by abstracting\nL52: away platform-specifics into platform-neutral APIs.\nL53: The Python installers for the Windows platform usually include\nL54: the entire standard library and often also include many additional\nL55: components. For Unix-like operating systems Python is normally provided\nL56: as a collection of packages, so it may be necessary to use the packaging\nL57: tools provided with the operating system to obtain some or all of the\nL58: optional components.\nL59: In addition to the standard library, there is an active collection of\nL60: hundreds of thousands of components (from individual programs and modules to\nL61: packages and entire application development frameworks), available from\nL62: the\nL63: Python Package Index [17]\nL64: .\nL65: Introduction [18]\nL66: Notes on availability [19]\nL67: Text Processing Services [20]\nL68: string — Common string operations [21]\nL69: string.templatelib — Support for template string literals [22]\nL70: re — Regular expression operations [23]\nL71: difflib — Helpers for computing deltas [24]\nL72: textwrap — Text wrapping and filling [25]\nL73: unicodedata — Unicode Database [26]\nL74: stringprep — Internet String Preparation [27]\nL75: readline — GNU readline interface [28]\nL76: rlcompleter — Completion function for GNU readline [29]\nL77: Binary Data Services [30]\nL78: struct — Interpret bytes as packed binary data [31]\nL79: codecs — Codec registry and base classes [32]\nL80: Data Types [33]\nL81: datetime — Basic date and time types [34]\nL82: zoneinfo — IANA time zone support [35]\nL83: calendar — General calendar-related functions [36]\nL84: collections — Container datatypes [37]\nL85: collections.abc — Abstract Base Classes for Containers [38]\nL86: heapq — Heap queue algorithm [39]\nL87: bisect — Array bisection algorithm [40]\nL88: array — Efficient arrays of numeric values [41]\nL89: weakref — Weak references [42]\nL90: types — Dynamic type creation and names for built-in types [43]\nL91: copy — Shallow and deep copy operations [44]\nL92: pprint — Data pretty printer [45]\nL93: reprlib — Alternate repr() implementation [46]\nL94: enum — Support for enumerations [47]\nL95: graphlib — Functionality to operate with graph-like structures [48]\nL96: Numeric and Mathematical Modules [49]\nL97: numbers — Numeric abstract base classes [50]\nL98: math — Mathematical functions [51]\nL99: math.integer — integer-specific mathematics functions [52]",
+        "links": [
+          {
+            "id": 1,
+            "text": "https://www.python.org/",
+            "url": "https://www.python.org/"
+          },
+          {
+            "id": 2,
+            "text": "Time complexity of operations on built-in types",
+            "url": "https://docs.python.org/3/builtins/time-complexity.html"
+          },
+          {
+            "id": 3,
+            "text": "Introduction",
+            "url": "https://docs.python.org/3/library/intro.html"
+          },
+          {
+            "id": 4,
+            "text": "Report a bug",
+            "url": "https://docs.python.org/3/bugs.html"
+          },
+          {
+            "id": 5,
+            "text": "Improve this page",
+            "url": "https://docs.python.org/3/improve-page-nojs.html"
+          },
+          {
+            "id": 6,
+            "text": "Show source",
+            "url": "https://github.com/python/cpython/blob/3.15/Doc/library/index.rst?plain=1"
+          },
+          {
+            "id": 7,
+            "text": "index",
+            "url": "https://docs.python.org/3/genindex.html"
+          },
+          {
+            "id": 8,
+            "text": "modules",
+            "url": "https://docs.python.org/3/py-modindex.html"
+          },
+          {
+            "id": 9,
+            "text": "next",
+            "url": "https://docs.python.org/3/library/intro.html"
+          },
+          {
+            "id": 10,
+            "text": "previous",
+            "url": "https://docs.python.org/3/builtins/time-complexity.html"
+          },
+          {
+            "id": 11,
+            "text": "Python",
+            "url": "https://www.python.org/"
+          },
+          {
+            "id": 12,
+            "text": "3.15.1 Documentation",
+            "url": "https://docs.python.org/3/index.html"
+          },
+          {
+            "id": 13,
+            "text": "The Python standard library",
+            "url": "https://docs.python.org/3/library/index.html"
+          },
+          {
+            "id": 14,
+            "text": "¶",
+            "url": "https://docs.python.org/3/library/index.html#the-python-standard-library"
+          },
+          {
+            "id": 15,
+            "text": "The Python Language Reference",
+            "url": "https://docs.python.org/3/reference/index.html#reference-index"
+          },
+          {
+            "id": 16,
+            "text": "Python built-ins reference",
+            "url": "https://docs.python.org/3/builtins/index.html#builtins-index"
+          },
+          {
+            "id": 17,
+            "text": "Python Package Index",
+            "url": "https://pypi.org"
+          },
+          {
+            "id": 18,
+            "text": "Introduction",
+            "url": "https://docs.python.org/3/library/intro.html"
+          },
+          {
+            "id": 19,
+            "text": "Notes on availability",
+            "url": "https://docs.python.org/3/library/intro.html#notes-on-availability"
+          },
+          {
+            "id": 20,
+            "text": "Text Processing Services",
+            "url": "https://docs.python.org/3/library/text.html"
+          },
+          {
+            "id": 21,
+            "text": "string — Common string operations",
+            "url": "https://docs.python.org/3/library/string.html"
+          },
+          {
+            "id": 22,
+            "text": "string.templatelib — Support for template string literals",
+            "url": "https://docs.python.org/3/library/string.templatelib.html"
+          },
+          {
+            "id": 23,
+            "text": "re — Regular expression operations",
+            "url": "https://docs.python.org/3/library/re.html"
+          },
+          {
+            "id": 24,
+            "text": "difflib — Helpers for computing deltas",
+            "url": "https://docs.python.org/3/library/difflib.html"
+          },
+          {
+            "id": 25,
+            "text": "textwrap — Text wrapping and filling",
+            "url": "https://docs.python.org/3/library/textwrap.html"
+          },
+          {
+            "id": 26,
+            "text": "unicodedata — Unicode Database",
+            "url": "https://docs.python.org/3/library/unicodedata.html"
+          },
+          {
+            "id": 27,
+            "text": "stringprep — Internet String Preparation",
+            "url": "https://docs.python.org/3/library/stringprep.html"
+          },
+          {
+            "id": 28,
+            "text": "readline — GNU readline interface",
+            "url": "https://docs.python.org/3/library/readline.html"
+          },
+          {
+            "id": 29,
+            "text": "rlcompleter — Completion function for GNU readline",
+            "url": "https://docs.python.org/3/library/rlcompleter.html"
+          },
+          {
+            "id": 30,
+            "text": "Binary Data Services",
+            "url": "https://docs.python.org/3/library/binary.html"
+          },
+          {
+            "id": 31,
+            "text": "struct — Interpret bytes as packed binary data",
+            "url": "https://docs.python.org/3/library/struct.html"
+          },
+          {
+            "id": 32,
+            "text": "codecs — Codec registry and base classes",
+            "url": "https://docs.python.org/3/library/codecs.html"
+          },
+          {
+            "id": 33,
+            "text": "Data Types",
+            "url": "https://docs.python.org/3/library/datatypes.html"
+          },
+          {
+            "id": 34,
+            "text": "datetime — Basic date and time types",
+            "url": "https://docs.python.org/3/library/datetime.html"
+          },
+          {
+            "id": 35,
+            "text": "zoneinfo — IANA time zone support",
+            "url": "https://docs.python.org/3/library/zoneinfo.html"
+          },
+          {
+            "id": 36,
+            "text": "calendar — General calendar-related functions",
+            "url": "https://docs.python.org/3/library/calendar.html"
+          },
+          {
+            "id": 37,
+            "text": "collections — Container datatypes",
+            "url": "https://docs.python.org/3/library/collections.html"
+          },
+          {
+            "id": 38,
+            "text": "collections.abc — Abstract Base Classes for Containers",
+            "url": "https://docs.python.org/3/library/collections.abc.html"
+          },
+          {
+            "id": 39,
+            "text": "heapq — Heap queue algorithm",
+            "url": "https://docs.python.org/3/library/heapq.html"
+          },
+          {
+            "id": 40,
+            "text": "bisect — Array bisection algorithm",
+            "url": "https://docs.python.org/3/library/bisect.html"
+          },
+          {
+            "id": 41,
+            "text": "array — Efficient arrays of numeric values",
+            "url": "https://docs.python.org/3/library/array.html"
+          },
+          {
+            "id": 42,
+            "text": "weakref — Weak references",
+            "url": "https://docs.python.org/3/library/weakref.html"
+          },
+          {
+            "id": 43,
+            "text": "types — Dynamic type creation and names for built-in types",
+            "url": "https://docs.python.org/3/library/types.html"
+          },
+          {
+            "id": 44,
+            "text": "copy — Shallow and deep copy operations",
+            "url": "https://docs.python.org/3/library/copy.html"
+          },
+          {
+            "id": 45,
+            "text": "pprint — Data pretty printer",
+            "url": "https://docs.python.org/3/library/pprint.html"
+          },
+          {
+            "id": 46,
+            "text": "reprlib — Alternate repr() implementation",
+            "url": "https://docs.python.org/3/library/reprlib.html"
+          },
+          {
+            "id": 47,
+            "text": "enum — Support for enumerations",
+            "url": "https://docs.python.org/3/library/enum.html"
+          },
+          {
+            "id": 48,
+            "text": "graphlib — Functionality to operate with graph-like structures",
+            "url": "https://docs.python.org/3/library/graphlib.html"
+          },
+          {
+            "id": 49,
+            "text": "Numeric and Mathematical Modules",
+            "url": "https://docs.python.org/3/library/numeric.html"
+          },
+          {
+            "id": 50,
+            "text": "numbers — Numeric abstract base classes",
+            "url": "https://docs.python.org/3/library/numbers.html"
+          },
+          {
+            "id": 51,
+            "text": "math — Mathematical functions",
+            "url": "https://docs.python.org/3/library/math.html"
+          },
+          {
+            "id": 52,
+            "text": "math.integer — integer-specific mathematics functions",
+            "url": "https://docs.python.org/3/library/math.integer.html"
+          },
+          {
+            "id": 53,
+            "text": "cmath — Mathematical functions for complex numbers",
+            "url": "https://docs.python.org/3/library/cmath.html"
+          },
+          {
+            "id": 54,
+            "text": "decimal — Decimal fixed-point and floating-point arithmetic",
+            "url": "https://docs.python.org/3/library/decimal.html"
+          },
+          {
+            "id": 55,
+            "text": "fractions — Rational numbers",
+            "url": "https://docs.python.org/3/library/fractions.html"
+          },
+          {
+            "id": 56,
+            "text": "random — Generate pseudo-random numbers",
+            "url": "https://docs.python.org/3/library/random.html"
+          },
+          {
+            "id": 57,
+            "text": "statistics — Mathematical statistics functions",
+            "url": "https://docs.python.org/3/library/statistics.html"
+          },
+          {
+            "id": 58,
+            "text": "Functional Programming Modules",
+            "url": "https://docs.python.org/3/library/functional.html"
+          },
+          {
+            "id": 59,
+            "text": "itertools — Functions creating iterators for efficient looping",
+            "url": "https://docs.python.org/3/library/itertools.html"
+          },
+          {
+            "id": 60,
+            "text": "functools — Higher-order functions and operations on callable objects",
+            "url": "https://docs.python.org/3/library/functools.html"
+          },
+          {
+            "id": 61,
+            "text": "operator — Standard operators as functions",
+            "url": "https://docs.python.org/3/library/operator.html"
+          },
+          {
+            "id": 62,
+            "text": "File and Directory Access",
+            "url": "https://docs.python.org/3/library/filesys.html"
+          },
+          {
+            "id": 63,
+            "text": "pathlib — Object-oriented filesystem paths",
+            "url": "https://docs.python.org/3/library/pathlib.html"
+          },
+          {
+            "id": 64,
+            "text": "os.path — Common pathname manipulations",
+            "url": "https://docs.python.org/3/library/os.path.html"
+          },
+          {
+            "id": 65,
+            "text": "stat — Interpreting stat() results",
+            "url": "https://docs.python.org/3/library/stat.html"
+          },
+          {
+            "id": 66,
+            "text": "filecmp — File and Directory Comparisons",
+            "url": "https://docs.python.org/3/library/filecmp.html"
+          },
+          {
+            "id": 67,
+            "text": "tempfile — Generate temporary files and directories",
+            "url": "https://docs.python.org/3/library/tempfile.html"
+          },
+          {
+            "id": 68,
+            "text": "glob — Unix style pathname pattern expansion",
+            "url": "https://docs.python.org/3/library/glob.html"
+          },
+          {
+            "id": 69,
+            "text": "fnmatch — Unix filename pattern matching",
+            "url": "https://docs.python.org/3/library/fnmatch.html"
+          },
+          {
+            "id": 70,
+            "text": "linecache — Random access to text lines",
+            "url": "https://docs.python.org/3/library/linecache.html"
+          },
+          {
+            "id": 71,
+            "text": "shutil — High-level file operations",
+            "url": "https://docs.python.org/3/library/shutil.html"
+          },
+          {
+            "id": 72,
+            "text": "Data Persistence",
+            "url": "https://docs.python.org/3/library/persistence.html"
+          },
+          {
+            "id": 73,
+            "text": "pickle — Python object serialization",
+            "url": "https://docs.python.org/3/library/pickle.html"
+          },
+          {
+            "id": 74,
+            "text": "copyreg — Register pickle support functions",
+            "url": "https://docs.python.org/3/library/copyreg.html"
+          },
+          {
+            "id": 75,
+            "text": "shelve — Python object persistence",
+            "url": "https://docs.python.org/3/library/shelve.html"
+          },
+          {
+            "id": 76,
+            "text": "marshal — Internal Python object serialization",
+            "url": "https://docs.python.org/3/library/marshal.html"
+          },
+          {
+            "id": 77,
+            "text": "dbm — Interfaces to Unix “databases”",
+            "url": "https://docs.python.org/3/library/dbm.html"
+          },
+          {
+            "id": 78,
+            "text": "sqlite3 — DB-API 2.0 interface for SQLite databases",
+            "url": "https://docs.python.org/3/library/sqlite3.html"
+          },
+          {
+            "id": 79,
+            "text": "Data Compression and Archiving",
+            "url": "https://docs.python.org/3/library/archiving.html"
+          },
+          {
+            "id": 80,
+            "text": "The compression package",
+            "url": "https://docs.python.org/3/library/compression.html"
+          },
+          {
+            "id": 81,
+            "text": "compression.zstd — Compression compatible with the Zstandard format",
+            "url": "https://docs.python.org/3/library/compression.zstd.html"
+          },
+          {
+            "id": 82,
+            "text": "zlib — Compression compatible with gzip",
+            "url": "https://docs.python.org/3/library/zlib.html"
+          },
+          {
+            "id": 83,
+            "text": "gzip — Support for gzip files",
+            "url": "https://docs.python.org/3/library/gzip.html"
+          },
+          {
+            "id": 84,
+            "text": "bz2 — Support for bzip2 compression",
+            "url": "https://docs.python.org/3/library/bz2.html"
+          },
+          {
+            "id": 85,
+            "text": "lzma — Compression using the LZMA algorithm",
+            "url": "https://docs.python.org/3/library/lzma.html"
+          },
+          {
+            "id": 86,
+            "text": "zipfile — Work with ZIP archives",
+            "url": "https://docs.python.org/3/library/zipfile.html"
+          },
+          {
+            "id": 87,
+            "text": "tarfile — Read and write tar archive files",
+            "url": "https://docs.python.org/3/library/tarfile.html"
+          },
+          {
+            "id": 88,
+            "text": "File Formats",
+            "url": "https://docs.python.org/3/library/fileformats.html"
+          },
+          {
+            "id": 89,
+            "text": "csv — CSV file reading and writing",
+            "url": "https://docs.python.org/3/library/csv.html"
+          },
+          {
+            "id": 90,
+            "text": "configparser — Configuration file parser",
+            "url": "https://docs.python.org/3/library/configparser.html"
+          },
+          {
+            "id": 91,
+            "text": "tomllib — Parse TOML files",
+            "url": "https://docs.python.org/3/library/tomllib.html"
+          },
+          {
+            "id": 92,
+            "text": "netrc — netrc file processing",
+            "url": "https://docs.python.org/3/library/netrc.html"
+          },
+          {
+            "id": 93,
+            "text": "plistlib — Generate and parse Apple .plist files",
+            "url": "https://docs.python.org/3/library/plistlib.html"
+          },
+          {
+            "id": 94,
+            "text": "Cryptographic Services",
+            "url": "https://docs.python.org/3/library/crypto.html"
+          },
+          {
+            "id": 95,
+            "text": "hashlib — Secure hashes and message digests",
+            "url": "https://docs.python.org/3/library/hashlib.html"
+          },
+          {
+            "id": 96,
+            "text": "hmac — Keyed-Hashing for Message Authentication",
+            "url": "https://docs.python.org/3/library/hmac.html"
+          },
+          {
+            "id": 97,
+            "text": "secrets — Generate secure random numbers for managing secrets",
+            "url": "https://docs.python.org/3/library/secrets.html"
+          },
+          {
+            "id": 98,
+            "text": "Generic Operating System Services",
+            "url": "https://docs.python.org/3/library/allos.html"
+          },
+          {
+            "id": 99,
+            "text": "os — Miscellaneous operating system interfaces",
+            "url": "https://docs.python.org/3/library/os.html"
+          },
+          {
+            "id": 100,
+            "text": "io — Core tools for working with streams",
+            "url": "https://docs.python.org/3/library/io.html"
+          }
+        ],
+        "total_links": 311,
+        "links_truncated": true,
+        "content_truncated": true,
+        "followed_from": {
+          "ref_id": "page_8bcde10387614893ae931e038807e726",
+          "link_id": 30
+        }
+      }
+    }
+  },
+  {
+    "name": "slow_native_browser_request_actually_started",
+    "passed": true,
+    "detail": {
+      "hits": [
+        "/start.html",
+        "/next.html",
+        "/start.html",
+        "/next.html",
+        "/slow"
+      ]
+    }
+  },
+  {
+    "name": "native_interrupt_preserves_official_mcp_lifetime",
+    "passed": true,
+    "detail": {
+      "terminal": {
+        "method": "turn/completed",
+        "params": {
+          "threadId": "01a15fc3-9f27-7f02-a29a-faff1a68cf63",
+          "turn": {
+            "id": "01a15fc3-9f30-7fc1-bab6-51656373498f",
+            "rootTurnId": "01a15fc3-9f30-7fc1-bab6-51656373498f",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "interrupted",
+            "error": null,
+            "startedAt": 1792608018,
+            "completedAt": 1792608022,
+            "durationMs": 4329
+          }
+        },
+        "emittedAtMs": 1792608022565
+      },
+      "http_connection_closed": false,
+      "official_baseline": "<windows-short-validation-root>\\x3\\l\\3f2699e2-a23e-44ca-8f83-f74bab2dcf6e\\verdict.json",
+      "note": "Upstream native MCP calls can outlive sampling-turn interruption; this is not an HTTP abort guarantee."
+    }
+  },
+  {
+    "name": "browser_remains_usable_after_turn_interruption",
+    "passed": true,
+    "detail": {
+      "ref_id": "page_128de2a605a14430a5eb131ce4fc105a",
+      "url": "http://127.0.0.1:50944/next.html",
+      "pattern": "ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47",
+      "match_count": 1,
+      "matches_truncated": false,
+      "matches": [
+        {
+          "line": 1,
+          "end_line": 1,
+          "content": "L0: Migration note\nL1: Verified migration token ACTUAL_LINK_06286c1e65c84b58af074f33e00d5d47"
+        }
+      ],
+      "untrusted_content": true
+    }
+  },
+  {
+    "name": "native_owner_shutdown_closes_browser_http_request",
+    "passed": true,
+    "detail": {
+      "http_connection_closed": true
+    }
+  }
+]

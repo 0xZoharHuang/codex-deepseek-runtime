@@ -1,0 +1,6 @@
+{
+  "source": "<windows-validation-root>\\host-user\\data\\windows-final-rpc-3a59-r2.json",
+  "sha256": "f1a467f1ff46abc348f37e3135f5922f502415b1dc3025f91b808cdb816110ca",
+  "local": "<validation-evidence>/final-evidence-impact-review/windows-final-rpc-mapping.json",
+  "local_sha256": "f1a467f1ff46abc348f37e3135f5922f502415b1dc3025f91b808cdb816110ca"
+}

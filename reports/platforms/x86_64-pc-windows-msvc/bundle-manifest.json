@@ -1,0 +1,14 @@
+{
+  "qualified_source_id": "3a59a782f017693be2b0",
+  "public_source_id": "f6fbb221468bfb4b3b4d",
+  "all_required_windows_runtime_evidence_qualified": true,
+  "single_run_all_passed": false,
+  "original_source_ids_and_failures_preserved": true,
+  "files_sha256": {
+    "runtime-qualification.json": "3c865d0ae2c92369dc62b2b0987e1b9424e71ac70ee92547ea4f3fa029696121",
+    "evidence-files.json": "79d9b2adca598f5389f7f14aaf033e8a1f4be887bc69e971c4058f048dfceddb",
+    "public-materials-plan.json": "485464fcd7d12fd578bfd0ff3b6a1a90188f9f710c3696034d89b878f7990894",
+    "release-source-lineage.json": "97827d0c07d677c73da7a2d252ec28f43d9fad8a977639b5d08b3a1adf41d0b1"
+  },
+  "no_git_or_publication_mutation_by_this_agent": true
+}

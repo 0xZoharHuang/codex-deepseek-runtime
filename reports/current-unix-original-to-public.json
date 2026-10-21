@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "original": "mac-credential-lineage-review/current-composed-verdict.json",
+      "original_sha256": "8a63f9d2accac8c40c3496de7dd368cb3b3f1dfe4c5fbe4699e7bebf47130ed2",
+      "public": "platforms/aarch64-apple-darwin/runtime-composition-069.json",
+      "public_sha256": "8a63f9d2accac8c40c3496de7dd368cb3b3f1dfe4c5fbe4699e7bebf47130ed2",
+      "outcomes_and_source_ids_preserved": true
+    },
+    {
+      "original": "final-mac-linux-3a59-delivery/macos/delivery-verdict.json",
+      "original_sha256": "a60814415cb3a6a79dec8ba14d740970ac6b842fe13ad6dd903acef34d138c08",
+      "public": "platforms/aarch64-apple-darwin/delivery-3a59.json",
+      "public_sha256": "1cbacf87bc57bc3e5dfd85a4cf875ca668331f290d84484e50512692d1c38781",
+      "outcomes_and_source_ids_preserved": true
+    },
+    {
+      "original": "final-mac-linux-3a59-delivery/source-platform-lineage.json",
+      "original_sha256": "7b27b27f92653e2dfa29326b69935432c127b52d2f060758c8dd565b48957002",
+      "public": "platforms/aarch64-apple-darwin/platform-component-lineage.json",
+      "public_sha256": "7b27b27f92653e2dfa29326b69935432c127b52d2f060758c8dd565b48957002",
+      "outcomes_and_source_ids_preserved": true
+    },
+    {
+      "original": "final-evidence-impact-review/linux-memory-composition.json",
+      "original_sha256": "06c4c2ae207e74095ce8041a50b5e5da4eb83afabaf83ffae1c1ff6af9220181",
+      "public": "platforms/x86_64-unknown-linux-gnu/runtime-composition-069.json",
+      "public_sha256": "1f6b0330e50efecc0f3f8870567d3b3e69148f034e539962d8e55b1f16fb01a5",
+      "outcomes_and_source_ids_preserved": true
+    },
+    {
+      "original": "final-mac-linux-3a59-delivery/linux-collected/delivery-verdict.json",
+      "original_sha256": "84e1018fd55c24f0ff720e2059f5e95e8c27b41b68ce76f80f097e912231ccf3",
+      "public": "platforms/x86_64-unknown-linux-gnu/delivery-3a59.json",
+      "public_sha256": "1d90c72135af8fcaf0773c91d6ae3a781b2ef0315b43b5ca3ec76301f398f129",
+      "outcomes_and_source_ids_preserved": true
+    },
+    {
+      "original": "final-mac-linux-3a59-delivery/source-platform-lineage.json",
+      "original_sha256": "7b27b27f92653e2dfa29326b69935432c127b52d2f060758c8dd565b48957002",
+      "public": "platforms/x86_64-unknown-linux-gnu/platform-component-lineage.json",
+      "public_sha256": "7b27b27f92653e2dfa29326b69935432c127b52d2f060758c8dd565b48957002",
+      "outcomes_and_source_ids_preserved": true
+    }
+  ],
+  "sanitization": "Only private path prefix strings changed in receipt copies; result values, source IDs and original hashes retained."
+}

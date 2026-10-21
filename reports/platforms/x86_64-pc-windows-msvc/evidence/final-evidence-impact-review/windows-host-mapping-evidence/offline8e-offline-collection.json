@@ -1,0 +1,3341 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[none]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[none]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[missing_find]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[missing_find]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[wrong_order]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[wrong_order]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[failed_find]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[failed_find]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[empty_find]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[empty_find]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[other_reference]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[other_reference]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[wrong_link]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_network_hits_and_file_content_cannot_substitute_for_a_native_browser_chain[wrong_link]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_new_real_task_requires_current_parent_turn_successful_browsing[old_turn]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_new_real_task_requires_current_parent_turn_successful_browsing[old_turn]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_new_real_task_requires_current_parent_turn_successful_browsing[other_thread]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_new_real_task_requires_current_parent_turn_successful_browsing[other_thread]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_new_real_task_requires_current_parent_turn_successful_browsing[tool_error]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_new_real_task_requires_current_parent_turn_successful_browsing[tool_error]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_new_real_task_requires_current_parent_turn_successful_browsing[no_matches]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_new_real_task_requires_current_parent_turn_successful_browsing[no_matches]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[prior_turn]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[prior_turn]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[wrong_find_ref]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[wrong_find_ref]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[wrong_find_receipt]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[wrong_find_receipt]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[wrong_click_ref]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[wrong_click_ref]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[unknown_link_id]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[unknown_link_id]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[wrong_edge_receipt]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[wrong_edge_receipt]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[wrong_order]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[wrong_order]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_requires_ordered_linked_browser_operations[same_document]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_requires_ordered_linked_browser_operations[same_document]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_final_turn_must_be_explicit_and_link_receipt_allows_http_redirects",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_final_turn_must_be_explicit_and_link_receipt_allows_http_redirects"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_parent_delivery_requires_an_actual_final_answer_from_the_expected_child",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_parent_delivery_requires_an_actual_final_answer_from_the_expected_child"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_native_text_content_result_is_verified_and_not_confused_with_a_successful_error",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_native_text_content_result_is_verified_and_not_confused_with_a_successful_error"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_windows_complex_task_requires_native_interpreter_and_no_os_bridge",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_windows_complex_task_requires_native_interpreter_and_no_os_bridge"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_task_patch_replays_staged_unstaged_and_new_binary_files_without_index_mutation",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_task_patch_replays_staged_unstaged_and_new_binary_files_without_index_mutation"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_oracle_permissions_really_deny_reads_and_restore_content",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_oracle_permissions_really_deny_reads_and_restore_content"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[recovery]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[recovery]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[oracle_denial]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[oracle_denial]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[oracle_restore]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[oracle_restore]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[suite]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[suite]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[suite_failed]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[suite_failed]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[review]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[review]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[browser]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[browser]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[driver_changed]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[driver_changed]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[driver_missing]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[driver_missing]"
+    },
+    {
+      "nodeid": "tests/test_acceptance_assertions.py::test_complex_task_cannot_pass_with_missing_runtime_evidence[source_imports]",
+      "classname": "tests.test_acceptance_assertions",
+      "name": "test_complex_task_cannot_pass_with_missing_runtime_evidence[source_imports]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_cli_exec_alias_uses_same_native_owner_scope",
+      "classname": "tests.test_audit_contract",
+      "name": "test_cli_exec_alias_uses_same_native_owner_scope"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_plain_history_does_not_redeclare_an_unavailable_tool",
+      "classname": "tests.test_audit_contract",
+      "name": "test_plain_history_does_not_redeclare_an_unavailable_tool"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_provider_cannot_redirect_a_published_tool_into_a_hidden_namespace",
+      "classname": "tests.test_audit_contract",
+      "name": "test_provider_cannot_redirect_a_published_tool_into_a_hidden_namespace"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_provider_message_content_must_be_native_parseable",
+      "classname": "tests.test_audit_contract",
+      "name": "test_provider_message_content_must_be_native_parseable"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_function_call_fields_must_match_native_required_types[fields0]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_function_call_fields_must_match_native_required_types[fields0]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_function_call_fields_must_match_native_required_types[fields1]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_function_call_fields_must_match_native_required_types[fields1]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_function_call_fields_must_match_native_required_types[fields2]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_function_call_fields_must_match_native_required_types[fields2]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_old_discovery_does_not_authorize_tools_after_discovery_is_removed",
+      "classname": "tests.test_audit_contract",
+      "name": "test_old_discovery_does_not_authorize_tools_after_discovery_is_removed"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_native_history_cannot_be_silently_ignored[item0]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_native_history_cannot_be_silently_ignored[item0]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_native_history_cannot_be_silently_ignored[item1]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_native_history_cannot_be_silently_ignored[item1]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_native_history_cannot_be_silently_ignored[item2]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_native_history_cannot_be_silently_ignored[item2]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_native_history_cannot_be_silently_ignored[item3]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_native_history_cannot_be_silently_ignored[item3]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_output_cannot_introduce_a_different_native_tool_channel",
+      "classname": "tests.test_audit_contract",
+      "name": "test_output_cannot_introduce_a_different_native_tool_channel"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_stream_response_identity_cannot_change",
+      "classname": "tests.test_audit_contract",
+      "name": "test_stream_response_identity_cannot_change"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_nonstream_malformed_response_is_not_recorded_success[reply0]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_nonstream_malformed_response_is_not_recorded_success[reply0]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_nonstream_malformed_response_is_not_recorded_success[reply1]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_nonstream_malformed_response_is_not_recorded_success[reply1]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_nonstream_malformed_response_is_not_recorded_success[reply2]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_nonstream_malformed_response_is_not_recorded_success[reply2]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_peer_reports_are_tool_context_and_do_not_reassign_the_root",
+      "classname": "tests.test_audit_contract",
+      "name": "test_peer_reports_are_tool_context_and_do_not_reassign_the_root"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_peer_with_hosted_search_selects_compatible_route_without_disabling_thinking",
+      "classname": "tests.test_audit_contract",
+      "name": "test_peer_with_hosted_search_selects_compatible_route_without_disabling_thinking"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_custom_grammar_and_namespace_contract_are_retained_and_enforced",
+      "classname": "tests.test_audit_contract",
+      "name": "test_custom_grammar_and_namespace_contract_are_retained_and_enforced"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_server_discovery_is_not_silently_executed_on_client",
+      "classname": "tests.test_audit_contract",
+      "name": "test_server_discovery_is_not_silently_executed_on_client"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_sse_budget_applies_to_multiline_record_not_only_last_line",
+      "classname": "tests.test_audit_contract",
+      "name": "test_sse_budget_applies_to_multiline_record_not_only_last_line"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_isolated_home_and_credential_modes_cannot_overlap_app",
+      "classname": "tests.test_audit_contract",
+      "name": "test_isolated_home_and_credential_modes_cannot_overlap_app"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_provider_pin_checked_for_cli",
+      "classname": "tests.test_audit_contract",
+      "name": "test_provider_pin_checked_for_cli"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_item_done_cannot_change_dispatched_custom_call[call_id-other]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_item_done_cannot_change_dispatched_custom_call[call_id-other]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_item_done_cannot_change_dispatched_custom_call[name-other]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_item_done_cannot_change_dispatched_custom_call[name-other]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_item_done_cannot_change_dispatched_custom_call[arguments-{\"input\":\"OTHER\"}]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_item_done_cannot_change_dispatched_custom_call[arguments-{\"input\":\"OTHER\"}]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_completed_native_tool_call_cannot_be_removed_from_terminal_snapshot",
+      "classname": "tests.test_audit_contract",
+      "name": "test_completed_native_tool_call_cannot_be_removed_from_terminal_snapshot"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_terminal_event_and_body_status_must_agree",
+      "classname": "tests.test_audit_contract",
+      "name": "test_terminal_event_and_body_status_must_agree"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_terminal_receipt_does_not_wait_for_upstream_connection_eof",
+      "classname": "tests.test_audit_contract",
+      "name": "test_terminal_receipt_does_not_wait_for_upstream_connection_eof"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_credentials_are_lazy_and_failure_has_terminal_receipt",
+      "classname": "tests.test_audit_contract",
+      "name": "test_credentials_are_lazy_and_failure_has_terminal_receipt"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_legacy_search_migration_reads_native_concatenated_zstd_frames",
+      "classname": "tests.test_audit_contract",
+      "name": "test_legacy_search_migration_reads_native_concatenated_zstd_frames"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_search_filter_and_context_are_explicit_parameters_on_exa_backend",
+      "classname": "tests.test_audit_contract",
+      "name": "test_search_filter_and_context_are_explicit_parameters_on_exa_backend"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_search_backend_constraints_cannot_be_silently_ignored[options0]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_search_backend_constraints_cannot_be_silently_ignored[options0]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_search_backend_constraints_cannot_be_silently_ignored[options1]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_search_backend_constraints_cannot_be_silently_ignored[options1]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_search_backend_constraints_cannot_be_silently_ignored[options2]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_search_backend_constraints_cannot_be_silently_ignored[options2]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_search_backend_constraints_cannot_be_silently_ignored[options3]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_search_backend_constraints_cannot_be_silently_ignored[options3]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_custom_arguments_done_is_validated_before_native_completion_event",
+      "classname": "tests.test_audit_contract",
+      "name": "test_custom_arguments_done_is_validated_before_native_completion_event"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_missing_arguments_done_still_emits_validated_custom_completion",
+      "classname": "tests.test_audit_contract",
+      "name": "test_missing_arguments_done_still_emits_validated_custom_completion"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_finalized_regular_arguments_cannot_grow_before_output_done",
+      "classname": "tests.test_audit_contract",
+      "name": "test_finalized_regular_arguments_cannot_grow_before_output_done"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_terminal_snapshot_only_call_is_dispatched_before_terminal",
+      "classname": "tests.test_audit_contract",
+      "name": "test_terminal_snapshot_only_call_is_dispatched_before_terminal"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_corrupt_history_does_not_block_unaffected_native_startup_or_claim_complete_migration",
+      "classname": "tests.test_audit_contract",
+      "name": "test_corrupt_history_does_not_block_unaffected_native_startup_or_claim_complete_migration"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_trace_replacement_is_private_and_does_not_follow_existing_symlink",
+      "classname": "tests.test_audit_contract",
+      "name": "test_trace_replacement_is_private_and_does_not_follow_existing_symlink"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_duplicate_completed_item_cannot_replay_a_native_tool_call",
+      "classname": "tests.test_audit_contract",
+      "name": "test_duplicate_completed_item_cannot_replay_a_native_tool_call"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_distinct_output_items_cannot_share_a_native_call_id",
+      "classname": "tests.test_audit_contract",
+      "name": "test_distinct_output_items_cannot_share_a_native_call_id"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_noncompleted_snapshot_never_synthesizes_executable_items[failed]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_noncompleted_snapshot_never_synthesizes_executable_items[failed]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_noncompleted_snapshot_never_synthesizes_executable_items[incomplete]",
+      "classname": "tests.test_audit_contract",
+      "name": "test_noncompleted_snapshot_never_synthesizes_executable_items[incomplete]"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_consistent_late_arguments_are_ignored_without_replay_but_conflicts_fail",
+      "classname": "tests.test_audit_contract",
+      "name": "test_consistent_late_arguments_are_ignored_without_replay_but_conflicts_fail"
+    },
+    {
+      "nodeid": "tests/test_audit_contract.py::test_legacy_search_migration_conflicts_are_preserved_and_database_replacement_reimports",
+      "classname": "tests.test_audit_contract",
+      "name": "test_legacy_search_migration_conflicts_are_preserved_and_database_replacement_reimports"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_fetched_page_literal_find_link_effect_and_cold_references",
+      "classname": "tests.test_browser",
+      "name": "test_fetched_page_literal_find_link_effect_and_cold_references"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_private_address_redirect_errors_and_bounded_response",
+      "classname": "tests.test_browser",
+      "name": "test_private_address_redirect_errors_and_bounded_response"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_managed_browser_config_preserves_user_servers_comments_and_disablement",
+      "classname": "tests.test_browser",
+      "name": "test_managed_browser_config_preserves_user_servers_comments_and_disablement"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_browser_config_collision_and_app_overlap_are_explicit",
+      "classname": "tests.test_browser",
+      "name": "test_browser_config_collision_and_app_overlap_are_explicit"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_minimal_native_config_can_disable_bundled_browser",
+      "classname": "tests.test_browser",
+      "name": "test_minimal_native_config_can_disable_bundled_browser"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_tunnel_dns_exception_never_allows_literal_or_other_private_ranges",
+      "classname": "tests.test_browser",
+      "name": "test_tunnel_dns_exception_never_allows_literal_or_other_private_ranges"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_html_base_links_literal_find_bounds_and_cache_eviction",
+      "classname": "tests.test_browser",
+      "name": "test_html_base_links_literal_find_bounds_and_cache_eviction"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_oversize_cache_entry_cannot_return_an_already_evicted_reference",
+      "classname": "tests.test_browser",
+      "name": "test_oversize_cache_entry_cannot_return_an_already_evicted_reference"
+    },
+    {
+      "nodeid": "tests/test_browser.py::test_document_expansion_limits_fail_explicitly_without_partial_metadata",
+      "classname": "tests.test_browser",
+      "name": "test_document_expansion_limits_fail_explicitly_without_partial_metadata"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_exec_with_root_options_and_config_keeps_owning_scope",
+      "classname": "tests.test_cli",
+      "name": "test_exec_with_root_options_and_config_keeps_owning_scope"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_prompt_text_and_double_dash_are_never_reinterpreted_as_commands",
+      "classname": "tests.test_cli",
+      "name": "test_prompt_text_and_double_dash_are_never_reinterpreted_as_commands"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_appserver_stdout_remains_a_protocol_surface",
+      "classname": "tests.test_cli",
+      "name": "test_appserver_stdout_remains_a_protocol_surface"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_approval_option_value_does_not_hide_exec_scope",
+      "classname": "tests.test_cli",
+      "name": "test_approval_option_value_does_not_hide_exec_scope"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_environment_removes_app_ipc_but_preserves_public_ca_and_patch_flags",
+      "classname": "tests.test_cli",
+      "name": "test_native_environment_removes_app_ipc_but_preserves_public_ca_and_patch_flags"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_diagnostic_and_terminal_controls_survive_app_isolation",
+      "classname": "tests.test_cli",
+      "name": "test_native_diagnostic_and_terminal_controls_survive_app_isolation"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_diagnostic_paths_cannot_write_into_app_state",
+      "classname": "tests.test_cli",
+      "name": "test_native_diagnostic_paths_cannot_write_into_app_state"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_private_helper_imports_ignore_project_pythonpath",
+      "classname": "tests.test_cli",
+      "name": "test_private_helper_imports_ignore_project_pythonpath"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_transport_settings_remain_configurable_without_changing_provider",
+      "classname": "tests.test_cli",
+      "name": "test_native_transport_settings_remain_configurable_without_changing_provider"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_management_flags_cannot_hide_update_or_proxy_scope",
+      "classname": "tests.test_cli",
+      "name": "test_native_management_flags_cannot_hide_update_or_proxy_scope"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_unix_remote_literal_and_default_syntax",
+      "classname": "tests.test_cli",
+      "name": "test_native_unix_remote_literal_and_default_syntax"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_explicit_local_model_selection_is_rejected_before_launch",
+      "classname": "tests.test_cli",
+      "name": "test_explicit_local_model_selection_is_rejected_before_launch"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_isolated_unix_listener_and_default_socket_cannot_alias_another_home",
+      "classname": "tests.test_cli",
+      "name": "test_isolated_unix_listener_and_default_socket_cannot_alias_another_home"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_default_tui_and_resume_do_not_force_embedded_server",
+      "classname": "tests.test_cli",
+      "name": "test_default_tui_and_resume_do_not_force_embedded_server"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_native_hashed_rendezvous_keeps_exact_home_identity",
+      "classname": "tests.test_cli",
+      "name": "test_native_hashed_rendezvous_keeps_exact_home_identity"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_unix_relays_reject_foreign_and_direct_sockets_but_allow_stale_native_alias",
+      "classname": "tests.test_cli",
+      "name": "test_unix_relays_reject_foreign_and_direct_sockets_but_allow_stale_native_alias"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_explicit_interrupt_cold_resume_and_actual_tool",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_explicit_interrupt_cold_resume_and_actual_tool"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_interrupted_other_turn_cannot_satisfy_controller_interrupt",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_interrupted_other_turn_cannot_satisfy_controller_interrupt"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_interrupted_terminal_with_error_fails",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_interrupted_terminal_with_error_fails"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_resume_other_thread_or_without_post_resume_tool_fails",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_resume_other_thread_or_without_post_resume_tool_fails"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_missing_or_duplicate_rpc_response_fails",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_missing_or_duplicate_rpc_response_fails"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_source_import_receipt_rejects_changed_or_external_module",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_source_import_receipt_rejects_changed_or_external_module"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_application_failure_and_budget_interruption_are_preserved",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_application_failure_and_budget_interruption_are_preserved"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_tool_on_unstarted_turn_cannot_prove_resume",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_tool_on_unstarted_turn_cannot_prove_resume"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_native_codemode_exit_label_and_output_only_are_distinct",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_native_codemode_exit_label_and_output_only_are_distinct"
+    },
+    {
+      "nodeid": "tests/test_complex_runtime.py::test_arbitrary_text_or_wrong_call_does_not_prove_native_projection",
+      "classname": "tests.test_complex_runtime",
+      "name": "test_arbitrary_text_or_wrong_call_does_not_prove_native_projection"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_metadata_delay_then_attested_provider_does_not_resubmit_model",
+      "classname": "tests.test_doctor",
+      "name": "test_metadata_delay_then_attested_provider_does_not_resubmit_model"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_permanent_auth_error_is_not_retried",
+      "classname": "tests.test_doctor",
+      "name": "test_permanent_auth_error_is_not_retried"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_different_provider_is_returned_for_doctor_to_reject",
+      "classname": "tests.test_doctor",
+      "name": "test_different_provider_is_returned_for_doctor_to_reject"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_invalid_retry_advice_uses_finite_bounded_backoff[NaN]",
+      "classname": "tests.test_doctor",
+      "name": "test_invalid_retry_advice_uses_finite_bounded_backoff[NaN]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_invalid_retry_advice_uses_finite_bounded_backoff[inf]",
+      "classname": "tests.test_doctor",
+      "name": "test_invalid_retry_advice_uses_finite_bounded_backoff[inf]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_invalid_retry_advice_uses_finite_bounded_backoff[-1]",
+      "classname": "tests.test_doctor",
+      "name": "test_invalid_retry_advice_uses_finite_bounded_backoff[-1]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_invalid_retry_advice_uses_finite_bounded_backoff[not-a-date]",
+      "classname": "tests.test_doctor",
+      "name": "test_invalid_retry_advice_uses_finite_bounded_backoff[not-a-date]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_malformed_metadata_fails_explicitly_without_attestation",
+      "classname": "tests.test_doctor",
+      "name": "test_malformed_metadata_fails_explicitly_without_attestation"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_reuses_verified_transport_path_but_keeps_child_entry",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_reuses_verified_transport_path_but_keeps_child_entry"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[id-another-generation]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[id-another-generation]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[id-None]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[id-None]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[model-deepseek/other-model]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[model-deepseek/other-model]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[model-None]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[model-None]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[provider_name-Morph]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[provider_name-Morph]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[provider_name-None]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_rejects_wrong_or_missing_generation_identity_model_and_provider[provider_name-None]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_accepts_only_explicit_model_aliases_without_confusing_echo_with_connectivity[deepseek/deepseek-v4.1-flash-1017]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_accepts_only_explicit_model_aliases_without_confusing_echo_with_connectivity[deepseek/deepseek-v4.1-flash-1017]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_accepts_only_explicit_model_aliases_without_confusing_echo_with_connectivity[deepseek/deepseek-v4.1-flash-20261017]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_accepts_only_explicit_model_aliases_without_confusing_echo_with_connectivity[deepseek/deepseek-v4.1-flash-20261017]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[native_failure]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[native_failure]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[no_message]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[no_message]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[empty_reply]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[empty_reply]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[whitespace_reply]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[whitespace_reply]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_thread]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_thread]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[other_thread]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[other_thread]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_receipt]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_receipt]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[incomplete_receipt]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[incomplete_receipt]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_response_id]",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_requires_successful_native_output_and_this_threads_completed_receipt[missing_response_id]"
+    },
+    {
+      "nodeid": "tests/test_doctor.py::test_doctor_cannot_claim_official_route_when_local_receipt_selected_another_provider",
+      "classname": "tests.test_doctor",
+      "name": "test_doctor_cannot_claim_official_route_when_local_receipt_selected_another_provider"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_no_retry_or_key_leak_on_upstream_error",
+      "classname": "tests.test_gateway",
+      "name": "test_no_retry_or_key_leak_on_upstream_error"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_truncated_stream_reports_failure_and_does_not_complete",
+      "classname": "tests.test_gateway",
+      "name": "test_truncated_stream_reports_failure_and_does_not_complete"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_native_disconnect_closes_inflight_upstream",
+      "classname": "tests.test_gateway",
+      "name": "test_native_disconnect_closes_inflight_upstream"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_failed_trace_storage_records_terminal_failure_without_upstream",
+      "classname": "tests.test_gateway",
+      "name": "test_failed_trace_storage_records_terminal_failure_without_upstream"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_damaged_trace_configuration_fails_before_upstream_with_terminal_receipt",
+      "classname": "tests.test_gateway",
+      "name": "test_damaged_trace_configuration_fails_before_upstream_with_terminal_receipt"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[earlier-final-False]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[earlier-final-False]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[earlier-final-True]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[earlier-final-True]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[final-with-tool-False]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[final-with-tool-False]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[final-with-tool-True]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[final-with-tool-True]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[nonfinite-False]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[nonfinite-False]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[nonfinite-True]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[nonfinite-True]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[tool-before-terminal-False]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[tool-before-terminal-False]"
+    },
+    {
+      "nodeid": "tests/test_gateway.py::test_structured_faults_never_publish_native_message_completion[tool-before-terminal-True]",
+      "classname": "tests.test_gateway",
+      "name": "test_structured_faults_never_publish_native_message_completion[tool-before-terminal-True]"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_large_sse_record_through_actual_http_transport",
+      "classname": "tests.test_hardening",
+      "name": "test_large_sse_record_through_actual_http_transport"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_sse_fragmented_bom_unicode_comments_and_crlf",
+      "classname": "tests.test_hardening",
+      "name": "test_sse_fragmented_bom_unicode_comments_and_crlf"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_profile_migration_copies_only_own_searches_and_owner_recovery",
+      "classname": "tests.test_hardening",
+      "name": "test_profile_migration_copies_only_own_searches_and_owner_recovery"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_killing_wrapper_does_not_orphan_owned_native_process",
+      "classname": "tests.test_hardening",
+      "name": "test_killing_wrapper_does_not_orphan_owned_native_process"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_supervisor_crash_and_restart_reconcile_only_owned_processes[supervisor_only]",
+      "classname": "tests.test_hardening",
+      "name": "test_supervisor_crash_and_restart_reconcile_only_owned_processes[supervisor_only]"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_supervisor_crash_and_restart_reconcile_only_owned_processes[both_then_restart]",
+      "classname": "tests.test_hardening",
+      "name": "test_supervisor_crash_and_restart_reconcile_only_owned_processes[both_then_restart]"
+    },
+    {
+      "nodeid": "tests/test_hardening.py::test_pid_reuse_mismatch_never_signals_a_live_unrelated_process",
+      "classname": "tests.test_hardening",
+      "name": "test_pid_reuse_mismatch_never_signals_a_live_unrelated_process"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_native_archive_repair_is_immutable_and_reused",
+      "classname": "tests.test_install",
+      "name": "test_native_archive_repair_is_immutable_and_reused"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_verified_native_package_does_not_redownload_deleted_archive",
+      "classname": "tests.test_install",
+      "name": "test_verified_native_package_does_not_redownload_deleted_archive"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_native_archive_rejects_paths_even_when_outer_hash_matches",
+      "classname": "tests.test_install",
+      "name": "test_native_archive_rejects_paths_even_when_outer_hash_matches"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_installer_rejects_app_state_overlap_before_creating_it",
+      "classname": "tests.test_install",
+      "name": "test_installer_rejects_app_state_overlap_before_creating_it"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_source_identity_uses_platform_independent_case_sensitive_order",
+      "classname": "tests.test_install",
+      "name": "test_source_identity_uses_platform_independent_case_sensitive_order"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_same_archive_name_with_new_digest_preserves_both_cached_artifacts",
+      "classname": "tests.test_install",
+      "name": "test_same_archive_name_with_new_digest_preserves_both_cached_artifacts"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_build_staging_excludes_unattested_bytecode_and_previous_builds",
+      "classname": "tests.test_install",
+      "name": "test_build_staging_excludes_unattested_bytecode_and_previous_builds"
+    },
+    {
+      "nodeid": "tests/test_install.py::test_build_staging_rejects_a_changed_source_snapshot",
+      "classname": "tests.test_install",
+      "name": "test_build_staging_rejects_a_changed_source_snapshot"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_real_ledger_effects_pass_independent_of_answer_wording[Repeated identical credits now leave the original row intact on retries.]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_real_ledger_effects_pass_independent_of_answer_wording[Repeated identical credits now leave the original row intact on retries.]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_real_ledger_effects_pass_independent_of_answer_wording[\\u91cd\\u8bd5\\u6210\\u529f\\uff0c\\u8d26\\u76ee\\u4fdd\\u6301\\u4e0d\\u53d8\\u3002]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_real_ledger_effects_pass_independent_of_answer_wording[\\u91cd\\u8bd5\\u6210\\u529f\\uff0c\\u8d26\\u76ee\\u4fdd\\u6301\\u4e0d\\u53d8\\u3002]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_real_ledger_effects_pass_independent_of_answer_wording[]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_real_ledger_effects_pass_independent_of_answer_wording[]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[oracle_failed]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[oracle_failed]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[oracle_marker_missing]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[oracle_marker_missing]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_missing]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_missing]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_failed]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_failed]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_incomplete]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[native_command_incomplete]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[native_marker_missing]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[native_marker_missing]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[different_interpreter]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[different_interpreter]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[different_fixture]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[different_fixture]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[different_workspace]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[different_workspace]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[changed_test]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[changed_test]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[deleted_verifier]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[deleted_verifier]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[unchanged_ledger]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[unchanged_ledger]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_good_sounding_answer_cannot_replace_runtime_evidence[deleted_ledger]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_good_sounding_answer_cannot_replace_runtime_evidence[deleted_ledger]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_fixture_integrity_rejects_tampering_even_when_modified_oracle_succeeds",
+      "classname": "tests.test_memory_audit",
+      "name": "test_fixture_integrity_rejects_tampering_even_when_modified_oracle_succeeds"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_real_oracle_rejects_changed_but_incorrect_ledger_despite_claimed_native_success",
+      "classname": "tests.test_memory_audit",
+      "name": "test_real_oracle_rejects_changed_but_incorrect_ledger_despite_claimed_native_success"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_native_shell_edits_do_not_require_the_model_to_choose_a_file_change_tool",
+      "classname": "tests.test_memory_audit",
+      "name": "test_native_shell_edits_do_not_require_the_model_to_choose_a_file_change_tool"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[ledger.py]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[ledger.py]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[./ledger.py]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[./ledger.py]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[absolute]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_constrained_ledger_read_then_exact_verifier_accepts_actual_file_prefix[absolute]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[echo {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[echo {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[printf NATIVE_LEDGER_VERIFIED # {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[printf NATIVE_LEDGER_VERIFIED # {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[false || {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[false || {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[if false; then {exact}; fi; echo NATIVE_LEDGER_VERIFIED]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[if false; then {exact}; fi; echo NATIVE_LEDGER_VERIFIED]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact} | cat]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact} | cat]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact} > result.txt]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact} > result.txt]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact}; echo NATIVE_LEDGER_VERIFIED]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact}; echo NATIVE_LEDGER_VERIFIED]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} && printf NATIVE_LEDGER_VERIFIED]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} && printf NATIVE_LEDGER_VERIFIED]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py \"&&\" {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py \"&&\" {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py || {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py || {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ../ledger.py && {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ../ledger.py && {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && false && {exact}]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && false && {exact}]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[$(echo {exact})]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[$(echo {exact})]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact}\\nprintf NATIVE_LEDGER_VERIFIED]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[{exact}\\nprintf NATIVE_LEDGER_VERIFIED]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} # extra]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} # extra]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} --extra]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_shell_spoofs_and_unconstrained_prefixes_cannot_claim_native_verification[cat ledger.py && {exact} --extra]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[wrong_cwd]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[wrong_cwd]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[missing_ledger]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[missing_ledger]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[changed_prefix]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[changed_prefix]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[marker_substring]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[marker_substring]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[extra_tail]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[extra_tail]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_read_prefix_requires_real_matching_contents_and_final_independent_marker[marker_not_separate]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_read_prefix_requires_real_matching_contents_and_final_independent_marker[marker_not_separate]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_exact_windows_host_verifier_remains_supported_without_shell_evaluation[False]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_exact_windows_host_verifier_remains_supported_without_shell_evaluation[False]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_exact_windows_host_verifier_remains_supported_without_shell_evaluation[True]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_exact_windows_host_verifier_remains_supported_without_shell_evaluation[True]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_sample_requires_native_fork_identity_and_loaded_source_history",
+      "classname": "tests.test_memory_audit",
+      "name": "test_sample_requires_native_fork_identity_and_loaded_source_history"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_binds_exact_nonempty_artifact_to_new_thread_guidance[system]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_binds_exact_nonempty_artifact_to_new_thread_guidance[system]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_binds_exact_nonempty_artifact_to_new_thread_guidance[developer]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_binds_exact_nonempty_artifact_to_new_thread_guidance[developer]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[assistant_echo]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[assistant_echo]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[user_echo]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[user_echo]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[tool_echo]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[tool_echo]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[other_thread]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[other_thread]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[resume]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[resume]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[missing_metadata]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[missing_metadata]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[empty_artifact]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[empty_artifact]"
+    },
+    {
+      "nodeid": "tests/test_memory_audit.py::test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[different_artifact]",
+      "classname": "tests.test_memory_audit",
+      "name": "test_cold_read_rejects_prose_echoes_and_wrong_persistence_context[different_artifact]"
+    },
+    {
+      "nodeid": "tests/test_native_dispatch.py::test_native_custom_dispatch_respects_validation_and_missing_event_recovery[invalid_arguments_done]",
+      "classname": "tests.test_native_dispatch",
+      "name": "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[invalid_arguments_done]"
+    },
+    {
+      "nodeid": "tests/test_native_dispatch.py::test_native_custom_dispatch_respects_validation_and_missing_event_recovery[missing_arguments_done]",
+      "classname": "tests.test_native_dispatch",
+      "name": "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[missing_arguments_done]"
+    },
+    {
+      "nodeid": "tests/test_native_dispatch.py::test_native_custom_dispatch_respects_validation_and_missing_event_recovery[terminal_snapshot_only]",
+      "classname": "tests.test_native_dispatch",
+      "name": "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[terminal_snapshot_only]"
+    },
+    {
+      "nodeid": "tests/test_native_dispatch.py::test_native_custom_dispatch_respects_validation_and_missing_event_recovery[failed_snapshot_only]",
+      "classname": "tests.test_native_dispatch",
+      "name": "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[failed_snapshot_only]"
+    },
+    {
+      "nodeid": "tests/test_native_dispatch.py::test_native_custom_dispatch_respects_validation_and_missing_event_recovery[incomplete_snapshot_only]",
+      "classname": "tests.test_native_dispatch",
+      "name": "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[incomplete_snapshot_only]"
+    },
+    {
+      "nodeid": "tests/test_native_http.py::test_authenticated_native_transport_reuses_connections_and_recovers_next_request",
+      "classname": "tests.test_native_http",
+      "name": "test_authenticated_native_transport_reuses_connections_and_recovers_next_request"
+    },
+    {
+      "nodeid": "tests/test_native_http.py::test_native_helper_does_not_outlive_killed_parent",
+      "classname": "tests.test_native_http",
+      "name": "test_native_helper_does_not_outlive_killed_parent"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_startup_does_not_open_legal_text_but_installer_still_verifies_it",
+      "classname": "tests.test_native_integrity",
+      "name": "test_startup_does_not_open_legal_text_but_installer_still_verifies_it"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_executable_and_metadata_tampering_still_fails[bin/codex]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_executable_and_metadata_tampering_still_fails[bin/codex]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_executable_and_metadata_tampering_still_fails[bin/codex-code-mode-host]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_executable_and_metadata_tampering_still_fails[bin/codex-code-mode-host]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_executable_and_metadata_tampering_still_fails[bin/codex-http-transport]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_executable_and_metadata_tampering_still_fails[bin/codex-http-transport]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_executable_and_metadata_tampering_still_fails[codex-path/rg]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_executable_and_metadata_tampering_still_fails[codex-path/rg]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_executable_and_metadata_tampering_still_fails[build-receipt.json]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_executable_and_metadata_tampering_still_fails[build-receipt.json]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_runtime_requires_every_binary_required_by_the_installer",
+      "classname": "tests.test_native_integrity",
+      "name": "test_runtime_requires_every_binary_required_by_the_installer"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/../bin/codex]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/../bin/codex]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/../../outside]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/../../outside]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[/licenses/absolute]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[/licenses/absolute]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses\\\\escape]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses\\\\escape]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/C:escape]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_legal_text_exemption_cannot_hide_unsafe_manifest_paths[licenses/C:escape]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_empty_timeout_error_is_named",
+      "classname": "tests.test_native_integrity",
+      "name": "test_empty_timeout_error_is_named"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments0]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments0]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments1]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments1]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments2]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments2]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments3]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments3]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments4]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments4]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments5]",
+      "classname": "tests.test_native_integrity",
+      "name": "test_each_run_verifies_native_once_and_shares_only_that_verified_path[arguments5]"
+    },
+    {
+      "nodeid": "tests/test_native_integrity.py::test_integrity_result_is_never_cached_across_runs",
+      "classname": "tests.test_native_integrity",
+      "name": "test_integrity_result_is_never_cached_across_runs"
+    },
+    {
+      "nodeid": "tests/test_network.py::test_real_native_http_proxy_auth_and_no_proxy",
+      "classname": "tests.test_network",
+      "name": "test_real_native_http_proxy_auth_and_no_proxy"
+    },
+    {
+      "nodeid": "tests/test_network.py::test_real_native_tls_ca_precedence_connect_tunnel_and_rejection",
+      "classname": "tests.test_network",
+      "name": "test_real_native_tls_ca_precedence_connect_tunnel_and_rejection"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-file]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-file]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-keyring]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-keyring]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-auto]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[False-auto]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-file]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-file]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-keyring]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-keyring]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-auto]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_oauth_fixture_explicitly_pins_both_secret_storage_states[True-auto]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_native_effective_flag_is_recorded_independently_of_its_platform_default[False]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_native_effective_flag_is_recorded_independently_of_its_platform_default[False]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_native_effective_flag_is_recorded_independently_of_its_platform_default[True]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_native_effective_flag_is_recorded_independently_of_its_platform_default[True]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response0]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response0]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response1]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response1]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response2]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response2]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response3]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response3]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response4]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response4]"
+    },
+    {
+      "nodeid": "tests/test_oauth_backend_mode.py::test_missing_ambiguous_or_incomplete_feature_readback_fails[response5]",
+      "classname": "tests.test_oauth_backend_mode",
+      "name": "test_missing_ambiguous_or_incomplete_feature_readback_fails[response5]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_reference_preserves_elevated_execution_and_non_elevated_runtime_context",
+      "classname": "tests.test_offline_reference",
+      "name": "test_reference_preserves_elevated_execution_and_non_elevated_runtime_context"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[foreign_entry]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[foreign_entry]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[foreign_entry_hash]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[foreign_entry_hash]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[no_token]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[no_token]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[non_elevated_source]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[non_elevated_source]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[invalid_elevation]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[invalid_elevation]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[missing_sid]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[missing_sid]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_junit]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_junit]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_log]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_log]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[unbound_raw_files]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[unbound_raw_files]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_results]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[changed_results]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[referenced_gate_without_metadata]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[referenced_gate_without_metadata]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[false_exit]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_external_receipt_rejects_wrong_origin_or_post_execution_replacement[false_exit]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[elevated_runtime]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[elevated_runtime]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[no_runtime_token]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[no_runtime_token]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[wrong_runtime_source]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[wrong_runtime_source]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[unmarked_import]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[unmarked_import]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[wrong_origin]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[wrong_origin]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[copied_junit_changed]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[copied_junit_changed]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[copied_log_changed]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[copied_log_changed]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[source_log_changed]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[source_log_changed]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[unstable_reference]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[unstable_reference]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_assembler_revalidates_actual_import_and_both_copies[changed_result_rows]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_assembler_revalidates_actual_import_and_both_copies[changed_result_rows]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_reference_cycles_are_rejected_before_recursive_validation[self]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_reference_cycles_are_rejected_before_recursive_validation[self]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_reference_cycles_are_rejected_before_recursive_validation[two_reports]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_reference_cycles_are_rejected_before_recursive_validation[two_reports]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_file_change_while_validating_cannot_create_a_mixed_receipt",
+      "classname": "tests.test_offline_reference",
+      "name": "test_file_change_while_validating_cannot_create_a_mixed_receipt"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline.xml]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline.xml]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline-collection.json]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline-collection.json]"
+    },
+    {
+      "nodeid": "tests/test_offline_reference.py::test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline.log]",
+      "classname": "tests.test_offline_reference",
+      "name": "test_changed_donor_bytes_produce_an_explicit_import_failure_not_an_orphan_run[offline.log]"
+    },
+    {
+      "nodeid": "tests/test_package_native.py::test_post_build_mutation_is_rejected_before_creating_an_archive[bytes]",
+      "classname": "tests.test_package_native",
+      "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[bytes]"
+    },
+    {
+      "nodeid": "tests/test_package_native.py::test_post_build_mutation_is_rejected_before_creating_an_archive[extra]",
+      "classname": "tests.test_package_native",
+      "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[extra]"
+    },
+    {
+      "nodeid": "tests/test_package_native.py::test_post_build_mutation_is_rejected_before_creating_an_archive[missing]",
+      "classname": "tests.test_package_native",
+      "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[missing]"
+    },
+    {
+      "nodeid": "tests/test_package_native.py::test_post_build_mutation_is_rejected_before_creating_an_archive[different-patch]",
+      "classname": "tests.test_package_native",
+      "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[different-patch]"
+    },
+    {
+      "nodeid": "tests/test_package_native.py::test_unchanged_build_can_be_reproduced_as_identical_archives",
+      "classname": "tests.test_package_native",
+      "name": "test_unchanged_build_can_be_reproduced_as_identical_archives"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_process_resize_joins_own_stdout_chunks_without_accepting_other_streams",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_process_resize_joins_own_stdout_chunks_without_accepting_other_streams"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_migration_checks_structured_windows_paths_and_exact_record_identity",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_migration_checks_structured_windows_paths_and_exact_record_identity"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_daemon_path_ownership_accepts_native_alias_and_rejects_neighbor",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_daemon_path_ownership_accepts_native_alias_and_rejects_neighbor"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_profile_marker_requires_actual_completed_agent_reply",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_profile_marker_requires_actual_completed_agent_reply"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_profile_rejection_requires_binding_diagnostic_not_any_provider_error",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_profile_rejection_requires_binding_diagnostic_not_any_provider_error"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_nested_delivery_requires_native_peer_identity_and_actual_message_kind",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_nested_delivery_requires_native_peer_identity_and_actual_message_kind"
+    },
+    {
+      "nodeid": "tests/test_platform_verifiers.py::test_windows_host_evidence_does_not_accept_foreign_commands_or_missing_command_data",
+      "classname": "tests.test_platform_verifiers",
+      "name": "test_windows_host_evidence_does_not_accept_foreign_commands_or_missing_command_data"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_real_process_identity_rejects_wrong_birth_before_termination",
+      "classname": "tests.test_platforms",
+      "name": "test_real_process_identity_rejects_wrong_birth_before_termination"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_real_lock_rejects_other_handles_and_releases_on_close",
+      "classname": "tests.test_platforms",
+      "name": "test_real_lock_rejects_other_handles_and_releases_on_close"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_listener_is_registered_from_kernel_owned_socket",
+      "classname": "tests.test_platforms",
+      "name": "test_listener_is_registered_from_kernel_owned_socket"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+      "classname": "tests.test_platforms",
+      "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_directory_and_child_inherit_private_platform_permissions",
+      "classname": "tests.test_platforms",
+      "name": "test_directory_and_child_inherit_private_platform_permissions"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_extended_paths_cannot_alias_codex_app_state",
+      "classname": "tests.test_platforms",
+      "name": "test_extended_paths_cannot_alias_codex_app_state"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]",
+      "classname": "tests.test_platforms",
+      "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]",
+      "classname": "tests.test_platforms",
+      "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]"
+    },
+    {
+      "nodeid": "tests/test_platforms.py::test_native_daemon_package_check_uses_host_executable_suffix",
+      "classname": "tests.test_platforms",
+      "name": "test_native_daemon_package_check_uses_host_executable_suffix"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_format_requirement_preserves_native_tools_history_and_streaming",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_format_requirement_preserves_native_tools_history_and_streaming"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_instruction_hint_does_not_coerce_invalid_instructions[False]",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_instruction_hint_does_not_coerce_invalid_instructions[False]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_instruction_hint_does_not_coerce_invalid_instructions[0]",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_instruction_hint_does_not_coerce_invalid_instructions[0]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_instruction_hint_does_not_coerce_invalid_instructions[instructions2]",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_instruction_hint_does_not_coerce_invalid_instructions[instructions2]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_instruction_hint_does_not_coerce_invalid_instructions[instructions3]",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_instruction_hint_does_not_coerce_invalid_instructions[instructions3]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_custom_tool_roundtrip_preserves_source_call_pair_and_namespace",
+      "classname": "tests.test_protocol",
+      "name": "test_custom_tool_roundtrip_preserves_source_call_pair_and_namespace"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_equal_names_in_different_namespaces_remain_distinct_on_resume",
+      "classname": "tests.test_protocol",
+      "name": "test_equal_names_in_different_namespaces_remain_distinct_on_resume"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_custom_stream_all_split_positions_preserve_unicode_and_escapes[False]",
+      "classname": "tests.test_protocol",
+      "name": "test_custom_stream_all_split_positions_preserve_unicode_and_escapes[False]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_custom_stream_all_split_positions_preserve_unicode_and_escapes[True]",
+      "classname": "tests.test_protocol",
+      "name": "test_custom_stream_all_split_positions_preserve_unicode_and_escapes[True]"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_native_codemode_stream_emits_custom_events_and_matching_final_item",
+      "classname": "tests.test_protocol",
+      "name": "test_native_codemode_stream_emits_custom_events_and_matching_final_item"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_discovery_reveals_tools_only_after_native_search_result",
+      "classname": "tests.test_protocol",
+      "name": "test_discovery_reveals_tools_only_after_native_search_result"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_search_evidence_survives_process_restart",
+      "classname": "tests.test_protocol",
+      "name": "test_search_evidence_survives_process_restart"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_fail_closed_on_unknown_tool_or_cross_model_opaque_state",
+      "classname": "tests.test_protocol",
+      "name": "test_fail_closed_on_unknown_tool_or_cross_model_opaque_state"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_no_tool_compaction_does_not_require_parallel_tool_capability",
+      "classname": "tests.test_protocol",
+      "name": "test_no_tool_compaction_does_not_require_parallel_tool_capability"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_native_v2_plaintext_marker_and_task_content_are_preserved",
+      "classname": "tests.test_protocol",
+      "name": "test_native_v2_plaintext_marker_and_task_content_are_preserved"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_schema_routes_explicitly_without_downgrading_constraint",
+      "classname": "tests.test_protocol",
+      "name": "test_schema_routes_explicitly_without_downgrading_constraint"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_escaped_json_property_name_is_not_mistaken_for_missing_input",
+      "classname": "tests.test_protocol",
+      "name": "test_escaped_json_property_name_is_not_mistaken_for_missing_input"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_nullable_format_and_invalid_wire_objects_are_handled_explicitly",
+      "classname": "tests.test_protocol",
+      "name": "test_nullable_format_and_invalid_wire_objects_are_handled_explicitly"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_native_tool_names_and_unique_aliases_survive_incremental_stream",
+      "classname": "tests.test_protocol",
+      "name": "test_native_tool_names_and_unique_aliases_survive_incremental_stream"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_deepseek_does_not_demote_native_developer_policy_to_user",
+      "classname": "tests.test_protocol",
+      "name": "test_deepseek_does_not_demote_native_developer_policy_to_user"
+    },
+    {
+      "nodeid": "tests/test_protocol.py::test_native_discovery_unhides_provider_function_without_replacing_current_schema",
+      "classname": "tests.test_protocol",
+      "name": "test_native_discovery_unhides_provider_function_without_replacing_current_schema"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_approved_item_is_bound_to_exact_successful_native_execution",
+      "classname": "tests.test_qa_safety",
+      "name": "test_approved_item_is_bound_to_exact_successful_native_execution"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_approval_script_survives_native_shell_argument_passing",
+      "classname": "tests.test_qa_safety",
+      "name": "test_approval_script_survives_native_shell_argument_passing"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_approval_thread_requires_review_while_cancellation_keeps_full_access",
+      "classname": "tests.test_qa_safety",
+      "name": "test_approval_thread_requires_review_while_cancellation_keeps_full_access"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[exit_one]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[exit_one]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[failed_status]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[failed_status]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[incomplete_status]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[incomplete_status]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[wrong_item]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[wrong_item]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[wrong_command]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[wrong_command]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[review_denied]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[review_denied]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[no_review]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[no_review]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[no_command]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[no_command]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[answer_only]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[answer_only]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[wrong_thread]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[wrong_thread]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[old_turn]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[old_turn]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[late_review]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[late_review]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_marker_or_approval_without_exact_success_cannot_pass[wrong_stdout]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_marker_or_approval_without_exact_success_cannot_pass[wrong_stdout]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_policy_approval_refusal_requires_the_matching_native_decline_and_absent_effect",
+      "classname": "tests.test_qa_safety",
+      "name": "test_policy_approval_refusal_requires_the_matching_native_decline_and_absent_effect"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[nothing_ran]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[nothing_ran]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[model_claim]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[model_claim]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[missing_reply]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[missing_reply]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_reply]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_reply]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[accepted_reply]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[accepted_reply]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_item]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_item]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_command]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[wrong_command]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[other_thread]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[other_thread]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[old_turn]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[old_turn]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[permission_words_only_in_command]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[permission_words_only_in_command]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[successful_quoted_denial]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[successful_quoted_denial]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_missing_file_and_denial_words_cannot_replace_native_refusal[non_permission_failure]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_missing_file_and_denial_words_cannot_replace_native_refusal[non_permission_failure]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_result_is_checked_in_its_own_thread_and_turn",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_result_is_checked_in_its_own_thread_and_turn"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[other_thread]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[other_thread]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[old_turn]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[old_turn]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[explicit_other_turn]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[explicit_other_turn]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[wrong_call]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[wrong_call]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[successful_exit]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[successful_exit]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[wrong_output_path]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[wrong_output_path]"
+    },
+    {
+      "nodeid": "tests/test_qa_safety.py::test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[prose_only]",
+      "classname": "tests.test_qa_safety",
+      "name": "test_native_code_mode_denial_cannot_reuse_other_turn_or_prose[prose_only]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[read-only]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[read-only]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[full-access]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[full-access]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[disabled]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[disabled]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[workspaceWrite]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[workspaceWrite]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_invalid_controller_modes_are_rejected_before_launch[danger-full-access --approve]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_invalid_controller_modes_are_rejected_before_launch[danger-full-access --approve]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_fixture_default_is_inserted_above_tables_and_explicit_security_override_survives",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_fixture_default_is_inserted_above_tables_and_explicit_security_override_survives"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_prepare_and_raw_process_policy_follow_selected_mode[workspace-write]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_prepare_and_raw_process_policy_follow_selected_mode[workspace-write]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_prepare_and_raw_process_policy_follow_selected_mode[danger-full-access]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_prepare_and_raw_process_policy_follow_selected_mode[danger-full-access]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_explicit_prepare_mode_and_safe_profile_override_controller_default",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_explicit_prepare_mode_and_safe_profile_override_controller_default"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_every_cli_gate_with_sandbox_option_receives_it_and_unsupported_gates_do_not",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_every_cli_gate_with_sandbox_option_receives_it_and_unsupported_gates_do_not"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_native_readback_mismatch_is_not_a_passing_configuration_or_os_proof",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_native_readback_mismatch_is_not_a_passing_configuration_or_os_proof"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_peer_startup_reads_native_config_and_preserves_explicit_thread_override[None]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_peer_startup_reads_native_config_and_preserves_explicit_thread_override[None]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_peer_startup_reads_native_config_and_preserves_explicit_thread_override[read-only]",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_peer_startup_reads_native_config_and_preserves_explicit_thread_override[read-only]"
+    },
+    {
+      "nodeid": "tests/test_qa_sandbox.py::test_qa_selection_is_removed_by_installed_native_environment",
+      "classname": "tests.test_qa_sandbox",
+      "name": "test_qa_selection_is_removed_by_installed_native_environment"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[aarch64-apple-darwin-129]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[aarch64-apple-darwin-129]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[x86_64-unknown-linux-gnu-129]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[x86_64-unknown-linux-gnu-129]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[x86_64-pc-windows-msvc-131]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_scope_comes_from_frozen_protocol_and_explicit_platform_variants[x86_64-pc-windows-msvc-131]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_new_native_source_and_mutated_inventory_require_scope_reaudit",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_new_native_source_and_mutated_inventory_require_scope_reaudit"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_explicit_windows_guest_preserves_content_and_records_path_dependent_launcher_identity",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_explicit_windows_guest_preserves_content_and_records_path_dependent_launcher_identity"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[adapter_source_sha256]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[adapter_source_sha256]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[dependencies_lock_sha256]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[dependencies_lock_sha256]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[model]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[model]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[model_catalog_sha256]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[model_catalog_sha256]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[native_archive_sha256]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[native_archive_sha256]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[native_version]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[native_version]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[source_id]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[source_id]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_windows_relocation_cannot_change_any_content_identity[source_sha256]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_windows_relocation_cannot_change_any_content_identity[source_sha256]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[missing_source_map]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[missing_source_map]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[missing_adapter_map]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[missing_adapter_map]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[native_file]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[native_file]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[native_manifest_missing]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[native_manifest_missing]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[target]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[target]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[launcher_hash]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[launcher_hash]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[launcher_location]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[launcher_location]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[future_identity]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[future_identity]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[extra_field]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[extra_field]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[non_windows]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_guest_receipt_cannot_erase_or_weaken_native_or_installation_identity[non_windows]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_secret_credential_gates_cannot_run_without_explicit_native_cleanup_probe[auth-stores]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_secret_credential_gates_cannot_run_without_explicit_native_cleanup_probe[auth-stores]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_secret_credential_gates_cannot_run_without_explicit_native_cleanup_probe[oauth-secrets]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_secret_credential_gates_cannot_run_without_explicit_native_cleanup_probe[oauth-secrets]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_pairing_preserves_actual_artifact_and_payload_receipts",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_pairing_preserves_actual_artifact_and_payload_receipts"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[duplicate_request]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[duplicate_request]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[duplicate_response]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[duplicate_response]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[orphan_response]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[orphan_response]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[wrong_entry_hash]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[wrong_entry_hash]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[missing_launch]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[missing_launch]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[missing_events]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[missing_events]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[bad_request_id]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[bad_request_id]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[extra_segment]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[extra_segment]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[malformed_json]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_ambiguous_or_unmatched_rpc_receipts_cannot_prove_method_coverage[malformed_json]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_error_and_foreign_runtime_responses_do_not_count_as_success",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_error_and_foreign_runtime_responses_do_not_count_as_success"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_success_in_another_native_session_cannot_satisfy_an_unanswered_request",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_success_in_another_native_session_cannot_satisfy_an_unanswered_request"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_regression_log_paths_are_explicit_and_do_not_depend_on_checkout_layout",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_regression_log_paths_are_explicit_and_do_not_depend_on_checkout_layout"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[missing_case]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[missing_case]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[duplicate_case]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[duplicate_case]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[extra_case]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[extra_case]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[wrong_parameter]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[wrong_parameter]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[failure]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[failure]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[deselected]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[deselected]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[empty]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_offline_junit_cannot_pass_with_a_truncated_or_filtered_test_set[empty]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_real_pytest_collection_receipt_matches_junit_with_parameter_delimiters",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_real_pytest_collection_receipt_matches_junit_with_parameter_delimiters"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_companion_receipt_cannot_be_borrowed_through_a_symlink",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_companion_receipt_cannot_be_borrowed_through_a_symlink"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_only_exact_os_inapplicable_cases_may_skip",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_only_exact_os_inapplicable_cases_may_skip"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_schema_equality_requires_complete_frozen_inventory[equal]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_schema_equality_requires_complete_frozen_inventory[equal]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_schema_equality_requires_complete_frozen_inventory[missing]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_schema_equality_requires_complete_frozen_inventory[missing]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_schema_equality_requires_complete_frozen_inventory[changed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_schema_equality_requires_complete_frozen_inventory[changed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_schema_equality_requires_complete_frozen_inventory[both_empty]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_schema_equality_requires_complete_frozen_inventory[both_empty]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_schema_equality_requires_complete_frozen_inventory[extra]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_schema_equality_requires_complete_frozen_inventory[extra]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_browser_result_decodes_nullable_structured_content_without_swallowing_errors",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_browser_result_decodes_nullable_structured_content_without_swallowing_errors"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[target]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[target]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[source_archive]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[source_archive]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[source_count]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[source_count]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[protected_count]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[protected_count]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[external_dependencies]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[external_dependencies]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[no_full_scan]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[no_full_scan]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[no_replay]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[no_replay]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[missing_patch]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[missing_patch]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[extra_changed_file]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[extra_changed_file]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_source_audit_cannot_omit_native_business_or_build_identity_checks[missing_verifier]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_source_audit_cannot_omit_native_business_or_build_identity_checks[missing_verifier]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_optimized_python_cannot_silently_disable_acceptance_assertions[run_acceptance.py]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_optimized_python_cannot_silently_disable_acceptance_assertions[run_acceptance.py]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_optimized_python_cannot_silently_disable_acceptance_assertions[verify_remaining_methods.py]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_optimized_python_cannot_silently_disable_acceptance_assertions[verify_remaining_methods.py]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_optimized_python_cannot_silently_disable_acceptance_assertions[verify_local_account.py]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_optimized_python_cannot_silently_disable_acceptance_assertions[verify_local_account.py]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[target]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[target]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[installation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[installation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[bwrap_hash]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[bwrap_hash]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[verifier]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[verifier]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[native_exit]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[native_exit]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[tampered_exit]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[tampered_exit]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[boolean_exit]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[boolean_exit]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_denial]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_denial]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_digest_error]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_digest_error]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[outside_changed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[outside_changed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[tampered_effect]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[tampered_effect]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_effect_check]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_rejection[missing_effect_check]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[new_thread]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[new_thread]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[same_process]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[same_process]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[same_daemon]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[same_daemon]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[prompt_only]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[prompt_only]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[missing_traces]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[missing_traces]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[stale_phase]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[stale_phase]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[wrong_file]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[wrong_file]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[title_after_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[title_after_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[unknown_after_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[unknown_after_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[duplicate_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[duplicate_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[missing_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session[missing_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[same_turn]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[same_turn]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[cleanup_fallback]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[cleanup_fallback]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[no_native_stop]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[no_native_stop]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[still_running]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[still_running]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[prompt_only]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[prompt_only]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[different_thread]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[different_thread]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_order]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_order]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_file]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_file]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[sandbox_mode]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[sandbox_mode]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_source]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_source]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_installation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_installation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_background]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_background]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_background]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[wrong_background]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_yield]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_yield]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[yield_after_interrupt]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[yield_after_interrupt]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[title_after_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[title_after_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[unknown_after_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[unknown_after_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[duplicate_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[duplicate_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_end]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process[missing_end]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_resolved_aliases_keep_rpc_and_terminal_evidence_inside_exact_roots",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_resolved_aliases_keep_rpc_and_terminal_evidence_inside_exact_roots"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[installation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[installation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[target]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[target]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[native_manifest]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[native_manifest]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[native_binary]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[native_binary]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[entry]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[entry]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[optimized]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[optimized]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[verifier_missing]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[verifier_missing]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[verifier_changed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[verifier_changed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[integrity]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[integrity]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[unbound_raw]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[unbound_raw]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[raw_changed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[raw_changed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[missing_raw]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[missing_raw]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[second_session]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[second_session]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[request_count]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[request_count]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[receipts_database]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[receipts_database]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[real_response]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[real_response]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[context]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[context]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[retry]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[retry]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[tool_executed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[tool_executed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[incomplete_turn]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[incomplete_turn]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[summary_answer]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[summary_answer]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[invalid_answer]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[invalid_answer]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[items]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[items]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[kind]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_final_effect[kind]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[verifier]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[verifier]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[integrity]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[integrity]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[raw_response]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[raw_response]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[saved_response]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[saved_response]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[missing_witness]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[missing_witness]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[duplicate_witness]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[duplicate_witness]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[outside_root]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[outside_root]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[sessions]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[sessions]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[superseded_terminal]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses[superseded_terminal]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[no_explicit_snapshot]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[no_explicit_snapshot]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[snapshot_bytes]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[snapshot_bytes]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[snapshot_extra]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[snapshot_extra]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[manifest_digest]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[manifest_digest]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[runtime_source]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[runtime_source]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[missing_verifier]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[missing_verifier]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[standard_gate]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[standard_gate]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[shared_helper]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[shared_helper]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[terminal_without_revalidation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[terminal_without_revalidation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[terminal_revalidated]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[terminal_revalidated]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[shared_terminal_helper]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes[shared_terminal_helper]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[source]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[source]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[subset]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[subset]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[runtime]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[runtime]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[filtered]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[filtered]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[junit_missing]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[junit_missing]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_current_offline_supplement_requires_full_current_collection_and_exact_target[nested_external]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_current_offline_supplement_requires_full_current_collection_and_exact_target[nested_external]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_methods_can_only_reuse_the_exact_audited_scope_helper[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_methods_can_only_reuse_the_exact_audited_scope_helper[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_methods_can_only_reuse_the_exact_audited_scope_helper[default]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_methods_can_only_reuse_the_exact_audited_scope_helper[default]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_methods_can_only_reuse_the_exact_audited_scope_helper[wrong_snapshot]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_methods_can_only_reuse_the_exact_audited_scope_helper[wrong_snapshot]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_methods_can_only_reuse_the_exact_audited_scope_helper[execution_helper]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_methods_can_only_reuse_the_exact_audited_scope_helper[execution_helper]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_methods_can_only_reuse_the_exact_audited_scope_helper[missing_helper]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_methods_can_only_reuse_the_exact_audited_scope_helper[missing_helper]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_direct_search_gate_never_expands_native_rpc_evidence_roots",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_direct_search_gate_never_expands_native_rpc_evidence_roots"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[original_already_passed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[original_already_passed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[no_replacement]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[no_replacement]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[nonterminal_failed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[nonterminal_failed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[missing_original]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[missing_original]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[duplicate_original]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[duplicate_original]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[original_mutated]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[original_mutated]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[inconsistent_original]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[inconsistent_original]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_one_gate]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_one_gate]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_extra_gate]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_extra_gate]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_failed]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_failed]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[foreign_installation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[foreign_installation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[foreign_target]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[foreign_target]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[different_sandbox]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[different_sandbox]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[stale_qa]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[stale_qa]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[report_only_change]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[report_only_change]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[missing_execution_source]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[missing_execution_source]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[disabled_assertions]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[disabled_assertions]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[changed_entry]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[changed_entry]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_mutated]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_terminal_revalidation_replaces_only_two_current_gates_and_preserves_original_failure[replacement_mutated]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_original_failed_terminal_paths_cannot_leak_back_into_current_rpc_witnesses",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_original_failed_terminal_paths_cannot_leak_back_into_current_rpc_witnesses"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[none]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[none]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[modified_raw]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[modified_raw]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[foreign_installation]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[foreign_installation]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[wrong_case]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[wrong_case]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[missing_mechanism]",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_complex_runtime_requires_reconstruction_without_relabeling_application_failure[missing_mechanism]"
+    },
+    {
+      "nodeid": "tests/test_qualification_scope.py::test_method_scope_identity_ignores_only_unexecuted_report_code",
+      "classname": "tests.test_qualification_scope",
+      "name": "test_method_scope_identity_ignores_only_unexecuted_report_code"
+    },
+    {
+      "nodeid": "tests/test_real_work_baselines.py::test_historical_windows_baseline_only_admits_known_expiry_failures",
+      "classname": "tests.test_real_work_baselines",
+      "name": "test_historical_windows_baseline_only_admits_known_expiry_failures"
+    },
+    {
+      "nodeid": "tests/test_real_work_baselines.py::test_known_expiry_failure_cannot_hide_duplicate_results_or_wrong_exit",
+      "classname": "tests.test_real_work_baselines",
+      "name": "test_known_expiry_failure_cannot_hide_duplicate_results_or_wrong_exit"
+    },
+    {
+      "nodeid": "tests/test_real_work_baselines.py::test_heldout_baseline_requires_real_fix_difference_beyond_windows_clock",
+      "classname": "tests.test_real_work_baselines",
+      "name": "test_heldout_baseline_requires_real_fix_difference_beyond_windows_clock"
+    },
+    {
+      "nodeid": "tests/test_real_work_imports.py::test_protected_package_tests_use_changed_sources_without_preimport",
+      "classname": "tests.test_real_work_imports",
+      "name": "test_protected_package_tests_use_changed_sources_without_preimport"
+    },
+    {
+      "nodeid": "tests/test_real_work_imports.py::test_independent_script_cannot_succeed_using_the_old_package_or_one_foreign_submodule",
+      "classname": "tests.test_real_work_imports",
+      "name": "test_independent_script_cannot_succeed_using_the_old_package_or_one_foreign_submodule"
+    },
+    {
+      "nodeid": "tests/test_real_work_imports.py::test_legacy_jinja_test_resources_keep_module_names_without_shadowing_production",
+      "classname": "tests.test_real_work_imports",
+      "name": "test_legacy_jinja_test_resources_keep_module_names_without_shadowing_production"
+    },
+    {
+      "nodeid": "tests/test_replay_provenance.py::test_unattested_history_keeps_contents_and_ids_on_compatible_same_model_route",
+      "classname": "tests.test_replay_provenance",
+      "name": "test_unattested_history_keeps_contents_and_ids_on_compatible_same_model_route"
+    },
+    {
+      "nodeid": "tests/test_replay_provenance.py::test_completed_history_prefers_official_and_one_partial_item_changes_route",
+      "classname": "tests.test_replay_provenance",
+      "name": "test_completed_history_prefers_official_and_one_partial_item_changes_route"
+    },
+    {
+      "nodeid": "tests/test_replay_provenance.py::test_failed_or_cancelled_stream_cannot_attest_dispatched_prefix_items",
+      "classname": "tests.test_replay_provenance",
+      "name": "test_failed_or_cancelled_stream_cannot_attest_dispatched_prefix_items"
+    },
+    {
+      "nodeid": "tests/test_replay_provenance.py::test_provenance_survives_process_reopen_and_compaction_restores_official_route",
+      "classname": "tests.test_replay_provenance",
+      "name": "test_provenance_survives_process_reopen_and_compaction_restores_official_route"
+    },
+    {
+      "nodeid": "tests/test_replay_provenance.py::test_nonstream_terminal_validation_attests_the_same_native_semantics",
+      "classname": "tests.test_replay_provenance",
+      "name": "test_nonstream_terminal_validation_attests_the_same_native_semantics"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_exact_route_response_receipt_and_generation_chain_passes",
+      "classname": "tests.test_route_proof",
+      "name": "test_exact_route_response_receipt_and_generation_chain_passes"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_wrong_or_missing_generation_id_cannot_attest_matching_provider_and_model[unrelated-generation]",
+      "classname": "tests.test_route_proof",
+      "name": "test_wrong_or_missing_generation_id_cannot_attest_matching_provider_and_model[unrelated-generation]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_wrong_or_missing_generation_id_cannot_attest_matching_provider_and_model[None]",
+      "classname": "tests.test_route_proof",
+      "name": "test_wrong_or_missing_generation_id_cannot_attest_matching_provider_and_model[None]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_metadata_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_metadata_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_metadata_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_metadata_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_expected_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_expected_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_receipt_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_receipt_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_receipt_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_receipt_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[duplicate_response_id]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[duplicate_response_id]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[swapped_same_provider_proofs]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[swapped_same_provider_proofs]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_proof]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[missing_proof]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[extra_receipt]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[extra_receipt]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_provider]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_provider]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_model]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[wrong_model]"
+    },
+    {
+      "nodeid": "tests/test_route_proof.py::test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[incomplete_receipt]",
+      "classname": "tests.test_route_proof",
+      "name": "test_route_chain_rejects_mismatched_or_incomplete_evidence_even_with_passed_flags[incomplete_receipt]"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_cold_windows_startup_waits_for_authenticated_health_without_relaunch",
+      "classname": "tests.test_service",
+      "name": "test_cold_windows_startup_waits_for_authenticated_health_without_relaunch"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_startup_timeout_still_terminates_only_its_owned_process",
+      "classname": "tests.test_service",
+      "name": "test_startup_timeout_still_terminates_only_its_owned_process"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_profile_service_reuses_identity_and_recovers_worker_without_port_change",
+      "classname": "tests.test_service",
+      "name": "test_profile_service_reuses_identity_and_recovers_worker_without_port_change"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_idle_service_exits_without_leaving_a_worker",
+      "classname": "tests.test_service",
+      "name": "test_idle_service_exits_without_leaving_a_worker"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_corrupt_descriptor_recovers_backup_without_second_watchdog",
+      "classname": "tests.test_service",
+      "name": "test_corrupt_descriptor_recovers_backup_without_second_watchdog"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_schema_initialization_window_retains_service_until_ownership_is_known",
+      "classname": "tests.test_service",
+      "name": "test_schema_initialization_window_retains_service_until_ownership_is_known"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_unreadable_ownership_database_does_not_authorize_runtime_replacement",
+      "classname": "tests.test_service",
+      "name": "test_unreadable_ownership_database_does_not_authorize_runtime_replacement"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_real_supervisor_survives_worker_schema_publication_delay",
+      "classname": "tests.test_service",
+      "name": "test_real_supervisor_survives_worker_schema_publication_delay"
+    },
+    {
+      "nodeid": "tests/test_service.py::test_concurrent_large_catalog_reads_survive_three_worker_crashes",
+      "classname": "tests.test_service",
+      "name": "test_concurrent_large_catalog_reads_survive_three_worker_crashes"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_wrong_schema_is_an_explicit_compatibility_error[```json\\n{\"value\":1}\\n```]",
+      "classname": "tests.test_structured",
+      "name": "test_wrong_schema_is_an_explicit_compatibility_error[```json\\n{\"value\":1}\\n```]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":\"wrong type\"}]",
+      "classname": "tests.test_structured",
+      "name": "test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":\"wrong type\"}]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":1,\"extra\":2}]",
+      "classname": "tests.test_structured",
+      "name": "test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":1,\"extra\":2}]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":NaN}]",
+      "classname": "tests.test_structured",
+      "name": "test_wrong_schema_is_an_explicit_compatibility_error[{\"value\":NaN}]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_valid_json_and_local_schema_references_are_preserved",
+      "classname": "tests.test_structured",
+      "name": "test_valid_json_and_local_schema_references_are_preserved"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_schema_stream_remains_incremental_but_does_not_complete_invalid_message",
+      "classname": "tests.test_structured",
+      "name": "test_schema_stream_remains_incremental_but_does_not_complete_invalid_message"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_valid_schema_releases_original_completion_events_and_tool_calls_are_not_buffered",
+      "classname": "tests.test_structured",
+      "name": "test_valid_schema_releases_original_completion_events_and_tool_calls_are_not_buffered"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_incomplete_native_reasoning_is_retained_as_nonexecuting_context",
+      "classname": "tests.test_structured",
+      "name": "test_incomplete_native_reasoning_is_retained_as_nonexecuting_context"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_complete_reasoning_tool_groups_do_not_trigger_continuation_mapping",
+      "classname": "tests.test_structured",
+      "name": "test_complete_reasoning_tool_groups_do_not_trigger_continuation_mapping"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_partial_assistant_text_remains_context_without_impersonating_a_user",
+      "classname": "tests.test_structured",
+      "name": "test_partial_assistant_text_remains_context_without_impersonating_a_user"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_explicit_final_answers_are_checked_even_when_a_tool_is_present[False]",
+      "classname": "tests.test_structured",
+      "name": "test_explicit_final_answers_are_checked_even_when_a_tool_is_present[False]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_explicit_final_answers_are_checked_even_when_a_tool_is_present[True]",
+      "classname": "tests.test_structured",
+      "name": "test_explicit_final_answers_are_checked_even_when_a_tool_is_present[True]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_all_unphased_final_messages_are_checked_and_commentary_is_not_a_final",
+      "classname": "tests.test_structured",
+      "name": "test_all_unphased_final_messages_are_checked_and_commentary_is_not_a_final"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_nonfinite_numbers_never_reach_native_json_completion[1e999]",
+      "classname": "tests.test_structured",
+      "name": "test_nonfinite_numbers_never_reach_native_json_completion[1e999]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_nonfinite_numbers_never_reach_native_json_completion[-1e999]",
+      "classname": "tests.test_structured",
+      "name": "test_nonfinite_numbers_never_reach_native_json_completion[-1e999]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_nonfinite_numbers_never_reach_native_json_completion[NaN]",
+      "classname": "tests.test_structured",
+      "name": "test_nonfinite_numbers_never_reach_native_json_completion[NaN]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_nonfinite_numbers_never_reach_native_json_completion[Infinity]",
+      "classname": "tests.test_structured",
+      "name": "test_nonfinite_numbers_never_reach_native_json_completion[Infinity]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_nonfinite_numbers_never_reach_native_json_completion[-Infinity]",
+      "classname": "tests.test_structured",
+      "name": "test_nonfinite_numbers_never_reach_native_json_completion[-Infinity]"
+    },
+    {
+      "nodeid": "tests/test_structured.py::test_invalid_explicit_final_is_rejected_before_following_tool_events",
+      "classname": "tests.test_structured",
+      "name": "test_invalid_explicit_final_is_rejected_before_following_tool_events"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_native_session_end_allows_only_known_asynchronous_title_tail",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_native_session_end_allows_only_known_asynchronous_title_tail"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_tui_reply_assertion_rejects_prompt_and_replayed_history",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_tui_reply_assertion_rejects_prompt_and_replayed_history"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_interrupt_requires_yielded_native_session_bound_to_fixture_call",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_interrupt_requires_yielded_native_session_bound_to_fixture_call"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_acceptance_terminal_is_real_tty_and_preserves_utf8_input",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_acceptance_terminal_is_real_tty_and_preserves_utf8_input"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_terminal_ctrl_c_is_confined_to_its_owned_console",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_terminal_ctrl_c_is_confined_to_its_owned_console"
+    },
+    {
+      "nodeid": "tests/test_terminal_acceptance.py::test_terminal_failed_run_cleanup_reaps_its_owned_process",
+      "classname": "tests.test_terminal_acceptance",
+      "name": "test_terminal_failed_run_cleanup_reaps_its_owned_process"
+    },
+    {
+      "nodeid": "tests/test_windows_console.py::test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]",
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]"
+    },
+    {
+      "nodeid": "tests/test_windows_console.py::test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]",
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]"
+    },
+    {
+      "nodeid": "tests/test_windows_console.py::test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]",
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]"
+    },
+    {
+      "nodeid": "tests/test_windows_console.py::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]",
+      "classname": "tests.test_windows_console",
+      "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]"
+    },
+    {
+      "nodeid": "tests/test_windows_console.py::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]",
+      "classname": "tests.test_windows_console",
+      "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]"
+    },
+    {
+      "nodeid": "tests/test_windows_launchers.py::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation",
+      "classname": "tests.test_windows_launchers",
+      "name": "test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation"
+    },
+    {
+      "nodeid": "tests/test_windows_launchers.py::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably",
+      "classname": "tests.test_windows_launchers",
+      "name": "test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably"
+    },
+    {
+      "nodeid": "tests/test_windows_launchers.py::test_activation_preserves_unrelated_files_and_verifies_own_release_hash",
+      "classname": "tests.test_windows_launchers",
+      "name": "test_activation_preserves_unrelated_files_and_verifies_own_release_hash"
+    },
+    {
+      "nodeid": "tests/test_windows_launchers.py::test_locked_activation_fails_atomically_and_preserves_current_receipt",
+      "classname": "tests.test_windows_launchers",
+      "name": "test_locked_activation_fails_atomically_and_preserves_current_receipt"
+    }
+  ],
+  "deselected": 0
+}

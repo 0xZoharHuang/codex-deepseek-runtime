@@ -4,6 +4,20 @@
 
 平台是否验收完成，以发布版本随附的 `reports/platforms/<target>/runtime-qualification.json` 为准。源码里存在某个平台的实现、原生二进制编译成功，或某个测试子集通过，都不能替代整个平台的验收报告。
 
+## 已验收的固定版本
+
+v0.5.0 使用 Codex `0.164.0-alpha.7` 与 DeepSeek `deepseek/deepseek-v4.1-flash-1017`。原生基线仍是上游预发布版，因此 GitHub release 也保留 prerelease 标记。
+
+| 平台 | 本地方法范围 | 当前交付的完整离线测试 | 结论入口 |
+| --- | --- | --- | --- |
+| Windows x86_64 | 131 项，含实际双模式沙箱 | 666 通过；1 项 Linux 专用 | [Windows 报告](../reports/platforms/x86_64-pc-windows-msvc/runtime-qualification.json) |
+| macOS arm64 | 129 项，通过明确组件谱系关联 | 653 通过；12 项平台不适用 | [macOS 报告](../reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
+| Linux x86_64 GNU | 129 项，通过明确组件谱系关联 | 654 通过；11 项平台不适用 | [Linux 报告](../reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
+
+Windows 标准门保留原 29 项通过与独立 Guardian 补测；Linux 保留 memory-v1 的提供方失败和独立成功补测；macOS 的四项凭据机制复用未变组件的原始实测，加上当前 File/Ephemeral 桥接。这些是明确组合的证据，不是一次全绿运行。
+
+[发布源码谱系](../reports/release-source-lineage.json) 将实测 94c、069、3a 的精确 Git 对象与最终发布源码关联。最后产品差异只有 README 内容和 Windows manifest 的 CRLF→LF，JSON 对象、全部 runtime Python、原生归档、catalog 与依赖完全相同。历史精确字节用 `git archive <commit>` 恢复；正常 checkout 会按 `.gitattributes` 统一换行符。
+
 ## 实际执行路径
 
 ```text
@@ -84,7 +98,7 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 验收结论分开记录 runtime 机制与模型任务产出。第三方项目的业务测试失败、模型未完成修复或控制器达到时间预算，都保留原始失败状态，不能改签为任务成功。runtime 机制必须另从原始请求、响应、文件效果、会话和进程状态逐项核验；不能仅删除失败条件或统计工具调用次数后宣布通过。控制器主动中断也必须有对应的原生中断回执和后续恢复证据，不能把未知退出归类为正常中断。
 
-完整通过的开发任务证明正常完成路径；包含真实失败与恢复的开发任务证明错误传递和恢复路径。两者共同补充逐接口与平台验收。模型生成代码的正确率不属于 runtime 等价承诺，Windows 沙箱、凭据、审批和进程清理等尚未验证的 runtime 能力仍是发布阻断项。
+完整通过的开发任务证明正常完成路径；包含真实失败与恢复的开发任务证明错误传递和恢复路径。两者共同补充逐接口与平台验收。模型生成代码的正确率不属于 runtime 等价承诺，任何尚未验证的 runtime 能力仍是发布阻断项。Windows 沙箱、凭据、审批和进程清理的实际结果分别记录在最终平台报告中。
 
 宿主 Windows 的复杂任务可明确使用 full-access 模式，以避免修改用户已有沙箱账户；这种任务结果必须配合同一源码、依赖、catalog 和原生产物的隔离 Windows 客体验证，才能覆盖沙箱能力。客体的正向权限结果不能只由 readiness 或 setup 成功代替。
 

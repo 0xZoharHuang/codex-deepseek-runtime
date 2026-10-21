@@ -1,0 +1,29 @@
+{
+  "source_id": "3a59a782f017693be2b0",
+  "windows_user_delivery_ready": true,
+  "native_version": "codex-cli 0.164.0-alpha.7",
+  "command": "cds",
+  "entry_resolved_in_fresh_process": true,
+  "where_and_get_command_agree": true,
+  "python_base_independent_of_qa_and_codex_app": true,
+  "credential_store": "Windows Credential Manager, actual interactive user",
+  "doctor_native_model_request_completed": true,
+  "doctor_official_provider_verified": true,
+  "doctor_provider": "DeepSeek",
+  "doctor_model": "deepseek/deepseek-v4.1-flash-20261017",
+  "fallbacks": false,
+  "default_sandbox_mode": "workspace-write",
+  "windows_sandbox_backend": "unelevated",
+  "approval_policy": "on-request",
+  "actual_inside_write_verified": true,
+  "actual_outside_write_denied": true,
+  "sandbox_probe_model_requests": 0,
+  "existing_host_sandbox_account_metadata_unchanged": true,
+  "source_evidence_sha256": {
+    "user_activation": "b58e02e884ea8135b0c8122175721667be0bce9310734a6277703202e40e79a8",
+    "doctor": "5e15c60161582d6c2b10b6678ab13458f7eeb0da4394468e0f026c4c6134600e",
+    "sandbox_effects": "7f7e3c410ef1e3570ed9e854b94376556a0eed5af856e00d3c8b99cb9b75fdb9"
+  },
+  "initial_sandbox_fixture_failure_preserved": true,
+  "initial_sandbox_fixture_explanation": "The first supposed outside file was inside the app-server initial cwd. Native legacy workspaceWrite includes that cwd in writable roots. A second fixture outside all writable roots passed. Runtime policy was not changed to force acceptance."
+}

@@ -1,0 +1,89 @@
+{
+  "passed": true,
+  "source_id": "3a59a782f017693be2b0",
+  "qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+  "target": "aarch64-apple-darwin",
+  "source": "<workspace>/delivery/platform-validation-20261021/final-qa-fd3217ee050e32c7",
+  "entry": "<macos-runtime-root>/releases/3a59a782f017693be2b0/venv/bin/codex-deepseek",
+  "offline_root": "<workspace>/delivery/platform-validation-20261021/final-mac-linux-3a59-delivery/macos/offline/29ffceb0-7551-475d-ae52-9e81f3e2c222",
+  "offline_validation": {
+    "tests_passed": 653,
+    "platform_inapplicable": {
+      "test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot": "Native Linux daemon process identity contract",
+      "test_platforms::test_extended_paths_cannot_alias_codex_app_state": "Win32 extended-length directory aliases",
+      "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]": "Native Windows daemon creation FILETIME record",
+      "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]": "Native Windows daemon creation FILETIME record",
+      "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]": "Windows socket ownership handshake",
+      "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]": "Windows socket ownership handshake",
+      "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]": "Windows socket ownership handshake",
+      "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]": "Windows console control events; requires a Windows native package",
+      "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]": "Windows console control events; requires a Windows native package",
+      "test_windows_launchers::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation": "Exercises Windows PE executable launchers",
+      "test_windows_launchers::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably": "Exercises Windows PE executable launchers",
+      "test_windows_launchers::test_locked_activation_fails_atomically_and_preserves_current_receipt": "Exercises Windows PE executable launchers"
+    },
+    "artifact_sha256": "698245c43e5d148e1a611487748ac1d8007bddf7f5cdd62465c1dceb2fd61008",
+    "verdict_sha256": "0f0acda48eb4f3a9c4d94d4340763f391b89c9306fa24d387365a7b9780ee287",
+    "collection_sha256": "ea974b85ae99668e6ef95b239749e24c4e407e012e19f14a5920fd8601cacef4",
+    "junit_sha256": "166d7a32caf621b67cda648223491308ac8fcf777cd99276ff91ad535c057dde"
+  },
+  "version": {
+    "exit": 0,
+    "stdout": "codex-cli 0.164.0-alpha.7"
+  },
+  "installed_with_no_activate": true,
+  "default_entry_and_installation_unchanged": true,
+  "default_observations": {
+    "<macos-home>/.local/bin/codex-deepseek": {
+      "kind": "symlink",
+      "target": "<macos-runtime-root>/releases/98b24d5adbcf145b99ee/venv/bin/codex-deepseek"
+    },
+    "<macos-runtime-root>/installation.json": {
+      "kind": "file",
+      "sha256": "e4388b496e03d828e4059497c89a4365db2f0c2ff27cda3308d336b7386fabaf"
+    }
+  },
+  "historical_source_id": "069803795d9ad78421fb",
+  "historical_source_id_rewritten": false,
+  "same_native_manifest_and_package_path": true,
+  "native_package": "<macos-runtime-root>/native/bbefe248ca35df1c00f6e1d9",
+  "native_file_count": 2947,
+  "same_installed_adapter_files_sha256": {
+    "codex_deepseek/__init__.py": "618cf4af36eb9872807ffb96c20f84bac88262d96171ac344520ad7d30e15f8e",
+    "codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+    "codex_deepseek/bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+    "codex_deepseek/browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+    "codex_deepseek/cli.py": "5dd26cabd6993420d21ae9e5d511bc279a92a7502abed0d7154b4d8fcae5a3b6",
+    "codex_deepseek/credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+    "codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+    "codex_deepseek/gateway.py": "71056a32bb329318afb2e156a8142e86eb5b622ee0ddb5fd2a0f25328e8245c0",
+    "codex_deepseek/isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+    "codex_deepseek/native_http.py": "8af97a371fc6e1881d2cbd99e47b6cb04438ff1089b79d4e9f76a02aebb23a28",
+    "codex_deepseek/platforms.py": "96bec6d68bf4871d2406b9b9c064b2c5a8485831407175d60032f9858a27b5bb",
+    "codex_deepseek/policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+    "codex_deepseek/processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+    "codex_deepseek/protocol.py": "487e782fcc0f5755b2a998878404859feb4d7e785a685f08125a6491032c39a8",
+    "codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+    "codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+    "codex_deepseek/service.py": "4028f795388cee514bb427a94affb662777be812a28c427719dac9023893ac81",
+    "codex_deepseek/state.py": "d6f00dabf3e4eace6943177730cefdd393c3e380600631ef44a2f4d0853212b1",
+    "codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+    "codex_deepseek/supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+    "codex_deepseek/web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+    "codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+    "codex_deepseek/windows_launchers.py": "aa635c5bde5805b37576edfc8a2661ad88f23e5042947fa6a7f07a55201e61c5",
+    "codex_deepseek/windows_sockets.py": "7667ba065d3152fc026acf71a8a1118304ab2e1530adf26ecc910561ef82caf8"
+  },
+  "same_catalog_sha256": "1cff11a28c2ad3d39a1d4668e107218dda74007a619be661e37b9c6d568f7128",
+  "same_dependencies_lock_sha256": "18353fc620c19077a405888594359252f43c6800259bdd6f54871b152a59cbf9",
+  "changed_product_files": [
+    "native/runtime-x86_64-pc-windows-msvc.json",
+    "native/windows-source-changes.json",
+    "native/windows-transport.patch"
+  ],
+  "nonfunctional_key_fixture_only": true,
+  "model_gates_executed": false,
+  "keyring_probe_supplied": false,
+  "started": 1792606855.7289221,
+  "finished": 1792606921.047714
+}

@@ -1,0 +1,6 @@
+{
+  "root": "<windows-validation-root>\\guest-r3-sandbox-evidence",
+  "files": 27,
+  "receipt_sha256": "5d6fd92fe92e77bc469cb2c6400d71462d93fb26876fcc4561c6592f941067bc",
+  "all_transferred_files_verified": true
+}

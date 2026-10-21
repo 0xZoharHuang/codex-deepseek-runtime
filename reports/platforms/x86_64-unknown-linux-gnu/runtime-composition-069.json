@@ -1,0 +1,46 @@
+{
+  "strict_composition_verified": true,
+  "single_run_30_of_30_claimed": false,
+  "source_id": "069803795d9ad78421fb",
+  "target": "x86_64-unknown-linux-gnu",
+  "original_full_run_passed": false,
+  "original_passing_gates": 29,
+  "original_failed_gate": "memory-v1",
+  "original_failure": {
+    "native_job_status": "error",
+    "native_error": "stream disconnected before completion: Upstream error from Morph: Service temporarily unavailable",
+    "native_retry_at": 1792606195,
+    "adapter_receipt_id": "783bae27-1699-434a-990e-ec0a6b957b7d",
+    "adapter_status": "failed",
+    "upstream_http_status": 200,
+    "http_503_claimed": false
+  },
+  "memory_supplement_passed": true,
+  "memory_stages": [
+    "memory_source_uses_native_host_environment",
+    "memory_source_real_tool_work",
+    "native_thread_sample_uses_loaded_deepseek_context",
+    "native_memory_extraction_and_consolidation",
+    "memory_auxiliary_models_remain_pinned_deepseek",
+    "native_memory_cold_read"
+  ],
+  "full_run": "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a",
+  "supplement_run": "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26",
+  "offline_passed": 609,
+  "offline_platform_inapplicable": 11,
+  "evidence_sha256": {
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/memory-v1/058e5dd5-91b2-4a02-9abf-72f91beeb3cc/memory-db-evidence.json": "14979ee3e028a79294625d2d8f2dfb373457dee9405e7f809662d642f4b628ec",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/memory-v1/058e5dd5-91b2-4a02-9abf-72f91beeb3cc/home/provider-state/adapter.sqlite": "e3ba06536f7dbba337dee3c1c5f01b43660ce276abb54c5cee2d5defc5b970aa",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/artifact.json": "4234d7f37f6fd1ec8552482a14e0e0603b92930395249211a6971833d22b2e0c",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/verdict.json": "c00788e0c24dab5d863e006287e835c86add1ba3b7fd1b9bfee25f531cbe940a",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/results.json": "b5ce44f78ffdc62f8f3755e6a6a1a74378033ff82841d09613d7a7efff259ce8",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/memory-v1.log": "dc4017ca69decd51a8d2ee0d3cf09eefaa2d7d59f5931cf210a50d8d604874bf",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/offline.xml": "a25aecfeade03e08e954429eb168eb1b233ba2a8e2ad577903f6c54a3e3d7a94",
+    "<linux-validation-root>/linux-069-full-r2/40482ecb-3736-486a-b8b4-1a2db24dfe3a/offline-collection.json": "0afdb8142488ea061af7d811bcc166e50b8e07ca4953052ab092eddd029b1b72",
+    "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26/artifact.json": "beb7bd8396c345bb205ca40d334b9120229f786abc8b9d0b41cdb2d8bb8ad049",
+    "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26/verdict.json": "376cd2f157b9dd23de8d52fad5e810d99de93cfa707a6b783611bc1ae43cf421",
+    "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26/results.json": "59431cd7394df829ef49f7cdd3682435ff2b0e6c4e12856250255eff0f697a1e",
+    "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26/memory-v1.log": "272d73ab621b9cdc34920fb625e79f305dd502ae20e11a7e798c263064a98ec5",
+    "<linux-validation-root>/linux-069-memory-v1-supplement-r1/b4cb6b0d-c764-44b9-8e90-51b64a6a9f26/memory-v1/a0e669db-c3cd-4985-a16e-dfb6c7ac513f/results.json": "2f47a2be3a538ccf1f3f57dc5ac9eb7a396b159ee02808c61f09dc025353e028"
+  }
+}

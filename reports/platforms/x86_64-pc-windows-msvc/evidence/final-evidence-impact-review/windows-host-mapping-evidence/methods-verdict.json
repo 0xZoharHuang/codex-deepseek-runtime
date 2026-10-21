@@ -1,0 +1,5324 @@
+{
+  "passed": true,
+  "positive_local_methods": 60,
+  "backend_boundaries_verified": 4,
+  "missing": [],
+  "unexpected": [],
+  "invalid": [],
+  "verifier_and_artifact_unchanged": true,
+  "groups": [
+    {
+      "group": "catalog",
+      "exit": 0,
+      "seconds": 2.78
+    },
+    {
+      "group": "threads",
+      "exit": 0,
+      "seconds": 9.08
+    },
+    {
+      "group": "plugins",
+      "exit": 0,
+      "seconds": 5.52
+    },
+    {
+      "group": "mcp",
+      "exit": 0,
+      "seconds": 4.74
+    },
+    {
+      "group": "migration",
+      "exit": 0,
+      "seconds": 2.69
+    },
+    {
+      "group": "control",
+      "exit": 0,
+      "seconds": 18.03
+    },
+    {
+      "group": "processes",
+      "exit": 0,
+      "seconds": 68.8
+    }
+  ],
+  "methods": {
+    "server/diagnostics": {
+      "method": "server/diagnostics",
+      "status": "passed",
+      "detail": {
+        "process": {
+          "id": 13696,
+          "residentMemoryBytes": 34611200,
+          "physicalFootprintBytes": null
+        },
+        "gauges": [
+          {
+            "name": "app.requests.in_flight",
+            "value": 1
+          },
+          {
+            "name": "app.requests.queued",
+            "value": 0
+          }
+        ]
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "model/list": {
+      "method": "model/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "id": "deepseek/deepseek-v4.1-flash-1017",
+            "model": "deepseek/deepseek-v4.1-flash-1017",
+            "upgrade": null,
+            "upgradeInfo": null,
+            "availabilityNux": null,
+            "displayName": "DeepSeek: DeepSeek V4.1 Flash 1017",
+            "description": "DeepSeek V4.1 Flash 1017 is the October 17, 2026 snapshot of DeepSeek V4.1 Flash, served by DeepSeek under the `deepseek-flash` API model name. V4.1 Flash is a sparse mixture-of-experts model...",
+            "modelSpecialty": null,
+            "hidden": false,
+            "supportedReasoningEfforts": [
+              {
+                "reasoningEffort": "low",
+                "description": "DeepSeek low"
+              },
+              {
+                "reasoningEffort": "high",
+                "description": "DeepSeek high"
+              },
+              {
+                "reasoningEffort": "max",
+                "description": "DeepSeek max"
+              }
+            ],
+            "defaultReasoningEffort": "high",
+            "inputModalities": [
+              "text",
+              "image"
+            ],
+            "supportsPersonality": false,
+            "multiAgentVersion": null,
+            "additionalSpeedTiers": [],
+            "serviceTiers": [],
+            "defaultServiceTier": null,
+            "availableAccessPrograms": null,
+            "isDefault": true
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "modelProvider/capabilities/read": {
+      "method": "modelProvider/capabilities/read",
+      "status": "passed",
+      "detail": {
+        "imageGeneration": true,
+        "webSearch": true
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "experimentalFeature/list": {
+      "method": "experimentalFeature/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "name": "analytics_plan_history",
+            "stage": "beta",
+            "displayName": "Analytics plan history",
+            "description": "Preview five-hour and weekly allowance history for consumer accounts in /analytics.",
+            "announcement": "",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "daemon_auto_start",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "app_server_websocket_compression",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "transcript_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "undo",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_tool",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "view_image",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_env_copy_file",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "sleep_tool",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "secret_auth_storage",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unified_exec",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unified_exec_tty",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "shell_zsh_fork",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unified_exec_zsh_fork",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_snapshot",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "login_shell_package_path",
+            "stage": "beta",
+            "displayName": "Bundled tools in login shells",
+            "description": "Keep bundled tools such as ripgrep available when login shell startup resets PATH.",
+            "announcement": "",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "powershell_shell_version",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_snapshot_v2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "deferred_executor",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "cwd_relative_turn_diffs",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "js_repl",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "content_item_kinds",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "executed_tool_call_metadata",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "stable_environment_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_tool_search",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_buffered_exec",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_host",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_host_grpc",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_prewarm",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_interrupt",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_tool_description_first",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "instant_interrupt",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_only",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_only_strict_3p_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "js_repl_tools_only",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "terminal_resize_reflow",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "web_search_request",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "web_search_cached",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "standalone_web_search",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "search_tool",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "codex_git_commit",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "runtime_metrics",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "sqlite",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "memories",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "external_agent_memory_import",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "local_thread_store_compression",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "local_thread_store_shared_compression",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "background_paginated_rollout_migration",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "chronicle",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_freeform",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_streaming_events",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_preserve_line_endings",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "exec_permission_approvals",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "write_stdin_approval",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "hooks",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "request_permissions_tool",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_linux_sandbox_bwrap",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_legacy_landlock",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "request_rule",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "experimental_windows_sandbox",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "elevated_windows_sandbox",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "windows_sandbox_service",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "prefer_mxc",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "remote_models",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "api_key_model_discovery",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "cli_daybreak",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "api_key_cyber_access_programs",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "enable_request_compression",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unbounded_connection_retries",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "network_proxy",
+            "stage": "beta",
+            "displayName": "Network proxy",
+            "description": "Apply network proxy restrictions to sandboxed sessions that already have network access.",
+            "announcement": "NEW: Network proxy can now be enabled from /experimental. Restart Codex after enabling it.",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "credential_masking",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "worktrees",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "respect_system_proxy",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "system_proxy_fallback",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_agent",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_agent_v2",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "model_catalog_in_context",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "multi_agent_v2_dynamic_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "subagent_thread_environments",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "subagent_default_context_limits",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "defer_mailbox_preemption",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "wake_on_agent_messages",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "agent_message_board",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "multi_agent_mode",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "enable_fanout",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apps",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "psp",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "enable_mcp_apps",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_2026_07_28",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_tool_list_changed",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "codex_apps_mcp_2026_07_28",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_oauth_refresh_coordination",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_xaa",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apps_mcp_path_override",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_search",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_search_always_defer_mcp_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "deferred_tool_world_state",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "incremental_tools",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "non_prefixed_mcp_tool_names",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unavailable_dummy_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_suggest",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "recommended_plugins",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "plugins",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "executor_capability_discovery",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "executor_capability_discovery_v2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "skip_host_skill_discovery",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "plugin_hooks",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "in_app_browser",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_annotation_api",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_chat",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_dictation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_voice",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_local_automation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_updates",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use_full_cdp_access",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use_external",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "computer_use",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "remote_plugin",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "plugin_sharing",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "external_migration",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_generation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "omit_app_server_notification_media",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_resize_notice",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unified_image_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "resize_all_images",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "item_ids",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "concurrent_reasoning_summaries",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "output_token_replay",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "skill_mcp_dependency_install",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "skill_search",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "skill_env_var_dependency_prompt",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mentions_v2",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "steer",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "default_mode_request_user_input",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "send_async_message",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "send_message_to_user_async",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "terminal_visualization_instructions",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_approval",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "guardianv2.thread_context",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_reuse_parent_compaction",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "guardian_root_handoff_context",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_enhanced_node_repl_transcripts",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_node_repl_transcript_images",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_trust_orchestrator_connectors",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_conversation_history_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardianv2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardianv2_decisions_comparison",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_ext",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "goals",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "token_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "context_management",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "rollout_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "reasoning_effort_override",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "current_time_reminder",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "nonfatal_clock_read_errors",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "collaboration_modes",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "tool_call_mcp_elicitation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "auth_elicitation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "bedrock_setup_wizard",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "personality",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "artifact",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "fast_mode",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "ultrafast_mode",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "step_model_switching",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "realtime_conversation",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "remote_control",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_detail_original",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tui_app_server",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "prevent_idle_sleep",
+            "stage": "beta",
+            "displayName": "Prevent sleep while running",
+            "description": "Keep your computer awake while Codex is running a thread.",
+            "announcement": "NEW: Prevent sleep while running is now available in /experimental.",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "workspace_owner_usage_nudge",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "responses_websockets",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "responses_websockets_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "remote_compaction_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "async_compaction",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "compaction_image_budget",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "retain_client_developer_messages",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "retain_client_tool_outputs",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_agent_identity",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "workspace_dependencies",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "experimentalFeature/enablement/set": {
+      "method": "experimentalFeature/enablement/set",
+      "status": "passed",
+      "detail": {
+        "changed": {
+          "enablement": {
+            "mentions_v2": true
+          }
+        },
+        "features": [
+          {
+            "name": "analytics_plan_history",
+            "stage": "beta",
+            "displayName": "Analytics plan history",
+            "description": "Preview five-hour and weekly allowance history for consumer accounts in /analytics.",
+            "announcement": "",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "daemon_auto_start",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "app_server_websocket_compression",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "transcript_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "undo",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_tool",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "view_image",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_env_copy_file",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "sleep_tool",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "secret_auth_storage",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unified_exec",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unified_exec_tty",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "shell_zsh_fork",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unified_exec_zsh_fork",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_snapshot",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "login_shell_package_path",
+            "stage": "beta",
+            "displayName": "Bundled tools in login shells",
+            "description": "Keep bundled tools such as ripgrep available when login shell startup resets PATH.",
+            "announcement": "",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "powershell_shell_version",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "shell_snapshot_v2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "deferred_executor",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "cwd_relative_turn_diffs",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "js_repl",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "content_item_kinds",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "executed_tool_call_metadata",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "stable_environment_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_tool_search",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_buffered_exec",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_host",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_host_grpc",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_prewarm",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_interrupt",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_tool_description_first",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "instant_interrupt",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "code_mode_only",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "code_mode_only_strict_3p_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "js_repl_tools_only",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "terminal_resize_reflow",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "web_search_request",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "web_search_cached",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "standalone_web_search",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "search_tool",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "codex_git_commit",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "runtime_metrics",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "sqlite",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "memories",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "external_agent_memory_import",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "local_thread_store_compression",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "local_thread_store_shared_compression",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "background_paginated_rollout_migration",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "chronicle",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_freeform",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_streaming_events",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apply_patch_preserve_line_endings",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "exec_permission_approvals",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "write_stdin_approval",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "hooks",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "request_permissions_tool",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_linux_sandbox_bwrap",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_legacy_landlock",
+            "stage": "deprecated",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "request_rule",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "experimental_windows_sandbox",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "elevated_windows_sandbox",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "windows_sandbox_service",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "prefer_mxc",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "remote_models",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "api_key_model_discovery",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "cli_daybreak",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "api_key_cyber_access_programs",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "enable_request_compression",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "unbounded_connection_retries",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "network_proxy",
+            "stage": "beta",
+            "displayName": "Network proxy",
+            "description": "Apply network proxy restrictions to sandboxed sessions that already have network access.",
+            "announcement": "NEW: Network proxy can now be enabled from /experimental. Restart Codex after enabling it.",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "credential_masking",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "worktrees",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "respect_system_proxy",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "system_proxy_fallback",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_agent",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "multi_agent_v2",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": false
+          },
+          {
+            "name": "model_catalog_in_context",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "multi_agent_v2_dynamic_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "subagent_thread_environments",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "subagent_default_context_limits",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "defer_mailbox_preemption",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "wake_on_agent_messages",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "agent_message_board",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "multi_agent_mode",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "enable_fanout",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apps",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "psp",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "enable_mcp_apps",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_2026_07_28",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_tool_list_changed",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "codex_apps_mcp_2026_07_28",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mcp_oauth_refresh_coordination",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_xaa",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "apps_mcp_path_override",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_search",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_search_always_defer_mcp_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "deferred_tool_world_state",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "incremental_tools",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "non_prefixed_mcp_tool_names",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unavailable_dummy_tools",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tool_suggest",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "recommended_plugins",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "plugins",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": true
+          },
+          {
+            "name": "executor_capability_discovery",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "executor_capability_discovery_v2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "skip_host_skill_discovery",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "plugin_hooks",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "in_app_browser",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_annotation_api",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_chat",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_dictation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_voice",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_local_automation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "in_app_updates",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use_full_cdp_access",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "browser_use_external",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "computer_use",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "remote_plugin",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "plugin_sharing",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "external_migration",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_generation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "omit_app_server_notification_media",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_resize_notice",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "unified_image_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "resize_all_images",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "item_ids",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "concurrent_reasoning_summaries",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "output_token_replay",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "skill_mcp_dependency_install",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "skill_search",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "skill_env_var_dependency_prompt",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "mentions_v2",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "steer",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "default_mode_request_user_input",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "send_async_message",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "send_message_to_user_async",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "terminal_visualization_instructions",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_approval",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "guardianv2.thread_context",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_reuse_parent_compaction",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "guardian_root_handoff_context",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_enhanced_node_repl_transcripts",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_node_repl_transcript_images",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_trust_orchestrator_connectors",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_conversation_history_tools",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardianv2",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardianv2_decisions_comparison",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "guardian_ext",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "goals",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "token_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "context_management",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "rollout_budget",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "reasoning_effort_override",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "current_time_reminder",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "nonfatal_clock_read_errors",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "collaboration_modes",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "tool_call_mcp_elicitation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "auth_elicitation",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "bedrock_setup_wizard",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "personality",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "artifact",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "fast_mode",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "ultrafast_mode",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "step_model_switching",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "realtime_conversation",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "remote_control",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "image_detail_original",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "tui_app_server",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "prevent_idle_sleep",
+            "stage": "beta",
+            "displayName": "Prevent sleep while running",
+            "description": "Keep your computer awake while Codex is running a thread.",
+            "announcement": "NEW: Prevent sleep while running is now available in /experimental.",
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "workspace_owner_usage_nudge",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "responses_websockets",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "responses_websockets_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "remote_compaction_v2",
+            "stage": "removed",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "async_compaction",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "compaction_image_budget",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          },
+          {
+            "name": "retain_client_developer_messages",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "retain_client_tool_outputs",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "use_agent_identity",
+            "stage": "underDevelopment",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": false,
+            "defaultEnabled": false
+          },
+          {
+            "name": "workspace_dependencies",
+            "stage": "stable",
+            "displayName": null,
+            "description": null,
+            "announcement": null,
+            "enabled": true,
+            "defaultEnabled": true
+          }
+        ]
+      },
+      "seconds": 0.01,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "permissionProfile/list": {
+      "method": "permissionProfile/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "id": ":read-only",
+            "description": null,
+            "allowed": true
+          },
+          {
+            "id": ":workspace",
+            "description": null,
+            "allowed": true
+          },
+          {
+            "id": ":danger-full-access",
+            "description": null,
+            "allowed": true
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "collaborationMode/list": {
+      "method": "collaborationMode/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "name": "Plan",
+            "mode": "plan",
+            "model": null,
+            "reasoning_effort": "medium"
+          },
+          {
+            "name": "Default",
+            "mode": "default",
+            "model": null,
+            "reasoning_effort": null
+          }
+        ]
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "mock/experimentalMethod": {
+      "method": "mock/experimentalMethod",
+      "status": "passed",
+      "detail": {
+        "echoed": "ROUNDTRIP_a1c8888b-3a76-489d-8b72-a0a70d47cc5c"
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "configRequirements/read": {
+      "method": "configRequirements/read",
+      "status": "passed",
+      "detail": {
+        "supportsIndependentSpeedModes": true,
+        "requirements": {
+          "modelProvider": "deepseek_runtime",
+          "modelProviders": null,
+          "allowedLoginMethods": [
+            "api",
+            "chatgpt"
+          ],
+          "cliAuthCredentialsStore": null,
+          "chatgptBaseUrl": null,
+          "additionalDeveloperInstructions": null,
+          "allowedApprovalPolicies": null,
+          "allowedApprovalsReviewers": null,
+          "allowedSandboxModes": null,
+          "allowedWindowsSandboxImplementations": null,
+          "allowedPermissionProfiles": null,
+          "defaultPermissions": null,
+          "allowedWebSearchModes": null,
+          "allowManagedHooksOnly": null,
+          "allowBrowserAndComputerUse": null,
+          "allowAppshots": null,
+          "allowRemoteControl": null,
+          "computerUse": null,
+          "browserUse": null,
+          "inAppBrowser": null,
+          "featureRequirements": null,
+          "hooks": null,
+          "enforceResidency": null,
+          "network": null,
+          "application": null,
+          "autoReview": null,
+          "models": null,
+          "sqliteHome": "file:///<windows-short-validation-root>/m4/m/52a58213-d827-4243-a835-397804dbd143/catalog/a1c8888b-3a76-489d-8b72-a0a70d47cc5c/home",
+          "logDir": "file:///<windows-short-validation-root>/m4/m/52a58213-d827-4243-a835-397804dbd143/catalog/a1c8888b-3a76-489d-8b72-a0a70d47cc5c/home/log",
+          "modelCatalogJson": "file:///<windows-validation-root>/host-user/data/runtime/releases/3a59a782f017693be2b0/catalog.json",
+          "checkForUpdateOnStartup": null,
+          "allowLoginShell": null,
+          "feedback": null
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "config/batchWrite": {
+      "method": "config/batchWrite",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "status": "ok",
+          "version": "sha256:1da97aef2a2e5cf5094f66e570f77a069e175c6b814db0e54b218a166596d822",
+          "filePath": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\config.toml",
+          "overriddenMetadata": null
+        },
+        "config": {
+          "sandbox_mode": "danger-full-access",
+          "model_reasoning_effort": "medium",
+          "web_search": "disabled",
+          "features": {
+            "apps": false,
+            "plugins": false,
+            "memories": false,
+            "multi_agent": false
+          },
+          "mcp_servers": {
+            "codex_web": {
+              "startup_timeout_sec": 30,
+              "tool_timeout_sec": 60,
+              "default_tools_approval_mode": "approve",
+              "command": "<windows-validation-root>\\host-user\\data\\runtime\\releases\\3a59a782f017693be2b0\\venv\\Scripts\\python.exe",
+              "args": [
+                "-I",
+                "-X",
+                "utf8",
+                "-m",
+                "codex_deepseek.web_mcp",
+                "--home",
+                "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home"
+              ]
+            }
+          },
+          "history": {
+            "max_bytes": 1234567
+          }
+        }
+      },
+      "seconds": 0.02,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "memory/status": {
+      "method": "memory/status",
+      "status": "passed",
+      "detail": {
+        "v2ConsolidatedThreads": 0,
+        "v2Ready": false
+      },
+      "seconds": 0.1,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "memory/reset": {
+      "method": "memory/reset",
+      "status": "passed",
+      "detail": {},
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "hooks/list": {
+      "method": "hooks/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\work",
+            "hooks": [
+              {
+                "key": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\hooks.json:pre_tool_use:0:0",
+                "eventName": "preToolUse",
+                "handlerType": "command",
+                "command": "printf HOOK_ENUMERATED",
+                "async": false,
+                "matcher": "Bash",
+                "timeoutSec": 600,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\hooks.json",
+                "source": "user",
+                "pluginId": null,
+                "displayOrder": 0,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:b5317b7c2853f9cdb8a23fa121bfabb404b7f3d14d5f50bb80f92d77d23bb283",
+                "trustStatus": "untrusted"
+              }
+            ],
+            "warnings": [],
+            "errors": []
+          }
+        ]
+      },
+      "seconds": 0.02,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "skills/extraRoots/set": {
+      "method": "skills/extraRoots/set",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "skills": {
+          "data": [
+            {
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\work",
+              "skills": [
+                {
+                  "name": "extra-root-audit",
+                  "description": "Exact additional-root discovery fixture.",
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\extra-skills\\extra-root-audit\\SKILL.md",
+                  "scope": "user",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "imagegen",
+                  "description": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+                  "interface": {
+                    "displayName": "Image Gen",
+                    "shortDescription": "Generate or edit images for websites, games, and more",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\assets\\imagegen-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\assets\\imagegen.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $imagegen to make or edit an image for this project."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "openai-docs",
+                  "description": "Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex.",
+                  "shortDescription": "Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, and self-knowledge; OpenAI APIs and ChatGPT Work. 'You'/'this app' means Codex only.",
+                  "interface": {
+                    "displayName": "OpenAI Docs",
+                    "shortDescription": "OpenAI and Codex docs for models, skills, tasks, and setup",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\assets\\openai-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\assets\\openai.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use OpenAI Docs for official docs lookup, questions about Codex itself or Codex surfaces, model selection, model migration, and prompt-upgrade work."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "review-agent",
+                  "description": "Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.",
+                  "interface": {
+                    "displayName": "Review Agent",
+                    "shortDescription": "Find actionable bugs in code changes",
+                    "iconSmall": null,
+                    "iconLarge": null,
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $review-agent to review the requested code changes and return actionable findings."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\review-agent\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-creator",
+                  "description": "Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.",
+                  "shortDescription": "Create or update a skill",
+                  "interface": {
+                    "displayName": "Skill Creator",
+                    "shortDescription": "Create or update a skill",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\assets\\skill-creator-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\assets\\skill-creator.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-installer",
+                  "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+                  "shortDescription": "Install curated skills from openai/skills or other repos",
+                  "interface": {
+                    "displayName": "Skill Installer",
+                    "shortDescription": "Install curated skills from openai/skills or other repos",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\assets\\skill-installer-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\assets\\skill-installer.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                }
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "seconds": 0.01,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "skills/config/write": {
+      "method": "skills/config/write",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "effectiveEnabled": false
+        },
+        "skills": {
+          "data": [
+            {
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\work",
+              "skills": [
+                {
+                  "name": "extra-root-audit",
+                  "description": "Exact additional-root discovery fixture.",
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\extra-skills\\extra-root-audit\\SKILL.md",
+                  "scope": "user",
+                  "enabled": false,
+                  "pluginId": null
+                },
+                {
+                  "name": "imagegen",
+                  "description": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+                  "interface": {
+                    "displayName": "Image Gen",
+                    "shortDescription": "Generate or edit images for websites, games, and more",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\assets\\imagegen-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\assets\\imagegen.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $imagegen to make or edit an image for this project."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\imagegen\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "openai-docs",
+                  "description": "Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex.",
+                  "shortDescription": "Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, and self-knowledge; OpenAI APIs and ChatGPT Work. 'You'/'this app' means Codex only.",
+                  "interface": {
+                    "displayName": "OpenAI Docs",
+                    "shortDescription": "OpenAI and Codex docs for models, skills, tasks, and setup",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\assets\\openai-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\assets\\openai.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use OpenAI Docs for official docs lookup, questions about Codex itself or Codex surfaces, model selection, model migration, and prompt-upgrade work."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\openai-docs\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "review-agent",
+                  "description": "Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.",
+                  "interface": {
+                    "displayName": "Review Agent",
+                    "shortDescription": "Find actionable bugs in code changes",
+                    "iconSmall": null,
+                    "iconLarge": null,
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $review-agent to review the requested code changes and return actionable findings."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\review-agent\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-creator",
+                  "description": "Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.",
+                  "shortDescription": "Create or update a skill",
+                  "interface": {
+                    "displayName": "Skill Creator",
+                    "shortDescription": "Create or update a skill",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\assets\\skill-creator-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\assets\\skill-creator.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-creator\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-installer",
+                  "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+                  "shortDescription": "Install curated skills from openai/skills or other repos",
+                  "interface": {
+                    "displayName": "Skill Installer",
+                    "shortDescription": "Install curated skills from openai/skills or other repos",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\assets\\skill-installer-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\assets\\skill-installer.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\home\\skills\\.system\\skill-installer\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                }
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "seconds": 0.02,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "fuzzyFileSearch": {
+      "method": "fuzzyFileSearch",
+      "status": "passed",
+      "detail": {
+        "files": [
+          {
+            "root": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\work",
+            "path": "distinctive_runtime_fixture_672.txt",
+            "match_type": "file",
+            "file_name": "distinctive_runtime_fixture_672.txt",
+            "score": 684,
+            "indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          }
+        ]
+      },
+      "seconds": 0.03,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "fuzzyFileSearch/sessionStart": {
+      "method": "fuzzyFileSearch/sessionStart",
+      "status": "passed",
+      "detail": {},
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "fuzzyFileSearch/sessionUpdate": {
+      "method": "fuzzyFileSearch/sessionUpdate",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "event": {
+          "method": "fuzzyFileSearch/sessionUpdated",
+          "params": {
+            "sessionId": "session_a1c8888b-3a76-489d-8b72-a0a70d47cc5c",
+            "query": "distinctive_runtime_fixture",
+            "files": [
+              {
+                "root": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\work",
+                "path": "distinctive_runtime_fixture_672.txt",
+                "match_type": "file",
+                "file_name": "distinctive_runtime_fixture_672.txt",
+                "score": 684,
+                "indices": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18,
+                  19,
+                  20,
+                  21,
+                  22,
+                  23,
+                  24,
+                  25,
+                  26
+                ]
+              }
+            ]
+          },
+          "emittedAtMs": 1792608373752
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "fuzzyFileSearch/sessionStop": {
+      "method": "fuzzyFileSearch/sessionStop",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "subsequent_update_rejected": true
+      },
+      "seconds": 0.0,
+      "evidence": "catalog\\a1c8888b-3a76-489d-8b72-a0a70d47cc5c\\results.json"
+    },
+    "thread/increment_elicitation": {
+      "method": "thread/increment_elicitation",
+      "status": "passed",
+      "detail": {
+        "count": 1,
+        "paused": true
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/decrement_elicitation": {
+      "method": "thread/decrement_elicitation",
+      "status": "passed",
+      "detail": {
+        "count": 0,
+        "paused": false
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "project/import": {
+      "method": "project/import",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "project": {
+            "id": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+            "name": "Imported audit project",
+            "roots": [
+              {
+                "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+              }
+            ],
+            "metadata": {},
+            "position": 0,
+            "createdAt": 1792608377,
+            "updatedAt": 1792608377,
+            "recencyAt": 1792608373
+          }
+        },
+        "thread": {
+          "id": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+              "runtimeWorkspaceRoots": [
+                "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+          "historyMode": "paginated",
+          "modelProvider": "deepseek_runtime",
+          "model": "deepseek/deepseek-v4.1-flash-1017",
+          "reasoningEffort": "low",
+          "createdAt": 1792608373,
+          "updatedAt": 1792608377,
+          "recencyAt": 1792608373,
+          "status": {
+            "type": "idle"
+          },
+          "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\home\\sessions\\2026\\10\\22\\rollout-2026-10-22T02-46-13-01a15fc9-0b0a-7313-a068-98a0f3b1a684.jsonl",
+          "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+          "cliVersion": "0.164.0-alpha.7",
+          "originator": "isolated_deepseek_acceptance",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "project/move": {
+      "method": "project/move",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "ids": [
+          "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+          "01a15fc9-1a95-7723-b3ef-9e86ccc03d0f"
+        ]
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "threadSection/list": {
+      "method": "threadSection/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "id": "01984de2-8f74-7c91-a3b2-5c5e937cf318",
+            "name": "Pinned",
+            "appearance": null
+          },
+          {
+            "id": "01a15fc9-1a98-74a0-9345-4dbfb5a3e00f",
+            "name": "Actual listed section",
+            "appearance": null
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/metadata/update": {
+      "method": "thread/metadata/update",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "thread": {
+            "id": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+            "environments": [
+              {
+                "environmentId": "local",
+                "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+                "runtimeWorkspaceRoots": [
+                  "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+                ]
+              }
+            ],
+            "extra": null,
+            "sessionId": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "projectId": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+            "historyMode": "paginated",
+            "modelProvider": "deepseek_runtime",
+            "model": "deepseek/deepseek-v4.1-flash-1017",
+            "reasoningEffort": "low",
+            "createdAt": 1792608373,
+            "updatedAt": 1792608377,
+            "recencyAt": 1792608373,
+            "status": {
+              "type": "idle"
+            },
+            "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\home\\sessions\\2026\\10\\22\\rollout-2026-10-22T02-46-13-01a15fc9-0b0a-7313-a068-98a0f3b1a684.jsonl",
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+            "cliVersion": "0.164.0-alpha.7",
+            "originator": "isolated_deepseek_acceptance",
+            "source": "vscode",
+            "canAcceptDirectInput": null,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": {
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "branch": "audit-branch",
+              "originUrl": null
+            },
+            "name": null,
+            "daybreakEnabled": true,
+            "turns": []
+          }
+        },
+        "thread": {
+          "id": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+              "runtimeWorkspaceRoots": [
+                "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+          "historyMode": "paginated",
+          "modelProvider": "deepseek_runtime",
+          "model": "deepseek/deepseek-v4.1-flash-1017",
+          "reasoningEffort": "low",
+          "createdAt": 1792608373,
+          "updatedAt": 1792608377,
+          "recencyAt": 1792608373,
+          "status": {
+            "type": "idle"
+          },
+          "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\home\\sessions\\2026\\10\\22\\rollout-2026-10-22T02-46-13-01a15fc9-0b0a-7313-a068-98a0f3b1a684.jsonl",
+          "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+          "cliVersion": "0.164.0-alpha.7",
+          "originator": "isolated_deepseek_acceptance",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": {
+            "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "audit-branch",
+            "originUrl": null
+          },
+          "name": null,
+          "daybreakEnabled": true,
+          "turns": []
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/search": {
+      "method": "thread/search",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "thread": {
+              "id": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+              "environments": [
+                {
+                  "environmentId": "local",
+                  "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+                  "runtimeWorkspaceRoots": [
+                    "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+                  ]
+                }
+              ],
+              "extra": null,
+              "sessionId": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+              "forkedFromId": null,
+              "parentThreadId": null,
+              "preview": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+              "ephemeral": false,
+              "section": null,
+              "sectionEnteredAt": null,
+              "projectId": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+              "historyMode": "paginated",
+              "modelProvider": "deepseek_runtime",
+              "model": "deepseek/deepseek-v4.1-flash-1017",
+              "reasoningEffort": "low",
+              "createdAt": 1792608373,
+              "updatedAt": 1792608377,
+              "recencyAt": 1792608373,
+              "status": {
+                "type": "idle"
+              },
+              "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\home\\sessions\\2026\\10\\22\\rollout-2026-10-22T02-46-13-01a15fc9-0b0a-7313-a068-98a0f3b1a684.jsonl",
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+              "cliVersion": "0.164.0-alpha.7",
+              "originator": "isolated_deepseek_acceptance",
+              "source": "vscode",
+              "canAcceptDirectInput": null,
+              "threadSource": null,
+              "agentNickname": null,
+              "agentRole": null,
+              "gitInfo": {
+                "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "branch": "audit-branch",
+                "originUrl": null
+              },
+              "name": null,
+              "daybreakEnabled": true,
+              "turns": []
+            },
+            "snippet": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3"
+          }
+        ],
+        "nextCursor": null,
+        "backwardsCursor": "2026-10-21T18:46:12.999Z"
+      },
+      "seconds": 0.03,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/searchOccurrences": {
+      "method": "thread/searchOccurrences",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "itemId": "01a15fc9-0fe2-70d2-888c-9f914dedd148",
+            "snippet": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+            "snippetMatchRange": {
+              "start": 44,
+              "end": 87
+            },
+            "turnCursor": "{\"requestedThreadId\":\"01a15fc9-0b0a-7313-a068-98a0f3b1a684\",\"rolloutOrdinal\":1,\"includeAnchor\":true,\"scope\":{\"kind\":\"turns\"}}"
+          },
+          {
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "itemId": "msg_tmp_q2cqlezqaq",
+            "snippet": "TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+            "snippetMatchRange": {
+              "start": 0,
+              "end": 43
+            },
+            "turnCursor": "{\"requestedThreadId\":\"01a15fc9-0b0a-7313-a068-98a0f3b1a684\",\"rolloutOrdinal\":1,\"includeAnchor\":true,\"scope\":{\"kind\":\"turns\"}}"
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/readState/update": {
+      "method": "thread/readState/update",
+      "status": "passed",
+      "detail": {
+        "unread": {
+          "firstUnread": {
+            "type": "threadStart"
+          },
+          "revision": "45aaae83-ab42-472a-a185-eb1b129f89b9"
+        },
+        "read": {
+          "firstUnread": null,
+          "revision": "5a08d383-f025-43e9-acce-f3ea2edcb1bc"
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/items/read": {
+      "method": "thread/items/read",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "userMessage",
+              "id": "01a15fc9-0fe2-70d2-888c-9f914dedd148",
+              "clientId": null,
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+                  "text_elements": []
+                }
+              ]
+            },
+            "startedAtMs": 1792608374762,
+            "completedAtMs": 1792608374762
+          },
+          {
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "reasoning",
+              "id": "rs_tmp_8sir9itchf7",
+              "summary": [],
+              "content": [
+                "We need answer exactly string, no tools."
+              ]
+            },
+            "startedAtMs": 1792608377390,
+            "completedAtMs": 1792608377392
+          },
+          {
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "agentMessage",
+              "id": "msg_tmp_q2cqlezqaq",
+              "text": "TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+              "phase": null,
+              "memoryCitation": null,
+              "delivery": null,
+              "questions": null
+            },
+            "startedAtMs": 1792608377409,
+            "completedAtMs": 1792608377409
+          }
+        ]
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/timeline/list": {
+      "method": "thread/timeline/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "type": "turnStarted",
+            "position": 1,
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "startedAt": 1792608373
+          },
+          {
+            "type": "item",
+            "position": 10,
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "userMessage",
+              "id": "01a15fc9-0fe2-70d2-888c-9f914dedd148",
+              "clientId": null,
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+                  "text_elements": []
+                }
+              ]
+            }
+          },
+          {
+            "type": "item",
+            "position": 11,
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "reasoning",
+              "id": "rs_tmp_8sir9itchf7",
+              "summary": [],
+              "content": [
+                "We need answer exactly string, no tools."
+              ]
+            }
+          },
+          {
+            "type": "item",
+            "position": 13,
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "item": {
+              "type": "agentMessage",
+              "id": "msg_tmp_q2cqlezqaq",
+              "text": "TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+              "phase": null,
+              "memoryCitation": null,
+              "delivery": null,
+              "questions": null
+            }
+          },
+          {
+            "type": "turnCompleted",
+            "position": 17,
+            "turnId": "01a15fc9-0b5c-7db2-88c6-a618a723d19d",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1792608373,
+            "completedAt": 1792608377,
+            "durationMs": 3871
+          }
+        ],
+        "nextCursor": null,
+        "activeRealtimeSessionAtPageStart": null
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/inject_items": {
+      "method": "thread/inject_items",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "answer": "INJECTED_52b6ae8cc3f042fab4bc6b2d824a2f9f"
+      },
+      "seconds": 2.02,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/shellCommand": {
+      "method": "thread/shellCommand",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "content": "SHELL_EFFECT"
+      },
+      "seconds": 0.21,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/revert": {
+      "method": "thread/revert",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "thread": {
+            "id": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+            "environments": [
+              {
+                "environmentId": "local",
+                "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+                "runtimeWorkspaceRoots": [
+                  "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work"
+                ]
+              }
+            ],
+            "extra": null,
+            "sessionId": "01a15fc9-0b0a-7313-a068-98a0f3b1a684",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "Do not use tools or delegate. Reply exactly TRANSCRIPT_f84594124b1d40c69f98e4d18393e3f3",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "projectId": "01a15fc9-1a92-73b2-a248-c22865aa60d4",
+            "historyMode": "paginated",
+            "modelProvider": "deepseek_runtime",
+            "model": "deepseek/deepseek-v4.1-flash-1017",
+            "reasoningEffort": "low",
+            "createdAt": 1792608379,
+            "updatedAt": 1792608379,
+            "recencyAt": 1792608379,
+            "status": {
+              "type": "idle"
+            },
+            "path": "\\\\?\\<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\home\\sessions\\2026\\10\\22\\rollout-2026-10-22T02-46-19-01a15fc9-0b0a-7313-a068-98a0f3b1a684_01a15fc9-23bf-7d32-9f2c-f56f91f1d8a4.jsonl",
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\work",
+            "cliVersion": "0.164.0-alpha.7",
+            "originator": "isolated_deepseek_acceptance",
+            "source": "vscode",
+            "canAcceptDirectInput": true,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": {
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "branch": "audit-branch",
+              "originUrl": null
+            },
+            "name": null,
+            "daybreakEnabled": true,
+            "turns": []
+          },
+          "turnsBackwardsCursor": null,
+          "itemsBackwardsCursor": null
+        },
+        "before": [
+          "01a15fc9-22b3-7e83-b0d6-c2468edfa047",
+          "01a15fc9-1ad5-79c1-9fdd-c3f6a52df4e0",
+          "01a15fc9-0b5c-7db2-88c6-a618a723d19d"
+        ],
+        "after": [],
+        "file": "SHELL_EFFECT"
+      },
+      "seconds": 0.11,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/unsubscribe": {
+      "method": "thread/unsubscribe",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "status": "unsubscribed"
+        },
+        "second": {
+          "status": "notSubscribed"
+        },
+        "loaded": {
+          "data": [
+            "01a15fc9-0b0a-7313-a068-98a0f3b1a684"
+          ],
+          "nextCursor": null
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "thread/delete": {
+      "method": "thread/delete",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "missing": true,
+        "archived": {
+          "data": [],
+          "readStates": {},
+          "nextCursor": null,
+          "backwardsCursor": null
+        }
+      },
+      "seconds": 0.12,
+      "evidence": "threads\\d47bcd4b-f3f4-4940-be03-f4ee748f6970\\results.json"
+    },
+    "process/resizePty": {
+      "method": "process/resizePty",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "events": [
+          {
+            "id": 3,
+            "result": {}
+          },
+          {
+            "method": "process/outputDelta",
+            "params": {
+              "processHandle": "resize-and-kill",
+              "stream": "stdout",
+              "deltaBase64": "G1syShtbbRtbSFBUWV9SRUFEWRtdMDtEOlxDb2RleERlZXBTZWVrUUFcMjAyNjEwMjFccHl0aG9uXGNweXRob24tMy4xMy4zLXdpbmRvd3MteDg2XzY0LW5vbmVccHl0aG9uLmV4ZQcbWz8yNWg=",
+              "capReached": false
+            },
+            "emittedAtMs": 1792608376253
+          },
+          {
+            "id": 4,
+            "result": {}
+          },
+          {
+            "id": 5,
+            "result": {}
+          },
+          {
+            "method": "process/outputDelta",
+            "params": {
+              "processHandle": "resize-and-kill",
+              "stream": "stdout",
+              "deltaBase64": "G1syNWwbW0hQVFlfUkVBRFkbW0sNCmNoZWNrLXNpemUbW0sNCjM3IDExMRtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLDQobW0sNChtbSw0KG1tLG1s0OzFIG1s/MjVo",
+              "capReached": false
+            },
+            "emittedAtMs": 1792608376265
+          }
+        ]
+      },
+      "seconds": 0.01,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "process/kill": {
+      "method": "process/kill",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "exit": {
+          "method": "process/exited",
+          "params": {
+            "processHandle": "resize-and-kill",
+            "exitCode": 1,
+            "stdout": "",
+            "stdoutCapReached": false,
+            "stderr": "",
+            "stderrCapReached": false
+          },
+          "emittedAtMs": 1792608378279
+        }
+      },
+      "seconds": 2.01,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "command/exec/terminate": {
+      "method": "command/exec/terminate",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "command_exit": {
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "environment/add": {
+      "method": "environment/add",
+      "status": "passed",
+      "detail": {
+        "result": {},
+        "info": {
+          "shell": {
+            "name": "powershell",
+            "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+          },
+          "cwd": "file:///<windows-short-validation-root>/m4/m/52a58213-d827-4243-a835-397804dbd143/processes/bc677d1b-9ccf-4e69-95bb-284fac01fe10/work"
+        }
+      },
+      "seconds": 0.01,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "environment/info": {
+      "method": "environment/info",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "name": "powershell",
+          "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        },
+        "cwd": "file:///<windows-short-validation-root>/m4/m/52a58213-d827-4243-a835-397804dbd143/processes/bc677d1b-9ccf-4e69-95bb-284fac01fe10/work"
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "environment/status": {
+      "method": "environment/status",
+      "status": "passed",
+      "detail": {
+        "status": "ready"
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "thread/backgroundTerminals/list": {
+      "method": "thread/backgroundTerminals/list",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "itemId": "exec-e6f1897c-4751-4bf0-aa69-b451735ea5a0",
+            "processId": "61440",
+            "command": "& \"<windows-validation-root>\\python\\cpython-3.13.3-windows-x86_64-none\\python.exe\" -I \"<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\work\\background_audit.py\"",
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\work",
+            "osPid": null,
+            "cpuPercent": null,
+            "rssKb": null
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "thread/backgroundTerminals/terminate": {
+      "method": "thread/backgroundTerminals/terminate",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "terminated": true
+        },
+        "remaining": {
+          "data": [],
+          "nextCursor": null
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "thread/backgroundTerminals/clean": {
+      "method": "thread/backgroundTerminals/clean",
+      "status": "passed",
+      "detail": {
+        "before": [
+          {
+            "itemId": "exec-2aad6e31-a596-44a8-947a-d97e033daa5d",
+            "processId": "10184",
+            "command": "& \"<windows-validation-root>\\python\\cpython-3.13.3-windows-x86_64-none\\python.exe\" -I \"<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\work\\background_audit.py\"",
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\work",
+            "osPid": null,
+            "cpuPercent": null,
+            "rssKb": null
+          }
+        ],
+        "response": {},
+        "after": []
+      },
+      "seconds": 0.0,
+      "evidence": "processes\\bc677d1b-9ccf-4e69-95bb-284fac01fe10\\results.json"
+    },
+    "marketplace/add": {
+      "method": "marketplace/add",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "marketplaceName": "completion-market",
+          "installedRoot": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market",
+          "alreadyAdded": false
+        },
+        "manifest_exists": true
+      },
+      "seconds": 0.37,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "plugin/list": {
+      "method": "plugin/list",
+      "status": "passed",
+      "detail": {
+        "marketplaces": [
+          {
+            "name": "completion-market",
+            "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\.agents\\plugins\\marketplace.json",
+            "interface": null,
+            "plugins": [
+              {
+                "id": "completion-plugin@completion-market",
+                "remotePluginId": null,
+                "version": null,
+                "localVersion": "1.0.0",
+                "name": "completion-plugin",
+                "shareContext": null,
+                "source": {
+                  "type": "local",
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\completion-plugin"
+                },
+                "installed": false,
+                "installedAt": null,
+                "enabled": false,
+                "installPolicy": "AVAILABLE",
+                "installPolicySource": null,
+                "mustShowInstallationInterstitial": null,
+                "authPolicy": "ON_INSTALL",
+                "availability": "AVAILABLE",
+                "disabledReason": null,
+                "eligiblePlanTypes": null,
+                "interface": null,
+                "keywords": []
+              }
+            ]
+          }
+        ],
+        "marketplaceLoadErrors": [],
+        "featuredPluginIds": []
+      },
+      "seconds": 0.01,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "plugin/search": {
+      "method": "plugin/search",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "plugin": {
+              "id": "completion-plugin@completion-market",
+              "remotePluginId": null,
+              "version": null,
+              "localVersion": "1.0.0",
+              "name": "completion-plugin",
+              "shareContext": null,
+              "source": {
+                "type": "local",
+                "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\completion-plugin"
+              },
+              "installed": false,
+              "installedAt": null,
+              "enabled": false,
+              "installPolicy": "AVAILABLE",
+              "installPolicySource": null,
+              "mustShowInstallationInterstitial": null,
+              "authPolicy": "ON_INSTALL",
+              "availability": "AVAILABLE",
+              "disabledReason": null,
+              "eligiblePlanTypes": null,
+              "interface": null,
+              "keywords": []
+            },
+            "marketplaceName": "completion-market",
+            "marketplacePath": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\.agents\\plugins\\marketplace.json"
+          }
+        ],
+        "nextCursor": null
+      },
+      "seconds": 0.0,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "plugin/installed": {
+      "method": "plugin/installed",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "marketplaces": [
+            {
+              "name": "completion-market",
+              "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\.agents\\plugins\\marketplace.json",
+              "interface": null,
+              "plugins": [
+                {
+                  "id": "completion-plugin@completion-market",
+                  "remotePluginId": null,
+                  "version": null,
+                  "localVersion": "1.0.0",
+                  "name": "completion-plugin",
+                  "shareContext": null,
+                  "source": {
+                    "type": "local",
+                    "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market\\completion-plugin"
+                  },
+                  "installed": true,
+                  "installedAt": null,
+                  "enabled": true,
+                  "installPolicy": "AVAILABLE",
+                  "installPolicySource": null,
+                  "mustShowInstallationInterstitial": null,
+                  "authPolicy": "ON_INSTALL",
+                  "availability": "AVAILABLE",
+                  "disabledReason": null,
+                  "eligiblePlanTypes": null,
+                  "interface": null,
+                  "keywords": []
+                }
+              ]
+            }
+          ],
+          "marketplaceLoadErrors": []
+        },
+        "skills": {
+          "data": [
+            {
+              "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\work",
+              "skills": [
+                {
+                  "name": "completion-plugin:completion-skill",
+                  "description": "Local plugin audit skill.",
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\plugins\\cache\\completion-market\\completion-plugin\\1.0.0\\skills\\completion-skill\\SKILL.md",
+                  "scope": "user",
+                  "enabled": true,
+                  "pluginId": "completion-plugin@completion-market"
+                },
+                {
+                  "name": "imagegen",
+                  "description": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+                  "interface": {
+                    "displayName": "Image Gen",
+                    "shortDescription": "Generate or edit images for websites, games, and more",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\imagegen\\assets\\imagegen-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\imagegen\\assets\\imagegen.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $imagegen to make or edit an image for this project."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\imagegen\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "openai-docs",
+                  "description": "Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex.",
+                  "shortDescription": "Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, and self-knowledge; OpenAI APIs and ChatGPT Work. 'You'/'this app' means Codex only.",
+                  "interface": {
+                    "displayName": "OpenAI Docs",
+                    "shortDescription": "OpenAI and Codex docs for models, skills, tasks, and setup",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\openai-docs\\assets\\openai-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\openai-docs\\assets\\openai.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use OpenAI Docs for official docs lookup, questions about Codex itself or Codex surfaces, model selection, model migration, and prompt-upgrade work."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\openai-docs\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "review-agent",
+                  "description": "Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.",
+                  "interface": {
+                    "displayName": "Review Agent",
+                    "shortDescription": "Find actionable bugs in code changes",
+                    "iconSmall": null,
+                    "iconLarge": null,
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": "Use $review-agent to review the requested code changes and return actionable findings."
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\review-agent\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-creator",
+                  "description": "Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.",
+                  "shortDescription": "Create or update a skill",
+                  "interface": {
+                    "displayName": "Skill Creator",
+                    "shortDescription": "Create or update a skill",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-creator\\assets\\skill-creator-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-creator\\assets\\skill-creator.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-creator\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                },
+                {
+                  "name": "skill-installer",
+                  "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+                  "shortDescription": "Install curated skills from openai/skills or other repos",
+                  "interface": {
+                    "displayName": "Skill Installer",
+                    "shortDescription": "Install curated skills from openai/skills or other repos",
+                    "iconSmall": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-installer\\assets\\skill-installer-small.svg",
+                    "iconLarge": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-installer\\assets\\skill-installer.png",
+                    "iconSmallUrl": null,
+                    "iconLargeUrl": null,
+                    "brandColor": null,
+                    "defaultPrompt": null
+                  },
+                  "path": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\skills\\.system\\skill-installer\\SKILL.md",
+                  "scope": "system",
+                  "enabled": true,
+                  "pluginId": null
+                }
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "seconds": 0.02,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "marketplace/upgrade": {
+      "method": "marketplace/upgrade",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "selectedMarketplaces": [
+            "completion-market"
+          ],
+          "upgradedRoots": [
+            "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market"
+          ],
+          "errors": []
+        },
+        "materialized": {
+          "name": "completion-plugin",
+          "version": "2.0.0",
+          "description": "Upgraded actual fixture"
+        }
+      },
+      "seconds": 0.53,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "plugin/reconcile": {
+      "method": "plugin/reconcile",
+      "status": "backend_boundary_verified",
+      "detail": {
+        "changedPlugins": [],
+        "failedRemotePluginIds": [],
+        "failedMaterializationRemotePluginIds": []
+      },
+      "seconds": 0.0,
+      "reason": "Frozen upstream reconciles remote installed bundles only with Codex-backend authentication; local marketplace upgrades use marketplace/upgrade.",
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "plugin/skill/read": {
+      "method": "plugin/skill/read",
+      "status": "backend_boundary_verified",
+      "detail": {
+        "rejected": true,
+        "error": "plugin/skill/read: {'code': -32600, 'message': 'remote plugin skill read is not enabled for marketplace completion-market'}"
+      },
+      "seconds": 0.02,
+      "reason": "Frozen upstream method fetches remote service plugin skill details; local skills remain accessible through native skills/list and filesystem tools.",
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "marketplace/remove": {
+      "method": "marketplace/remove",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "marketplaceName": "completion-market",
+          "installedRoot": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\home\\.tmp\\marketplaces\\completion-market"
+        },
+        "listed": {
+          "marketplaces": [],
+          "marketplaceLoadErrors": [],
+          "featuredPluginIds": []
+        },
+        "installed_root_exists": false
+      },
+      "seconds": 0.01,
+      "evidence": "plugins\\91b00ea6-f0a1-4c0b-b2e2-ca84007197e5\\results.json"
+    },
+    "mcpServer/resource/read": {
+      "method": "mcpServer/resource/read",
+      "status": "passed",
+      "detail": {
+        "first": {
+          "contents": [
+            {
+              "uri": "audit://local/nonce",
+              "mimeType": "text/plain",
+              "text": "MCP_RESOURCE_60f50658312641d0a51d3cff03dcbb14"
+            }
+          ],
+          "originCallId": null
+        },
+        "second": {
+          "contents": [
+            {
+              "uri": "audit://local/nonce",
+              "mimeType": "text/plain",
+              "text": "MCP_RESOURCE_60f50658312641d0a51d3cff03dcbb14_FRESH"
+            }
+          ],
+          "originCallId": null
+        }
+      },
+      "seconds": 0.91,
+      "evidence": "mcp\\ceee6b3e-2318-4a56-954b-ab9cd5896821\\results.json"
+    },
+    "mcpServer/tool/call": {
+      "method": "mcpServer/tool/call",
+      "status": "passed",
+      "detail": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"count\": 1\n}"
+          }
+        ],
+        "isError": false
+      },
+      "seconds": 0.01,
+      "evidence": "mcp\\ceee6b3e-2318-4a56-954b-ab9cd5896821\\results.json"
+    },
+    "mcpServer/event/stream/start": {
+      "method": "mcpServer/event/stream/start",
+      "status": "backend_boundary_verified",
+      "detail": {
+        "rejected": true,
+        "error": "mcpServer/event/stream/start: {'code': -32600, 'message': 'MCP event subscriptions are only supported for hosted apps'}"
+      },
+      "seconds": 0.0,
+      "reason": "Frozen upstream explicitly restricts this endpoint to hosted Apps; ordinary local MCP subscriptions are not this API contract.",
+      "evidence": "mcp\\ceee6b3e-2318-4a56-954b-ab9cd5896821\\results.json"
+    },
+    "mcpServer/event/stream/stop": {
+      "method": "mcpServer/event/stream/stop",
+      "status": "backend_boundary_verified",
+      "detail": {},
+      "seconds": 0.0,
+      "reason": "Idempotent stop branch executed; positive hosted-App event-stream lifecycle requires the excluded backend.",
+      "evidence": "mcp\\ceee6b3e-2318-4a56-954b-ab9cd5896821\\results.json"
+    },
+    "externalAgentConfig/detect": {
+      "method": "externalAgentConfig/detect",
+      "status": "passed",
+      "detail": {
+        "items": [
+          {
+            "itemType": "AGENTS_MD",
+            "description": "Migrate <windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md to <windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+            "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+            "details": null
+          }
+        ],
+        "connectors": []
+      },
+      "seconds": 0.01,
+      "evidence": "migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\results.json"
+    },
+    "externalAgentConfig/import": {
+      "method": "externalAgentConfig/import",
+      "status": "passed",
+      "detail": {
+        "response": {
+          "importId": "91859137-456d-4630-a88b-a2ef8c22e474"
+        },
+        "event": {
+          "method": "externalAgentConfig/import/completed",
+          "params": {
+            "importId": "91859137-456d-4630-a88b-a2ef8c22e474",
+            "itemTypeResults": [
+              {
+                "itemType": "AGENTS_MD",
+                "successes": [
+                  {
+                    "itemType": "AGENTS_MD",
+                    "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+                    "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md",
+                    "target": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+                    "title": null
+                  }
+                ],
+                "failures": []
+              }
+            ]
+          },
+          "emittedAtMs": 1792608392816
+        },
+        "imported_files": [
+          "AGENTS.md"
+        ]
+      },
+      "seconds": 0.08,
+      "evidence": "migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\results.json"
+    },
+    "externalAgentConfig/import/recordHistory": {
+      "method": "externalAgentConfig/import/recordHistory",
+      "status": "passed",
+      "detail": {
+        "result": {
+          "importId": "cda2da6f-0090-4a5c-a338-3c874ef22069"
+        },
+        "histories": {
+          "data": [
+            {
+              "importId": "cda2da6f-0090-4a5c-a338-3c874ef22069",
+              "providerId": "isolated-native-audit",
+              "completedAtMs": 1792608392896,
+              "successes": [
+                {
+                  "itemType": "AGENTS_MD",
+                  "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+                  "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md",
+                  "target": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+                  "title": "RECORDED_42f9e95a72dd41249a131f2a2e04bfc8"
+                }
+              ],
+              "failures": []
+            },
+            {
+              "importId": "91859137-456d-4630-a88b-a2ef8c22e474",
+              "providerId": "isolated-native-audit",
+              "completedAtMs": 1792608392816,
+              "successes": [
+                {
+                  "itemType": "AGENTS_MD",
+                  "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+                  "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md",
+                  "target": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+                  "title": null
+                }
+              ],
+              "failures": []
+            }
+          ],
+          "connectors": []
+        }
+      },
+      "seconds": 0.0,
+      "evidence": "migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\results.json"
+    },
+    "externalAgentConfig/import/readHistories": {
+      "method": "externalAgentConfig/import/readHistories",
+      "status": "passed",
+      "detail": {
+        "data": [
+          {
+            "importId": "cda2da6f-0090-4a5c-a338-3c874ef22069",
+            "providerId": "isolated-native-audit",
+            "completedAtMs": 1792608392896,
+            "successes": [
+              {
+                "itemType": "AGENTS_MD",
+                "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+                "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md",
+                "target": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+                "title": "RECORDED_42f9e95a72dd41249a131f2a2e04bfc8"
+              }
+            ],
+            "failures": []
+          },
+          {
+            "importId": "91859137-456d-4630-a88b-a2ef8c22e474",
+            "providerId": "isolated-native-audit",
+            "completedAtMs": 1792608392816,
+            "successes": [
+              {
+                "itemType": "AGENTS_MD",
+                "cwd": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work",
+                "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\CLAUDE.md",
+                "target": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\work\\AGENTS.md",
+                "title": null
+              }
+            ],
+            "failures": []
+          }
+        ],
+        "connectors": []
+      },
+      "seconds": 0.0,
+      "evidence": "migration\\b66499c2-b29a-4098-bdf4-318850a7fbe6\\results.json"
+    },
+    "thread/queue/start": {
+      "method": "thread/queue/start",
+      "status": "passed",
+      "detail": {
+        "response": {
+          "turn": {
+            "id": "01a15fc9-7c69-7ba3-90b1-467b8e406f95",
+            "rootTurnId": "01a15fc9-7c69-7ba3-90b1-467b8e406f95",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "inProgress",
+            "error": null,
+            "startedAt": null,
+            "completedAt": null,
+            "durationMs": null
+          }
+        },
+        "answer": "QUEUED_c5a720acb3bc46fa97cacb5ca04ff1a1",
+        "remaining": {
+          "data": [],
+          "nextCursor": null
+        }
+      },
+      "seconds": 1.7,
+      "evidence": "control\\0571488e-ff61-4e39-8cee-2938aa6eb5e9\\results.json"
+    },
+    "turn/settings/update": {
+      "method": "turn/settings/update",
+      "status": "passed",
+      "detail": {
+        "response": {
+          "status": "applied"
+        },
+        "answer": "BARRIER_RELEASED",
+        "inference_efforts": [
+          {
+            "effort": "low"
+          },
+          {
+            "effort": "high"
+          }
+        ]
+      },
+      "seconds": 4.41,
+      "evidence": "control\\0571488e-ff61-4e39-8cee-2938aa6eb5e9\\results.json"
+    },
+    "thread/approveGuardianDeniedAction": {
+      "method": "thread/approveGuardianDeniedAction",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "answer": "`printf GUARDIAN_ACK_796054210eed4d63b071a93e49214f1b`",
+        "native_approved_context_forwarded": true,
+        "command_executed": false,
+        "fixture_kind": "valid serialized denial event; does not claim this test produced an automatic Guardian denial"
+      },
+      "seconds": 2.19,
+      "evidence": "control\\0571488e-ff61-4e39-8cee-2938aa6eb5e9\\results.json"
+    },
+    "rollout/compress": {
+      "method": "rollout/compress",
+      "status": "passed",
+      "detail": {
+        "response": {},
+        "original_removed": true,
+        "before_sha256": "e7ec539f8afc80c2f281c631a8604bcdcda7a7f4d9158a2d619e97b7ad2e6c6a",
+        "after_sha256": "e7ec539f8afc80c2f281c631a8604bcdcda7a7f4d9158a2d619e97b7ad2e6c6a",
+        "native_read_preserved_nonce": true
+      },
+      "seconds": 0.06,
+      "evidence": "control\\0571488e-ff61-4e39-8cee-2938aa6eb5e9\\results.json"
+    }
+  }
+}

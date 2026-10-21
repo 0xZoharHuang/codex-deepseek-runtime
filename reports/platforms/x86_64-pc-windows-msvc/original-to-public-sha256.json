@@ -1,0 +1,293 @@
+{
+  "files": [
+    {
+      "original_evidence": "final-evidence-impact-review/windows-guardian-composition.json",
+      "original_sha256": "2bbfaed96936431255f2f6bd8a48ebb9650e2de4b46b2e3b514258d229a76ad9",
+      "public_file": "evidence/final-evidence-impact-review/windows-guardian-composition.json",
+      "public_sha256": "37ca1ab6859fe70abf1dbf7477a53339f90490a71c846b19611e71308de17e00",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-final-rpc-mapping.json",
+      "original_sha256": "f1a467f1ff46abc348f37e3135f5922f502415b1dc3025f91b808cdb816110ca",
+      "public_file": "evidence/final-evidence-impact-review/windows-final-rpc-mapping.json",
+      "public_sha256": "cb1bd2ea6582511908af75b97eb64be3bca366877a4ad310261af5d82cc901d2",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/component-validation.json",
+      "original_sha256": "195b7c6d040f1c1908a96b47f9d9935169f646d0037c5e9b9b026676f264a264",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/component-validation.json",
+      "public_sha256": "4e8bb6d6134f4e84f8a090f397014e895fbed1d17bb3aec5f8ee9895cd333cb2",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/final-3a59-source-impact.json",
+      "original_sha256": "7455350fa321529f19a40f91b4d1ea87d26af16d321ceb7ba735a8e822a3fe90",
+      "public_file": "evidence/final-evidence-impact-review/final-3a59-source-impact.json",
+      "public_sha256": "7455350fa321529f19a40f91b4d1ea87d26af16d321ceb7ba735a8e822a3fe90",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/94c-to-069-product-lineage.json",
+      "original_sha256": "9e3b8e120e81104bcdb93c361784b9b7b83c58535398e68357b8a99c31da3486",
+      "public_file": "evidence/final-evidence-impact-review/94c-to-069-product-lineage.json",
+      "public_sha256": "9e3b8e120e81104bcdb93c361784b9b7b83c58535398e68357b8a99c31da3486",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/guardian-to-methods-qa-lineage.json",
+      "original_sha256": "f3b966ec7c45c4c8a48cdaa351dfccb41447021dce554e822cad25c7eef13c19",
+      "public_file": "evidence/final-evidence-impact-review/guardian-to-methods-qa-lineage.json",
+      "public_sha256": "f3b966ec7c45c4c8a48cdaa351dfccb41447021dce554e822cad25c7eef13c19",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-complex-reconstruction.json",
+      "original_sha256": "9441394f4b69be50a2cd73df7d8cf1f340bf12efedca17adb651edc16188a834",
+      "public_file": "evidence/final-evidence-impact-review/windows-complex-reconstruction.json",
+      "public_sha256": "21f5c785b25a1c0acc34437c8603bbd371fa86f2b71a11678a36f8594f6eee2e",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-complex-shape-and-raw-integrity.json",
+      "original_sha256": "babd80481040598aabcaca2bf5f0077c6504f39463a1f9d75141684c46690e9e",
+      "public_file": "evidence/final-evidence-impact-review/windows-complex-shape-and-raw-integrity.json",
+      "public_sha256": "166cb8e24cfc8676ebe8704d08e63508224f2c981d1714e825695c043afdbad4",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/complex-jinja-94c.json",
+      "original_sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/complex-jinja-94c.json",
+      "public_sha256": "eeee1a19fc1e79b44460f9eefe60cdc9feaed139961e53f4b183a85f0c95fe54",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/complex-httpcore-94c.json",
+      "original_sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/complex-httpcore-94c.json",
+      "public_sha256": "d0070e945a9dd8a5b371fff339dd022b09c3f99998d208cb04ce00bf69d6b8a6",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "windows-r3-sandbox-final-evidence/independent-verdict.json",
+      "original_sha256": "0591758dc3a72117cd80be7a8e9faf20290327a5d579c60c4c2af23196dd6673",
+      "public_file": "evidence/windows-r3-sandbox-final-evidence/independent-verdict.json",
+      "public_sha256": "c689ac82ab26a8abda50064bba10c19d971886551ea35b788baa1bbbd33e8234",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "windows-r3-sandbox-final-evidence/transfer-and-current-readback.json",
+      "original_sha256": "877a3024f22883f3cd205f73a76f3728737cf314b3a565dadabdca0de1eb3d05",
+      "public_file": "evidence/windows-r3-sandbox-final-evidence/transfer-and-current-readback.json",
+      "public_sha256": "bdb154be73780f4f39dc5f87c4014e0dc9e3055af9c49745669a47ff6354beb8",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/artifact.json",
+      "original_sha256": "76a88b6ae7b527ba0fd1b7aa9d0dbc7c0fd2c4ca93eb9f6dfe4f113fcebd01d2",
+      "public_file": "evidence/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/artifact.json",
+      "public_sha256": "5f1a40cca6bc340515531eb61252f837e841ff591002f8e4aafabdccd3b8409f",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/verdict.json",
+      "original_sha256": "681842bf3f87d183316c54ab3c5589911ed1f5b150db9e0ba673927ee8606484",
+      "public_file": "evidence/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/verdict.json",
+      "public_sha256": "195d8c1ab5d661e38cd3d8e93367c7de55050f5a675e85abd20cbc33870c2dfa",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/results.json",
+      "original_sha256": "41cc857c721e36e694de49227cd5cacae6310acd84d276548736d8eb34da0954",
+      "public_file": "evidence/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/results.json",
+      "public_sha256": "837344db837d3c21be78c8e35dfd9e8d2ffbcdfb76ec231516f74adde0c76fbe",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/browser-protocol.json",
+      "original_sha256": "e7ec3483af3508902498ac30a1845f385cc8493f0cb2db7f5f46b24c140ed1bb",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/browser-protocol.json",
+      "public_sha256": "8374b8d206482370560dd8f6e98308629f2cf5a499a3226b5f967413f57e4e87",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/browser-runtime-results.json",
+      "original_sha256": "5b53dd7228f0db3be63ff35df7d494d7f1803a96f0cb2a96ea730e13b32531f9",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/browser-runtime-results.json",
+      "public_sha256": "222e29ffb28792820f384e82a2abfabcfd1b06580add248935fc10473888b855",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/browser-runtime-verdict.json",
+      "original_sha256": "03f80fad6e101bc6c84cb6d9427ca50ee7f446f1c21e00c74dcd14120bd5da10",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/browser-runtime-verdict.json",
+      "public_sha256": "a65e2d4622a9624c83cbd0eb45d716e709072cc976299df4a57e54ff200d3c68",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/transfer-receipt.json",
+      "original_sha256": "6a5f260f50dc4156434ab7137ef113624842078eff068b77ef56db789d62a8c7",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/transfer-receipt.json",
+      "public_sha256": "7fa3156cf7580d36428dbcdcf0b858544b8a0ca612350394032454e444e2e8e7",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/native-schema-comparison.json",
+      "original_sha256": "6265e1fe07559c48df8f2a05d41e16a51b609dc4b7492a6b157e0ef5fb1c0097",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/native-schema-comparison.json",
+      "public_sha256": "304ffe0fbb40b88165cd8b9c05567c9bb8258446e9b74d8fc69621965ce06914",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/native-mcp-lifetime.json",
+      "original_sha256": "5e7cf35fb585c6b19213566bf5f190be20fe703329627d69f1249343c4c176af",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/native-mcp-lifetime.json",
+      "public_sha256": "8aa70724229dcca3566419100f5d74a6641845bd316beebe7aa7f4c77cd1f5ca",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/native-source-audit.json",
+      "original_sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/native-source-audit.json",
+      "public_sha256": "b3baf34c428eab1246894997988cb1b4d551fe493e2a9f46bd470d09c24c8b34",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-components-evidence/browser-runtime-artifact.json",
+      "original_sha256": "a13424aa1de0d895ec5f3c286946c236f971505f750ce88ae7504f4b8e005517",
+      "public_file": "evidence/final-evidence-impact-review/windows-components-evidence/browser-runtime-artifact.json",
+      "public_sha256": "53c0a694e5cf06a8bc7956183e538cb3e4931637cbb0e8f9031848e882a507e8",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/offline8e-results.json",
+      "original_sha256": "d523289e96e24de12ad8b071a40c263fea78565c6638b5993175e3e1f72b2a3d",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-results.json",
+      "public_sha256": "212f77b6eb55241b6363f4b8db5ec9d2f5eea6c686fadfe510e421eeba24d7cc",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/methods-verdict.json",
+      "original_sha256": "97bb6c1bd4efa1532c4a9205516dff95b6a97a24308508be8d0e61bdae1c2de5",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/methods-verdict.json",
+      "public_sha256": "02451180d2f8bf4538af1b414a7fdb6d1226d9d2a197289714beba7706791734",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/offline8e-verdict.json",
+      "original_sha256": "61cf6ef6f091cc76fdf43185a3a83b2cee049770ac508fd925a8ebf485237d7b",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-verdict.json",
+      "public_sha256": "6f485b92013d27af0055d61966e96653ef8839d6f947cdc8e9ab4e9591853068",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/transfer-receipt.json",
+      "original_sha256": "2b8f331fbbef5b3caac9d66fa33acddd4648dced05e407fc6a70bab1e562580a",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/transfer-receipt.json",
+      "public_sha256": "4753186fca1e3dea2b3060f971e2ba690de23837d380cd6504733d87f0867967",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/offline8e-artifact.json",
+      "original_sha256": "5e82824d9e0c299d4c222ddfbce58fad4fdf8990619b32b94c871f750c6ca97b",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-artifact.json",
+      "public_sha256": "4170c4cee15da272dfd2a021782d79890436b91ff197f7f05cfc076333f33707",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/mapping.json",
+      "original_sha256": "2da6347d0d09fadc5186d6a31a6a5c4c6ec100e21c362b69e2ec685174ea5fb3",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/mapping.json",
+      "public_sha256": "bb55626b50bfec740d6a89fc61e1c8cb9ac9f1d894a36813e5e41cbb8f404724",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/methods-artifact.json",
+      "original_sha256": "673c885d549c1e78eb6b627ce5d7ed436213abc3b375827864cdcbb52f989091",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/methods-artifact.json",
+      "public_sha256": "c6eb59e0b772559b97365fdd24c2203f226ba0f0dd5cda6f2970fd5e2021d98c",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline-collection.json",
+      "original_sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline-collection.json",
+      "public_sha256": "de210f35eb7adddccda82c70f748a68078f5c68c807c19ceb3b25eb3bc7b3647",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-host-mapping-evidence/execution-token-receipts.json",
+      "original_sha256": "2e29fd3f594499dd19e230d8c633210b38dff06f4c695dd6ad4030bc66e1aed8",
+      "public_file": "evidence/final-evidence-impact-review/windows-host-mapping-evidence/execution-token-receipts.json",
+      "public_sha256": "c7a518373915e62ac2481f0379521ad8cd420393fbcbaccca8070870d260b769",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-final-rpc-transfer.json",
+      "original_sha256": "40a5913f8611935cd4561b5ebdf09571bc98d44b83da9ee56ae0bbf1a0742f53",
+      "public_file": "evidence/final-evidence-impact-review/windows-final-rpc-transfer.json",
+      "public_sha256": "65c763386606ba827b89727492704e72f73290f304dc2fa2a6e29539349ac5f5",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-evidence-impact-review/windows-final-component-execution-tokens.json",
+      "original_sha256": "2501e91507eba019d7ff136f6f56f9d27447695c3da3cfa5d322151a44bdb3a2",
+      "public_file": "evidence/final-evidence-impact-review/windows-final-component-execution-tokens.json",
+      "public_sha256": "93fdcca9e106c205741a32a00278e7ad7b6857bdc8ed8b55e80e6c0cc516344f",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "guest-r3-evidence-host-copy.json",
+      "original_sha256": "e7fe3086a16ca37202305727f831d7da39a525cdee9fef08582fb3ff7e2cc697",
+      "public_file": "evidence/guest-r3-evidence-host-copy.json",
+      "public_sha256": "e9ed0b2d3146ca1e6be88e8ec6992b04ae1f489d78381aafeb6a1febd0851bbd",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-windows-qualification-3a59/runtime-qualification.json",
+      "original_sha256": "3c865d0ae2c92369dc62b2b0987e1b9424e71ac70ee92547ea4f3fa029696121",
+      "public_file": "runtime-qualification.json",
+      "public_sha256": "80d8fa1da7e9a27525943ee7cfa9f0deba9778c05b3f2a7798bc7340b3c15fac",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-windows-qualification-3a59/evidence-files.json",
+      "original_sha256": "79d9b2adca598f5389f7f14aaf033e8a1f4be887bc69e971c4058f048dfceddb",
+      "public_file": "evidence-files.json",
+      "public_sha256": "fe3b795d410a8c282fa3c8050477e715d095aa7fdee16b2d328438316dfcad2a",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-windows-qualification-3a59/public-materials-plan.json",
+      "original_sha256": "485464fcd7d12fd578bfd0ff3b6a1a90188f9f710c3696034d89b878f7990894",
+      "public_file": "public-materials-plan.json",
+      "public_sha256": "2c3558929599510420ac60f0dccbdc56c96d022041624332d587a26e41333af0",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-windows-qualification-3a59/release-source-lineage.json",
+      "original_sha256": "97827d0c07d677c73da7a2d252ec28f43d9fad8a977639b5d08b3a1adf41d0b1",
+      "public_file": "release-source-lineage.json",
+      "public_sha256": "97827d0c07d677c73da7a2d252ec28f43d9fad8a977639b5d08b3a1adf41d0b1",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "final-windows-qualification-3a59/bundle-manifest.json",
+      "original_sha256": "ec424e96ef2709f9db80ba00849d43fbfff678014027f53342ab278431e648d0",
+      "public_file": "bundle-manifest.json",
+      "public_sha256": "ec424e96ef2709f9db80ba00849d43fbfff678014027f53342ab278431e648d0",
+      "only_declared_private_path_and_identity_string_redactions": true
+    },
+    {
+      "original_evidence": "public-release-staging/windows-user-delivery-summary.json",
+      "original_sha256": "462149b4c1f8bbca2775761e157c0dd21387fae2746994a3e5462ff863e50c7b",
+      "public_file": "user-delivery.json",
+      "public_sha256": "bd4d68ecf50631601e777fc82a040652f706720389b53bfd682e299a9c6a039a",
+      "only_declared_private_path_and_identity_string_redactions": true
+    }
+  ],
+  "original_states_source_ids_counts_and_failures_preserved": true,
+  "notes": "Original hashes identify retained private evidence. Public hashes identify presentation copies; they are deliberately distinct."
+}

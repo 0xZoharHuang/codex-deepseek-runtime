@@ -1,0 +1,75 @@
+{
+  "original_bytes_preserved": true,
+  "files": [
+    {
+      "filename": "component-validation.json",
+      "source": "<windows-validation-root>\\host-user\\data\\windows-extra-components-3a59-r1.json",
+      "sha256": "195b7c6d040f1c1908a96b47f9d9935169f646d0037c5e9b9b026676f264a264",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/component-validation.json",
+      "local_sha256": "195b7c6d040f1c1908a96b47f9d9935169f646d0037c5e9b9b026676f264a264"
+    },
+    {
+      "filename": "native-source-audit.json",
+      "source": "<windows-short-validation-root>\\x3\\src\\verdict.json",
+      "sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-source-audit.json",
+      "local_sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118"
+    },
+    {
+      "filename": "native-schema-comparison.json",
+      "source": "<windows-short-validation-root>\\x3\\s\\2ea36822-966a-4e3b-afe7-520b9c3c8c46\\verdict.json",
+      "sha256": "6265e1fe07559c48df8f2a05d41e16a51b609dc4b7492a6b157e0ef5fb1c0097",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-schema-comparison.json",
+      "local_sha256": "6265e1fe07559c48df8f2a05d41e16a51b609dc4b7492a6b157e0ef5fb1c0097"
+    },
+    {
+      "filename": "native-mcp-lifetime.json",
+      "source": "<windows-short-validation-root>\\x3\\l\\3f2699e2-a23e-44ca-8f83-f74bab2dcf6e\\verdict.json",
+      "sha256": "5e7cf35fb585c6b19213566bf5f190be20fe703329627d69f1249343c4c176af",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-mcp-lifetime.json",
+      "local_sha256": "5e7cf35fb585c6b19213566bf5f190be20fe703329627d69f1249343c4c176af"
+    },
+    {
+      "filename": "browser-protocol.json",
+      "source": "<windows-short-validation-root>\\x3\\bp\\1ee4a29a-9600-407d-9cf8-ea813fc936f8\\verdict.json",
+      "sha256": "e7ec3483af3508902498ac30a1845f385cc8493f0cb2db7f5f46b24c140ed1bb",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-protocol.json",
+      "local_sha256": "e7ec3483af3508902498ac30a1845f385cc8493f0cb2db7f5f46b24c140ed1bb"
+    },
+    {
+      "filename": "browser-runtime-results.json",
+      "source": "<windows-short-validation-root>\\x3\\b\\82a005a3-94ce-4a40-a550-63160e1c04ce\\results.json",
+      "sha256": "5b53dd7228f0db3be63ff35df7d494d7f1803a96f0cb2a96ea730e13b32531f9",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-results.json",
+      "local_sha256": "5b53dd7228f0db3be63ff35df7d494d7f1803a96f0cb2a96ea730e13b32531f9"
+    },
+    {
+      "filename": "browser-runtime-artifact.json",
+      "source": "<windows-short-validation-root>\\x3\\b\\82a005a3-94ce-4a40-a550-63160e1c04ce\\artifact.json",
+      "sha256": "a13424aa1de0d895ec5f3c286946c236f971505f750ce88ae7504f4b8e005517",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-artifact.json",
+      "local_sha256": "a13424aa1de0d895ec5f3c286946c236f971505f750ce88ae7504f4b8e005517"
+    },
+    {
+      "filename": "browser-runtime-verdict.json",
+      "source": "<windows-short-validation-root>\\x3\\b\\82a005a3-94ce-4a40-a550-63160e1c04ce\\verdict.json",
+      "sha256": "03f80fad6e101bc6c84cb6d9427ca50ee7f446f1c21e00c74dcd14120bd5da10",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-verdict.json",
+      "local_sha256": "03f80fad6e101bc6c84cb6d9427ca50ee7f446f1c21e00c74dcd14120bd5da10"
+    },
+    {
+      "filename": "complex-jinja-94c.json",
+      "source": "<windows-validation-root>\\complex-runtime-windows-r3\\jinja.json",
+      "sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/complex-jinja-94c.json",
+      "local_sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9"
+    },
+    {
+      "filename": "complex-httpcore-94c.json",
+      "source": "<windows-validation-root>\\complex-runtime-windows-r3\\httpcore.json",
+      "sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/complex-httpcore-94c.json",
+      "local_sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4"
+    }
+  ]
+}

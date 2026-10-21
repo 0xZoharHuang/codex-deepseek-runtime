@@ -6,7 +6,7 @@
 
 *An isolated native Codex CLI distribution for DeepSeek through OpenRouter. The native runtime owns tool execution, permissions, sessions and agent scheduling.*
 
-> **发布准备状态：**以下是 v0.5.0 的使用说明草稿，Windows 最终验收仍在进行。v0.5.0 标签与下载资产须在三平台验收完成后统一发布；此时不要将下列安装命令理解为已上线。当前公开的 v0.4.1 验收范围是 macOS arm64。
+> **v0.5.0：**固定版本的 Windows x86_64、Linux x86_64 和 macOS Apple Silicon runtime 已分别验收。下面列出实际范围、安装方法和可核查的证据；上游基线是预发布版，不把未测试的系统或后续版本算入支持范围。
 
 ## 它怎样工作
 
@@ -42,11 +42,13 @@
 | --- | --- | --- |
 | macOS Apple Silicon | 固定目标 runtime 验收通过 | 独立 Python 3.11+；[平台报告](reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
 | Linux x86_64 GNU | 固定目标 runtime 验收通过 | Ubuntu 24.04 上验证；glibc、OpenSSL 3、`libcap.so.2`；[平台报告](reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
-| Windows x86_64 | **最终验收进行中** | 原生 Windows Python 3.11+；最终 OS、沙箱及凭据结论待平台报告填入 |
+| Windows x86_64 | 固定目标 runtime 验收通过 | Windows 10 19045 宿主和独立 Windows 26100 客体；[平台报告](reports/platforms/x86_64-pc-windows-msvc/runtime-qualification.json) |
 
 原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
 
-验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
+验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。Windows 的 Jinja 与 HTTPcore 任务均通过独立业务验收。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
+
+验收保留原始失败与补测身份：Windows 的 Guardian 初次夹具未触发审批，修正受限权限夹具后单独验证；Linux memory-v1 曾遇到提供方临时失败，另有完整成功运行。报告明确标记组合验收，不把原始失败改写成一次全绿。macOS 凭据部分复用同字节组件的既有真实证据，避免再次触发系统钥匙串提示。
 
 ## 安装并运行
 
@@ -103,6 +105,8 @@ codex-deepseek.exe runtime doctor
 Set-Location C:\path\to\your\project
 codex-deepseek.exe
 ```
+
+想在 PowerShell 中使用短命令 `cds`，可执行 `Set-Alias -Name cds -Value codex-deepseek.exe`；需要每次启动 PowerShell 都生效时，将这一行加入自己的 `$PROFILE`。`cds` 与 `codex-deepseek.exe` 使用同一个 runtime，参数不变。
 
 运行目录默认在 `$env:LOCALAPPDATA\codex-deepseek`，命令入口在 `$HOME\.local\bin\codex-deepseek.exe`。`setup-key` 保存到 Windows Credential Manager。某些 SSH 网络登录没有可用凭据库，应使用安全的进程环境，或回到交互式登录设置凭据。Windows 的沙箱设置由原生 Codex 负责，遵循其提示和系统权限要求。
 
@@ -171,7 +175,7 @@ codex-deepseek app-server
 
 安装时的默认权限是 `workspace-write` 和 `on-request`。沙箱、人工审批、Guardian 自动审查、Hooks 信任等仍使用原生实现与配置；不要为让某个命令通过而把全局权限改成无限制。子智能体由任务中的原生协作机制创建和管理，`agents` 用来浏览共享本地 daemon 的会话。
 
-下表列的是已验收 Mac/Linux 范围中的代表性能力与取证入口；**Windows 应以最终 Windows 平台报告为准**。报告涵盖指定场景，不能视为穷尽所有输入和故障。
+下表列出三平台的代表性能力与取证入口；Windows 的宿主、客体和组合证据见[Windows 平台报告](reports/platforms/x86_64-pc-windows-msvc/runtime-qualification.json)。报告涵盖指定场景，不能视为穷尽所有输入和故障。
 
 | 能力 | 实现与验证要点 | 证据入口 |
 | --- | --- | --- |

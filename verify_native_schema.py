@@ -61,7 +61,7 @@ def main():
                   upstream_version=native['upstream_version'],official_binary_sha256=official_hash,patched_binary_sha256=patched_hash,
                   official_archive_sha256=sha(archive),official_archive_member=members[0],native_manifest=native,commands=commands,
                   verifier_sha256={'verify_native_schema.py':verifier_hash},
-                  scope='Complete experimental app-server schemas; official musl and patched GNU Linux may differ in libc linkage but use the same frozen upstream release.')
+                  scope='Complete experimental app-server schemas for the declared target and official_target, from the same frozen upstream release; platform linkage differences do not alter schema comparison.')
     report['binary_and_verifier_unchanged']=sha(official)==official_hash and sha(patched)==patched_hash and sha(__file__)==verifier_hash
     report['passed']=report['passed'] and report['binary_and_verifier_unchanged']
     (root/'verdict.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')

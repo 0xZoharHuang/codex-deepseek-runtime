@@ -1,0 +1,308 @@
+{
+  "passed": true,
+  "qualification_basis": "current_execution_plus_exact_unchanged_native_credential_lineage",
+  "source_id": "069803795d9ad78421fb",
+  "target": "aarch64-apple-darwin",
+  "current_execution": {
+    "evidence_kind": "current_execution",
+    "source_id": "069803795d9ad78421fb",
+    "gate_count": 26,
+    "gates": [
+      {
+        "gate": "agents-full",
+        "exit": 0,
+        "seconds": 15.16,
+        "log": "agents-full.log"
+      },
+      {
+        "gate": "agents-none",
+        "exit": 0,
+        "seconds": 14.1,
+        "log": "agents-none.log"
+      },
+      {
+        "gate": "agents-nested",
+        "exit": 0,
+        "seconds": 32.39,
+        "log": "agents-nested.log"
+      },
+      {
+        "gate": "crash-recovery",
+        "exit": 0,
+        "seconds": 29.8,
+        "log": "crash-recovery.log"
+      },
+      {
+        "gate": "daemon",
+        "exit": 0,
+        "seconds": 33.05,
+        "log": "daemon.log"
+      },
+      {
+        "gate": "goal-sample",
+        "exit": 0,
+        "seconds": 18.06,
+        "log": "goal-sample.log"
+      },
+      {
+        "gate": "guardian",
+        "exit": 0,
+        "seconds": 12.74,
+        "log": "guardian.log"
+      },
+      {
+        "gate": "features",
+        "exit": 0,
+        "seconds": 41.36,
+        "log": "features.log"
+      },
+      {
+        "gate": "local-account",
+        "exit": 0,
+        "seconds": 7.01,
+        "log": "local-account.log"
+      },
+      {
+        "gate": "local-methods",
+        "exit": 0,
+        "seconds": 6.23,
+        "log": "local-methods.log"
+      },
+      {
+        "gate": "live",
+        "exit": 0,
+        "seconds": 47.96,
+        "log": "live.log"
+      },
+      {
+        "gate": "memory-v2",
+        "exit": 0,
+        "seconds": 65.02,
+        "log": "memory-v2.log"
+      },
+      {
+        "gate": "modes",
+        "exit": 0,
+        "seconds": 24.04,
+        "log": "modes.log"
+      },
+      {
+        "gate": "native-revocation",
+        "exit": 0,
+        "seconds": 0.55,
+        "log": "native-revocation.log"
+      },
+      {
+        "gate": "oauth-file",
+        "exit": 0,
+        "seconds": 27.21,
+        "log": "oauth-file.log"
+      },
+      {
+        "gate": "memory-v1",
+        "exit": 0,
+        "seconds": 148.59,
+        "log": "memory-v1.log"
+      },
+      {
+        "gate": "plan-review",
+        "exit": 0,
+        "seconds": 25.14,
+        "log": "plan-review.log"
+      },
+      {
+        "gate": "offline",
+        "exit": 0,
+        "seconds": 31.87,
+        "log": "offline.log"
+      },
+      {
+        "gate": "plugin",
+        "exit": 0,
+        "seconds": 11.21,
+        "log": "plugin.log"
+      },
+      {
+        "gate": "profiles",
+        "exit": 0,
+        "seconds": 12.32,
+        "log": "profiles.log"
+      },
+      {
+        "gate": "routes",
+        "exit": 0,
+        "seconds": 17.77,
+        "log": "routes.log"
+      },
+      {
+        "gate": "search",
+        "exit": 0,
+        "seconds": 9.32,
+        "log": "search.log"
+      },
+      {
+        "gate": "transports",
+        "exit": 0,
+        "seconds": 2.32,
+        "log": "transports.log"
+      },
+      {
+        "gate": "runtime-contract",
+        "exit": 0,
+        "seconds": 24.23,
+        "log": "runtime-contract.log"
+      },
+      {
+        "gate": "tui-interrupt",
+        "exit": 0,
+        "seconds": 24.26,
+        "log": "tui-interrupt.log"
+      },
+      {
+        "gate": "tui",
+        "exit": 0,
+        "seconds": 28.74,
+        "log": "tui.log"
+      }
+    ],
+    "offline": {
+      "tests_passed": 531,
+      "platform_inapplicable": {
+        "test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot": "Native Linux daemon process identity contract",
+        "test_platforms::test_extended_paths_cannot_alias_codex_app_state": "Win32 extended-length directory aliases",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]": "Native Windows daemon creation FILETIME record",
+        "test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]": "Native Windows daemon creation FILETIME record",
+        "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]": "Windows socket ownership handshake",
+        "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]": "Windows socket ownership handshake",
+        "test_windows_console::test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]": "Windows socket ownership handshake",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]": "Windows console control events; requires a Windows native package",
+        "test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]": "Windows console control events; requires a Windows native package",
+        "test_windows_launchers::test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably": "Exercises Windows PE executable launchers",
+        "test_windows_launchers::test_locked_activation_fails_atomically_and_preserves_current_receipt": "Exercises Windows PE executable launchers"
+      },
+      "artifact_sha256": "c434a1e7eb36ced61cdb57f43b3c7cc5a42bdecb9af09be40a3ce3365ce2fe73",
+      "verdict_sha256": "685396ab5f913f6e2402216dcec6aeb9e9c4a3450a4e604c6d2bae85991ee956",
+      "collection_sha256": "c73cc19f8480d1ad012f63baf8de1016bcf1c69de1595adebbe7bade5be49224",
+      "junit_sha256": "cc4ed4995f1db2a594dfe52828f3894b3ba2fa16de05041086e8a41ed2d0f739"
+    },
+    "oauth_file": {
+      "store": "file",
+      "encrypted_secrets": false,
+      "checks": 5,
+      "cold_logout_homes": 2
+    },
+    "evidence_sha256": {
+      "artifact.json": "c434a1e7eb36ced61cdb57f43b3c7cc5a42bdecb9af09be40a3ce3365ce2fe73",
+      "verdict.json": "685396ab5f913f6e2402216dcec6aeb9e9c4a3450a4e604c6d2bae85991ee956",
+      "offline.xml": "cc4ed4995f1db2a594dfe52828f3894b3ba2fa16de05041086e8a41ed2d0f739",
+      "offline-collection.json": "c73cc19f8480d1ad012f63baf8de1016bcf1c69de1595adebbe7bade5be49224",
+      "agents-full.log": "9b977d37963d900bbfd25ea9be5b54b369ad205b67ea6e8c8ca54ab9492636de",
+      "agents-none.log": "b838b8e2dd2b294d3c932c2337706140a3fa32e786a43100511b8602d428980f",
+      "agents-nested.log": "59aab9406f9d7c2e94d93287608b63579b3baa216249e08a9185eaf00991afd5",
+      "crash-recovery.log": "233fc7673787a9d707e6757caa6c9406d6137983dfad14e4ebe1763bcc9a9e70",
+      "daemon.log": "77e5459b0cc6a21f11139c5a8afb623bb88fe1dc358b898abc8707aa4290509b",
+      "goal-sample.log": "91fca00f42962247f93cc2025851e84c07668363b62d95e2cb030229b0c708ca",
+      "guardian.log": "ed6f03bb5eb7b3dd3d28416007c1904fd9e7d6fc95336169622ce1df9ab5157a",
+      "features.log": "d0e58e60e753b13a8fedb8da62c3ac9065c280cee4f9ffc7b170fd6f1b14a085",
+      "local-account.log": "337e2a21263efa680d6adfca96599d1b2f14c80eae5d712299b0663f82a096a8",
+      "local-methods.log": "f3745b0ce633798749712404ce67cdfd68758b8eedd60d1abd4a4d4aa8f576c1",
+      "live.log": "74b1c5b4d9b86394464213e9ed5c3fc9f75d21afc9b2ca737fc0697b3a1eb9ff",
+      "memory-v2.log": "5256f12c43a8b06bbb0e54fcaa0e5d0ba57e39e912c68712256d0e6b7f1e46a0",
+      "modes.log": "4d73b311b60b4cb7bf67c0f131f9de2fbbf4f1fc7386a6837f84a9b63bd49053",
+      "native-revocation.log": "ccf189ca150efc0b64739583c89c6475538622246524fde3647ff271bf3f78dd",
+      "oauth-file.log": "f38260f7f640eecd28355681acc7f9bca54ae9b913d72b6d31aea26c9f462a18",
+      "memory-v1.log": "8db3117a949c0069f70009a4867df61021dd9dac597dc94334ade6be329d61d5",
+      "plan-review.log": "99741c40ee8794499be3d31788900ec7c5c1ab57ac289926b3c29944cac02fea",
+      "offline.log": "6a94e727866712b09d88f1f8be71112c6531390a54810959d4f817834f532d62",
+      "plugin.log": "a26a07f6812d41a8c6c8ec27d2e9f0c74c02cd65cb534feb350f9bf7ab90379b",
+      "profiles.log": "2706b3d0485a8a6e32ab247a9c7149c74c0a68c57f78d26b8515f5293656ba41",
+      "routes.log": "a5b8bee0a9ce267414035487e77e18c7fa571f6b5bbc5cbadaba23f800e5bde2",
+      "search.log": "65af1fdfcebe86c704e3301f2b236a19c4bd51b4d9b5b0040f2afa11d1ae0afc",
+      "transports.log": "4630cbd1d1828282660580ecb5cc10fcb30d49abbd0c5bc82ad8581b970bcc8f",
+      "runtime-contract.log": "a0ba9eeb26f6a3171349119df8bbf728cf8b4cd30cfe93cd036527a8499535fd",
+      "tui-interrupt.log": "670f7790322d35a06ad33829a30816fd3458320739b15017ecb9cb2305703e03",
+      "tui.log": "5830aa7abd553cc7349d1b4a3d543378679e299cdae51c48927207e556a69cce"
+    }
+  },
+  "current_file_credential_bridge": {
+    "evidence_kind": "current_execution",
+    "source_id": "069803795d9ad78421fb",
+    "modes": [
+      "file",
+      "ephemeral"
+    ],
+    "model_requests": 0,
+    "keychain_access_requested": false,
+    "artifact_sha256": "a52e212d96f7e6014404e820f58efe5e6f150aa6f4cc29dd2e68cf97f32c15e4",
+    "verdict_sha256": "b4b0fc9efa409953874fdc3bf59b85361877e3e27dd2729977851260ca3d67e6"
+  },
+  "historical_credential_components": [
+    {
+      "gate": "auth-stores",
+      "evidence_kind": "historical_unchanged_native_component",
+      "original_source_id": "94c01b01aa57087becee",
+      "fresh_current_execution": false,
+      "original_exit": 0,
+      "original_log_sha256": "c58705ead770e868336bf2a5a7fc76ebea7c37b889cd064ba5e480a60b10b044",
+      "detail": {
+        "modes": 5,
+        "cold_logout_modes": 5
+      }
+    },
+    {
+      "gate": "oauth-keyring",
+      "evidence_kind": "historical_unchanged_native_component",
+      "original_source_id": "94c01b01aa57087becee",
+      "fresh_current_execution": false,
+      "original_exit": 0,
+      "original_log_sha256": "0502c17ca0f09a986589e099eb294b2fe276d994fc6677289b72b751a49ed06f",
+      "detail": {
+        "store": "keyring",
+        "encrypted_secrets": false,
+        "checks": 5,
+        "cold_logout_homes": 2
+      }
+    },
+    {
+      "gate": "oauth-auto",
+      "evidence_kind": "historical_unchanged_native_component",
+      "original_source_id": "94c01b01aa57087becee",
+      "fresh_current_execution": false,
+      "original_exit": 0,
+      "original_log_sha256": "bd8c031492b80014f55894c2a9473632753df6cb8ba5d5a58561f0b6e969a81c",
+      "detail": {
+        "store": "auto",
+        "encrypted_secrets": false,
+        "checks": 5,
+        "cold_logout_homes": 2
+      }
+    },
+    {
+      "gate": "oauth-secrets",
+      "evidence_kind": "historical_unchanged_native_component",
+      "original_source_id": "94c01b01aa57087becee",
+      "fresh_current_execution": false,
+      "original_exit": 0,
+      "original_log_sha256": "aee53823d01eca103f2266a0783c2291d619154b49e88fce9061c27725c9a020",
+      "detail": {
+        "store": "keyring",
+        "encrypted_secrets": true,
+        "checks": 5,
+        "cold_logout_homes": 2
+      }
+    }
+  ],
+  "all_required_standard_mechanisms_have_evidence": true,
+  "all_current_gates_reexecuted": false,
+  "fresh_current_keychain_execution": false,
+  "historical_source_ids_preserved": true,
+  "current_keychain_unlock_or_account_state_verified": false,
+  "source_change_scope": "Exact six-file reviewed delta; complete native/credential producer/helper pins unchanged.",
+  "script_sha256": {
+    "lineage_common.py": "44723aece119074be3ceaea473c755bfaeb69f645bea8a073bce6eb803d35182",
+    "verify_macos_file_credentials.py": "ce2280105d8538eee1e3e38d95a89362bca204c3cdc2042c966ef137202f61c6",
+    "validate_macos_credential_lineage.py": "f53698a854e37a710d2f2c0f7692d7d24b3e262fdc21f188dfbc02f399d1e568",
+    "lineage-policy.json": "5d9829991edeabe54b914b6b590e4077d5aa31d1a3456cbd95589dde46fa8f33"
+  }
+}

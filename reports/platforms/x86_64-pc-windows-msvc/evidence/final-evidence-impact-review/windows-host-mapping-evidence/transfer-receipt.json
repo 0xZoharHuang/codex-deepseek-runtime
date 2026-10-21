@@ -1,0 +1,59 @@
+{
+  "original_bytes_preserved": true,
+  "files": [
+    {
+      "source": "<windows-validation-root>\\host-user\\data\\windows-host-rpc-3a59-r1.json",
+      "sha256": "2da6347d0d09fadc5186d6a31a6a5c4c6ec100e21c362b69e2ec685174ea5fb3",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/mapping.json",
+      "local_sha256": "2da6347d0d09fadc5186d6a31a6a5c4c6ec100e21c362b69e2ec685174ea5fb3"
+    },
+    {
+      "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\artifact.json",
+      "sha256": "673c885d549c1e78eb6b627ce5d7ed436213abc3b375827864cdcbb52f989091",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/methods-artifact.json",
+      "local_sha256": "673c885d549c1e78eb6b627ce5d7ed436213abc3b375827864cdcbb52f989091"
+    },
+    {
+      "source": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143\\verdict.json",
+      "sha256": "97bb6c1bd4efa1532c4a9205516dff95b6a97a24308508be8d0e61bdae1c2de5",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/methods-verdict.json",
+      "local_sha256": "97bb6c1bd4efa1532c4a9205516dff95b6a97a24308508be8d0e61bdae1c2de5"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\artifact.json",
+      "sha256": "5e82824d9e0c299d4c222ddfbce58fad4fdf8990619b32b94c871f750c6ca97b",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-artifact.json",
+      "local_sha256": "5e82824d9e0c299d4c222ddfbce58fad4fdf8990619b32b94c871f750c6ca97b"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\verdict.json",
+      "sha256": "61cf6ef6f091cc76fdf43185a3a83b2cee049770ac508fd925a8ebf485237d7b",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-verdict.json",
+      "local_sha256": "61cf6ef6f091cc76fdf43185a3a83b2cee049770ac508fd925a8ebf485237d7b"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\results.json",
+      "sha256": "d523289e96e24de12ad8b071a40c263fea78565c6638b5993175e3e1f72b2a3d",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-results.json",
+      "local_sha256": "d523289e96e24de12ad8b071a40c263fea78565c6638b5993175e3e1f72b2a3d"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\offline.log",
+      "sha256": "91506e23f18007c5b899dff1f91bfa5260cf30ed67e0e27fa8c3d5b9404ac7da",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline.log",
+      "local_sha256": "91506e23f18007c5b899dff1f91bfa5260cf30ed67e0e27fa8c3d5b9404ac7da"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\offline.xml",
+      "sha256": "b9f968e5543fae1d64f01ae81f50a2e97bfbed8c4f972b4ff2e9b9f7e53086c0",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline.xml",
+      "local_sha256": "b9f968e5543fae1d64f01ae81f50a2e97bfbed8c4f972b4ff2e9b9f7e53086c0"
+    },
+    {
+      "source": "<windows-validation-root>\\offline-3a59a782f017693be2b0-8e\\r\\2526e5a356a7\\offline-collection.json",
+      "sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+      "local": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline-collection.json",
+      "local_sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347"
+    }
+  ]
+}

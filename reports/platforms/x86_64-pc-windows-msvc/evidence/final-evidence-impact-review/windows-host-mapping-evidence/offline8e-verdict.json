@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "target": "x86_64-pc-windows-msvc",
+  "verifier_source_unchanged": true,
+  "native_probes_unchanged": true,
+  "offline_collection_sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+  "offline_files_sha256": {
+    "offline.xml": "b9f968e5543fae1d64f01ae81f50a2e97bfbed8c4f972b4ff2e9b9f7e53086c0",
+    "offline-collection.json": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+    "offline.log": "91506e23f18007c5b899dff1f91bfa5260cf30ed67e0e27fa8c3d5b9404ac7da"
+  },
+  "all_gates_selected": false,
+  "entry_unchanged": true,
+  "gates": [
+    {
+      "gate": "offline",
+      "exit": 0,
+      "seconds": 64.3,
+      "log": "offline.log",
+      "qa_default_sandbox_mode": "workspace-write"
+    }
+  ]
+}

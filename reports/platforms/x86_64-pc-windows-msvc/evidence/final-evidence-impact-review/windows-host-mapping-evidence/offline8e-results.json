@@ -1,0 +1,9 @@
+[
+  {
+    "gate": "offline",
+    "exit": 0,
+    "seconds": 64.3,
+    "log": "offline.log",
+    "qa_default_sandbox_mode": "workspace-write"
+  }
+]

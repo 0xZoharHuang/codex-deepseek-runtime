@@ -1,0 +1,27 @@
+{
+  "qualified_source_id": "3a59a782f017693be2b0",
+  "public_source_id": "f6fbb221468bfb4b3b4d",
+  "kind": "documentation_and_manifest_line_endings",
+  "qualified_runtime_evidence_relabelled": false,
+  "exact_product_delta": {
+    "README.md": {
+      "qualified_sha256": "e64a749612f68bf7f2d083abe0c2e174bd22e68bfef78803b946ab487407fe4b",
+      "public_sha256": "caea5cfba73a60a69189b4eb0f431ef4fac714ee0654a992184f568d260a3a4f"
+    },
+    "native/runtime-x86_64-pc-windows-msvc.json": {
+      "qualified_sha256": "af91756aa568ca84ab16a78d0d1943aba62b2e8b69187df7952332866d6315a4",
+      "public_sha256": "f4c01a98155d8b9beac0dc3ea17a27939fbbccec4aa90777b3f2294ba291c6ab"
+    }
+  },
+  "windows_manifest_only_CRLF_to_LF": true,
+  "windows_manifest_parsed_object_identical": true,
+  "all_other_68_product_files_identical": true,
+  "all_native_archives_and_binary_resource_sha_identical": true,
+  "historical_git_commits": {
+    "94c01b01aa57087becee": "7531579d5818faf3a66932c009f1d68007f9c083",
+    "069803795d9ad78421fb": "eed0ea597189e3e579eb1634483371d46573e814",
+    "3a59a782f017693be2b0": "6c271dda123ebf0088f4610f4db79d9e6d2503e8"
+  },
+  "git_commit_objects_confirmed_present": true,
+  "github_publication_performed_by_this_agent": false
+}

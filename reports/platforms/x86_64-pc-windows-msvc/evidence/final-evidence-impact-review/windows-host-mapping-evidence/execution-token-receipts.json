@@ -1,0 +1,80 @@
+{
+  "guardian-composition": {
+    "source": "<windows-protected-test-bootstrap>\\runs\\guardian-composition-0e41a4839c1c\\result.json",
+    "sha256": "d43697a2cdef2c72fa4f1fbae536eb38c05044ae73effc0fbe7e1307648dfced",
+    "record": {
+      "name": "guardian-composition",
+      "started": 1792608473.1164849,
+      "mechanism": "SYSTEM task bootstrap, LogonUser(type2), LoadUserProfile, CreateProcessAsUserW; tested code uses standard user token",
+      "script": "<windows-validation-root>\\host-user\\run_guardian_composition.py",
+      "arguments": [
+        "--fd-manifest",
+        "<windows-validation-root>/host-user/guardian-composition-fd-manifest.json",
+        "--current-manifest",
+        "<windows-validation-root>/host-user/guardian-composition-31-manifest.json",
+        "--output",
+        "<windows-validation-root>/host-user/data/guardian-composition-3a59-r3.json"
+      ],
+      "cwd": "<windows-short-validation-root>",
+      "output": "<windows-protected-test-bootstrap>\\runs\\guardian-composition-0e41a4839c1c",
+      "secret_values_logged": false,
+      "existing_token_privileges_enabled": [
+        "SeAssignPrimaryTokenPrivilege",
+        "SeIncreaseQuotaPrivilege",
+        "SeBackupPrivilege",
+        "SeRestorePrivilege"
+      ],
+      "target": {
+        "user": "CodexDeepSeekQA",
+        "sid": "<windows-account-2>",
+        "elevated": false,
+        "administrator_group": false
+      },
+      "pid": 24544,
+      "private_desktop": "CodexDeepSeekQA_System_e3b71dda45964a8bb1a5eb967e54414e\\default",
+      "started_child": 1792608473.1542387,
+      "exit": 0,
+      "profile_unloaded": true,
+      "finished": 1792608476.678436
+    }
+  },
+  "windows-composed-rpc": {
+    "source": "<windows-protected-test-bootstrap>\\runs\\windows-composed-rpc-8784a69f5df3\\result.json",
+    "sha256": "ddc729188131e0378ef1aa09065a7e6f4e77d956dc099f53f086a5073670b931",
+    "record": {
+      "name": "windows-composed-rpc",
+      "started": 1792608728.4125817,
+      "mechanism": "SYSTEM task bootstrap, LogonUser(type2), LoadUserProfile, CreateProcessAsUserW; tested code uses standard user token",
+      "script": "<windows-validation-root>\\host-user\\run_windows_composed_rpc.py",
+      "arguments": [
+        "--methods-manifest",
+        "<windows-validation-root>/host-user/mapping-methods-8e-manifest.json",
+        "--guardian-manifest",
+        "<windows-validation-root>/host-user/guardian-composition-31-manifest.json",
+        "--output",
+        "<windows-validation-root>/host-user/data/windows-host-rpc-3a59-r1.json"
+      ],
+      "cwd": "<windows-short-validation-root>",
+      "output": "<windows-protected-test-bootstrap>\\runs\\windows-composed-rpc-8784a69f5df3",
+      "secret_values_logged": false,
+      "existing_token_privileges_enabled": [
+        "SeAssignPrimaryTokenPrivilege",
+        "SeIncreaseQuotaPrivilege",
+        "SeBackupPrivilege",
+        "SeRestorePrivilege"
+      ],
+      "target": {
+        "user": "CodexDeepSeekQA",
+        "sid": "<windows-account-2>",
+        "elevated": false,
+        "administrator_group": false
+      },
+      "pid": 17360,
+      "private_desktop": "CodexDeepSeekQA_System_bd097cf5004b4047af6591a1d0451c5d\\default",
+      "started_child": 1792608728.4496748,
+      "exit": 0,
+      "profile_unloaded": true,
+      "finished": 1792608733.7802918
+    }
+  }
+}

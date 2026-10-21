@@ -1,0 +1,66 @@
+[
+  {
+    "method": "windowsSandbox/setupStart",
+    "status": "passed",
+    "detail": {
+      "modes": [
+        {
+          "mode": "unelevated",
+          "before": {
+            "status": "notConfigured"
+          },
+          "setup": {
+            "mode": "unelevated",
+            "success": true,
+            "error": null
+          },
+          "cold_readiness": {
+            "status": "ready"
+          },
+          "inside_write_verified": true,
+          "outside_write_denied": true,
+          "result": {
+            "exitCode": 0,
+            "stdout": "OUTSIDE_WRITE_DENIED\r\n",
+            "stderr": ""
+          }
+        },
+        {
+          "mode": "elevated",
+          "before": {
+            "status": "notConfigured"
+          },
+          "setup": {
+            "mode": "elevated",
+            "success": true,
+            "error": null
+          },
+          "cold_readiness": {
+            "status": "ready"
+          },
+          "inside_write_verified": true,
+          "outside_write_denied": true,
+          "result": {
+            "exitCode": 0,
+            "stdout": "OUTSIDE_WRITE_DENIED\r\n",
+            "stderr": ""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "windowsSandbox/readiness",
+    "status": "passed",
+    "detail": {
+      "cold_states": [
+        {
+          "status": "ready"
+        },
+        {
+          "status": "ready"
+        }
+      ]
+    }
+  }
+]

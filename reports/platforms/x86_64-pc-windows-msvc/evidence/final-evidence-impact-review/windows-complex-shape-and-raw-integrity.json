@@ -1,0 +1,85 @@
+[
+  {
+    "case": "jinja",
+    "source_id": "94c01b01aa57087becee",
+    "report": "<windows-validation-root>\\complex-runtime-windows-r3\\jinja.json",
+    "report_sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9",
+    "fixture_root": "<windows-validation-root>\\real-work-windows-r3\\jinja",
+    "raw_files_verified": 152,
+    "raw_files_recorded": 152,
+    "missing": [],
+    "changed": [],
+    "model_request_count": 118,
+    "json_schema_request_count": 0,
+    "models": [
+      "deepseek/deepseek-v4.1-flash-1017"
+    ],
+    "rpc_methods": {
+      "initialize": 5,
+      "initialized": 5,
+      "thread/start": 1,
+      "turn/start": 5,
+      "thread/resume": 4
+    },
+    "oauth_rpc_methods": [],
+    "current_config_observations": [
+      {
+        "path": "<windows-validation-root>\\real-work-windows-r3\\jinja\\home\\config.toml",
+        "sha256": "210707714daa6a0026da39151b1ad06cf7515e0038a6d62323d6a9a9b6391bd0",
+        "bound_in_original_raw_inventory": false,
+        "mcp_servers": [
+          {
+            "name": "codex_web",
+            "transport": "stdio",
+            "enabled": true,
+            "has_url": false
+          }
+        ]
+      }
+    ],
+    "runtime_mechanisms_passed": true,
+    "application_task_passed": true
+  },
+  {
+    "case": "httpcore",
+    "source_id": "94c01b01aa57087becee",
+    "report": "<windows-validation-root>\\complex-runtime-windows-r3\\httpcore.json",
+    "report_sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4",
+    "fixture_root": "<windows-validation-root>\\real-work-windows-r3\\httpcore",
+    "raw_files_verified": 430,
+    "raw_files_recorded": 430,
+    "missing": [],
+    "changed": [],
+    "model_request_count": 387,
+    "json_schema_request_count": 0,
+    "models": [
+      "deepseek/deepseek-v4.1-flash-1017"
+    ],
+    "rpc_methods": {
+      "initialize": 4,
+      "initialized": 4,
+      "thread/start": 1,
+      "turn/start": 4,
+      "turn/interrupt": 3,
+      "thread/resume": 3
+    },
+    "oauth_rpc_methods": [],
+    "current_config_observations": [
+      {
+        "path": "<windows-validation-root>\\real-work-windows-r3\\httpcore\\home\\config.toml",
+        "sha256": "5984daf13c950fa844bebd47affae30e2aba621d06dbf6ee060e5796a7eb35ab",
+        "bound_in_original_raw_inventory": false,
+        "mcp_servers": [
+          {
+            "name": "codex_web",
+            "transport": "stdio",
+            "enabled": true,
+            "has_url": false
+          }
+        ]
+      }
+    ],
+    "runtime_mechanisms_passed": true,
+    "application_task_passed": true
+  }
+]

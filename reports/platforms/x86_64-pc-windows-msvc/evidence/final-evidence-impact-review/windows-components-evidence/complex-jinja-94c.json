@@ -1,0 +1,553 @@
+{
+  "collector_version": 1,
+  "collector_sha256": {
+    "verify_complex_runtime.py": "41b8b6038f9e99cc88110f66086265ce1f92d98b05da24bebb050c085602cd1d",
+    "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+    "install.py": "378e0617e0a462181596af5a03a7f7d2adeffb5055ad2b225c52bf0d6bdeb804",
+    "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+    "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+  },
+  "case": "jinja",
+  "fixture_root": "<windows-validation-root>\\real-work-windows-r3\\jinja",
+  "entry": "<windows-validation-root>\\runtime-launcher-validation\\releases\\94c01b01aa57087becee\\venv\\Scripts\\codex-deepseek.exe",
+  "installation": {
+    "release_id": "94c01b01aa57087becee",
+    "source_id": "94c01b01aa57087becee",
+    "release_environment": "<windows-validation-root>\\runtime-launcher-validation\\releases\\94c01b01aa57087becee\\venv",
+    "source": "<windows-validation-root>\\windows-realwork-verifiers-r3",
+    "source_sha256": {
+      ".gitattributes": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
+      "pyproject.toml": "0c1fd68732a958a0c9dcfff10722297c3018c4b0653f447832d0de67306cf0ee",
+      "requirements.lock": "18353fc620c19077a405888594359252f43c6800259bdd6f54871b152a59cbf9",
+      "catalog.json": "1cff11a28c2ad3d39a1d4668e107218dda74007a619be661e37b9c6d568f7128",
+      "install.py": "378e0617e0a462181596af5a03a7f7d2adeffb5055ad2b225c52bf0d6bdeb804",
+      "build_native.py": "872f6904377ac210ebde8559457229c64f564f877d0d844c31e39d721b35622b",
+      "build_native_probe.py": "8a9195c060ef3ff8772497fe7d467921b7c212b47ca37472e4f9cceb0cb07b01",
+      "native_licenses.py": "111ab8af154f0843426213e2f5c87c4c98442a22a8a48c126f08eb6e24710e5f",
+      "package_native.py": "42b59c0c274588cecd27ee42efa2240675323c26e36398d7a859bf006cb87ee1",
+      "LICENSE": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "README.md": "9526288fc2715e9ff6bc18075b895d2ca90d292b3afe41e7c3d69b2af5060e13",
+      "THIRD_PARTY_NOTICES.md": "71c2caf82c089db7aa9ac79d3439eb73e7a7f579aeabe26287b2f201012d58cb",
+      "native/build-plan.json": "26782dee1e5457dd8708b8efdd2f0374024cbc5a22e986091820af878d44d378",
+      "native/codex-runtime.patch": "b13ac1bd8c9d66c7b25cdc50cb726e2e1ae5e25aa24b25020bad6063595827f3",
+      "native/license-data.json": "ed4b5c6efad6ff63db7f5e6b3550d39c1c7bbfb72507c2b2e8b7da1c2ffaadde",
+      "native/policy-revocation-probe.rs": "b505b09c1811ce4f828a16c6f34d3c16cc1432d1cf284263fb7ab1f2aa19df2e",
+      "native/regression-requirements.md": "6c751d4838df788256793194e65ab93dbdd75d55066099fc7f8bee0bab328cac",
+      "native/runtime-x86_64-pc-windows-msvc.json": "b5bb36f5f32e4b3e43bafa68fd697010eef56a96b0aaf1518859ef7dc1e1345a",
+      "native/runtime-x86_64-unknown-linux-gnu.json": "df2d4048831ea7d441e38f2dd7c5fba9dcb9d12c678ebbd6001b22e39a74be9e",
+      "native/runtime.json": "aecea3d95d915a0b214d02da9fc728efda13c590fa2b9e1114b6497c029bff51",
+      "native/secret-key-probe.rs": "a1d01190fb32e4dca2d2d8df4190daec489473dd1f43f68d1359024c4c9b5d89",
+      "native/source-changes.json": "b02b6b3c34cfeb3c542fe130d15df8dc27adb31f054940a6639c771ce3ff6c01",
+      "native/windows-source-changes.json": "2ad0b6ffe47ecfeb830aae09049ccf2ae3d2385997184d6c4bf2e76d8ff5b9d0",
+      "native/windows-transport.patch": "b3868bd174776fbca2444284312346831219e5998833eec172f8c20f55482293",
+      "licenses/codex-LICENSE.txt": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "licenses/codex-NOTICE.txt": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
+      "licenses/distlib-LICENSE.txt": "808e10c8a6ab8deb149ff9b3fb19f447a808094606d712a9ca57fead3552599d",
+      "licenses/spdx/0BSD.txt": "e3f18c71e10d673590eb9856c1d79dd3b4b0d65404efb5e8584dbede7edd608b",
+      "licenses/spdx/Apache-2.0.txt": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+      "licenses/spdx/BSD-2-Clause.txt": "f32fb3b417a194167cfad068223fc975ba96c5960513a10f66a3c28720aec1df",
+      "licenses/spdx/BSD-3-Clause.txt": "5a93d5831e1297ab10fe643e1a631e83be392896da14ee2951285a79012df69d",
+      "licenses/spdx/BSL-1.0.txt": "84c6ef3ea9e3254a54d0acf5d3e0c61ae011b8fef7dd6940591cf060e6380a8f",
+      "licenses/spdx/CC0-1.0.txt": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "licenses/spdx/CDLA-Permissive-2.0.txt": "4531a67d443284d93ffed0803df5b10634aff21c3d77e381f2d48af01d875868",
+      "licenses/spdx/GPL-2.0-only.txt": "aaf135472f81c5b4a0dca9367e5bb5e9750032b5bebe5442b36e4c0a47430df3",
+      "licenses/spdx/ISC.txt": "521c6f0ed8e64736684f89843d16a4df6b4b7449acbcfc6ca6630a3037ca8c53",
+      "licenses/spdx/LLVM-exception.txt": "e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e",
+      "licenses/spdx/MIT-0.txt": "59746d6285ffa44bfc7ecada352aa5d6a20dc8eab418a60ce091cc739012c135",
+      "licenses/spdx/MIT.txt": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+      "licenses/spdx/MPL-2.0.txt": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+      "licenses/spdx/Unicode-3.0.txt": "f7db81051789b729fea528a63ec4c938fdcb93d9d61d97dc8cc2e9df6d47f2a1",
+      "licenses/spdx/Unicode-DFS-2016.txt": "1a33fc12a3abb0b3eb14db70e36ef1d0af51c93b1cc1f80f022c3bd406e9b874",
+      "licenses/spdx/Unlicense.txt": "0bdebfeda07d45dada625ae1317c6f833186e798b171d0db640bcf32e92a8240",
+      "licenses/spdx/WTFPL.txt": "13d8825a59e5e546d41e8711405d0f335a9934362a47c04a3b4280fa7932dc4a",
+      "licenses/spdx/Zlib.txt": "bfb1112d49db5b1daecdfef24bd7e2f3ea0bafb33aa67aa0ab51e2bf8407c03d",
+      "licenses/spdx/bzip2-1.0.6.txt": "0a56dbabe7d2ff65dea26e8b795fe42c6204a192b974d8e9304fe356ccda9fd1",
+      "src/codex_deepseek/__init__.py": "618cf4af36eb9872807ffb96c20f84bac88262d96171ac344520ad7d30e15f8e",
+      "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+      "src/codex_deepseek/bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+      "src/codex_deepseek/browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+      "src/codex_deepseek/cli.py": "71384eb5e13d9ef2955e2e128b024ab98dd956258d8fd55b18066837c2a80308",
+      "src/codex_deepseek/credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+      "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+      "src/codex_deepseek/gateway.py": "71056a32bb329318afb2e156a8142e86eb5b622ee0ddb5fd2a0f25328e8245c0",
+      "src/codex_deepseek/isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+      "src/codex_deepseek/native_http.py": "8af97a371fc6e1881d2cbd99e47b6cb04438ff1089b79d4e9f76a02aebb23a28",
+      "src/codex_deepseek/platforms.py": "96bec6d68bf4871d2406b9b9c064b2c5a8485831407175d60032f9858a27b5bb",
+      "src/codex_deepseek/policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+      "src/codex_deepseek/processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+      "src/codex_deepseek/protocol.py": "22c96ede19f27598b8681c0d3da48dc97d6d3f429f1c660c335cc684c5803211",
+      "src/codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+      "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+      "src/codex_deepseek/service.py": "f341a205bfc6aaf72badaa719b119303e502c112f685158069f345380ed4d386",
+      "src/codex_deepseek/state.py": "d6f00dabf3e4eace6943177730cefdd393c3e380600631ef44a2f4d0853212b1",
+      "src/codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+      "src/codex_deepseek/supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+      "src/codex_deepseek/web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+      "src/codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+      "src/codex_deepseek/windows_launchers.py": "aa635c5bde5805b37576edfc8a2661ad88f23e5042947fa6a7f07a55201e61c5",
+      "src/codex_deepseek/windows_sockets.py": "4e6080d38d470e33820177c4ef4e9fe9d266fc0ff90742cea76bf776e023a42c"
+    },
+    "adapter_source_sha256": {
+      "src/codex_deepseek/__init__.py": "618cf4af36eb9872807ffb96c20f84bac88262d96171ac344520ad7d30e15f8e",
+      "src/codex_deepseek/arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+      "src/codex_deepseek/bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+      "src/codex_deepseek/browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+      "src/codex_deepseek/cli.py": "71384eb5e13d9ef2955e2e128b024ab98dd956258d8fd55b18066837c2a80308",
+      "src/codex_deepseek/credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+      "src/codex_deepseek/formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+      "src/codex_deepseek/gateway.py": "71056a32bb329318afb2e156a8142e86eb5b622ee0ddb5fd2a0f25328e8245c0",
+      "src/codex_deepseek/isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+      "src/codex_deepseek/native_http.py": "8af97a371fc6e1881d2cbd99e47b6cb04438ff1089b79d4e9f76a02aebb23a28",
+      "src/codex_deepseek/platforms.py": "96bec6d68bf4871d2406b9b9c064b2c5a8485831407175d60032f9858a27b5bb",
+      "src/codex_deepseek/policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+      "src/codex_deepseek/processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+      "src/codex_deepseek/protocol.py": "22c96ede19f27598b8681c0d3da48dc97d6d3f429f1c660c335cc684c5803211",
+      "src/codex_deepseek/protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+      "src/codex_deepseek/search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+      "src/codex_deepseek/service.py": "f341a205bfc6aaf72badaa719b119303e502c112f685158069f345380ed4d386",
+      "src/codex_deepseek/state.py": "d6f00dabf3e4eace6943177730cefdd393c3e380600631ef44a2f4d0853212b1",
+      "src/codex_deepseek/structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+      "src/codex_deepseek/supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+      "src/codex_deepseek/web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+      "src/codex_deepseek/web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+      "src/codex_deepseek/windows_launchers.py": "aa635c5bde5805b37576edfc8a2661ad88f23e5042947fa6a7f07a55201e61c5",
+      "src/codex_deepseek/windows_sockets.py": "4e6080d38d470e33820177c4ef4e9fe9d266fc0ff90742cea76bf776e023a42c"
+    },
+    "console_script_sha256": "dc179d36f69180ea5d648960e72b1dc42719782dceaed6b44fedccfe9d271f4b",
+    "model_catalog_sha256": "1cff11a28c2ad3d39a1d4668e107218dda74007a619be661e37b9c6d568f7128",
+    "dependencies_lock_sha256": "18353fc620c19077a405888594359252f43c6800259bdd6f54871b152a59cbf9",
+    "native_package": "<windows-validation-root>\\runtime-launcher-validation\\native\\517a8aee65acaeb26940fd10",
+    "native_version": "0.164.0-alpha.7",
+    "native_archive_sha256": "517a8aee65acaeb26940fd1051cdc07ad99048c352f2e526c981dd855a17bd59",
+    "model": "deepseek/deepseek-v4.1-flash-1017"
+  },
+  "artifact_sha256": "004f388d81b52afc0744910e86f2a84eb6495da72b700de1bed9386152721c96",
+  "original_report_sha256": "05831e9538cbee97065d89797be6acbda820cfd22dd5e0c0188485d3f63b5f5f",
+  "raw_sha256": {
+    "<windows-validation-root>\\runtime-launcher-validation\\releases\\94c01b01aa57087becee\\installation.json": "2cad357e3b3efc9bd189981dd04e7839ca8362179d2aefbcd49796d734d914ab",
+    "<windows-validation-root>\\runtime-launcher-validation\\releases\\94c01b01aa57087becee\\native-runtime.json": "7e766bea69c934ba0b8f87afcc20775a193f469542d50df07caa09f4ab082369",
+    "adapter-traces\\0027d728-8b90-41e4-a087-d6d9834d72c3-request.json": "eab2cdbad10afb84f6a9a65902baaec0a6c752118748765be061d453ae1919c2",
+    "adapter-traces\\0062cecd-bcb1-4164-9500-afc0dc04c762-request.json": "27c4055625ab91c072bf401f07bffa36fff3d2d39645daa95add559f08eb0526",
+    "adapter-traces\\00fe0b8b-ee57-4dc6-bb1e-29b338786e87-request.json": "afd8a75c57255d43c997f87f565c68255e1e688379096e93d66171e801843e85",
+    "adapter-traces\\02df3d99-2e25-48ed-8fd9-037dcf8a5139-request.json": "705c0199aeb9387491b3e329b93aac19f064f46241c44975f50ad42da8cb860d",
+    "adapter-traces\\048bedab-455e-4656-bd26-022a099367ef-request.json": "f10875ae3696047b061936b3e9bfdfcf478da74677bf88ae65548659a263b5f0",
+    "adapter-traces\\08f783da-1631-4c1a-8a44-5b115fe59768-request.json": "2708e35cc7d3eaafa816ea48db1b4f7826ad9c05937febd74ab068146de96ae2",
+    "adapter-traces\\0b0082b9-8fee-41d2-8329-86565db1936e-request.json": "aa2637d4a145293dc189ae0f2f1ff77e80733b9ba5d305a2db72270e5e36423c",
+    "adapter-traces\\118fd38b-cf78-461f-bc6d-675e731f6604-request.json": "5a5028c748384b47c72f15062b62be3fab0b0399297289b4e9f53e92010a91f5",
+    "adapter-traces\\130cba21-287d-465d-abff-a5011a5a126d-request.json": "bd69703792fe224699b93b6405555f8e276a11ed131c1ba86cb735bd31a86618",
+    "adapter-traces\\1a899aa7-31f6-4683-84dc-a66f5f0dd33c-request.json": "599df9e5f96157f1389335c3467eafbcc8802d9044ce9de060c0ef8d93ea2c77",
+    "adapter-traces\\1c05c0eb-37f1-4962-9b2d-876ee29f3a73-request.json": "affd8a841590da2b31252b2b6aa25d65e7ec640044006002c25a8ef6b81690a3",
+    "adapter-traces\\1de7f2b4-bd6d-4504-bd6a-41062f7041e9-request.json": "09d064127b4efc78e10873c6850f6de3a2edee3da9b115977b89357b8f94f191",
+    "adapter-traces\\1fbf1e67-f935-4b52-bc65-e1644ea90e29-request.json": "8f8d23406b6185c77bc86c72bca3dc163eb1af2f20941f29b817bef50eee7c12",
+    "adapter-traces\\22d95a05-c440-461a-87e2-cd2e9bf68ed9-request.json": "740177d3992ffe55c779c7c2994fad923b2ab170580f97c3eade04bd8d027cb3",
+    "adapter-traces\\234d2b61-06a0-4236-a932-dd4fa7214a53-request.json": "90342d502bf564986eedae1a8969523086b3e0f5cfd4b3c67de0e64d023e15ed",
+    "adapter-traces\\241d2af2-cda8-41ec-a6d8-055a51dbed02-request.json": "1dbda46bd603f15163dfd444ade731c6b87e2a538d203ddffb2c5a84d0748108",
+    "adapter-traces\\253760dd-61c9-4b70-ab3d-7fd87e25a0c5-request.json": "50afdc6323e7fb4e8d8ce81e9a11204f128bab0cd9001839b16a5c11c970ff06",
+    "adapter-traces\\257c1b72-2c38-4ac1-aa3f-66e5b8498134-request.json": "4b420e6dae10bafea515e0cb2e43d88ab0bf2fb7e2afe97cd0ac268d06074522",
+    "adapter-traces\\2a6a1ebc-befc-43b9-b03f-23d7a289c759-request.json": "fb43b3342d2763911d66feacdb009801553c1cd758540ce6141f8ddb47d0ee29",
+    "adapter-traces\\2ad2b3d3-53b6-49dd-b53a-f15afd49a1e7-request.json": "3236e5f9050bfdc08858238c7f634fe226f896b18ad5e2fa1b573cb1844179c6",
+    "adapter-traces\\2baf77cd-6e4b-444d-902c-568a3b3a0508-request.json": "6690abae70dc7620c13bbaf9c166bf7cd4e2c19faf28e1646bbae93b4496b35c",
+    "adapter-traces\\2c6ac45c-4c1d-4267-856e-9cf07361d968-request.json": "3d6000d6c52f960d986f9c236695761d20aa3e611b86214b5b7650e9f5e09851",
+    "adapter-traces\\2d8a8a81-1172-450b-87ee-f7a0ff79e9da-request.json": "c270de10a4c53526f23c22c8f0b91d43079fce15362a12bddbb956f25406f94a",
+    "adapter-traces\\3537bdf1-02e7-42ea-ae0c-b46ad9553b0c-request.json": "0dc46867fbc7343a969d5b83e4b447e6524695b2162b3522354a97aa921bbfef",
+    "adapter-traces\\35c3bd17-04a7-470a-b0bc-8ef12b2decf2-request.json": "c579076dd91f24b8c9629d91665fadc7118d322db74b5e7bd913093dc67256e2",
+    "adapter-traces\\363e76f4-f135-4323-8a86-585527352ac9-request.json": "3a186a07ed05b5514f9c94448caf9b288f0c054eb8cb8bc291e60caa832cbb1c",
+    "adapter-traces\\3748acef-74a5-42a9-96dc-bdeac9814209-request.json": "eb5b4ae9dacac129ccac986c180154df15acc148aaeeb13b1372e068e2c24d92",
+    "adapter-traces\\37b6dcfa-356a-4bc3-a7d8-653e6863020a-request.json": "5901de8cecbaf9933d98fe860bedc30451c70638c5acaf1ab1728721697bdea0",
+    "adapter-traces\\38d18f47-98b5-402f-b860-8c6cdd18357e-request.json": "22586defcfb1f022b864557c110c2f1a82aff9ee1a59d869592ea5654d4d29ba",
+    "adapter-traces\\3a4070cb-381e-4cf1-b187-cfeb3e78609c-request.json": "8eb1a8e4c45d6f94861ffedce3087c7799c556244b0bafe29b128154a054eb5f",
+    "adapter-traces\\40ba895f-fd96-4db3-8555-df9c42b08059-request.json": "ebc3d64fd99920d1fdb69628eef98fc7d615e3f338fa1ae5ac670f6027fd70ac",
+    "adapter-traces\\410fa40d-32e8-48f8-af35-76fe945c62ce-request.json": "f7ee71cbbe7d42522a5a693964b871fe13e04b9d80e619935c3c8952c6b7ae15",
+    "adapter-traces\\418fdb10-f422-4def-a403-cf888b02b98e-request.json": "79067c79dd31825a0b003ca922a2b090de572bf11d0a9fed3f712f576b542a98",
+    "adapter-traces\\44d73ead-8d55-41ab-8755-cc940d5eba9f-request.json": "02170c48d7c19f97a54e7b5c70fe46527552aaf7fb72112bfb237f804ce35030",
+    "adapter-traces\\454ad461-4b7a-427a-a115-3be2ccb249f6-request.json": "73fd0b43a746af7f64adf75e9110be8892705d5cafcb68e6ce7b5c2c93e30bb3",
+    "adapter-traces\\458011e9-7cda-4f37-849b-f4fb15c241ae-request.json": "72a40e7b1be8cccdf90f0c8c0724a9b14e9a1e3b8bc656ed2c5003ffe5684c1e",
+    "adapter-traces\\4b9c06db-fd47-4d31-96a6-0ed2c3d8c4e1-request.json": "52bc386e1579a37bd39f715870cd6ef1f48f7b6c5b3fe4736aa32b7d6cf9b7b1",
+    "adapter-traces\\4e33e050-4501-4570-8a1f-dc49f87f1415-request.json": "c4ed12809708783b20f06b6c07e8dd490da52a761f8e3627c1f09e38fbe853ac",
+    "adapter-traces\\50268e0c-a80c-4beb-98ee-b7288c390160-request.json": "10f51ac1f4ba7c2ac626da8adb18d01171915c4803294182d1645341c0e3f00b",
+    "adapter-traces\\536a9536-bb22-420c-92fa-04a80b1b8c8f-request.json": "2a9785dd96cf8e6132da9e43f6b01753194f7e9a0b3c63a78addf5a88c75a4fc",
+    "adapter-traces\\53a62aff-44f8-4e52-9f1c-f3d100e19ad4-request.json": "cc0bc252fa4194c078558141f06b76d3ca85899616a448e886751805dba5b448",
+    "adapter-traces\\5466e696-8574-4bb5-924e-2bf60507e17e-request.json": "4ecffc4c7c830ce05a243a44110367407ffc0e5e67c66ac8e769338057548afc",
+    "adapter-traces\\559aa972-cf4a-46c1-9a03-b10ede29ada1-request.json": "717b7c02203fc1a08fc81861287d0ad59e816f87ffa601b8188fd30eec71135a",
+    "adapter-traces\\55c839a3-f1f2-40d3-adf2-307c79a9f991-request.json": "375ee2d648ff1e31046de3d3edd2bc535b5ca73892dc20478492621c1799f820",
+    "adapter-traces\\570511ef-98f4-4363-8e34-01189430b841-request.json": "15e8491e38badfdef7eb33ca1f8f3beca4a25210157559f3973ac31c6a1e508f",
+    "adapter-traces\\58f1b083-ca90-4523-853e-891aa52a33fa-request.json": "f4930807a010a1c6eb09ad67c64db1cbea007cb3be0ce39ee252aac160cc00fb",
+    "adapter-traces\\629e6c41-52bc-42e4-aa69-31ed0a195ddf-request.json": "8b0aec466d2e3cb3d3c6b2fb36a5a8941f1d0d28c232c290303bed3d2111b811",
+    "adapter-traces\\63afac53-92a3-4685-b21b-1955af4c1953-request.json": "c198707002d6eaf647f0e2cb293677933c1c4720c200a504b5954f41b1ab078b",
+    "adapter-traces\\63e38c9e-194a-4980-86e2-39a48dd890b5-request.json": "aad8d3ba71d666bf000ac413e467ab662b576bb6f89ae821b2c0f02db707a2cd",
+    "adapter-traces\\644d490e-b9ef-47d1-9b0e-a46118a9e3f3-request.json": "8644498f1570d5e393e485b11ff93a6e98a702557a11af0660ab06177becdc32",
+    "adapter-traces\\6a311544-0232-4af5-8e44-76c2c9347c84-request.json": "44297829f24dbd1b24d8bfd149a224a0e30f07c4f1a1ae6da23c3ceba2e830bc",
+    "adapter-traces\\6d3647dc-5a2c-4a76-944b-647dab09662c-request.json": "5170b8fa805de505d715f9e79baa65d37ff7cfbe11a784d2560e1c56b20dc13d",
+    "adapter-traces\\71cf798c-98ce-4bb1-a3e1-edad014144cc-request.json": "d4025d7015ec7229c1bbe9a58375d4a526660dc20eb55a920f54facc2bfb8084",
+    "adapter-traces\\7492bf74-f518-411b-bc58-18a9f9453918-request.json": "7d8ef10da6893e39267afb6ff4e7c5acad2f82a02ae214c7f731a9c485092bdb",
+    "adapter-traces\\78fe3593-a283-4d2d-b17b-8e6ba3dda599-request.json": "d9698c1159140c2f940e4d025aaaa84d8f992d3668cb09da3e15f4bef90a4718",
+    "adapter-traces\\7b045cc9-ea8c-4aeb-a040-aaeb545f6e7c-request.json": "761ec97d4fed9c67742b5f7e0398d66b18395200bfbc1bca9b8769ceab776b2e",
+    "adapter-traces\\7e3030a4-9bc4-4b4c-b635-f4ddd75fc372-request.json": "e0a486f8c62567e7fcc44f5580aa89a153384c6bd9770a33df4b3a35e46c5a1d",
+    "adapter-traces\\8803c4b9-917b-4127-9eb6-3af09d87fbd3-request.json": "cbe302971dbad7af802466ad2d04c31411ab5ae4f818414665e240fc94dcdc68",
+    "adapter-traces\\88ccd3e0-c28b-43da-a7c9-1155b637a12b-request.json": "a77950fef556ee2456a5b41542dff38063ae04a4bb7af9dc0c5eb8f2bdded3e1",
+    "adapter-traces\\89ba7a62-7c7a-4062-b990-b74edf6179d4-request.json": "db52707c98918d0fc9c01c3c0cf01e45a1beb7ea0ad875d5021a7eadb937800b",
+    "adapter-traces\\8b5c2e7f-d69b-49cf-b608-e4aa97a38831-request.json": "0fcd4ebc77f80daed1d1da2fe6470d69a8cecaaa2522fa405d3044a613a571e9",
+    "adapter-traces\\8b7cffff-6bfb-4846-b027-33654d19864a-request.json": "c108330337354cca472bfca9f4cc47f0f277cc6e95e9ab7360236c5ab9f14de8",
+    "adapter-traces\\8cc3a7ff-a123-4674-bfb8-8f12ed3bdecc-request.json": "917a4df7c6cef52e5d1734c20d0feeecdf8bb85dca57ac0524f252042a2ce15e",
+    "adapter-traces\\92c6a63b-ae5c-4c53-b9f5-6ac7af410234-request.json": "b27e719de402fa2b20e947b3810f0e9e59c3966f968df55920103ed846f8f634",
+    "adapter-traces\\930de204-26eb-40c1-b416-7943a6ea42e0-request.json": "f9fc8d0dca8d1f2019fe9eecfb53e04bac09d5608a601793538f72c8fcc3c298",
+    "adapter-traces\\9331789d-a1ee-4504-a61f-3c1d86ddb153-request.json": "492289060e135eacb5394b38c2a81c9816bf949fc47b5d1970749e0f16cdeb28",
+    "adapter-traces\\934883d1-808e-40ea-aab5-fdb6cc49e28e-request.json": "0fa427f411d3691226654baaee33a81d4def07d15ae0225efdbd29d1cdd69bc8",
+    "adapter-traces\\93d89c86-3330-4331-a470-36e02b15da28-request.json": "0bd4138474ff03ea6358a2b6f407df1e345c84ea7ca733bae0a62fd4b9aa3aac",
+    "adapter-traces\\97695cfe-be84-407f-b6b3-ea74a7ad6a78-request.json": "ac320605c1ef5c15f2118ed929a17e6346e91d0fa215e8f5ed04daa0e44efe01",
+    "adapter-traces\\9a129d1c-0464-483c-b89f-45ae665fe3bb-request.json": "7fc1cbe6855cb8dcf57eb3606782adf2a80455e25c8de9220373b5e9ea273e4b",
+    "adapter-traces\\a0e86f0b-39ce-4e08-8901-a6cd57c036b0-request.json": "afb9714b9eec3d978ed94cf58d2545468259e0ea614d40644b1012088db91c77",
+    "adapter-traces\\a185be08-f824-4c7b-9192-38b5d69e545e-request.json": "7329df977e63952559c7fd3cc9695b93057508063e12be0d61b1b5a75df72ae4",
+    "adapter-traces\\a4ba2cfe-94e4-4b1f-810e-7f07d92294bf-request.json": "5a3bdaa9974f03fed056bdf58bd2dc70c7db438070c6eeb69d62e619b8b0dc8a",
+    "adapter-traces\\a7201238-6d1a-48b4-8603-8b19c34bed70-request.json": "6904e9828aadee479526579276cc24cba1db8abee6b937d381dae62a525f76ad",
+    "adapter-traces\\ab1ab9c4-9f97-4cd2-8f01-3d6ac7e1ee09-request.json": "16388abcee28dc43d0d0e754ed3beb7941d7a562ca108103643e3c39d22a53bb",
+    "adapter-traces\\ad36cf1a-fbdb-4e41-a159-b98187aa9ed2-request.json": "ffdd602430bf28861e419b53e796ea465241806c76c56b09b26d4d90c88e945f",
+    "adapter-traces\\b06bcd34-1722-45a8-878c-11a2725ed15b-request.json": "e5720249deb6d1f502e092e470f4cee7cce45e5095c1336cb86eb30494bc7111",
+    "adapter-traces\\b0be81ff-d059-47bb-9108-1d2834169cb9-request.json": "7df8c7eda19fd1be8fbbbdecc837efe8d557d448caa7e3f07d1691cd3f3fde45",
+    "adapter-traces\\b300be3d-e2b9-435b-87b8-5bb616d9377e-request.json": "1e53073d947454dfa747efec3476ecba06fc1b2cf027750f4f12daf9046262e7",
+    "adapter-traces\\b4b1715c-3354-44f4-b313-5c9b2c354a29-request.json": "416541a7c23f64e469de0e82aa2532966d050bb891841d647a609737a7cc4642",
+    "adapter-traces\\b4ed97d3-4ec8-4a86-bd23-badb9a581894-request.json": "c987f0c11077e064b0cd0206e7be918e4f4cfd5fa2bf1a7926da32d8eaf04e19",
+    "adapter-traces\\be95603c-9ed7-4018-8980-12ca9f7055a5-request.json": "754c0c91abd883c88ae82c98f32315deca6eb00d92fdbbe21ee52122e82d6074",
+    "adapter-traces\\c1285313-f9f2-4c66-9104-6b5756ee9c3d-request.json": "ddb90e5ea01fc57307d400d58b106c696e96e4ee2aefad03bf25f83574f9e773",
+    "adapter-traces\\c21b6fa7-fe45-4822-9c91-45b01c419acd-request.json": "d34630d8f0160807ce3013295d8664064c6e2d9ec8fb0b5d4f1e34e9bed6e4cb",
+    "adapter-traces\\c36eeb1e-6c3e-4374-a488-cde296529a18-request.json": "7fd88215f0697428814dd05bed194ee9faf580df31630640aeb1b1bde41345e6",
+    "adapter-traces\\c4b98926-4412-4ffd-a529-265d5842fde6-request.json": "ba836b951b33bbbf3b6306d9fb00f653176127d0b4d6823bc865c6a8850b074b",
+    "adapter-traces\\c4de1d44-c93c-4265-9153-843235708808-request.json": "715d83a7adfa2c4597c983ac5c6e518e9a08f916e69aec6c108a75283bcf82ec",
+    "adapter-traces\\c4ee47a4-9aa7-4036-8b81-0e994b922c0b-request.json": "9a01c7a84f43428f52b36bdc105bba56f15391937c86a43d33ceceba6b6e2b6d",
+    "adapter-traces\\c944dbee-c291-46c6-a5f7-9134d368425c-request.json": "2b6e8f64fd88bc10d1627c233ed8ba8ab381c6197bfc866449bd8bdc3e3dc7da",
+    "adapter-traces\\c98213d7-8b25-4b37-b6d2-138c11f73803-request.json": "2c2bee09f14812d7b19ba4a1156a34e4de8813f2f5fded8eeb4438778b81a1c9",
+    "adapter-traces\\d1e5307e-a469-4413-afa5-8b89e34a2532-request.json": "15f61b5b99c918e45d4c42f589fa40b33aece047a12e5fc3d37c81aa624ee0a1",
+    "adapter-traces\\d444450f-c550-427e-8cb3-2b97e7b4d335-request.json": "a2faddacfb73ef7c44bd47e038f444d946ac0d2d1e5e4ccfa8e810826e44194b",
+    "adapter-traces\\d4f68191-85af-4b63-ac41-8efe4682f9d8-request.json": "8d2c58a0015168f66b68ff3a0240e50498a164e665558cd5137d88b21e8b962f",
+    "adapter-traces\\d51265b3-3e81-4414-81e2-0b502af34f1f-request.json": "24aa22b8e56da7de92700e9273e3f62f441a9bdd263180ca5831b1ddb4144d20",
+    "adapter-traces\\d923b1cc-47e9-4fa3-ac93-435acfad2c55-request.json": "8cb78b909c36aa71d5d36fe281f43ff68aaa4c0666c756af8c368bf8ba73b24a",
+    "adapter-traces\\dc6bfd41-a957-4983-a0ee-5c4172bb9cb0-request.json": "3413ee063baf8c4319b10a36d98cbafa1da8e6afbaebc2325ccee0b431c194b7",
+    "adapter-traces\\dee9a944-483b-4dc1-9b8e-0916ad8e08a5-request.json": "4597fcd6ac08713869c16160d8630769c04c5cc2102c6456305d70ed84d2f202",
+    "adapter-traces\\df918945-da00-4ec7-bd42-ebad08a358b3-request.json": "ecec6d33a0c9c7b970482da2e2dde9477b4656ba82e57f8d49648948a457e02c",
+    "adapter-traces\\e4c49fcd-c849-4ed7-8b10-dd1d88814d5f-request.json": "5f3dfed090b77b3980805801c6e49f383138f98c668b54bebbe1c034a905e687",
+    "adapter-traces\\e58aa8c5-6794-4e3d-a354-b766c9d20b0e-request.json": "3c171d38ffcc507bf17f3e9eb4c074d565b3a6dc7ca250d5fc42f904b4ab08e7",
+    "adapter-traces\\e59572bb-e6c0-4813-bae5-84a3acaa1f5d-request.json": "8e1bfc943b83c09b14c64e3f3c26162a9e6debf947a4564237f215bde1716f9c",
+    "adapter-traces\\e71c6856-6845-4a67-9ee4-ff5fe5497c4a-request.json": "9115d42623267e33c82a63adf233d39f664bba28856f23b7f65ccc1b562ccfe4",
+    "adapter-traces\\e7e50dd7-3618-4c40-92c7-7d835a5d5722-request.json": "13de61f0c4ea3e155b6c25fc9e33128fe8b50017733994e0269174d8787ac056",
+    "adapter-traces\\e8670665-ecd5-4587-821a-394694952534-request.json": "975624a2e447139dba34d943e127c5d42a3eda4c6553775c51f3fe0dad79f77a",
+    "adapter-traces\\e8d26f07-3189-4688-b5d1-fdfaa1d24c56-request.json": "fcd0a33d3b7287a1a869b028abfae9a9e1d823cb7d6bdaa8740723b527692992",
+    "adapter-traces\\ea689c55-5ce7-426d-aa4f-611c4034c15c-request.json": "ecbeaccfb90e87fd83fb5652e8451c6c034f5551e78cae9acfae370a0133d51c",
+    "adapter-traces\\eb45e69f-331a-45ea-b29e-2c0e957f01f6-request.json": "42f3299405be5229f54e7aeadce9f3990c674c592867a3a6de74f08d063306ad",
+    "adapter-traces\\ebd09511-866d-4117-8323-bb433c0b0307-request.json": "d2cfb33e158e4e67ba66236e797ea55d799b37c66c0705a99126e2f851be38e1",
+    "adapter-traces\\ed00458b-dce4-4aad-92da-cb7b9a47bf85-request.json": "df61dcd7329d613d3590258beeb9ee04016bcf834c8de656ff0805f0747dc94f",
+    "adapter-traces\\ee68320d-381c-4584-b1a9-61c1558fae1e-request.json": "d3243a322a6d787a3982cfec404ed8fdb8219e697c3706ad853eff1d17c506b7",
+    "adapter-traces\\ee8dfa7b-20da-47ec-9021-88e0c7d64366-request.json": "fee0b5163bcc240ae338b199c5df8c71af3368a2b72b95714180e8b561695320",
+    "adapter-traces\\f0ea78e6-f0dc-4bc7-a432-9d2017008f62-request.json": "a1511edf796b751bf0550fc0e6088c711ebb013d8373ff374218ec331edff953",
+    "adapter-traces\\f2ed44cc-17bc-4718-a53a-893ddf88e76b-request.json": "18eed89cac513a550a553e832129e2bd30b187c285a726130b8d6d50212cb07f",
+    "adapter-traces\\f706c789-26a5-45a9-948e-8497f5b944cd-request.json": "19353e2d87483298bce6244b60d4477ba1bb51d1924011fb57841dd150a79db5",
+    "adapter-traces\\f95c5730-8b2e-4b37-a959-b17a1fdc87e0-request.json": "de39a0306ac39aa7944b38ef89027d38d60ed899c380f77abfc7d881bbe15d8b",
+    "adapter-traces\\fae05494-b3fa-4020-bf8b-a424ccde6474-request.json": "3e66051f0d83581ee436f91d55f8d5439e26abbd745e5a1b0db9bf5dde10222b",
+    "adapter-traces\\fd0c4b39-89d1-4cfc-93f6-930876280809-request.json": "46316db1ebbc55caf10a6b683edf5337e770ded767e557c72f6c189bfda74a0f",
+    "adapter-traces\\ff513842-302b-4553-95a7-718579144de1-request.json": "0a7fc70916bb5033e6eff1ab1fb22e39615fb667072ee030ed10c845c14fe366",
+    "agent.patch": "0aadab2e10bb10b7fa58652493dd5e58a593da8aacc90ddbb9b9779bae68d89e",
+    "archives.json": "bb5aa84942210f457b6705789a427b5c51a3cf4fc5061fd6aad41b919bd39cdb",
+    "artifact.json": "004f388d81b52afc0744910e86f2a84eb6495da72b700de1bed9386152721c96",
+    "client-requests.jsonl": "c3529587c42ca4cbfa4022e61ed79019ffc1b5f99bcebb1818cefe52392f3cd7",
+    "dependencies-frozen.txt": "636f36a627c453304c317b83e38cd810b940a01f313b71ab621ea779f56e9f48",
+    "dependencies.lock": "9b50caaf986fa630300b0e0efc6d08c37c12f2f466d63f4959def0819bafbcc4",
+    "events-1792578164211821800.json": "9ed84f5a6c1b0751158eaf966d328ef4c243fecd341662a97aefa048a2d5585b",
+    "events-1792578755018765500.json": "d695c0851aae49344f3ec299224713aea26a5be8b7bdbd2479849892b51c5642",
+    "events-1792580400575583100.json": "f4177c3fbf58bde4f556e34b198f1b75df91be3e0f41159997c7e8be7da51331",
+    "events-1792580612329691600.json": "62d41d3ef48158880a8a79880dc08244f91c4479775ba482a70b2d4d21be6319",
+    "events-1792580841073318900.json": "734c1f6ad6dcabfa39abe9543c2e947e738a92325251e0b4d9e6de9600b4bafd",
+    "final-upstream-heldout-imports.json": "27c12f6b69afb32712e0fa5cd3598221f356cac15a206f6f8eb3c6e48ac9a802",
+    "final-upstream-heldout.txt": "3d752fd8eea4d07d275b8b60713cea71f6dd049adfb09417d95830969c79b6ff",
+    "final-workspace-imports.json": "27c12f6b69afb32712e0fa5cd3598221f356cac15a206f6f8eb3c6e48ac9a802",
+    "final-workspace.txt": "c80cc0e4caa99159cd4391b5959bcb7b56c9d4ab80313fe3b49acfed4e28b4a6",
+    "followup-attempts\\08c46def-f4f9-423d-817d-ba67c16a9264\\artifact.json": "3dafda720e881b2fbda5fdbe2a795ce8e94b5383d467c20a96c7ca3fdac76c5a",
+    "followup-attempts\\1efbcef1-d406-4ee6-af25-626fa898eddb\\artifact.json": "42580c11af6640d8c1c62c8ca055730f9b32d2d7812054b5185aca043408a219",
+    "followup-attempts\\2c5114c3-cff0-42bf-a0e2-98e48eb7cca1\\artifact.json": "d2076de4263e6179926579f9cc30c91c72ad959f8ef00a4f2bd9e573cd210206",
+    "followup-attempts\\f83ff771-13cc-402b-81f4-df4bb2b35862\\artifact.json": "fb738ec755ab85fea87ec2972d6cdb67dcb9b31ac6d8e1337e63acb13272feed",
+    "followup-attempts\\f83ff771-13cc-402b-81f4-df4bb2b35862\\results.json": "4a40c54104b2095814e2f0a18b8e9fa7d275a3c8bcaf1eaa4e2db42d7717b1df",
+    "home\\provider-state\\adapter.sqlite": "e304769adc164f4fe61e5e903cfc8a1128d9682629aa33d578569cba59b65e03",
+    "home\\provider-state\\adapter.sqlite-wal": "d9d24d704061f183a8b3e7667a435439a4d8b085fd1ac766486684d5948c8c29",
+    "home\\sessions\\2026\\10\\21\\rollout-2026-10-21T18-20-09-01a15df9-ba72-76f2-b788-f1731fffc119.jsonl": "ae0438ece526354a7cdd080db4514f668fedde1623a91532b742766a766518c3",
+    "home\\state_5.sqlite": "02af9c3c4c2c70c3e0afb8b18f745e494278ff17ff27ca63aadbc72486a96fc4",
+    "home\\state_5.sqlite-wal": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "launch-1792577738813384500.json": "05b2e77fc10ef0dad2e4ab7f2665b98c72f9b891a50fd6711f0f2f59edb491de",
+    "launch-1792578669020552200.json": "05b2e77fc10ef0dad2e4ab7f2665b98c72f9b891a50fd6711f0f2f59edb491de",
+    "launch-1792580334659051900.json": "05b2e77fc10ef0dad2e4ab7f2665b98c72f9b891a50fd6711f0f2f59edb491de",
+    "launch-1792580538584346400.json": "05b2e77fc10ef0dad2e4ab7f2665b98c72f9b891a50fd6711f0f2f59edb491de",
+    "launch-1792580744458108000.json": "05b2e77fc10ef0dad2e4ab7f2665b98c72f9b891a50fd6711f0f2f59edb491de",
+    "results.json": "05831e9538cbee97065d89797be6acbda820cfd22dd5e0c0188485d3f63b5f5f",
+    "upstream.json": "c3dbbbcd4defd442ac4fa6036ee3fd5e81443c1251258b98909263bc4052531b"
+  },
+  "runtime_mechanisms": {
+    "immutable_artifact": {
+      "passed": true,
+      "source_id": "94c01b01aa57087becee",
+      "native_manifest_sha256": "7e766bea69c934ba0b8f87afcc20775a193f469542d50df07caa09f4ab082369"
+    },
+    "verifier_provenance": {
+      "passed": true,
+      "active_producer_sha256": {
+        "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+        "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+        "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+        "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+        "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+        "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+      },
+      "historical_producers": [
+        {
+          "verify_real_work.py": "7b249ac48b3256d4651582316de19773b290cce4ece71a2b9f41a9ea45b94358",
+          "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+          "acceptance_assertions.py": "f5ef661d9706dc443dbd87b790b5edf381f40b9c902a515e2794d87d60b7349c"
+        },
+        {
+          "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+          "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+          "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+          "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+          "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+          "real_work_imports.py": "e63a8c895bd76dfd9c1a52bee3a9b3f01d5ed14f03d07f852dedb0248e14189b"
+        },
+        {
+          "verify_real_work_followup.py": "353cc12f0e8f1c04009f58c10230a925f2a3e8a0a031738dffa71b360f148b69",
+          "verify_real_work.py": "3925996467a1b1cf2b730c15245bccda7a67ffe548690d0f15be3ada4d219701",
+          "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+          "acceptance_assertions.py": "311ecbceee451150b92a412bca2024b2f2dabf634ae8061f2002d5c79adde891",
+          "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3"
+        },
+        {
+          "verify_real_work_followup.py": "aab856353cab236caf5d25d974bf155e74cbb87ca6af7f90fa44bebfc2b5db8d",
+          "verify_real_work.py": "522b944a16e3421127e73ffd6f46585fd0f6b5ffbe740f516b2489b8740e839c",
+          "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+          "acceptance_assertions.py": "311ecbceee451150b92a412bca2024b2f2dabf634ae8061f2002d5c79adde891",
+          "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3"
+        },
+        {
+          "verify_real_work_followup.py": "8aa70a883d1c13324da532826dfa78290bf162e15ee7c0016c5a6c21b7433754",
+          "verify_real_work.py": "aef8a014c82ee8f477dbbe08e1d6e40b44be23d9d02ac6bef31c8e32ae443cfb",
+          "verify_live.py": "768f8047a24ce4564deb9ed7918bcdb838326d9ef712dce6e70cb42166744afd",
+          "acceptance_assertions.py": "7b365ef3186e6580e5d15485fdc935be1443e27b67b200a8541d256ce2a98b9e",
+          "host_execution_acceptance.py": "e6be54d7deb32d7aaeec843a7f7f72a79f455b29ed7b8f93d035d87c3929afc3",
+          "real_work_imports.py": "290cf721e505bbe4e6e3fc0ff43138d8385c6ad7c0ac407fc08af5ba9dc99dcb"
+        }
+      ],
+      "previous_report_link": true
+    },
+    "isolated_launch": {
+      "passed": true
+    },
+    "native_lifecycle": {
+      "passed": true,
+      "interrupts": [],
+      "cold_resumes": [
+        {
+          "connection": 1,
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "continued_tool_ids": [
+            "exec-59b87d07-dc4d-46fc-8e18-e3948c6ba472",
+            "exec-d0553485-cda3-4677-a947-8170069fa58b"
+          ],
+          "passed": true
+        },
+        {
+          "connection": 2,
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "continued_tool_ids": [
+            "exec-7c6eda22-a65d-420f-bba1-9f28b1815a0c",
+            "exec-b225bdec-d22a-4b6f-9708-43b55c0c74c1"
+          ],
+          "passed": true
+        },
+        {
+          "connection": 3,
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "continued_tool_ids": [
+            "exec-618ef8a5-fa8f-45cc-9c2f-1570f65b403a",
+            "exec-92a14847-344b-4386-a1de-d59657f700b1"
+          ],
+          "passed": true
+        },
+        {
+          "connection": 4,
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "continued_tool_ids": [
+            "exec-cd45dc0f-fba0-4c3c-8ebd-4a1608d24988",
+            "exec-edb90857-b99a-4574-a7ad-69b271ca5808"
+          ],
+          "passed": true
+        }
+      ],
+      "defects": []
+    },
+    "file_effect": {
+      "passed": true,
+      "patch_sha256": "0aadab2e10bb10b7fa58652493dd5e58a593da8aacc90ddbb9b9779bae68d89e",
+      "files": {
+        "src/jinja2/idtracking.py": "cf297a0da1ad90681666b42dc9db15a09506fdadcdc49452661f1a74e5f28d7e",
+        "tests/test_idtracking.py": "e18fc2f0038844f44e4f2d79c53d827f7c70517d56fe786a12215dbf39ed5b93",
+        "tests/test_regression.py": "beb75a800bd93bb4436ad62f55ef2a1b6b6f9fc0d813b84da7dd3180ceeb5a69"
+      }
+    },
+    "nonzero_tool_output_delivery": {
+      "passed": true,
+      "proofs": [
+        {
+          "item_id": "exec-9e410c60-6540-4334-bc8d-692176066fd7",
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "exit_code": 1,
+          "output_sha256": "6ec8f6ca1f55776ae4c3c3fd2dd8e2c77702b01329ea1a2b2c73d090e2e5db79",
+          "provider_call_ids": [
+            "call_00_pb073PCsngw60nW3tw266579"
+          ],
+          "projections": [
+            "output_and_exit_code"
+          ],
+          "model_received_numeric_exit_code": true
+        },
+        {
+          "item_id": "exec-14674491-2138-40b0-8829-4942c656f475",
+          "thread_id": "01a15df5-ab5c-7790-9394-e45cd3fe9e95",
+          "exit_code": 1,
+          "output_sha256": "d0335eac93f8c3218b3e4c8e312c3f047aa1cb3904d30b35374761ffffc777de",
+          "provider_call_ids": [
+            "call_00_BZrllU4ltTNWjresoQyB7723"
+          ],
+          "projections": [
+            "output_and_exit_code"
+          ],
+          "model_received_numeric_exit_code": true
+        }
+      ],
+      "scope": "Exact native nonzero command output delivered in model input. Numeric exit delivery and explicit model-selected output-only projections are recorded separately; representative failure round trips."
+    },
+    "reviewer_lifecycle": {
+      "passed": true,
+      "reviewers": [
+        {
+          "thread_id": "01a15df9-ba72-76f2-b788-f1731fffc119",
+          "agent_path": "/root/readonly_reviewer",
+          "rollout_sha256": "ae0438ece526354a7cdd080db4514f668fedde1623a91532b742766a766518c3",
+          "delivered_call_ids": [
+            "peer_0af5f42d19bbdf2f73bb20e26e17c8f6",
+            "peer_1e8afcd90be755662d00f31f1487f6dc",
+            "peer_497c5652ae7563ca774d33728715486c",
+            "peer_78f1bdf017488be5cc3dac9b90754f51",
+            "peer_df4e546c3572cdb4716ed20595087fe1"
+          ],
+          "completed_turn_ids": [
+            "01a15df9-bb66-7aa0-b761-0d387a80ea6e",
+            "01a15e04-738f-7ed0-a803-6b9db56da634",
+            "01a15e1d-9c09-7512-81fe-01444a6c7aca",
+            "01a15e20-ae40-7a02-beee-5e7bed77ca31",
+            "01a15e24-2a24-7490-8fd5-b119763d0fe5"
+          ],
+          "passed": true
+        }
+      ]
+    },
+    "linked_browser_navigation": {
+      "turn_id": "01a15e23-85ed-7c02-adc3-8990627c3f32",
+      "native_completed_actions": [
+        "click",
+        "find",
+        "open"
+      ],
+      "pages": [
+        {
+          "url": "https://jinja.palletsprojects.com/en/stable/templates/",
+          "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5",
+          "retrieved_at": 1792580757.702911
+        },
+        {
+          "url": "https://jinja.palletsprojects.com/en/stable/api/",
+          "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c",
+          "retrieved_at": 1792580767.867509
+        }
+      ],
+      "distinct_actual_urls": 2,
+      "positive_find": true,
+      "required": true,
+      "linked_chains": [
+        {
+          "source_ref": "page_f13588f7b8444a219929c4407e50bbb6",
+          "source_url": "https://jinja.palletsprojects.com/en/stable/templates/",
+          "source_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5",
+          "link_id": 80,
+          "link_url": "https://jinja.palletsprojects.com/en/stable/api/#jinja2.Undefined",
+          "target_url": "https://jinja.palletsprojects.com/en/stable/api/",
+          "target_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c"
+        }
+      ],
+      "passed": true
+    },
+    "provider_transport": {
+      "passed": true,
+      "receipt_rows_sha256": "fa0defab1cccf1ad0825cf0caa0893f8cbf941e64668c5c3e424488d4de1d534",
+      "routes": [
+        "{\"provider\": \"deepseek\", \"route_reason\": \"official_default\", \"status\": \"completed\", \"upstream_status\": 200}",
+        "{\"provider\": \"morph/fp8\", \"route_reason\": \"native_peer_or_continuation_with_hosted_tools\", \"status\": \"completed\", \"upstream_status\": 200}"
+      ]
+    },
+    "controlled_inputs": {
+      "passed": true,
+      "sha256": {
+        "upstream.json": "c3dbbbcd4defd442ac4fa6036ee3fd5e81443c1251258b98909263bc4052531b",
+        "archives.json": "bb5aa84942210f457b6705789a427b5c51a3cf4fc5061fd6aad41b919bd39cdb",
+        "dependencies.lock": "9b50caaf986fa630300b0e0efc6d08c37c12f2f466d63f4959def0819bafbcc4",
+        "dependencies-frozen.txt": "636f36a627c453304c317b83e38cd810b940a01f313b71ab621ea779f56e9f48"
+      }
+    },
+    "oracle_isolation": {
+      "passed": true,
+      "recorded_guard": {
+        "mechanism": "windows-dacl",
+        "read_probe_denied": true,
+        "restored_probe_unchanged": true,
+        "source_unchanged": true
+      },
+      "current_tree_sha256": "65c10d8b8ab62333637850e652ac9e107480fc8db67875845b7c60698caacd43",
+      "provenance": "Historical before/after and denied-read observations from hash-matched task verifier; current tree bound separately."
+    },
+    "suite_execution_evidence": {
+      "passed": true
+    },
+    "native_host_execution": {
+      "passed": true,
+      "platform": "win32",
+      "observed_command_count": 60,
+      "forbidden_commands": [],
+      "malformed_commands": [],
+      "scope": "Observed native commandExecution items; not a system-wide process audit.",
+      "declared_python": "<windows-validation-root>\\real-work-windows-r3\\jinja\\tools311\\Scripts\\python.exe",
+      "native_python_observed": true
+    },
+    "passed": true
+  },
+  "runtime_mechanisms_passed": true,
+  "application_task_outcome": {
+    "original_report_passed": true,
+    "turn_status": "completed",
+    "controller_error": null,
+    "suites": [
+      {
+        "suite": "workspace",
+        "exit": 0,
+        "tail": "pSeekQA\\\\20261021\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\loaders.py\", \"sha256\": \"c08ae7c63bdc6ea8795705b6f0d4a47e8b620eaf2a342c4839215b1948922c1e\"}, \"jinja2.meta\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\meta.py\", \"sha256\": \"3930cf91a16f5361e0bf1fba6a4cfbd79e05f012166919af25c045bf0a291f0c\"}, \"jinja2.nativetypes\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\nativetypes.py\", \"sha256\": \"ec620600b54981dc8bf34a1925d4146947f04ade6ada549265b5edd1d35ffcce\"}, \"jinja2.nodes\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\nodes.py\", \"sha256\": \"9b50eecdcafaaa1648f0943a57226050d8a78c07f96d0ce28d29839ccb2f531f\"}, \"jinja2.optimizer\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\optimizer.py\", \"sha256\": \"ac99c246543ba59b04126321b100e00bfa4ac831f13f94cf4bacd53c6b2072ef\"}, \"jinja2.parser\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\parser.py\", \"sha256\": \"94b385cb7b0498773921a1074621f5b1056721dda6a14433872789653b5d637d\"}, \"jinja2.runtime\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\runtime.py\", \"sha256\": \"80393e1af76b8895ea82c19b1e0adc2933f4629eb33d7ce1ceb2290851f78c05\"}, \"jinja2.sandbox\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\sandbox.py\", \"sha256\": \"330d9a8ad958d88f256bb15885c5f6606f41b5461c2e70f41a1ddddbd7035ab6\"}, \"jinja2.tests\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\tests.py\", \"sha256\": \"54bb018551675a0f8fc52073d4c8519cd5a03f5a2f5e4de778ed452d031e0bd4\"}, \"jinja2.utils\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n918 passed in 1.64s\n",
+        "output_sha256": "c80cc0e4caa99159cd4391b5959bcb7b56c9d4ab80313fe3b49acfed4e28b4a6",
+        "source_imports_verified": true,
+        "receipt_matches_report": true,
+        "output_matches_report": true
+      },
+      {
+        "suite": "upstream-heldout",
+        "exit": 0,
+        "tail": "pSeekQA\\\\20261021\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\loaders.py\", \"sha256\": \"c08ae7c63bdc6ea8795705b6f0d4a47e8b620eaf2a342c4839215b1948922c1e\"}, \"jinja2.meta\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\meta.py\", \"sha256\": \"3930cf91a16f5361e0bf1fba6a4cfbd79e05f012166919af25c045bf0a291f0c\"}, \"jinja2.nativetypes\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\nativetypes.py\", \"sha256\": \"ec620600b54981dc8bf34a1925d4146947f04ade6ada549265b5edd1d35ffcce\"}, \"jinja2.nodes\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\nodes.py\", \"sha256\": \"9b50eecdcafaaa1648f0943a57226050d8a78c07f96d0ce28d29839ccb2f531f\"}, \"jinja2.optimizer\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\optimizer.py\", \"sha256\": \"ac99c246543ba59b04126321b100e00bfa4ac831f13f94cf4bacd53c6b2072ef\"}, \"jinja2.parser\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\parser.py\", \"sha256\": \"94b385cb7b0498773921a1074621f5b1056721dda6a14433872789653b5d637d\"}, \"jinja2.runtime\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\runtime.py\", \"sha256\": \"80393e1af76b8895ea82c19b1e0adc2933f4629eb33d7ce1ceb2290851f78c05\"}, \"jinja2.sandbox\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\sandbox.py\", \"sha256\": \"330d9a8ad958d88f256bb15885c5f6606f41b5461c2e70f41a1ddddbd7035ab6\"}, \"jinja2.tests\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\tests.py\", \"sha256\": \"54bb018551675a0f8fc52073d4c8519cd5a03f5a2f5e4de778ed452d031e0bd4\"}, \"jinja2.utils\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\utils.py\", \"sha256\": \"ad1a77a3d7bb64a4b87f2ad645b10bc8b729b8655315c9e8a1a39ad6ac7f1489\"}, \"jinja2.visitor\": {\"file\": \"<windows-validation-root>\\\\real-work-windows-r3\\\\jinja\\\\work\\\\src\\\\jinja2\\\\visitor.py\", \"sha256\": \"11c9cbd4f2307ffe1154238cc6c44db91f005c76d2d6a7c074c384da780a273e\"}}, \"package\": \"jinja2\", \"passed\": true}\n\n908 passed in 1.60s\n",
+        "output_sha256": "3d752fd8eea4d07d275b8b60713cea71f6dd049adfb09417d95830969c79b6ff",
+        "source_imports_verified": true,
+        "receipt_matches_report": true,
+        "output_matches_report": true
+      }
+    ],
+    "diff_check": 0,
+    "application_task_passed": true
+  }
+}

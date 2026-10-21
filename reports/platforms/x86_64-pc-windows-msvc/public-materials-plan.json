@@ -1,0 +1,276 @@
+{
+  "qualified_source_id": "3a59a782f017693be2b0",
+  "publication_not_performed": true,
+  "copy_candidates": [
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-guardian-composition.json",
+      "sha256": "2bbfaed96936431255f2f6bd8a48ebb9650e2de4b46b2e3b514258d229a76ad9",
+      "category": "verification_receipt",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-final-rpc-mapping.json",
+      "sha256": "f1a467f1ff46abc348f37e3135f5922f502415b1dc3025f91b808cdb816110ca",
+      "category": "verification_receipt",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/component-validation.json",
+      "sha256": "195b7c6d040f1c1908a96b47f9d9935169f646d0037c5e9b9b026676f264a264",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/final-3a59-source-impact.json",
+      "sha256": "7455350fa321529f19a40f91b4d1ea87d26af16d321ceb7ba735a8e822a3fe90",
+      "category": "source_lineage",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/94c-to-069-product-lineage.json",
+      "sha256": "9e3b8e120e81104bcdb93c361784b9b7b83c58535398e68357b8a99c31da3486",
+      "category": "source_lineage",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/guardian-to-methods-qa-lineage.json",
+      "sha256": "f3b966ec7c45c4c8a48cdaa351dfccb41447021dce554e822cad25c7eef13c19",
+      "category": "qa_lineage",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-complex-reconstruction.json",
+      "sha256": "9441394f4b69be50a2cd73df7d8cf1f340bf12efedca17adb651edc16188a834",
+      "category": "historical_reconstruction",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-complex-shape-and-raw-integrity.json",
+      "sha256": "babd80481040598aabcaca2bf5f0077c6504f39463a1f9d75141684c46690e9e",
+      "category": "historical_request_shape",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/complex-jinja-94c.json",
+      "sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/complex-httpcore-94c.json",
+      "sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/windows-r3-sandbox-final-evidence/independent-verdict.json",
+      "sha256": "0591758dc3a72117cd80be7a8e9faf20290327a5d579c60c4c2af23196dd6673",
+      "category": "guest_independent_verification",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/windows-r3-sandbox-final-evidence/transfer-and-current-readback.json",
+      "sha256": "877a3024f22883f3cd205f73a76f3728737cf314b3a565dadabdca0de1eb3d05",
+      "category": "guest_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/artifact.json",
+      "sha256": "76a88b6ae7b527ba0fd1b7aa9d0dbc7c0fd2c4ca93eb9f6dfe4f113fcebd01d2",
+      "category": "guest_raw_receipt",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/verdict.json",
+      "sha256": "681842bf3f87d183316c54ab3c5589911ed1f5b150db9e0ba673927ee8606484",
+      "category": "guest_raw_receipt",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/windows-r3-sandbox-final-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e/results.json",
+      "sha256": "41cc857c721e36e694de49227cd5cacae6310acd84d276548736d8eb34da0954",
+      "category": "guest_raw_receipt",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-protocol.json",
+      "sha256": "e7ec3483af3508902498ac30a1845f385cc8493f0cb2db7f5f46b24c140ed1bb",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-results.json",
+      "sha256": "5b53dd7228f0db3be63ff35df7d494d7f1803a96f0cb2a96ea730e13b32531f9",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-verdict.json",
+      "sha256": "03f80fad6e101bc6c84cb6d9427ca50ee7f446f1c21e00c74dcd14120bd5da10",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/transfer-receipt.json",
+      "sha256": "6a5f260f50dc4156434ab7137ef113624842078eff068b77ef56db789d62a8c7",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-schema-comparison.json",
+      "sha256": "6265e1fe07559c48df8f2a05d41e16a51b609dc4b7492a6b157e0ef5fb1c0097",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-mcp-lifetime.json",
+      "sha256": "5e7cf35fb585c6b19213566bf5f190be20fe703329627d69f1249343c4c176af",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/native-source-audit.json",
+      "sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-components-evidence/browser-runtime-artifact.json",
+      "sha256": "a13424aa1de0d895ec5f3c286946c236f971505f750ce88ae7504f4b8e005517",
+      "category": "component_raw_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-results.json",
+      "sha256": "d523289e96e24de12ad8b071a40c263fea78565c6638b5993175e3e1f72b2a3d",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/methods-verdict.json",
+      "sha256": "97bb6c1bd4efa1532c4a9205516dff95b6a97a24308508be8d0e61bdae1c2de5",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-verdict.json",
+      "sha256": "61cf6ef6f091cc76fdf43185a3a83b2cee049770ac508fd925a8ebf485237d7b",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/transfer-receipt.json",
+      "sha256": "2b8f331fbbef5b3caac9d66fa33acddd4648dced05e407fc6a70bab1e562580a",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-artifact.json",
+      "sha256": "5e82824d9e0c299d4c222ddfbce58fad4fdf8990619b32b94c871f750c6ca97b",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/mapping.json",
+      "sha256": "2da6347d0d09fadc5186d6a31a6a5c4c6ec100e21c362b69e2ec685174ea5fb3",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/methods-artifact.json",
+      "sha256": "673c885d549c1e78eb6b627ce5d7ed436213abc3b375827864cdcbb52f989091",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/offline8e-offline-collection.json",
+      "sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-host-mapping-evidence/execution-token-receipts.json",
+      "sha256": "2e29fd3f594499dd19e230d8c633210b38dff06f4c695dd6ad4030bc66e1aed8",
+      "category": "methods_offline_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-final-rpc-transfer.json",
+      "sha256": "40a5913f8611935cd4561b5ebdf09571bc98d44b83da9ee56ae0bbf1a0742f53",
+      "category": "execution_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/windows-final-component-execution-tokens.json",
+      "sha256": "2501e91507eba019d7ff136f6f56f9d27447695c3da3cfa5d322151a44bdb3a2",
+      "category": "execution_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    },
+    {
+      "path": "<validation-evidence>/guest-r3-evidence-host-copy.json",
+      "sha256": "e7fe3086a16ca37202305727f831d7da39a525cdee9fef08582fb3ff7e2cc697",
+      "category": "execution_or_transfer",
+      "sanitization": "Preserve original source_id, status, counts and hashes. Redact private workspace/install/user paths and SID/account labels only; publish original->sanitized SHA mapping."
+    }
+  ],
+  "replay_scripts": [
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/validate_windows_guardian_composition.py",
+      "sha256": "b45ccfc5647cd6f882ba14b543f06c9332d76c8bf69c0dc17dc6784752bf8eb7",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/map_windows_composed_rpc.py",
+      "sha256": "80169a5339ce187d8f9bea3d8610c5977f69d82650bd9136a9cad486c1c8832b",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/validate_windows_extra_components.py",
+      "sha256": "31a2299bbd463db0a9b9c4d78d5e1d0c81cf5e1bbac4df59695c7519d9399ecf",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/check_windows_source_impact.py",
+      "sha256": "98f6f65d70085bda1c7b01078282d5d6bb26e9b03a4dee96c3844fd25dda1304",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/final-evidence-impact-review/reconstruct_windows_complex_readonly.py",
+      "sha256": "7e6605ab7c238ef5b25a98b424f1964f9fb150fc3d2df4311844c5db7ec31363",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/collect_guest_r3_sandbox_readonly.py",
+      "sha256": "5397194f09593eefa718e5127d8c24255657e092b3c640c7975c6e91d39400fa",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    },
+    {
+      "path": "<validation-evidence>/verify_collected_guest_r3_sandbox.py",
+      "sha256": "8f5559245b355ca7af55d7c50e4627393678bb2683eade030e8bbcd4cd313086",
+      "category": "replay_script",
+      "sanitization": "Replace operator-specific path defaults with documented input locations only; keep exact version/source/QA/hash predicates and raw failure semantics."
+    }
+  ],
+  "do_not_publish": [
+    "OS credential stores or token files",
+    "MCP OAuth tokens and provider/API Authorization headers",
+    "Unreviewed full model prompts/rollouts or private profile files",
+    "Build caches, temporary environments, source checkout caches"
+  ],
+  "required_scan_patterns": [
+    "OpenRouter key patterns",
+    "GitHub PAT patterns",
+    "private key PEM headers",
+    "credential-bearing URL patterns"
+  ],
+  "validation_status_changes_allowed": false,
+  "keep_original_sha256_and_public_sanitized_sha256": true,
+  "source_94c_069_3a_and_final_documentation_lineage_must_remain_distinct": true,
+  "replay_script_identity_rule": "Never replace the original validator hash with the sanitized script hash. If paths/SIDs are parameterized for public replay, preserve original->public script SHA mapping and describe it as a derived public copy. Prefer publishing original general verification entrypoints with explicit input manifests."
+}

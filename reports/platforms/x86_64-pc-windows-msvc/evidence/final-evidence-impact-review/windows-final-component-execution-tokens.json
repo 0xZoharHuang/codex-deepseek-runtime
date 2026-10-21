@@ -1,0 +1,78 @@
+{
+  "windows-final-composed-rpc": {
+    "source": "<windows-protected-test-bootstrap>\\runs\\windows-final-composed-rpc-d45445342a61\\result.json",
+    "sha256": "23623390c0cc0e094d53909ec9daf12cdcac4fe41dddbebd92453aa6c303a81f",
+    "record": {
+      "name": "windows-final-composed-rpc",
+      "started": 1792610115.0029175,
+      "mechanism": "SYSTEM task bootstrap, LogonUser(type2), LoadUserProfile, CreateProcessAsUserW; tested code uses standard user token",
+      "script": "<windows-validation-root>\\host-user\\run_windows_composed_rpc.py",
+      "arguments": [
+        "--methods-manifest",
+        "<windows-validation-root>/host-user/mapping-methods-8e-manifest.json",
+        "--guardian-manifest",
+        "<windows-validation-root>/host-user/guardian-composition-31-manifest.json",
+        "--output",
+        "<windows-validation-root>/host-user/data/windows-final-rpc-3a59-r2.json",
+        "--windows-sandbox",
+        "<windows-validation-root>/guest-r3-sandbox-evidence/1ccf76b4-019e-428e-9779-9cbe7cd20f6e"
+      ],
+      "cwd": "<windows-short-validation-root>",
+      "output": "<windows-protected-test-bootstrap>\\runs\\windows-final-composed-rpc-d45445342a61",
+      "secret_values_logged": false,
+      "existing_token_privileges_enabled": [
+        "SeAssignPrimaryTokenPrivilege",
+        "SeIncreaseQuotaPrivilege",
+        "SeBackupPrivilege",
+        "SeRestorePrivilege"
+      ],
+      "target": {
+        "user": "CodexDeepSeekQA",
+        "sid": "<windows-account-2>",
+        "elevated": false,
+        "administrator_group": false
+      },
+      "pid": 27036,
+      "private_desktop": "CodexDeepSeekQA_System_f4c3c97778fd48278f52b3d0ebd77f7e\\default",
+      "started_child": 1792610115.040766,
+      "exit": 0,
+      "profile_unloaded": true,
+      "finished": 1792610119.5354571
+    }
+  },
+  "windows-extra-components": {
+    "source": "<windows-protected-test-bootstrap>\\runs\\windows-extra-components-352cf4e1d05e\\result.json",
+    "sha256": "0f0fafa37247e52397e539bdd16eefdf1ab392d5ef1c7e006be4765e93adf4a0",
+    "record": {
+      "name": "windows-extra-components",
+      "started": 1792609850.4951026,
+      "mechanism": "SYSTEM task bootstrap, LogonUser(type2), LoadUserProfile, CreateProcessAsUserW; tested code uses standard user token",
+      "script": "<windows-validation-root>\\host-user\\run_windows_extra_components.py",
+      "arguments": [
+        "--output",
+        "<windows-validation-root>/host-user/data/windows-extra-components-3a59-r1.json"
+      ],
+      "cwd": "<windows-short-validation-root>",
+      "output": "<windows-protected-test-bootstrap>\\runs\\windows-extra-components-352cf4e1d05e",
+      "secret_values_logged": false,
+      "existing_token_privileges_enabled": [
+        "SeAssignPrimaryTokenPrivilege",
+        "SeIncreaseQuotaPrivilege",
+        "SeBackupPrivilege",
+        "SeRestorePrivilege"
+      ],
+      "target": {
+        "user": "CodexDeepSeekQA",
+        "sid": "<windows-account-2>",
+        "elevated": false,
+        "administrator_group": false
+      },
+      "pid": 22016,
+      "private_desktop": "CodexDeepSeekQA_System_cab7bcbcdc5f48908f156a2a329b4eb6\\default",
+      "started_child": 1792609850.5311358,
+      "exit": 0,
+      "profile_unloaded": true,
+      "finished": 1792609855.4106386
+    }
+  }
+}

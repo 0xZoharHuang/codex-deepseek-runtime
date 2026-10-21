@@ -1,0 +1,102 @@
+{
+  "scope": "Derived public audit copies; original executed validator identities remain unchanged in the evidence receipts.",
+  "script_count": 7,
+  "scripts_executed": false,
+  "model_or_runtime_runs": 0,
+  "no_identity_fallback": true,
+  "all_scope_hash_and_original_failure_assertions_preserved": true,
+  "files": [
+    {
+      "original_relative_path": "final-evidence-impact-review/validate_windows_guardian_composition.py",
+      "public_path": "validate_windows_guardian_composition.py",
+      "original_sha256": "b45ccfc5647cd6f882ba14b543f06c9332d76c8bf69c0dc17dc6784752bf8eb7",
+      "public_sha256": "4c97cb90616ace43a2cd7aac138821f1987e62a7df3b32e7b55b75d6153f78e9",
+      "sid_string_literals_parameterized": 2,
+      "required_environment_variables": [
+        "CODEX_DEEPSEEK_QA_ADMIN_SID",
+        "CODEX_DEEPSEEK_QA_STANDARD_SID"
+      ],
+      "import_os_added": true,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "final-evidence-impact-review/map_windows_composed_rpc.py",
+      "public_path": "map_windows_composed_rpc.py",
+      "original_sha256": "80169a5339ce187d8f9bea3d8610c5977f69d82650bd9136a9cad486c1c8832b",
+      "public_sha256": "a37612af7bb41331650d02e71cc1bd624efb6b7a369583373dfd57763442316a",
+      "sid_string_literals_parameterized": 2,
+      "required_environment_variables": [
+        "CODEX_DEEPSEEK_QA_ADMIN_SID",
+        "CODEX_DEEPSEEK_QA_STANDARD_SID"
+      ],
+      "import_os_added": true,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "final-evidence-impact-review/validate_windows_extra_components.py",
+      "public_path": "validate_windows_extra_components.py",
+      "original_sha256": "31a2299bbd463db0a9b9c4d78d5e1d0c81cf5e1bbac4df59695c7519d9399ecf",
+      "public_sha256": "de3ab09eed62d682189a53433e8b3be57fb152017a66f3add26cae876f71dd65",
+      "sid_string_literals_parameterized": 1,
+      "required_environment_variables": [
+        "CODEX_DEEPSEEK_QA_STANDARD_SID"
+      ],
+      "import_os_added": true,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "final-evidence-impact-review/check_windows_source_impact.py",
+      "public_path": "check_windows_source_impact.py",
+      "original_sha256": "98f6f65d70085bda1c7b01078282d5d6bb26e9b03a4dee96c3844fd25dda1304",
+      "public_sha256": "98f6f65d70085bda1c7b01078282d5d6bb26e9b03a4dee96c3844fd25dda1304",
+      "sid_string_literals_parameterized": 0,
+      "required_environment_variables": [],
+      "import_os_added": false,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "final-evidence-impact-review/reconstruct_windows_complex_readonly.py",
+      "public_path": "reconstruct_windows_complex_readonly.py",
+      "original_sha256": "7e6605ab7c238ef5b25a98b424f1964f9fb150fc3d2df4311844c5db7ec31363",
+      "public_sha256": "7e6605ab7c238ef5b25a98b424f1964f9fb150fc3d2df4311844c5db7ec31363",
+      "sid_string_literals_parameterized": 0,
+      "required_environment_variables": [],
+      "import_os_added": false,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "collect_guest_r3_sandbox_readonly.py",
+      "public_path": "collect_guest_r3_sandbox_readonly.py",
+      "original_sha256": "5397194f09593eefa718e5127d8c24255657e092b3c640c7975c6e91d39400fa",
+      "public_sha256": "5397194f09593eefa718e5127d8c24255657e092b3c640c7975c6e91d39400fa",
+      "sid_string_literals_parameterized": 0,
+      "required_environment_variables": [],
+      "import_os_added": false,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    },
+    {
+      "original_relative_path": "verify_collected_guest_r3_sandbox.py",
+      "public_path": "verify_collected_guest_r3_sandbox.py",
+      "original_sha256": "8f5559245b355ca7af55d7c50e4627393678bb2683eade030e8bbcd4cd313086",
+      "public_sha256": "8f5559245b355ca7af55d7c50e4627393678bb2683eade030e8bbcd4cd313086",
+      "sid_string_literals_parameterized": 0,
+      "required_environment_variables": [],
+      "import_os_added": false,
+      "only_identity_inputs_and_import_os_changed": true,
+      "syntax_compile_passed": true,
+      "original_file_unchanged": true
+    }
+  ]
+}

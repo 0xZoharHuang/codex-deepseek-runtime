@@ -1,0 +1,870 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "qualification_kind": "explicit_component_composition",
+  "qualified_source_id": "3a59a782f017693be2b0",
+  "target": "x86_64-pc-windows-msvc",
+  "upstream_version": "0.164.0-alpha.7",
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "native_archive_sha256": "a2d356c3261be7d1c6e0323b111c315a3a82017cebd8ae5cd2231cda39371f87",
+  "scope": "Audited applicable native Codex CLI local runtime mechanisms at the frozen Windows target. Model intelligence and OpenAI cloud entitlements are outside this qualification.",
+  "single_run_all_passed": false,
+  "historical_source_ids_preserved": true,
+  "original_failures_preserved": {
+    "full_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+    "passed": false,
+    "failed_gates": [
+      "guardian"
+    ],
+    "cause": "Original DFA thread completed the fixed command without needing native approval; the original strict assertion failed.",
+    "replacement": "<windows-short-validation-root>\\g3\\r\\5295d601b398",
+    "replacement_qa": "31be6cbec0be0b6ca34969a330264d402c2f222edc95542e4f3a246c4eff591b",
+    "old_qa": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+    "strict_approved_execution_assertion_unchanged": true
+  },
+  "standard_mechanisms": {
+    "qualified": true,
+    "gate_count": 30,
+    "gate_origins": [
+      {
+        "gate": "agents-full",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "agents-full",
+          "exit": 0,
+          "seconds": 16.23,
+          "log": "agents-full.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "agents-nested",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "agents-nested",
+          "exit": 0,
+          "seconds": 55.48,
+          "log": "agents-nested.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "agents-none",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "agents-none",
+          "exit": 0,
+          "seconds": 15.41,
+          "log": "agents-none.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "auth-stores",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "auth-stores",
+          "exit": 0,
+          "seconds": 50.24,
+          "log": "auth-stores.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "crash-recovery",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "crash-recovery",
+          "exit": 0,
+          "seconds": 33.18,
+          "log": "crash-recovery.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "daemon",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "daemon",
+          "exit": 0,
+          "seconds": 64.47,
+          "log": "daemon.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "features",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "features",
+          "exit": 0,
+          "seconds": 36.27,
+          "log": "features.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "goal-sample",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "goal-sample",
+          "exit": 0,
+          "seconds": 36.43,
+          "log": "goal-sample.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "guardian",
+        "original_run": "<windows-short-validation-root>\\g3\\r\\5295d601b398",
+        "original_gate_row": {
+          "gate": "guardian",
+          "exit": 0,
+          "seconds": 15.66,
+          "log": "guardian.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "f0f27be12b14e531157ac721efdf1e411a0fbea1ec76b3646b2fe04661fc0a4b",
+        "original_verdict_sha256": "9f84c526dfe8c9a1cea0c8e08b13f65cdb096fb66b13f283bd9d9f94a1eeab97",
+        "producer_qa_sha256": "31be6cbec0be0b6ca34969a330264d402c2f222edc95542e4f3a246c4eff591b",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "live",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "live",
+          "exit": 0,
+          "seconds": 47.75,
+          "log": "live.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "local-account",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "local-account",
+          "exit": 0,
+          "seconds": 12.37,
+          "log": "local-account.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "local-methods",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "local-methods",
+          "exit": 0,
+          "seconds": 8.69,
+          "log": "local-methods.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "memory-v1",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "memory-v1",
+          "exit": 0,
+          "seconds": 129.95,
+          "log": "memory-v1.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "memory-v2",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "memory-v2",
+          "exit": 0,
+          "seconds": 101.32,
+          "log": "memory-v2.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "modes",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "modes",
+          "exit": 0,
+          "seconds": 27.64,
+          "log": "modes.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "native-revocation",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "native-revocation",
+          "exit": 0,
+          "seconds": 0.53,
+          "log": "native-revocation.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "oauth-auto",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "oauth-auto",
+          "exit": 0,
+          "seconds": 32.26,
+          "log": "oauth-auto.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "oauth-file",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "oauth-file",
+          "exit": 0,
+          "seconds": 34.12,
+          "log": "oauth-file.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "oauth-keyring",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "oauth-keyring",
+          "exit": 0,
+          "seconds": 35.97,
+          "log": "oauth-keyring.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "oauth-secrets",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "oauth-secrets",
+          "exit": 0,
+          "seconds": 45.62,
+          "log": "oauth-secrets.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "offline",
+        "original_run": "<windows-validation-root>\\offline-3a59a782f017693be2b0-31\\r\\3a720c0be6a4",
+        "original_gate_row": {
+          "gate": "offline",
+          "exit": 0,
+          "seconds": 60.31,
+          "log": "offline.log",
+          "qa_default_sandbox_mode": "workspace-write"
+        },
+        "original_artifact_sha256": "9bcb25e084c50c8702fd9802b1cc377347da95f6cb1075c2ebb76f7e4c2e99d5",
+        "original_verdict_sha256": "949be9f23dfb1e382d4bc7127f35ffcc7662fd6c7b4efb51093aaa95e8dceef3",
+        "producer_qa_sha256": "31be6cbec0be0b6ca34969a330264d402c2f222edc95542e4f3a246c4eff591b",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "plan-review",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "plan-review",
+          "exit": 0,
+          "seconds": 25.97,
+          "log": "plan-review.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "plugin",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "plugin",
+          "exit": 0,
+          "seconds": 14.08,
+          "log": "plugin.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "profiles",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "profiles",
+          "exit": 0,
+          "seconds": 31.29,
+          "log": "profiles.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "routes",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "routes",
+          "exit": 0,
+          "seconds": 23.62,
+          "log": "routes.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "runtime-contract",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "runtime-contract",
+          "exit": 0,
+          "seconds": 36.71,
+          "log": "runtime-contract.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "search",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "search",
+          "exit": 0,
+          "seconds": 8.38,
+          "log": "search.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "transports",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "transports",
+          "exit": 0,
+          "seconds": 12.91,
+          "log": "transports.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "tui",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "tui",
+          "exit": 0,
+          "seconds": 58.11,
+          "log": "tui.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      },
+      {
+        "gate": "tui-interrupt",
+        "original_run": "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c",
+        "original_gate_row": {
+          "gate": "tui-interrupt",
+          "exit": 0,
+          "seconds": 46.8,
+          "log": "tui-interrupt.log",
+          "qa_default_sandbox_mode": "danger-full-access"
+        },
+        "original_artifact_sha256": "feda5f2dcb410269dc866970dc4b94eb5907dc47a2c51b8aae48289fb34b7ab0",
+        "original_verdict_sha256": "89630fe3df6b55bcaeb1650d3217efdfe56b041bd3c233cef7c63c81a44f0a5a",
+        "producer_qa_sha256": "fd3217ee050e32c7a3b7f71b28b261e2d16b0abbae0e7af229f5814b94930eb8",
+        "source_id": "3a59a782f017693be2b0"
+      }
+    ],
+    "guardian_stages": [
+      "native_automatic_approval",
+      "native_guardian_v2_classifier_uses_selected_deepseek",
+      "native_guardian_v2_completed_classification_and_applied_score",
+      "native_turn_interrupt_status",
+      "native_owner_shutdown_cleans_process_tree"
+    ],
+    "composed_guardian_receipt_sha256": "2bbfaed96936431255f2f6bd8a48ebb9650e2de4b46b2e3b514258d229a76ad9"
+  },
+  "complete_offline": {
+    "passed": 666,
+    "platform_inapplicable": {
+      "test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot": "Native Linux daemon process identity contract"
+    },
+    "qa_sha256": "8ec26d0b9d492b57b191a98c00c22af46573946053bf5b7e1ace498f0b4d501f",
+    "validation": {
+      "tests_passed": 666,
+      "platform_inapplicable": {
+        "test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot": "Native Linux daemon process identity contract"
+      },
+      "artifact_sha256": "5e82824d9e0c299d4c222ddfbce58fad4fdf8990619b32b94c871f750c6ca97b",
+      "verdict_sha256": "61cf6ef6f091cc76fdf43185a3a83b2cee049770ac508fd925a8ebf485237d7b",
+      "collection_sha256": "ddac1d881a583a1e3ac66148d3eeaaec746d5b69d35c1b75e28452b76ed07347",
+      "junit_sha256": "b9f968e5543fae1d64f01ae81f50a2e97bfbed8c4f972b4ff2e9b9f7e53086c0"
+    },
+    "controller_token": "Existing administrator token for full symlink coverage; runtime gates executed as the separate standard QA user."
+  },
+  "remaining_method_postconditions": {
+    "positive_local": 60,
+    "backend_boundaries_verified": 4,
+    "all_seven_groups_passed": true,
+    "root": "<windows-short-validation-root>\\m4\\m\\52a58213-d827-4243-a835-397804dbd143"
+  },
+  "native_rpc_coverage": {
+    "observed": 131,
+    "expected": 131,
+    "native_client_sessions": 64,
+    "missing": [],
+    "trace_errors": [],
+    "mapping_sha256": "f1a467f1ff46abc348f37e3135f5922f502415b1dc3025f91b808cdb816110ca",
+    "excluded_failed_roots": [
+      "<windows-short-validation-root>\\f4\\r\\46fe03c7b45c\\guardian"
+    ]
+  },
+  "native_source_audit": {
+    "path": "<windows-short-validation-root>\\x3\\src\\verdict.json",
+    "sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118",
+    "upstream_source_files": 9353,
+    "unchanged_protected_runtime_files": 348,
+    "external_cargo_packages_unchanged": true,
+    "patch_replay_passed": true,
+    "patch_sha256": "8e5f6f809e6945080974e4762de3e0fef3503d1e488ec7c1c9b682ee34f06c57",
+    "declared_changed_files": [
+      "codex-rs/Cargo.lock",
+      "codex-rs/Cargo.toml",
+      "codex-rs/cli/src/main.rs",
+      "codex-rs/config/src/isolated_provider.rs",
+      "codex-rs/config/src/lib.rs",
+      "codex-rs/config/src/loader/managed_requirements.rs",
+      "codex-rs/config/src/loader/mod.rs",
+      "codex-rs/core/src/tools/spec_plan.rs",
+      "codex-rs/deepseek-http-transport/Cargo.toml",
+      "codex-rs/deepseek-http-transport/src/main.rs",
+      "codex-rs/deepseek-http-transport/tests/native_policy.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/sampler.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
+      "codex-rs/ext/guardian-v2/src/async_scorer/startup.rs",
+      "codex-rs/http-client/src/client_builder.rs",
+      "codex-rs/http-client/src/dedicated_transport.rs",
+      "codex-rs/http-client/src/lib.rs",
+      "codex-rs/http-client/src/network_policy.rs",
+      "codex-rs/http-client/src/outbound_proxy.rs",
+      "codex-rs/http-client/src/route_aware_client_pool/execution.rs",
+      "codex-rs/rmcp-client/src/oauth.rs",
+      "codex-rs/stdio-to-uds/Cargo.toml",
+      "codex-rs/stdio-to-uds/src/lib.rs"
+    ]
+  },
+  "native_schema_comparison": {
+    "path": "<windows-short-validation-root>\\x3\\s\\2ea36822-966a-4e3b-afe7-520b9c3c8c46\\verdict.json",
+    "sha256": "6265e1fe07559c48df8f2a05d41e16a51b609dc4b7492a6b157e0ef5fb1c0097",
+    "schemas_compared": 456,
+    "differences": [],
+    "actual_target": "x86_64-pc-windows-msvc",
+    "official_binary_sha256": "8c24181c61c94ce8982ab6a5a9408a068f1385d1427c6d424edd5cd330fb6994",
+    "patched_binary_sha256": "533bd5dfb3fffd7c8a425d7f4fc26d0bfab3d6b7fd5cd1256caa14d8d09800ba",
+    "original_scope_caption": "Complete experimental app-server schemas; official musl and patched GNU Linux may differ in libc linkage but use the same frozen upstream release.",
+    "scope_caption_correction": "Actual target is Windows x86_64; the preserved generic Linux-libc sentence is not platform evidence."
+  },
+  "native_mcp_lifetime": {
+    "path": "<windows-short-validation-root>\\x3\\l\\3f2699e2-a23e-44ca-8f83-f74bab2dcf6e\\verdict.json",
+    "sha256": "5e7cf35fb585c6b19213566bf5f190be20fe703329627d69f1249343c4c176af",
+    "passed": true
+  },
+  "browser_protocol": {
+    "path": "<windows-short-validation-root>\\x3\\bp\\1ee4a29a-9600-407d-9cf8-ea813fc936f8\\verdict.json",
+    "sha256": "e7ec3483af3508902498ac30a1845f385cc8493f0cb2db7f5f46b24c140ed1bb",
+    "passed": true,
+    "http_cancelled_by_mcp": true,
+    "anticipated_error_readable": true
+  },
+  "native_browser": {
+    "path": "<windows-short-validation-root>\\x3\\b\\82a005a3-94ce-4a40-a550-63160e1c04ce",
+    "stages": [
+      "browser_remains_usable_after_turn_interruption",
+      "bundled_public_browser_actual_https_find_and_link",
+      "cold_native_mcp_page_reference_recovery",
+      "model_native_browse_find_follow_and_file_effect",
+      "native_direct_mcp_actual_open_find_click",
+      "native_interrupt_preserves_official_mcp_lifetime",
+      "native_owner_shutdown_closes_browser_http_request",
+      "slow_native_browser_request_actually_started"
+    ],
+    "passed_stages": 8,
+    "native_client_sessions": 2,
+    "native_rpc_pairing_reconstructed": true,
+    "host_sandbox_mode": "danger-full-access",
+    "positive_guest_sandbox_required_separately": true
+  },
+  "protocol_recovery": [
+    {
+      "kind": "schema-overflow",
+      "path": "<windows-short-validation-root>\\x3\\pr\\6b2eeb76-6b47-40c2-a225-56223d29fbfb",
+      "verdict_sha256": "3bb34a3b0acb8ee7f622164cbfe85df8fecf6c1f9ea8232b0604b2ce23252ea5",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    },
+    {
+      "kind": "schema-tool-final",
+      "path": "<windows-short-validation-root>\\x3\\pr\\775deae4-2e89-4eaf-9383-97828768d715",
+      "verdict_sha256": "b55811dd304370b95d549840a6b3a5df75afc56127ce69821d7b28ee55e03cc2",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    },
+    {
+      "kind": "schema-multiple",
+      "path": "<windows-short-validation-root>\\x3\\pr\\aff67d25-159f-4e93-83c3-d99dfd7a60d3",
+      "verdict_sha256": "28df1d69af31de7d7fb8aae176c188ec2d760a2db11efe10b470db06c8d4148c",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    },
+    {
+      "kind": "undeclared-tool",
+      "path": "<windows-short-validation-root>\\x3\\pr\\b086187c-5871-4b11-b93c-cb70ac2efb9f",
+      "verdict_sha256": "ea356afbcfca7eeac3c2f8411dfe4c0455dde84062c0e78d63eeffa9545068d6",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    },
+    {
+      "kind": "schema",
+      "path": "<windows-short-validation-root>\\x3\\pr\\d5775d94-9d89-4f08-b611-30f553d3e33f",
+      "verdict_sha256": "7502bd4bd71c49bbb2b1e348ab234fae409e2668babba2084599b02304dd30b6",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    },
+    {
+      "kind": "schema-tool-before-terminal",
+      "path": "<windows-short-validation-root>\\x3\\pr\\fb9b125e-3379-41b3-86cf-08ddaf41bdac",
+      "verdict_sha256": "9a33ce13ddb4759fbd06e9b5a56b328a2c785143f91b6bd6bb772aa0884c689a",
+      "requests": 2,
+      "native_completed": true,
+      "raw_protocol_reconstructed": true
+    }
+  ],
+  "windows_sandbox": {
+    "qualified": true,
+    "executed_source_id": "3a59a782f017693be2b0",
+    "guest_os": "Windows-2025Server-10.0.26100-SP0",
+    "scope": "Native sandbox positive lifecycle on Windows Server 2025 guest; not a claim of all Windows runtime gates or every Windows edition.",
+    "modes": [
+      {
+        "mode": "unelevated",
+        "native_sessions": 2,
+        "paired_native_methods": [
+          [
+            "config/read",
+            "initialize",
+            "windowsSandbox/readiness",
+            "windowsSandbox/setupStart"
+          ],
+          [
+            "command/exec",
+            "config/read",
+            "initialize",
+            "windowsSandbox/readiness"
+          ]
+        ],
+        "setup_completed": true,
+        "cold_readiness_and_config_persistence": true,
+        "inside_write_actual_bytes": true,
+        "outside_UnauthorizedAccess_verified_by_exact_command_and_result": true,
+        "outside_original_bytes_preserved": true,
+        "model_requests": 0,
+        "source_files": [
+          "unelevated/events-1792609010175563700.json",
+          "unelevated/events-1792609242702639200.json",
+          "unelevated/launch-1792608839920106600.json",
+          "unelevated/launch-1792609010215667000.json",
+          "unelevated/client-requests.jsonl",
+          "unelevated/home/config.toml",
+          "unelevated/outside.txt",
+          "unelevated/work/allowed.txt"
+        ]
+      },
+      {
+        "mode": "elevated",
+        "native_sessions": 2,
+        "paired_native_methods": [
+          [
+            "config/read",
+            "initialize",
+            "windowsSandbox/readiness",
+            "windowsSandbox/setupStart"
+          ],
+          [
+            "command/exec",
+            "config/read",
+            "initialize",
+            "windowsSandbox/readiness"
+          ]
+        ],
+        "setup_completed": true,
+        "cold_readiness_and_config_persistence": true,
+        "inside_write_actual_bytes": true,
+        "outside_UnauthorizedAccess_verified_by_exact_command_and_result": true,
+        "outside_original_bytes_preserved": true,
+        "model_requests": 0,
+        "source_files": [
+          "elevated/events-1792609512365792300.json",
+          "elevated/events-1792609752718833800.json",
+          "elevated/launch-1792609242859850400.json",
+          "elevated/launch-1792609512498722600.json",
+          "elevated/client-requests.jsonl",
+          "elevated/home/config.toml",
+          "elevated/outside.txt",
+          "elevated/work/allowed.txt"
+        ]
+      }
+    ],
+    "model_requests": 0,
+    "native_full_integrity_before_and_after": true,
+    "independent_readback_rehashed_binaries": false,
+    "independent_verdict_sha256": "0591758dc3a72117cd80be7a8e9faf20290327a5d579c60c4c2af23196dd6673",
+    "transfer_receipt_sha256": "877a3024f22883f3cd205f73a76f3728737cf314b3a565dadabdca0de1eb3d05",
+    "relocated_content_lineage": {
+      "content_equivalent": true,
+      "deployment_relocated": true,
+      "entry": "<windows-guest-administrator-home>\\AppData\\Local\\codex-deepseek-qa-r3\\releases\\3a59a782f017693be2b0\\venv\\Scripts\\codex-deepseek.exe",
+      "entry_sha256": "c6b5d0ecd11004a95d8f04ab2a85b02fe5a9405f2ac03718bc74c02fa6871f23",
+      "release_environment": "<windows-guest-administrator-home>\\AppData\\Local\\codex-deepseek-qa-r3\\releases\\3a59a782f017693be2b0\\venv",
+      "native_package": "<windows-guest-administrator-home>\\AppData\\Local\\codex-deepseek-qa-r3\\native\\a2d356c3261be7d1c6e0323b",
+      "source_id": "3a59a782f017693be2b0",
+      "native_manifest_sha256": "6211e05eb613e561f75c28d56b55e80692fb826914f5d6893429715708a5f8d7"
+    }
+  },
+  "complex_real_tasks": [
+    {
+      "case": "jinja",
+      "executed_source_id": "94c01b01aa57087becee",
+      "candidate_source_id": "3a59a782f017693be2b0",
+      "fresh_current_execution": false,
+      "runtime_mechanisms_passed": true,
+      "application_task_passed": true,
+      "original_report": "<windows-validation-root>\\complex-runtime-windows-r3\\jinja.json",
+      "original_report_sha256": "b1c59361a33d68d735fb34991b500d847a75e5205e5c50632c5c9141d4b739d9",
+      "raw_files_verified": 152,
+      "model_requests_inspected": 118,
+      "json_schema_requests": 0,
+      "source_lineage": "94c -> 069 exact six files -> 3a exact Windows overlay/metadata/manifest three files",
+      "credential_scope": "No explicit OAuth RPC observed. Historical config was not originally hash-bound; no claim that startup never read OAuth state. Changed OAuth branch is covered by fresh 3a Direct/Secrets standard gates."
+    },
+    {
+      "case": "httpcore",
+      "executed_source_id": "94c01b01aa57087becee",
+      "candidate_source_id": "3a59a782f017693be2b0",
+      "fresh_current_execution": false,
+      "runtime_mechanisms_passed": true,
+      "application_task_passed": true,
+      "original_report": "<windows-validation-root>\\complex-runtime-windows-r3\\httpcore.json",
+      "original_report_sha256": "3f3fc7d9aa3a8334d56e4d83a7a29814d60225174b6226ef4e02769bf83d87e4",
+      "raw_files_verified": 430,
+      "model_requests_inspected": 387,
+      "json_schema_requests": 0,
+      "source_lineage": "94c -> 069 exact six files -> 3a exact Windows overlay/metadata/manifest three files",
+      "credential_scope": "No explicit OAuth RPC observed. Historical config was not originally hash-bound; no claim that startup never read OAuth state. Changed OAuth branch is covered by fresh 3a Direct/Secrets standard gates."
+    }
+  ],
+  "source_impact": {
+    "exact_94c_to_069_delta": {
+      "README.md": {
+        "old_sha256": "9526288fc2715e9ff6bc18075b895d2ca90d292b3afe41e7c3d69b2af5060e13",
+        "new_sha256": "e64a749612f68bf7f2d083abe0c2e174bd22e68bfef78803b946ab487407fe4b"
+      },
+      "install.py": {
+        "old_sha256": "378e0617e0a462181596af5a03a7f7d2adeffb5055ad2b225c52bf0d6bdeb804",
+        "new_sha256": "5aa6ad8b77af04eb0898630a43884cb77d00e3672e76f0c1696d15dd3952c3a4"
+      },
+      "src/codex_deepseek/cli.py": {
+        "old_sha256": "71384eb5e13d9ef2955e2e128b024ab98dd956258d8fd55b18066837c2a80308",
+        "new_sha256": "5dd26cabd6993420d21ae9e5d511bc279a92a7502abed0d7154b4d8fcae5a3b6"
+      },
+      "src/codex_deepseek/protocol.py": {
+        "old_sha256": "22c96ede19f27598b8681c0d3da48dc97d6d3f429f1c660c335cc684c5803211",
+        "new_sha256": "487e782fcc0f5755b2a998878404859feb4d7e785a685f08125a6491032c39a8"
+      },
+      "src/codex_deepseek/service.py": {
+        "old_sha256": "f341a205bfc6aaf72badaa719b119303e502c112f685158069f345380ed4d386",
+        "new_sha256": "4028f795388cee514bb427a94affb662777be812a28c427719dac9023893ac81"
+      },
+      "src/codex_deepseek/windows_sockets.py": {
+        "old_sha256": "4e6080d38d470e33820177c4ef4e9fe9d266fc0ff90742cea76bf776e023a42c",
+        "new_sha256": "7667ba065d3152fc026acf71a8a1118304ab2e1530adf26ecc910561ef82caf8"
+      }
+    },
+    "exact_069_to_3a_delta": {
+      "native/runtime-x86_64-pc-windows-msvc.json": {
+        "before": "b5bb36f5f32e4b3e43bafa68fd697010eef56a96b0aaf1518859ef7dc1e1345a",
+        "after": "af91756aa568ca84ab16a78d0d1943aba62b2e8b69187df7952332866d6315a4"
+      },
+      "native/windows-source-changes.json": {
+        "before": "2ad0b6ffe47ecfeb830aae09049ccf2ae3d2385997184d6c4bf2e76d8ff5b9d0",
+        "after": "e09aa0d7463f9761bb0e363d80a9ffd591d5846b7a8a12bdb4a048f6b62c599f"
+      },
+      "native/windows-transport.patch": {
+        "before": "b3868bd174776fbca2444284312346831219e5998833eec172f8c20f55482293",
+        "after": "d2745c0e0c8b498fab05f3a830081dda3e3502aac6da80a705311702df351f5c"
+      }
+    },
+    "unchanged_native_core": {
+      "path": "<windows-short-validation-root>\\x3\\src\\verdict.json",
+      "sha256": "f141ba71059f55e8fb023b9cb39dd485307deec87f335ecc3e2976e25c343118",
+      "upstream_source_files": 9353,
+      "unchanged_protected_runtime_files": 348,
+      "external_cargo_packages_unchanged": true,
+      "patch_replay_passed": true,
+      "patch_sha256": "8e5f6f809e6945080974e4762de3e0fef3503d1e488ec7c1c9b682ee34f06c57",
+      "declared_changed_files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/Cargo.toml",
+        "codex-rs/cli/src/main.rs",
+        "codex-rs/config/src/isolated_provider.rs",
+        "codex-rs/config/src/lib.rs",
+        "codex-rs/config/src/loader/managed_requirements.rs",
+        "codex-rs/config/src/loader/mod.rs",
+        "codex-rs/core/src/tools/spec_plan.rs",
+        "codex-rs/deepseek-http-transport/Cargo.toml",
+        "codex-rs/deepseek-http-transport/src/main.rs",
+        "codex-rs/deepseek-http-transport/tests/native_policy.rs",
+        "codex-rs/ext/guardian-v2/src/async_scorer/sampler.rs",
+        "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
+        "codex-rs/ext/guardian-v2/src/async_scorer/startup.rs",
+        "codex-rs/http-client/src/client_builder.rs",
+        "codex-rs/http-client/src/dedicated_transport.rs",
+        "codex-rs/http-client/src/lib.rs",
+        "codex-rs/http-client/src/network_policy.rs",
+        "codex-rs/http-client/src/outbound_proxy.rs",
+        "codex-rs/http-client/src/route_aware_client_pool/execution.rs",
+        "codex-rs/rmcp-client/src/oauth.rs",
+        "codex-rs/stdio-to-uds/Cargo.toml",
+        "codex-rs/stdio-to-uds/src/lib.rs"
+      ]
+    },
+    "same_dependency_and_model_catalog": true
+  },
+  "public_source_lineage": {
+    "final_public_source_id": "f6fbb221468bfb4b3b4d",
+    "kind": "documentation_and_manifest_line_endings",
+    "qualified_source_id_is_not_rewritten": true,
+    "expected_allowed_changes": [
+      "README.md",
+      "native/runtime-x86_64-pc-windows-msvc.json CRLF-to-LF only"
+    ],
+    "required_checks": [
+      "Full product inventory diff remains limited to these changes",
+      "Windows manifest parsed JSON object is identical",
+      "Native archive and every native binary/resource SHA remain identical"
+    ],
+    "completed_by_release_owner_separately": true,
+    "lineage_checks_independently_verified": true,
+    "sidecar": "release-source-lineage.json",
+    "sidecar_sha256": "97827d0c07d677c73da7a2d252ec28f43d9fad8a977639b5d08b3a1adf41d0b1"
+  },
+  "evidence_index": "evidence-files.json",
+  "sanitized_materials_plan": "public-materials-plan.json",
+  "created_at": 1792610462.30988
+}
