@@ -1,0 +1,246 @@
+{
+  "date": "2026-10-22",
+  "skill_acceptance_passed": true,
+  "scope": "CDS operating skill, offline preflight helper and real Windows task use; not a new whole-runtime release qualification",
+  "native_baseline": "0.164.0-alpha.7",
+  "runtime_product_code_changed": false,
+  "published_v0_5_0_tag_changed": false,
+  "skill_files_sha256": {
+    "SKILL.md": "f43867071c0d64f87a033b7fccb3ac468f5486d2fc440874afe472bd8983fed3",
+    "references/launch-and-permissions.md": "b0d66f6d26bbcf22cddd2c8e68039825ff4924d71a511b998da713a517ada664",
+    "references/native-tools.md": "5dd0070e53e946400fa51d2b18739e5a2968ada7eb8b1c9b89d8d6449d397d99",
+    "references/control-and-recovery.md": "76173b4e1b582c796cb0f842a97529f6db6caf449634e0450389e8c1e4fc782f",
+    "references/diagnostics-and-verification.md": "17456c0997773533fe5581c31f8ee3d4b42bd779c7ab1ef2d38bf4583daed5de",
+    "references/installation-and-platforms.md": "e5e0568c89ffc56c9d11d09cfc17e15cc081dffcc3f7457adbf51bca06a956b6",
+    "references/sources-and-compatibility.md": "3b7f5a5d9c050ed7b39d977f19f009586cabde3800f7ddc267e0b4e7ab6f7943",
+    "agents/openai.yaml": "28503ac944ccd83740c555d78f55b81b0d610fc375c2ac5b596fe794e818d529",
+    "scripts/inspect_cds.py": "86f67c1669d80bedac4875e46dee95e29fd6a939aef7c404d3e6b959fbe57c1c"
+  },
+  "structure": {
+    "official_skill_creator_validator": "passed",
+    "linked_references": 6,
+    "main_skill": 1,
+    "helpers": 1,
+    "default_implicit_selection": true,
+    "no_additional_runtime_or_scheduler": true
+  },
+  "independent_forward_test": {
+    "cases": 13,
+    "type": "dry-run decision testing",
+    "actionable_findings": 2,
+    "fixed_and_retested_cases": [
+      3,
+      4,
+      6
+    ],
+    "remaining_actionable_findings": 0
+  },
+  "helper_unit_tests": {
+    "platform": "macOS",
+    "passed": 18,
+    "runner": "Python 3.13.3 / pytest 9.0.2",
+    "script_sha256": "54ee61f4159f948b5276a6c1e12692f4e47b223584002eb362beb0ed52fc2ae8",
+    "scope": "Meaningful local metadata, refusal, path, argv and timeout cases; Windows paths in these unit tests are fixtures"
+  },
+  "real_platform_checks": {
+    "macOS": {
+      "adapter_source_id": "98b24d5adbcf145b99ee",
+      "offline_version": true,
+      "native_shared_skill_discovery": true,
+      "model_requests": 0
+    },
+    "Linux_WSL": {
+      "adapter_source_id": "3a59a782f017693be2b0",
+      "offline_version": true,
+      "native_shared_skill_discovery": true,
+      "model_requests": 0
+    },
+    "Windows": {
+      "adapter_source_id": "3a59a782f017693be2b0",
+      "actual_cds_exe_alias_and_space_path": true,
+      "unknown_entry_rejected_without_execution": true,
+      "native_shared_skill_discovery": true,
+      "direct_exec_model_task": {
+        "passed": true,
+        "thread_id": "01a16298-4402-7c13-9412-81f980178b06",
+        "process_exit": 0,
+        "actual_output": {
+          "count": 4,
+          "total": "11.40",
+          "by_name": {
+            "青松": "10.50",
+            "Maple": "0.90"
+          }
+        },
+        "conflicting_duplicate_rejected": true,
+        "native_command_events": 44
+      },
+      "app_server_same_thread_continuation": {
+        "passed": true,
+        "same_thread_id": true,
+        "turn_id": "01a1629b-57d5-7e03-a66f-2deb4ed3c0e5",
+        "explicit_native_skill_input": true,
+        "default_and_summary_modes_verified": true,
+        "conflict_rejection_preserved": true,
+        "native_items": 29
+      },
+      "native_history_explicit_skill_blocks_before_followup": 2,
+      "corrected_skill_followup": {
+        "passed": true,
+        "actual_output": {
+          "count": 2,
+          "total": "0.30",
+          "by_name": {
+            "A,B": "0.30"
+          }
+        },
+        "same_thread": true,
+        "model_receipts_added": 7,
+        "native_commands": 10,
+        "nonzero_read_helper_commands": 2
+      },
+      "model_receipt_status_counts": {
+        "completed": 40
+      },
+      "selected_provider_counts": {
+        "deepseek": 40
+      },
+      "model_task_sandbox_types": [
+        "workspace-write",
+        "workspace-write",
+        "workspace-write"
+      ]
+    }
+  },
+  "preserved_failures": {
+    "all_shell_invocations_passed": false,
+    "first_cli_command_count": 44,
+    "first_cli_nonzero_commands": 10,
+    "expected_business_rejection": 1,
+    "powershell_initialization_failures": 3,
+    "other_model_command_errors": 6,
+    "followup_nonzero_read_helper_commands": 2,
+    "classification": "Final verified business results do not erase intermediate shell/model errors"
+  },
+  "windows_native_shell_comparison": {
+    "comparison_completed": true,
+    "same_native_bytes": true,
+    "native_sha256": "533bd5dfb3fffd7c8a425d7f4fc26d0bfab3d6b7fd5cd1256caa14d8d09800ba",
+    "ssh_logon_type": 3,
+    "adapter_specific_difference_observed": false,
+    "model_requests": 0,
+    "direct_ssh_baseline_exit_codes": {
+      "powershell": 0,
+      "cmd": 0
+    },
+    "comparison": [
+      {
+        "policy": "default",
+        "shell": "powershell",
+        "result": {
+          "exitCode": -1073741502,
+          "stdout": "",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0xC0000142"
+      },
+      {
+        "policy": "default",
+        "shell": "cmd",
+        "result": {
+          "exitCode": 0,
+          "stdout": "CDS_CMD_PROBE_OK\r\n",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0x00000000"
+      },
+      {
+        "policy": "workspaceWrite",
+        "shell": "powershell",
+        "result": {
+          "exitCode": -1073741502,
+          "stdout": "",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0xC0000142"
+      },
+      {
+        "policy": "workspaceWrite",
+        "shell": "cmd",
+        "result": {
+          "exitCode": 0,
+          "stdout": "CDS_CMD_PROBE_OK\r\n",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0x00000000"
+      },
+      {
+        "policy": "dangerFullAccess",
+        "shell": "powershell",
+        "result": {
+          "exitCode": 0,
+          "stdout": "CDS_PS_PROBE_OK\r\n",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0x00000000"
+      },
+      {
+        "policy": "dangerFullAccess",
+        "shell": "cmd",
+        "result": {
+          "exitCode": 0,
+          "stdout": "CDS_CMD_PROBE_OK\r\n",
+          "stderr": ""
+        },
+        "cds_and_direct_native_equal": true,
+        "exit_hex": "0x00000000"
+      }
+    ],
+    "conclusion": "PowerShell fails identically through CDS and directly through the same native binary under the tested workspace sandbox; CMD succeeds. This identifies a native/environment interaction, not its unique OS root cause or a PowerShell fix."
+  },
+  "installation": {
+    "shared_user_path": "~/.agents/skills/cds",
+    "platforms": [
+      "macOS",
+      "Windows",
+      "Linux WSL"
+    ],
+    "all_nine_file_hashes_match": true,
+    "native_discovery_verified_on_all_three": true,
+    "app_configuration_sessions_and_credentials_not_shared": true
+  },
+  "cleanup": {
+    "owned_tree_removed": true,
+    "logical_removed_bytes": 438149026,
+    "observed_volume_free_delta_bytes": 438489088,
+    "installed_shared_skill_preserved": true,
+    "archive_verified_on_mac_before_removal": true
+  },
+  "raw_evidence_sha256": {
+    "forward-test.json": "4448e095a39ead0a2f3f247bbce326b671b2f2758ef89e653883bacd3992ec10",
+    "forward-retest.json": "05222bfb07bd387c8c1c9257579f4b7312335bcc43cb006c54ea0f90e817d16b",
+    "windows-preflight.json": "3f2f79f1d19b33e824e15472ae53b54e423954628df68c923d93f9450c75cc30",
+    "windows-model-acceptance.json": "460fb6fc754b849fed6a9a23f383f598535c76a9403ff3118f3343bff4720f0d",
+    "windows-followup-acceptance.json": "5409fc2230735b157f9ce87bd66e16aa7929f481a3ed316192eae71ab3154a8b",
+    "windows-command-outcomes.json": "6afe2171611272e57f0a1888283e0fe922b03d0998259b732d186545a77194db",
+    "windows-powershell-comparison.json": "8d88a1d6af904158ee9670a4949d6f6931e824598635e30101af3ceaf42c82fe",
+    "native-discovery-shared.json": "2b4901bd207d33eb4216713d855ff0b2bdcb6b7ad3e071cc787596a99cb560b9",
+    "linux-shared-skill-installation.json": "06d4ee28286068cbdbd5dd787dd80cffb47a511923691cb2a5dfee5a5bb01c67",
+    "windows-installation.json": "3d66d46789cb0da4ecf46021e67a81d8fa18983c22adebe3521e9075aabf88da",
+    "windows-final-cleanup.json": "dcb98e0c747e18e937cf6732a43b64508ba4e391189ca4aa97f30dd6946b017f",
+    "windows-archive-receipt.json": "f05c3eb574e6d1fa1aca5e9f66c66289ea32772287695debfdbcf95be882d845"
+  },
+  "limits": [
+    "Model-driven skill acceptance in this update is Windows-specific. Mac/Linux native discovery is real but no new model task ran there.",
+    "This skill is optional operating guidance. Normal native tools do not require it.",
+    "External CDS workers are separate process/session owners, not automatically registered native subagents of an outer Codex.",
+    "The original Windows run included failed shell/model commands; the evidence is not relabeled as all commands passing.",
+    "The original model-run harness copied an incidental pycache; the final harness excludes rebuildable bytecode from skill copies. Outcome assertions are unchanged.",
+    "The final installation-platform reference adds the native Windows comparison after the model run; all final skill bytes were independently rechecked in native shared-directory discovery."
+  ]
+}

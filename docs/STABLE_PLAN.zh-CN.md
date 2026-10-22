@@ -102,6 +102,12 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 宿主 Windows 的复杂任务可明确使用 full-access 模式，以避免修改用户已有沙箱账户；这种任务结果必须配合同一源码、依赖、catalog 和原生产物的隔离 Windows 客体验证，才能覆盖沙箱能力。客体的正向权限结果不能只由 readiness 或 setup 成功代替。
 
+## 委派与运行中控制
+
+子 CLI 的权限以实际启动参数为准，不能从父任务的 full-access 状态推断。`queue` 进入后续 turn 队列；运行中追加输入使用原 app-server 的 `turn/steer`，明确停止则使用 interrupt 并核对后台进程。原版 REA/Ghidra 的已验证启动方式及 exec resume 用法见[委派和本地工具指南](delegation-and-local-tools.zh-CN.md)。
+
+供外层 agent 和 CDS 自身按需使用的 [`$cds` 操作技能](cds-skill.zh-CN.md) 沿用官方 SKILL.md 格式；它只提供操作知识和只读安装检查，不增加工具调度或会话生命周期实现。技能和文档的更新不重写已发布 v0.5.0 的 tag 或平台证据。
+
 ## 更新、回退和清理
 
 升级使用新不可变目录。当前 profile 仍有原生工作时，不替换它的提供方服务；先结束工作，或使用另一个独立 home。独立 daemon 更新使用原生 `app-server daemon update --from-cli --yes`，保留本发行包的模型提供方边界。

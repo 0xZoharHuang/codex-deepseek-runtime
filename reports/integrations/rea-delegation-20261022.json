@@ -1,0 +1,94 @@
+{
+  "scope": "Fixed-version CDS delegation/control and original REA integration; synthetic data only",
+  "native_version": "0.164.0-alpha.7",
+  "native_upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "installed_adapter_source_id": "98b24d5adbcf145b99ee",
+  "native_binary_sha256": "a5c93856621c12c89aed65f13c54fd39a56396c3296d0b6d300841157e8d5362",
+  "model_driven_REA": {
+    "passed": true,
+    "actual_rea_invocations": 1,
+    "actual_completed_model_requests": 7,
+    "selected_model_provider": "deepseek",
+    "actual_sandbox_policy": {
+      "type": "danger-full-access"
+    },
+    "actual_approval_policy": "never",
+    "actual_REA_provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "fixture_sha256": "e2a86d9c743b151a96543c4d8f6b15274392608b0b0f40c51e128814c4d8b193",
+    "provider_subject_matches_actual_binary": true,
+    "native_code_and_tool_effects_reconstructed": true,
+    "function_body_bytes": 32,
+    "assembly_instructions": 8,
+    "recovered_multiply_constant": 7,
+    "recovered_add_constant": 11,
+    "HOME_not_reassigned_by_native_tool_commands": true,
+    "REA_runtime_files_unchanged": 1223,
+    "original_transport_and_validation_retained": true,
+    "external_host_REA_execution_used": false,
+    "private_device_or_health_data_used": false
+  },
+  "REA_version": "6.4.0",
+  "REA_commit": "58e91e14bd5659dd57acbb91e56b5fc6a6963c80",
+  "node_version": "24.19.0",
+  "queue_and_steer": {
+    "passed": true,
+    "external_model_requests": 0,
+    "local_stub_requests": 3,
+    "cases": [
+      {
+        "name": "queue_ack_while_active_only_persists_next_turn_input",
+        "passed": true
+      },
+      {
+        "name": "steer_same_active_turn_preempts_local_stream_and_reaches_next_request",
+        "passed": true
+      },
+      {
+        "name": "queue_consumed_as_new_turn_after_original_completion",
+        "passed": true
+      },
+      {
+        "name": "thread_input_append_unregistered_in_pinned_native",
+        "passed": true
+      }
+    ],
+    "temporary_binary_and_profile_removed": true
+  },
+  "scoped_permissions": {
+    "passed": true,
+    "native_command_exec_calls": 3,
+    "model_requests": 0,
+    "baseline_selected_and_neighbor_paths_denied": true,
+    "exact_socket_and_cache_permissions_passed": true,
+    "socket_directory_outside_workspace_passed": true,
+    "entry_and_native_unchanged": true,
+    "invalid_config_attempt_preserved": true,
+    "full_REA_run_under_this_scoped_profile_claimed": false
+  },
+  "runtime_product_code_modified": false,
+  "original_REA_modified": false,
+  "existing_research_jobs_or_queues_modified": false,
+  "diagnosis": [
+    "Explicit child workspace-write does not inherit parent full access; filesystem cache and UDS are separate native permission surfaces.",
+    "queue confirmation is persistence, not active-turn steering.",
+    "Original REA works through CDS with the authorized full-access invocation and compatible fixed tools."
+  ],
+  "original_private_evidence_sha256": {
+    "REA_independent_verdict": "674f50acc46eb5831b6d70a39cb82814cf82a8b3658b41edbb9660a792944f4b",
+    "REA_native_events": "352d70fce584ffbde86f537b5bcfb9f8bc3b57aa3222dc9b950427a81ee6f305",
+    "REA_original_provider_result": "114f48ff40b992e829392fba40574490a4e49d481a02fbe54ef40ba71a360bf8",
+    "queue_controlled_result": "bf21341d31f5465747b99f660320c1f875cd4f6f8867845d5c75b3c4c9ca6af5",
+    "native_resume_parser_result": "08d0b24406a63aa90f6b2318449bdcd8669e4fa5e1a40df0fb83bf9279f75cc2",
+    "scoped_permissions_result": "f9042625e3bde036b86ca80032a18eeb55b9bbec8d2ccccac756b9362ed226fc"
+  },
+  "limits": [
+    "The existing research jobs were not resumed or inspected for actual queue consumption.",
+    "The REA end-to-end result is one synthetic function on the specified tool versions.",
+    "The scoped OS fixtures validate native permission mechanics, not a full REA run under that profile.",
+    "Queue and steer controlled fixture used a local fixed-response endpoint, not an external model."
+  ]
+}

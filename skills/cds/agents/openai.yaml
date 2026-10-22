@@ -1,0 +1,4 @@
+interface:
+  display_name: "CDS Runtime"
+  short_description: "用 CDS 委派任务，管理原生权限、会话恢复和工具执行"
+  default_prompt: "使用 $cds 在指定安装上完成任务，保留授权范围，并核验实际结果。"

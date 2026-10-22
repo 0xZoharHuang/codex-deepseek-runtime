@@ -6,6 +6,8 @@
 
 *An isolated native Codex CLI distribution for DeepSeek through OpenRouter. The native runtime owns tool execution, permissions, sessions and agent scheduling.*
 
+需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
+
 > **v0.5.0：**固定版本的 Windows x86_64、Linux x86_64 和 macOS Apple Silicon runtime 已分别验收。下面列出实际范围、安装方法和可核查的证据；上游基线是预发布版，不把未测试的系统或后续版本算入支持范围。
 
 ## 它怎样工作
