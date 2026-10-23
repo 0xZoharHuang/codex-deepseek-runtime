@@ -394,6 +394,97 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-sandbox-coordination.patch",
+      "sha256": "65a7de464fef282705e4f2e371b61c3fe588b146c339643a2772aaa401a2f500",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/namespace_key.rs",
+            "before_sha256": "8d10d216fd18a7bff3db86e2997bb4899c392047cd57b466454b4455ddee4be3",
+            "after_sha256": "cf5549a2859ead5a82c84815090d5b38aacfe6d59ea6adb7664e8964ac82b0b6"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/namespace.rs",
+            "before_sha256": "38e7ea19ee931c7e4146b04ea17bcda61e0832372844984f605694083b368744",
+            "after_sha256": "dfec7284dbfb9a1e673d3f5d76dd2fa5d6dff1b358fcd788fd59861144f3e2ec"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/token.rs",
+            "before_sha256": "cd718dbf7a010f188bad9da82d73fb48dbb2e83d10475f3c1de8d29a1738fb9c",
+            "after_sha256": "3e93fcc70cfe1707a4f21c1578dd955b0efd66b5456f30744f8980ec2718cc31"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/lib.rs",
+            "before_sha256": "2466f2d44b8e8ecc4ec1e540b5ef450b6a9c004135f357e71b99104dc19ffca1",
+            "after_sha256": "2e38d4ad38feaa4a990e578d84a560b40382702522e07b3026de57a27f703cb5"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs",
+            "before_sha256": "e5a47ef722d4ab6c62660f81d433e6a75e123376282af95544bf08c43f5c006e",
+            "after_sha256": "79305370141a1c90891832ab42dd8fbde5063e4351f289af6fdec0bc978c50ce"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/read_acl_mutex.rs",
+            "before_sha256": "dc14b0cd2125beb183bb9141c3fef52c2dc658e405043262b04615e74c9f7f2a",
+            "after_sha256": "3dbc0ca623e1fb8beea81a25781fff63deb333c61ade46db2a6562d00e726860"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "543808ccfd33dc823de90d8cc8e0dc1a076bec4f4675a15490b4d8f5f03260d2",
+            "after_sha256": "7fc1ea355c9f0fbae15e2c3b4e543a6d8565982f3d31b3f71d7bba6972dc2408"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/namespace_coordination.rs",
+            "before_sha256": null,
+            "after_sha256": "516dbd693b69b0e6dc4f4da7824725ab278cc4a68cd3a48f227132a01c25257e"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-managed-deny-revoke.patch",
+      "sha256": "b7c2f84ecf24c654d93a46150d3d977dcff176b4a1fa1d004eb39bb14c007073",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "2b4685cb4a3ed79e124c113b5ded7c4fcc6fd5456c7e44a73df145d0fd25c666",
+            "after_sha256": "24ec4fd59ee093ef73a0b263bac1f8355bf16263757dc5d891b9380bbbb8a708"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl_tests.rs",
+            "before_sha256": "f9818da36093f6550ff241f881d7f310ddd19554137611ba18ffdfd220c1d01c",
+            "after_sha256": "54e525a0a0932ef163af6790b0670eb83559268d2c05eb8c3c5320fd6f6ed993"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/deny_read_acl.rs",
+            "before_sha256": "dac8d998e433f4592422d12cb2ec74b559fea098621a75c88b5cd55af8137435",
+            "after_sha256": "48eb110bf9633dc391b0bbe33f83f723be097833a3380138e09e7055b9921aa4"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/deny_read_state.rs",
+            "before_sha256": "d1ca2f687f9d001983e6528feb75974a4a02e1c23b5848fac9ef49ebc2dc6306",
+            "after_sha256": "7cb2bde374babc7d9cbfa866b6f89526bb2bfd0782eaae581318ac365d31b906"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/deny_read_state_tests.rs",
+            "before_sha256": "4f31722cf1738ae9e5d1a4bb1c4e655365d0e2e6da83e691b45401646fbcb623",
+            "after_sha256": "bb3099da83b6ae53e60896a78cc1fdd4227f83866491cdf367ab89f6db3eadcd"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/file_write.rs",
+            "before_sha256": "0ff9fb65f33f7558c2fafd96a213e2f36577df91888fd1e234ca6c97dc9ca5c3",
+            "after_sha256": "1f39632c2017f96ea2cc42576acfe3dbe1287bf23ceed9f878c13cb3e123f7f3"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs",
+            "before_sha256": "f93737803aa6bca3485e873f444cfad4184d67f7f12a694d2a85967c8b0957de",
+            "after_sha256": "fb4058281eff1abd56c875c894647d47e34b0be891a0bb3f10e1592401b09713"
+          }
+        ]
+      }
     }
   ]
 }

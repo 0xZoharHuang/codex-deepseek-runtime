@@ -145,7 +145,7 @@ def test_windows_network_overlay_is_explicit_and_does_not_qualify_other_platform
 
 def test_final_windows_readiness_and_artifacts_are_ordered_and_target_scoped():
     recipe=build.runtime_recipe()
-    entries=recipe['overlays'][-3:-1]
+    entries=recipe['overlays'][-5:-3]
     assert [x['file'] for x in entries]==['windows-wfp-readiness.patch','windows-artifact-readroots.patch']
     assert all(set(x['changes_by_target'])=={WIN} for x in entries)
     first={x['path']:x['after_sha256'] for x in entries[0]['changes_by_target'][WIN]}
@@ -161,14 +161,14 @@ def test_final_overlay_omission_cannot_reuse_a_previous_ready_manifest(tmp_path,
     with pytest.raises(ValueError,match='order'):build.runtime_recipe()
 
 
-def test_runner_home_fix_is_last_and_changes_only_the_native_runner():
-    recipe=build.runtime_recipe();entry=recipe['overlays'][-1]
+def test_runner_home_fix_precedes_token_coordination_and_changes_only_the_native_runner():
+    recipe=build.runtime_recipe();entry=recipe['overlays'][-3]
     assert entry['file']=='windows-sandbox-runner-home.patch'
     assert set(entry['changes_by_target'])=={WIN}
     changed=entry['changes_by_target'][WIN]
     assert len(changed)==1
     assert changed[0]['path']=='codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs'
-    previous=next(row for item in recipe['overlays'][:-1] for row in item['changes_by_target'].get(WIN,[]) if row['path']==changed[0]['path'])
+    previous=next(row for item in recipe['overlays'][:-3] for row in item['changes_by_target'].get(WIN,[]) if row['path']==changed[0]['path'])
     assert changed[0]['before_sha256']==previous['after_sha256']
 
 
@@ -201,3 +201,20 @@ print("ISOLATED_BUILD_LICENSE_INPUTS_OK")
     result=subprocess.run([sys.executable,'-I','-X','utf8','-c',child,str(ROOT)],cwd=tmp_path,env=env,capture_output=True,text=True,encoding='utf-8',timeout=30)
     assert result.returncode==0,result.stdout+result.stderr
     assert result.stdout.strip()=='ISOLATED_BUILD_LICENSE_INPUTS_OK'
+
+
+def test_final_recovery_overlays_are_windows_only_and_follow_the_exact_runner_preimage():
+    recipe=build.runtime_recipe()
+    runner,coordination,deny=recipe['overlays'][-3:]
+    assert [item['file'] for item in (runner,coordination,deny)]==[
+        'windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch',
+        'windows-managed-deny-revoke.patch']
+    assert all(set(item['changes_by_target'])=={WIN} for item in (coordination,deny))
+    runner_row=runner['changes_by_target'][WIN][0]
+    coordination_rows={row['path']:row for row in coordination['changes_by_target'][WIN]}
+    assert coordination_rows[runner_row['path']]['before_sha256']==runner_row['after_sha256']
+    assert len(coordination_rows)==8
+    deny_paths={row['path'] for row in deny['changes_by_target'][WIN]}
+    assert len(deny_paths)==7 and not deny_paths.intersection(coordination_rows)
+    assert 'codex-rs/windows-sandbox-rs/src/deny_read_state.rs' in deny_paths
+    assert 'codex-rs/windows-sandbox-rs/src/file_write.rs' in deny_paths

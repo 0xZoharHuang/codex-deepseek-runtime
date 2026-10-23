@@ -96,7 +96,7 @@ def runtime_recipe():
     if any(not isinstance(recipe[key],str) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',recipe[key]) for key in ['upstream_toolchain','build_toolchain']):
         raise ValueError('Native toolchains must be explicit release pins')
     if set(recipe['required_base_inputs'])!=set(PLATFORM_ASSETS):raise ValueError('Native recipe target set mismatch')
-    order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch']
+    order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch']
     if not isinstance(recipe['overlays'],list) or [item.get('file') for item in recipe['overlays']]!=order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():

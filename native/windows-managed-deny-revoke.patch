@@ -1,0 +1,1566 @@
+--- a/codex-rs/windows-sandbox-rs/src/acl.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl.rs
+@@ -1019,7 +1019,132 @@
+ #[path = "acl_tests.rs"]
+ mod tests;
+ 
+-/// Removes explicit ACEs for one SID and propagates the updated inherited ACL.
++/// Remove only the explicit deny-read forms produced by add_deny_read_ace.
++///
++/// Win32 REVOKE_ACCESS removes allow/audit ACEs, not deny ACEs. Normalized
++/// file ACEs and a directory's inherit-only companion are handled together.
++/// A mixed/custom read mask fails before mutation because ownership is ambiguous.
++///
++/// # Safety
++/// Caller must pass a valid SID pointer and own the managed deny-read entry.
++pub unsafe fn revoke_managed_deny_read_aces(path: &Path, psid: *mut c_void) -> Result<bool> {
++    let open = |access| {
++        OpenOptions::new()
++            .access_mode(access)
++            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
++            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++            .open(path)
++    };
++    let (handle, write_error) = match open(READ_CONTROL | WRITE_DAC) {
++        Ok(handle) => (handle, None),
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
++        Err(error) => (
++            open(READ_CONTROL)
++                .with_context(|| format!("open managed read ACL {}", path.display()))?,
++            Some(error),
++        ),
++    };
++    ensure_handle_is_not_filesystem_root(&handle, path)?;
++    let mut descriptor: *mut c_void = std::ptr::null_mut();
++    let mut acl: *mut ACL = std::ptr::null_mut();
++    let status = GetSecurityInfo(
++        handle.as_raw_handle() as _,
++        1,
++        DACL_SECURITY_INFORMATION,
++        std::ptr::null_mut(),
++        std::ptr::null_mut(),
++        &mut acl,
++        std::ptr::null_mut(),
++        &mut descriptor,
++    );
++    let result = (|| -> Result<bool> {
++        acl_api_result(path, "read managed deny ACL", status)?;
++        if acl.is_null() {
++            return Ok(false);
++        }
++        let indices = managed_deny_read_ace_indices(acl, psid)?;
++        if indices.is_empty() {
++            return Ok(false);
++        }
++        if let Some(error) = write_error {
++            return Err(error).context("open managed deny ACL for update");
++        }
++        let size = (*acl).AclSize as usize;
++        let mut copy = vec![0_u32; size.div_ceil(std::mem::size_of::<u32>())];
++        let changed = copy.as_mut_ptr().cast::<ACL>();
++        std::ptr::copy_nonoverlapping(acl.cast::<u8>(), changed.cast::<u8>(), size);
++        for index in indices.into_iter().rev() {
++            if windows_sys::Win32::Security::DeleteAce(changed, index) == 0 {
++                return Err(std::io::Error::last_os_error())
++                    .context("remove managed deny-read ACE");
++            }
++        }
++        // Pin the same object for read/write; retain native inheritance propagation.
++        acl_api_result(
++            path,
++            "write managed deny ACL",
++            SetSecurityInfo(
++                handle.as_raw_handle() as _,
++                1,
++                DACL_SECURITY_INFORMATION,
++                std::ptr::null_mut(),
++                std::ptr::null_mut(),
++                changed,
++                std::ptr::null_mut(),
++            ),
++        )?;
++        Ok(true)
++    })();
++    if !descriptor.is_null() {
++        LocalFree(descriptor as HLOCAL);
++    }
++    result
++}
++
++unsafe fn managed_deny_read_ace_indices(acl: *mut ACL, psid: *mut c_void) -> Result<Vec<u32>> {
++    let mut info: ACL_SIZE_INFORMATION = std::mem::zeroed();
++    if GetAclInformation(
++        acl,
++        &mut info as *mut _ as *mut c_void,
++        std::mem::size_of::<ACL_SIZE_INFORMATION>() as u32,
++        AclSizeInformation,
++    ) == 0
++    {
++        return Err(std::io::Error::last_os_error()).context("inspect managed deny-read ACL");
++    }
++    let mut indices = Vec::new();
++    for index in 0..info.AceCount {
++        let mut value: *mut c_void = std::ptr::null_mut();
++        if GetAce(acl, index, &mut value) == 0 {
++            return Err(std::io::Error::last_os_error()).context("inspect managed deny-read ACE");
++        }
++        let header = &*value.cast::<ACE_HEADER>();
++        if header.AceType != ACCESS_DENIED_ACE_TYPE || header.AceFlags & INHERITED_ACE != 0 {
++            continue;
++        }
++        let ace = &*value.cast::<ACCESS_DENIED_ACE>();
++        if EqualSid(std::ptr::addr_of!(ace.SidStart) as *mut c_void, psid) == 0 {
++            continue;
++        }
++        let owned = (header.AceFlags == 0 && ace.Mask == FILE_GENERIC_READ)
++            || (header.AceFlags
++                == ((CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE) as u8 | INHERIT_ONLY_ACE)
++                && ace.Mask == (FILE_GENERIC_READ | GENERIC_READ_MASK));
++        if owned {
++            indices.push(index);
++        } else {
++            // READ_CONTROL/SYNCHRONIZE overlap writes: preserve write-only ACEs.
++            const READ_SPECIFIC: u32 = 0x0000_0089 | GENERIC_READ_MASK | GENERIC_ALL_MASK;
++            ensure!(
++                ace.Mask & READ_SPECIFIC == 0,
++                "ambiguous same-principal deny-read ACE; preserving ACL and ownership state"
++            );
++        }
++    }
++    Ok(indices)
++}
++
++/// Removes explicit allow/audit ACEs for one SID (Win32 REVOKE_ACCESS semantics).
+ ///
+ /// # Safety
+ /// Caller must pass a valid SID pointer and have authority to edit the target DACL.
+--- a/codex-rs/windows-sandbox-rs/src/acl_tests.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl_tests.rs
+@@ -195,3 +195,171 @@
+     });
+     assert_eq!(acl_snapshot(&child), before);
+ }
++
++fn managed_read_revoke_entries(path: &Path) -> Vec<Vec<u8>> {
++    unsafe {
++        use windows_sys::Win32::Security::{ACE_HEADER, GetAce};
++        let (acl, descriptor) = fetch_dacl_handle(path).unwrap();
++        let result = if acl.is_null() {
++            Vec::new()
++        } else {
++            (0..(*acl).AceCount as u32)
++                .map(|index| {
++                    let mut entry = std::ptr::null_mut();
++                    assert_ne!(GetAce(acl, index, &mut entry), 0);
++                    let size = (*(entry as *const ACE_HEADER)).AceSize as usize;
++                    std::slice::from_raw_parts(entry.cast::<u8>(), size).to_vec()
++                })
++                .collect()
++        };
++        LocalFree(descriptor as HLOCAL);
++        result
++    }
++}
++
++unsafe fn managed_read_revoke_prepend_deny(path: &Path, sid: *mut c_void, mask: u32) {
++    use windows_sys::Win32::Security::Authorization::SetNamedSecurityInfoW;
++    use windows_sys::Win32::Security::{
++        ACE_HEADER, ACL, ACL_REVISION, AddAccessDeniedAceEx, AddAce, GetAce, InitializeAcl,
++    };
++    let (old, descriptor) = fetch_dacl_handle(path).unwrap();
++    let size = (*old).AclSize as usize + 256;
++    let mut storage = vec![0_u32; size.div_ceil(std::mem::size_of::<u32>())];
++    let new = storage.as_mut_ptr().cast::<ACL>();
++    assert_ne!(
++        InitializeAcl(new, (storage.len() * 4) as u32, ACL_REVISION),
++        0
++    );
++    assert_ne!(AddAccessDeniedAceEx(new, ACL_REVISION, 0, mask, sid), 0);
++    for index in 0..(*old).AceCount as u32 {
++        let mut entry = std::ptr::null_mut();
++        assert_ne!(GetAce(old, index, &mut entry), 0);
++        assert_ne!(
++            AddAce(
++                new,
++                ACL_REVISION,
++                u32::MAX,
++                entry,
++                (*(entry as *const ACE_HEADER)).AceSize as u32
++            ),
++            0
++        );
++    }
++    assert_eq!(
++        SetNamedSecurityInfoW(
++            to_wide(path).as_ptr() as _,
++            1,
++            DACL_SECURITY_INFORMATION,
++            std::ptr::null_mut(),
++            std::ptr::null_mut(),
++            new,
++            std::ptr::null_mut()
++        ),
++        0
++    );
++    LocalFree(descriptor as HLOCAL);
++}
++
++#[test]
++fn managed_read_revoke_preserves_other_aces_and_child_inheritance() {
++    let parent = tempfile::tempdir().unwrap();
++    let root = parent.path().join("directory");
++    std::fs::create_dir(&root).unwrap();
++    let child = root.join("child");
++    std::fs::write(&child, b"synthetic").unwrap();
++    let sid = LocalSid::from_string("S-1-5-21-10-20-30-4242").unwrap();
++    let other = LocalSid::from_string("S-1-5-21-10-20-30-4243").unwrap();
++    unsafe {
++        super::add_allow_ace(&root, sid.as_ptr()).unwrap();
++        super::add_deny_read_ace(&root, other.as_ptr()).unwrap();
++        let baseline = managed_read_revoke_entries(&root);
++        assert!(super::add_deny_read_ace(&root, sid.as_ptr()).unwrap());
++        managed_read_revoke_prepend_deny(
++            &root,
++            sid.as_ptr(),
++            windows_sys::Win32::Storage::FileSystem::FILE_WRITE_DATA,
++        );
++        let custom = managed_read_revoke_entries(&root)[0].clone();
++        assert!(super::revoke_managed_deny_read_aces(&root, sid.as_ptr()).unwrap());
++        let mut expected = vec![custom];
++        expected.extend(baseline);
++        assert_eq!(
++            managed_read_revoke_entries(&root),
++            expected,
++            "only the managed read pair may change"
++        );
++        let (acl, descriptor) = fetch_dacl_handle(&child).unwrap();
++        assert!(
++            !super::dacl_has_read_deny_for_sid(acl, sid.as_ptr()),
++            "inherited read deny must be removed"
++        );
++        assert!(
++            super::dacl_has_read_deny_for_sid(acl, other.as_ptr()),
++            "other principal deny remains"
++        );
++        LocalFree(descriptor as HLOCAL);
++        assert!(!super::revoke_managed_deny_read_aces(&root, sid.as_ptr()).unwrap());
++        std::fs::write(root.join("late-child"), b"later").unwrap();
++        let (acl, descriptor) = fetch_dacl_handle(&root.join("late-child")).unwrap();
++        assert!(!super::dacl_has_read_deny_for_sid(acl, sid.as_ptr()));
++        LocalFree(descriptor as HLOCAL);
++    }
++}
++
++#[test]
++fn managed_read_revoke_file_missing_and_no_owned_ace_are_idempotent() {
++    let root = tempfile::tempdir().unwrap();
++    let file = root.path().join("file");
++    std::fs::write(&file, b"synthetic").unwrap();
++    let sid = LocalSid::from_string("S-1-5-21-10-20-30-4242").unwrap();
++    unsafe {
++        super::add_allow_ace(&file, sid.as_ptr()).unwrap();
++        let before = managed_read_revoke_entries(&file);
++        assert!(!super::revoke_managed_deny_read_aces(&file, sid.as_ptr()).unwrap());
++        assert_eq!(managed_read_revoke_entries(&file), before);
++        super::add_deny_read_ace(&file, sid.as_ptr()).unwrap();
++        assert!(super::revoke_managed_deny_read_aces(&file, sid.as_ptr()).unwrap());
++        assert_eq!(managed_read_revoke_entries(&file), before);
++        assert!(
++            !super::revoke_managed_deny_read_aces(&root.path().join("missing"), sid.as_ptr())
++                .unwrap()
++        );
++    }
++}
++
++#[test]
++fn managed_read_revoke_refuses_mixed_read_write_mask_without_any_mutation() {
++    let root = tempfile::tempdir().unwrap();
++    let sid = LocalSid::from_string("S-1-5-21-10-20-30-4242").unwrap();
++    unsafe {
++        super::add_allow_ace(root.path(), sid.as_ptr()).unwrap();
++        managed_read_revoke_prepend_deny(
++            root.path(),
++            sid.as_ptr(),
++            windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_READ
++                | windows_sys::Win32::Storage::FileSystem::FILE_WRITE_DATA,
++        );
++        let before = acl_snapshot(root.path());
++        let error = super::revoke_managed_deny_read_aces(root.path(), sid.as_ptr()).unwrap_err();
++        assert!(error.to_string().contains("ambiguous"));
++        assert_eq!(acl_snapshot(root.path()), before);
++    }
++}
++
++#[test]
++fn managed_read_revoke_never_removes_an_inherited_parent_restriction() {
++    let root = tempfile::tempdir().unwrap();
++    let child = root.path().join("child");
++    std::fs::create_dir(&child).unwrap();
++    let sid = LocalSid::from_string("S-1-5-21-10-20-30-4242").unwrap();
++    unsafe {
++        super::add_deny_read_ace(root.path(), sid.as_ptr()).unwrap();
++        let before = acl_snapshot(&child);
++        assert!(!super::revoke_managed_deny_read_aces(&child, sid.as_ptr()).unwrap());
++        assert_eq!(acl_snapshot(&child), before);
++        assert!(super::revoke_managed_deny_read_aces(root.path(), sid.as_ptr()).unwrap());
++        let (acl, descriptor) = fetch_dacl_handle(&child).unwrap();
++        assert!(!super::dacl_has_read_deny_for_sid(acl, sid.as_ptr()));
++        LocalFree(descriptor as HLOCAL);
++    }
++}
+--- a/codex-rs/windows-sandbox-rs/src/deny_read_acl.rs
++++ b/codex-rs/windows-sandbox-rs/src/deny_read_acl.rs
+@@ -1,5 +1,5 @@
+ use crate::acl::add_deny_read_ace;
+-use crate::acl::revoke_ace;
++use crate::acl::revoke_managed_deny_read_aces;
+ use anyhow::Context;
+ use anyhow::Result;
+ use std::collections::HashSet;
+@@ -65,6 +65,30 @@
+ /// Caller must pass a valid SID pointer for the sandbox principal being denied.
+ pub unsafe fn apply_deny_read_acls(paths: &[PathBuf], psid: *mut c_void) -> Result<Vec<PathBuf>> {
+     let planned = plan_deny_read_acl_paths(paths)?;
++    apply_planned_deny_read_acls(&planned, psid)
++}
++
++/// Applies the same validated list that the persistent caller journaled. Do not
++/// re-plan here: a second canonicalization could add an unjournaled target.
++pub(crate) unsafe fn apply_planned_deny_read_acls(
++    planned: &[PathBuf],
++    psid: *mut c_void,
++) -> Result<Vec<PathBuf>> {
++    apply_planned_deny_read_acls_with(
++        planned,
++        psid,
++        |path, sid| unsafe { add_deny_read_ace(path, sid) },
++        |path, sid| unsafe { revoke_managed_deny_read_aces(path, sid) },
++    )
++}
++
++// Keep the native loop shared with deterministic OS-failure tests.
++pub(crate) unsafe fn apply_planned_deny_read_acls_with(
++    planned: &[PathBuf],
++    psid: *mut c_void,
++    mut add: impl FnMut(&Path, *mut c_void) -> Result<bool>,
++    mut rollback: impl FnMut(&Path, *mut c_void) -> Result<bool>,
++) -> Result<Vec<PathBuf>> {
+     let mut applied = Vec::new();
+     let mut seen = HashSet::new();
+     let mut added_in_this_call: Vec<PathBuf> = Vec::new();
+@@ -74,14 +98,22 @@
+                 std::fs::create_dir_all(&path)
+                     .with_context(|| format!("create deny-read path {}", path.display()))?;
+             }
+-            add_deny_read_ace(&path, psid)
+-                .with_context(|| format!("apply deny-read ACE to {}", path.display()))
++            add(path, psid).with_context(|| format!("apply deny-read ACE to {}", path.display()))
+         })();
+         let added = match result {
+             Ok(added) => added,
+             Err(err) => {
+-                for added_path in &added_in_this_call {
+-                    let _ = revoke_ace(added_path, psid);
++                let mut rollback_errors = Vec::new();
++                for added_path in added_in_this_call.iter().rev() {
++                    if let Err(error) = rollback(added_path, psid) {
++                        rollback_errors.push(format!("{}: {error:#}", added_path.display()));
++                    }
++                }
++                if !rollback_errors.is_empty() {
++                    return Err(err).context(format!(
++                        "deny-read rollback remains pending: {}",
++                        rollback_errors.join("; ")
++                    ));
+                 }
+                 return Err(err);
+             }
+@@ -89,7 +121,7 @@
+         if added {
+             added_in_this_call.push(path.clone());
+         }
+-        push_planned_path(&mut applied, &mut seen, path);
++        push_planned_path(&mut applied, &mut seen, path.clone());
+     }
+     Ok(applied)
+ }
+--- a/codex-rs/windows-sandbox-rs/src/deny_read_state.rs
++++ b/codex-rs/windows-sandbox-rs/src/deny_read_state.rs
+@@ -1,6 +1,7 @@
+-use crate::acl::revoke_ace;
+-use crate::deny_read_acl::apply_deny_read_acls;
++use crate::acl::revoke_managed_deny_read_aces;
++use crate::deny_read_acl::apply_planned_deny_read_acls;
+ use crate::deny_read_acl::lexical_path_key;
++use crate::deny_read_acl::plan_deny_read_acl_paths;
+ use crate::setup::sandbox_dir;
+ use anyhow::Context;
+ use anyhow::Result;
+@@ -13,6 +14,7 @@
+ use std::fs::File;
+ use std::fs::OpenOptions;
+ use std::io::Read;
++#[cfg(test)]
+ use std::io::Write;
+ use std::os::windows::fs::OpenOptionsExt;
+ use std::os::windows::io::AsRawHandle;
+@@ -38,8 +40,11 @@
+ /// each SID, apply the new desired set first, and only then revoke stale paths
+ /// from the same SID so profile changes do not leave old deny-read ACEs behind.
+ ///
+-/// Malformed bookkeeping is rebuilt after applying current denies. Unknown
+-/// historical restrictions cannot safely be revoked and remain in place.
++/// Validate desired paths before changing bookkeeping. Then journal newly
++/// planned ownership before any ACL mutation, so partial apply/rollback failure
++/// or process interruption can be reconciled on the next call. A malformed
++/// existing ledger is preserved and rejected; it never confers ownership of
++/// unknown historical restrictions.
+ ///
+ /// # Safety
+ /// Caller must pass a valid SID pointer matching `principal_sid`.
+@@ -49,7 +54,26 @@
+     desired_paths: &[PathBuf],
+     psid: *mut c_void,
+ ) -> Result<Vec<PathBuf>> {
+-    let state_path = sandbox_dir(codex_home).join(DENY_READ_ACL_STATE_FILE);
++    sync_persistent_deny_read_acls_with(
++        codex_home,
++        principal_sid,
++        desired_paths,
++        psid,
++        |planned, sid| unsafe { apply_planned_deny_read_acls(planned, sid) },
++    )
++}
++
++// Injection is limited to the OS apply phase; bookkeeping and cold recovery use
++// exactly the production path, including the real atomic state writer.
++unsafe fn sync_persistent_deny_read_acls_with(
++    codex_home: &Path,
++    principal_sid: &str,
++    desired_paths: &[PathBuf],
++    psid: *mut c_void,
++    apply: impl FnOnce(&[PathBuf], *mut c_void) -> Result<Vec<PathBuf>>,
++) -> Result<Vec<PathBuf>> {
++    let transaction = lock_state_transaction(codex_home)?;
++    let state_path = transaction.state_path.clone();
+     let mut state = load_state(&state_path)?;
+     let previous_paths = state
+         .principals
+@@ -57,28 +81,223 @@
+         .cloned()
+         .unwrap_or_default();
+ 
+-    let applied_paths = unsafe { apply_deny_read_acls(desired_paths, psid) }?;
++    let planned = plan_deny_read_acl_paths(desired_paths)?;
++    let mut pending = previous_paths.clone();
++    let mut pending_keys = previous_paths
++        .iter()
++        .map(|path| lexical_path_key(path))
++        .collect::<HashSet<_>>();
++    for path in &planned {
++        if pending_keys.insert(lexical_path_key(path)) {
++            pending.push(path.clone());
++        }
++    }
++    if pending != previous_paths {
++        state.principals.insert(principal_sid.to_owned(), pending);
++        // This must succeed before the first add; no best-effort ownership write.
++        store_state(&state_path, &state)?;
++    }
++
++    let applied_paths = apply(&planned, psid)?;
+     let desired_keys = applied_paths
+         .iter()
+         .map(|path| lexical_path_key(path))
+         .collect::<HashSet<_>>();
+-
++    let mut remaining = applied_paths.clone();
++    let mut failures = Vec::new();
+     for path in previous_paths {
+-        if !desired_keys.contains(&lexical_path_key(&path)) {
+-            let _ = revoke_ace(&path, psid);
+-        }
+-    }
+-
+-    if applied_paths.is_empty() {
++        if !desired_keys.contains(&lexical_path_key(&path))
++            && let Err(error) = revoke_managed_deny_read_aces(&path, psid)
++        {
++            remaining.push(path.clone());
++            failures.push(format!("{}: {error:#}", path.display()));
++        }
++    }
++    if remaining.is_empty() {
+         state.principals.remove(principal_sid);
+     } else {
+-        state
+-            .principals
+-            .insert(principal_sid.to_string(), applied_paths.clone());
++        state.principals.insert(principal_sid.to_owned(), remaining);
+     }
+     store_state(&state_path, &state)?;
++    ensure!(
++        failures.is_empty(),
++        "managed deny-read cleanup remains pending: {}",
++        failures.join("; ")
++    );
+ 
+     Ok(applied_paths)
++}
++
++/// The lock inode never changes when the JSON is atomically replaced. Its
++/// private DACL and pinned physical parent keep a different path from becoming
++/// a second lock for this same ledger. Dropping the handles releases the lock.
++struct StateTransaction {
++    _file: File,
++    _parent: std::os::windows::io::OwnedHandle,
++    state_path: PathBuf,
++}
++
++fn lock_state_transaction(codex_home: &Path) -> Result<StateTransaction> {
++    use crate::no_reparse_dir::{
++        DirectoryOpenDisposition, open_directory_no_reparse, open_no_reparse_with_security,
++    };
++    use std::os::windows::io::{FromRawHandle, OwnedHandle};
++    use windows_sys::Win32::Security::Authorization::{
++        ConvertStringSecurityDescriptorToSecurityDescriptorW, GetSecurityInfo,
++    };
++    use windows_sys::Win32::Security::{
++        ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, DACL_SECURITY_INFORMATION, EqualSid, GetAce,
++        GetSecurityDescriptorControl, GetSecurityDescriptorDacl, OWNER_SECURITY_INFORMATION,
++        SE_DACL_PROTECTED, TOKEN_QUERY,
++    };
++    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
++
++    struct Descriptor(*mut c_void);
++    impl Drop for Descriptor {
++        fn drop(&mut self) {
++            if !self.0.is_null() {
++                unsafe {
++                    win::LocalFree(self.0);
++                }
++            }
++        }
++    }
++    let mut raw_token = std::ptr::null_mut();
++    if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut raw_token) } == 0 {
++        return Err(std::io::Error::last_os_error()).context("open ledger owner token");
++    }
++    let token = unsafe { OwnedHandle::from_raw_handle(raw_token) };
++    let user = unsafe { crate::token::get_user_sid_bytes(token.as_raw_handle() as _) }?;
++    let user_text = crate::winutil::string_from_sid_bytes(&user).map_err(anyhow::Error::msg)?;
++    let sddl = crate::winutil::to_wide(format!(
++        "O:{user_text}D:P(A;;FA;;;{user_text})(A;;FA;;;SY)(A;;FA;;;BA)"
++    ));
++    let mut private = Descriptor(std::ptr::null_mut());
++    if unsafe {
++        ConvertStringSecurityDescriptorToSecurityDescriptorW(
++            sddl.as_ptr(),
++            1,
++            &mut private.0,
++            std::ptr::null_mut(),
++        )
++    } == 0
++    {
++        return Err(std::io::Error::last_os_error())
++            .context("prepare private ledger lock security");
++    }
++
++    let physical_parent = dunce::canonicalize(sandbox_dir(codex_home))
++        .context("resolve physical deny-read state directory")?;
++    let parent = open_directory_no_reparse(
++        &physical_parent,
++        winfs::FILE_TRAVERSE | winfs::FILE_READ_ATTRIBUTES,
++        winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE,
++        DirectoryOpenDisposition::OpenExisting,
++    )?;
++    let mut lock_name = crate::winutil::to_wide("deny_read_acl_state.lock");
++    let handle = open_no_reparse_with_security(
++        parent.as_raw_handle() as _,
++        &mut lock_name,
++        winfs::FILE_GENERIC_READ | winfs::FILE_GENERIC_WRITE,
++        winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE,
++        3,           // FILE_OPEN_IF: an existing lock is never replaced or truncated.
++        0x40 | 0x20, // FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT.
++        private.0,
++    )?;
++    let file = File::from(handle);
++    validate_state_file(&file)?;
++    let mut actual = Descriptor(std::ptr::null_mut());
++    let (mut owner, mut dacl) = (std::ptr::null_mut(), std::ptr::null_mut());
++    let status = unsafe {
++        GetSecurityInfo(
++            file.as_raw_handle() as _,
++            1,
++            OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
++            &mut owner,
++            std::ptr::null_mut(),
++            &mut dacl,
++            std::ptr::null_mut(),
++            &mut actual.0,
++        )
++    };
++    if status != 0 {
++        return Err(std::io::Error::from_raw_os_error(status as i32))
++            .context("inspect ledger lock security");
++    }
++    let (mut control, mut revision) = (0, 0);
++    ensure!(
++        unsafe { GetSecurityDescriptorControl(actual.0, &mut control, &mut revision) } != 0,
++        "cannot inspect ledger lock security flags"
++    );
++    ensure!(
++        control & SE_DACL_PROTECTED != 0 && unsafe { EqualSid(owner, user.as_ptr() as _) } != 0,
++        "ledger lock is not private to its owner"
++    );
++
++    // Compare the exact three explicit file-access ACEs; do not adopt or repair
++    // an existing lock whose permissions were widened by another actor.
++    let (mut expected_dacl, mut present, mut defaulted) = (std::ptr::null_mut(), 0, 0);
++    ensure!(
++        unsafe {
++            GetSecurityDescriptorDacl(private.0, &mut present, &mut expected_dacl, &mut defaulted)
++        } != 0
++            && present != 0
++            && !dacl.is_null()
++            && !expected_dacl.is_null(),
++        "invalid ledger lock DACL"
++    );
++    unsafe fn entries(acl: *mut ACL) -> Result<Vec<Vec<u8>>> {
++        let mut result = Vec::new();
++        for index in 0..unsafe { (*acl).AceCount } as u32 {
++            let mut entry = std::ptr::null_mut();
++            ensure!(
++                unsafe { GetAce(acl, index, &mut entry) } != 0,
++                "read ledger lock ACE"
++            );
++            let header = unsafe { &*entry.cast::<ACE_HEADER>() };
++            ensure!(
++                header.AceType == 0 && header.AceFlags == 0,
++                "non-private ledger lock ACE"
++            );
++            let ace = unsafe { &*entry.cast::<ACCESS_ALLOWED_ACE>() };
++            ensure!(
++                ace.Mask == winfs::FILE_ALL_ACCESS,
++                "unexpected ledger lock access"
++            );
++            result.push(
++                unsafe { std::slice::from_raw_parts(entry.cast::<u8>(), header.AceSize as usize) }
++                    .to_vec(),
++            );
++        }
++        Ok(result)
++    }
++    ensure!(
++        unsafe { entries(dacl)? == entries(expected_dacl)? },
++        "ledger lock DACL differs from its owner-private policy"
++    );
++
++    let deadline = Instant::now() + Duration::from_secs(2);
++    loop {
++        match file.try_lock() {
++            Ok(()) => break,
++            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
++                std::thread::sleep(Duration::from_millis(10))
++            }
++            Err(std::fs::TryLockError::WouldBlock) => {
++                anyhow::bail!("timed out waiting for deny-read state transaction")
++            }
++            Err(std::fs::TryLockError::Error(error)) => {
++                return Err(error).context("lock deny-read state transaction");
++            }
++        }
++    }
++    // Revalidate the same leaf after waiting; this also rejects new hard links.
++    validate_state_file(&file)?;
++    Ok(StateTransaction {
++        _file: file,
++        _parent: parent,
++        state_path: physical_parent.join(DENY_READ_ACL_STATE_FILE),
++    })
+ }
+ 
+ fn load_state(path: &Path) -> Result<PersistentDenyReadAclState> {
+@@ -86,7 +305,7 @@
+     loop {
+         let stable = Instant::now() >= deadline;
+         let bytes = (|| -> Result<Vec<u8>> {
+-            // Ordinary reads allow legacy writers; malformed recovery excludes live writers.
++            // Give a legacy writer time to finish; stable malformed state fails closed.
+             let share_mode = if stable {
+                 winfs::FILE_SHARE_READ | winfs::FILE_SHARE_DELETE
+             } else {
+@@ -107,7 +326,14 @@
+             Ok(bytes) => match serde_json::from_slice(&bytes) {
+                 Ok(state) => return Ok(state),
+                 Err(_) if !stable => std::thread::sleep(Duration::from_millis(25)),
+-                Err(_) => return Ok(PersistentDenyReadAclState::default()),
++                Err(error) => {
++                    return Err(error).with_context(|| {
++                        format!(
++                            "invalid deny-read ACL state {}; preserve it for recovery",
++                            path.display()
++                        )
++                    });
++                }
+             },
+             Err(err)
+                 if err
+@@ -127,11 +353,10 @@
+ fn store_state(path: &Path, state: &PersistentDenyReadAclState) -> Result<()> {
+     let bytes = serde_json::to_vec_pretty(state).context("serialize deny-read ACL state")?;
+     (|| -> Result<()> {
+-        // Recovery makes malformed files writable. Never follow the state leaf
+-        // or truncate it before checking the actual object. Resolve configured
++        // Never follow the state leaf or truncate it before checking the actual object. Resolve configured
+         // parent paths normally, including junctions and volume GUIDs.
+         let deadline = Instant::now() + Duration::from_secs(2);
+-        let mut file = loop {
++        let file = loop {
+             let opened = OpenOptions::new()
+                 .write(true)
+                 .create(true)
+@@ -151,8 +376,13 @@
+             }
+         };
+         validate_state_file(&file)?;
+-        file.write_all(&bytes)?;
+-        file.set_len(bytes.len() as u64)?;
++        // Use the native atomic writer on the physical parent while retaining
++        // support for an explicitly configured home/parent junction. The leaf
++        // was validated independently and is never followed by the replacement.
++        let parent = dunce::canonicalize(path.parent().context("state file has no parent")?)
++            .context("resolve deny-read state parent")?;
++        let target = parent.join(path.file_name().context("state file has no name")?);
++        crate::file_write::write_file_atomically_preserving_dacl(&target, &bytes, file)?;
+         Ok(())
+     })()
+     .with_context(|| format!("write deny-read ACL state {}", path.display()))
+--- a/codex-rs/windows-sandbox-rs/src/deny_read_state_tests.rs
++++ b/codex-rs/windows-sandbox-rs/src/deny_read_state_tests.rs
+@@ -55,66 +55,38 @@
+ }
+ 
+ #[test]
+-fn sync_rebuilds_corrupt_bookkeeping_only_after_successful_apply() -> Result<()> {
++fn sync_rejects_corrupt_bookkeeping_without_changing_bytes_or_acls() -> Result<()> {
+     let temp = TempDir::new()?;
+     let state_dir = sandbox_dir(temp.path());
+     fs::create_dir(&state_dir)?;
+     let state_path = state_dir.join(DENY_READ_ACL_STATE_FILE);
+-    let malformed = b"   ";
+-    fs::write(&state_path, malformed)?;
+-    let blocker = temp.path().join("ordinary-file");
+-    fs::write(&blocker, b"not a directory")?;
+     let sid_string = "S-1-5-21-10-20-30-40";
+     let sid = LocalSid::from_string(sid_string)?;
+-
+-    // Creating a child beneath a file fails before any ACL can be changed.
+-    let error = unsafe {
+-        sync_persistent_deny_read_acls(
+-            temp.path(),
+-            sid_string,
+-            &[blocker.join("child")],
+-            sid.as_ptr(),
+-        )
+-    }
+-    .expect_err("apply error must propagate");
+-    assert!(error.downcast_ref::<std::io::Error>().is_some());
+-    assert_eq!(fs::read(&state_path)?.as_slice(), malformed);
+-
+     let historical = temp.path().join("historical");
+-    let current = temp.path().join("current");
++    let desired = temp.path().join("desired");
+     fs::create_dir(&historical)?;
++    fs::create_dir(&desired)?;
+     unsafe { crate::acl::add_deny_read_ace(&historical, sid.as_ptr()) }?;
+-    let applied = unsafe {
+-        sync_persistent_deny_read_acls(
+-            temp.path(),
+-            sid_string,
+-            std::slice::from_ref(&current),
+-            sid.as_ptr(),
+-        )
+-    }?;
+-    assert_eq!(applied, vec![current.clone()]);
+-    let rebuilt: PersistentDenyReadAclState = serde_json::from_slice(&fs::read(&state_path)?)?;
+-    assert_eq!(
+-        rebuilt.principals,
+-        BTreeMap::from([(sid_string.to_owned(), vec![current])])
+-    );
+-    unsafe {
+-        let (dacl, descriptor) = crate::acl::fetch_dacl_handle(&historical)?;
+-        let preserved = crate::acl::dacl_has_read_deny_for_sid(dacl, sid.as_ptr());
+-        win::LocalFree(descriptor as win::HLOCAL);
+-        assert!(preserved, "unknown historical restrictions remain in place");
+-    }
+-
+-    let error = unsafe {
+-        sync_persistent_deny_read_acls(
+-            &temp.path().join("missing-home"),
+-            sid_string,
+-            &[],
+-            sid.as_ptr(),
+-        )
+-    }
+-    .expect_err("save error must propagate");
+-    assert!(error.downcast_ref::<std::io::Error>().is_some());
++    for malformed in [
++        b"   ".as_slice(),
++        br#"{"principals":"#,
++        br#"{"principals":[]}"#,
++    ] {
++        fs::write(&state_path, malformed)?;
++        let error = unsafe {
++            sync_persistent_deny_read_acls(
++                temp.path(),
++                sid_string,
++                std::slice::from_ref(&desired),
++                sid.as_ptr(),
++            )
++        }
++        .expect_err("corrupt ownership must block ACL changes");
++        assert!(format!("{error:#}").contains("invalid deny-read ACL state"));
++        assert_eq!(fs::read(&state_path)?.as_slice(), malformed);
++        assert!(managed_read_state_has_deny(&historical, sid.as_ptr())?);
++        assert!(!managed_read_state_has_deny(&desired, sid.as_ptr())?);
++    }
+     Ok(())
+ }
+ 
+@@ -174,7 +146,7 @@
+ }
+ 
+ #[test]
+-fn store_keeps_file_identity_permissions_and_legacy_writer_compatibility() -> Result<()> {
++fn store_replaces_atomically_preserving_permissions_after_legacy_handles_close() -> Result<()> {
+     let temp = TempDir::new()?;
+     let path = temp.path().join(DENY_READ_ACL_STATE_FILE);
+     let state = PersistentDenyReadAclState {
+@@ -186,6 +158,7 @@
+     )?;
+     let sid = LocalSid::from_string("S-1-5-21-10-20-30-40")?;
+     unsafe { crate::acl::add_deny_read_ace(&path, sid.as_ptr()) }?;
++    let original_dacl = managed_read_state_dacl_snapshot(&path)?;
+     let file = File::open(&path)?;
+     let mut before = unsafe { std::mem::zeroed::<winfs::BY_HANDLE_FILE_INFORMATION>() };
+     assert_ne!(
+@@ -194,24 +167,15 @@
+         },
+         0
+     );
+-    // A legacy writer can remain open after finishing valid bytes; normal store
+-    // must not newly fail just because that writer has not closed its handle.
+-    let _writer = OpenOptions::new().write(true).open(&path)?;
+-    // A delete-access holder may coexist with readers and legacy writers. Wait
+-    // for it to close without allowing replacement during validation or writing.
+-    let holder = OpenOptions::new()
+-        .access_mode(winfs::DELETE)
+-        .share_mode(winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE | winfs::FILE_SHARE_DELETE)
+-        .open(&path)?;
+-    std::thread::scope(|scope| -> Result<()> {
+-        let release = scope.spawn(move || {
+-            std::thread::sleep(Duration::from_millis(75));
+-            drop(holder);
+-        });
+-        store_state(&path, &state)?;
+-        release.join().expect("delete-access holder");
+-        Ok(())
+-    })?;
++    // Native atomic replacement refuses an actively opened destination.
++    // Keep its original bytes until those legacy handles have closed.
++    let writer = OpenOptions::new().write(true).open(&path)?;
++    let original = fs::read(&path)?;
++    store_state(&path, &state).expect_err("active legacy destination must fail closed");
++    assert_eq!(fs::read(&path)?, original);
++    drop(writer);
++    drop(file);
++    store_state(&path, &state)?;
+     let root = path.ancestors().last().expect("drive root");
+     let mut volume = [0u16; 50];
+     assert_ne!(
+@@ -252,7 +216,7 @@
+         },
+         0
+     );
+-    assert_eq!(
++    assert_ne!(
+         (
+             after.dwVolumeSerialNumber,
+             after.nFileIndexHigh,
+@@ -265,6 +229,11 @@
+         )
+     );
+     assert_eq!(load_state(&path)?.principals, state.principals);
++    assert_eq!(
++        managed_read_state_dacl_snapshot(&path)?,
++        original_dacl,
++        "every ACE and DACL protection/inheritance flag must survive atomic replacement"
++    );
+     unsafe {
+         let (dacl, descriptor) = crate::acl::fetch_dacl_handle(&path)?;
+         let preserved = crate::acl::dacl_has_read_deny_for_sid(dacl, sid.as_ptr());
+@@ -307,13 +276,13 @@
+ }
+ 
+ #[test]
+-fn recovered_bookkeeping_tracks_repeated_calls_and_a_later_profile_change() -> Result<()> {
++fn valid_bookkeeping_tracks_repeated_calls_and_removes_the_prior_profile_deny() -> Result<()> {
+     let temp = TempDir::new()?;
+     let state_dir = sandbox_dir(temp.path());
+     fs::create_dir(&state_dir)?;
+     let path = state_dir.join(DENY_READ_ACL_STATE_FILE);
+-    // Simulate an interrupted in-place save, after an older deny was applied.
+-    fs::write(&path, br#"{"principals":"#)?;
++    // Unknown historical restrictions stay outside this ledger's ownership.
++    fs::write(&path, br#"{"principals":{}}"#)?;
+     let sid_string = "S-1-5-21-10-20-30-40";
+     let sid = LocalSid::from_string(sid_string)?;
+     let historical = temp.path().join("historical");
+@@ -338,6 +307,7 @@
+             BTreeMap::from([(sid_string.to_owned(), vec![desired.clone()])])
+         );
+     }
++    assert!(!managed_read_state_has_deny(&first, sid.as_ptr())?);
+     // Recovery must preserve both unknown historical denies and the current profile.
+     for target in [&historical, &second] {
+         unsafe {
+@@ -349,3 +319,440 @@
+     }
+     Ok(())
+ }
++
++fn managed_read_state_has_deny(path: &Path, sid: *mut c_void) -> Result<bool> {
++    unsafe {
++        let (dacl, descriptor) = crate::acl::fetch_dacl_handle(path)?;
++        let denied = crate::acl::dacl_has_read_deny_for_sid(dacl, sid);
++        win::LocalFree(descriptor as win::HLOCAL);
++        Ok(denied)
++    }
++}
++
++#[test]
++fn managed_read_state_journals_partial_apply_and_failed_rollback_for_cold_recovery() -> Result<()> {
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let state_path = sandbox_dir(temp.path()).join(DENY_READ_ACL_STATE_FILE);
++    let sid_string = "S-1-5-21-10-20-30-424243";
++    let sid = LocalSid::from_string(sid_string)?;
++    let first = temp.path().join("first");
++    let second = temp.path().join("second");
++    fs::create_dir(&first)?;
++    fs::create_dir(&second)?;
++    let desired = [first.clone(), second.clone()];
++    let mut additions = 0;
++    let mut rollbacks = 0;
++    let error = unsafe {
++        sync_persistent_deny_read_acls_with(
++            temp.path(),
++            sid_string,
++            &desired,
++            sid.as_ptr(),
++            |planned, principal| {
++                assert_eq!(load_state(&state_path)?.principals[sid_string], planned);
++                crate::deny_read_acl::apply_planned_deny_read_acls_with(
++                    planned,
++                    principal,
++                    |path, principal| {
++                        additions += 1;
++                        if path == second {
++                            return Err(std::io::Error::from_raw_os_error(5).into());
++                        }
++                        crate::acl::add_deny_read_ace(path, principal)
++                    },
++                    |_path, _principal| {
++                        rollbacks += 1;
++                        Err(std::io::Error::from_raw_os_error(5).into())
++                    },
++                )
++            },
++        )
++    }
++    .expect_err("partial apply and failed rollback must block the command");
++    assert!(
++        format!("{error:#}").contains("rollback remains pending"),
++        "{error:#}"
++    );
++    assert_eq!((additions, rollbacks), (2, 1));
++    assert!(managed_read_state_has_deny(&first, sid.as_ptr())?);
++    assert!(!managed_read_state_has_deny(&second, sid.as_ptr())?);
++    assert_eq!(load_state(&state_path)?.principals[sid_string], desired);
++    unsafe { sync_persistent_deny_read_acls(temp.path(), sid_string, &[], sid.as_ptr()) }?;
++    assert!(!managed_read_state_has_deny(&first, sid.as_ptr())?);
++    assert!(load_state(&state_path)?.principals.is_empty());
++    Ok(())
++}
++
++#[test]
++fn managed_read_state_atomic_prepare_failure_leaves_original_bytes_and_no_new_acl() -> Result<()> {
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let state_path = sandbox_dir(temp.path()).join(DENY_READ_ACL_STATE_FILE);
++    let original = br#"{"principals":{}}"#;
++    fs::write(&state_path, original)?;
++    let sid_string = "S-1-5-21-10-20-30-424243";
++    let sid = LocalSid::from_string(sid_string)?;
++    let desired = temp.path().join("desired");
++    fs::create_dir(&desired)?;
++    // Permit validation/read/write, but deny the atomic replacement operation.
++    let holder = OpenOptions::new()
++        .read(true)
++        .share_mode(winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE)
++        .open(&state_path)?;
++    let error = unsafe {
++        sync_persistent_deny_read_acls_with(
++            temp.path(),
++            sid_string,
++            std::slice::from_ref(&desired),
++            sid.as_ptr(),
++            |_planned, _sid| panic!("apply must not run without durable ownership"),
++        )
++    }
++    .expect_err("atomic replacement must fail under no-delete sharing");
++    assert!(
++        format!("{error:#}").contains("write deny-read ACL state"),
++        "{error:#}"
++    );
++    assert_eq!(fs::read(&state_path)?, original);
++    assert!(!managed_read_state_has_deny(&desired, sid.as_ptr())?);
++    drop(holder);
++    Ok(())
++}
++
++#[test]
++fn managed_read_state_final_save_failure_keeps_pending_ownership_for_cold_recovery() -> Result<()> {
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let state_path = sandbox_dir(temp.path()).join(DENY_READ_ACL_STATE_FILE);
++    let sid_string = "S-1-5-21-10-20-30-424243";
++    let sid = LocalSid::from_string(sid_string)?;
++    let desired = temp.path().join("desired");
++    fs::create_dir(&desired)?;
++    let mut holder = None;
++    let error = unsafe {
++        sync_persistent_deny_read_acls_with(
++            temp.path(),
++            sid_string,
++            std::slice::from_ref(&desired),
++            sid.as_ptr(),
++            |planned, principal| {
++                let result = apply_planned_deny_read_acls(planned, principal)?;
++                holder = Some(
++                    OpenOptions::new()
++                        .read(true)
++                        .share_mode(winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE)
++                        .open(&state_path)?,
++                );
++                Ok(result)
++            },
++        )
++    }
++    .expect_err("final save failure must not report successful synchronization");
++    assert!(
++        format!("{error:#}").contains("write deny-read ACL state"),
++        "{error:#}"
++    );
++    assert_eq!(
++        load_state(&state_path)?.principals[sid_string],
++        vec![desired.clone()]
++    );
++    assert!(managed_read_state_has_deny(&desired, sid.as_ptr())?);
++    drop(holder);
++    unsafe { sync_persistent_deny_read_acls(temp.path(), sid_string, &[], sid.as_ptr()) }?;
++    assert!(load_state(&state_path)?.principals.is_empty());
++    assert!(!managed_read_state_has_deny(&desired, sid.as_ptr())?);
++    Ok(())
++}
++
++#[test]
++fn managed_read_state_transactions_serialize_two_writers_without_losing_ownership() -> Result<()> {
++    use std::sync::mpsc;
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let first = temp.path().join("first");
++    let second = temp.path().join("second");
++    fs::create_dir(&first)?;
++    fs::create_dir(&second)?;
++    let alias_parent = TempDir::new()?;
++    let alias = alias_parent.path().join("home-alias");
++    assert!(
++        Command::new("cmd.exe")
++            .args(["/c", "mklink", "/J"])
++            .arg(&alias)
++            .arg(temp.path())
++            .output()?
++            .status
++            .success()
++    );
++    let home = temp.path().to_owned();
++    let (entered_tx, entered_rx) = mpsc::channel();
++    let (release_tx, release_rx) = mpsc::channel();
++    let (second_tx, second_rx) = mpsc::channel();
++    let (blocked_tx, blocked_rx) = mpsc::channel();
++    std::thread::scope(|scope| -> Result<()> {
++        let home = &home;
++        let first = &first;
++        let writer_one = scope.spawn(move || -> Result<()> {
++            let sid_text = "S-1-5-21-10-20-30-424243";
++            let sid = LocalSid::from_string(sid_text)?;
++            unsafe {
++                sync_persistent_deny_read_acls_with(
++                    &home,
++                    sid_text,
++                    std::slice::from_ref(first),
++                    sid.as_ptr(),
++                    |planned, principal| {
++                        entered_tx.send(()).unwrap();
++                        release_rx.recv_timeout(Duration::from_secs(5)).unwrap();
++                        apply_planned_deny_read_acls(planned, principal)
++                    },
++                )
++            }?;
++            Ok(())
++        });
++        entered_rx.recv_timeout(Duration::from_secs(5))?;
++        let writer_two = scope.spawn(|| -> Result<()> {
++            let observed_lock = OpenOptions::new()
++                .read(true)
++                .write(true)
++                .open(sandbox_dir(&alias).join("deny_read_acl_state.lock"))?;
++            assert!(
++                matches!(
++                    observed_lock.try_lock(),
++                    Err(std::fs::TryLockError::WouldBlock)
++                ),
++                "second writer must actually observe the first writer's OS lock"
++            );
++            blocked_tx.send(())?;
++            drop(observed_lock);
++            let sid_text = "S-1-5-21-10-20-30-424244";
++            let sid = LocalSid::from_string(sid_text)?;
++            unsafe {
++                sync_persistent_deny_read_acls(
++                    &alias,
++                    sid_text,
++                    std::slice::from_ref(&second),
++                    sid.as_ptr(),
++                )
++            }?;
++            second_tx.send(()).unwrap();
++            Ok(())
++        });
++        blocked_rx.recv_timeout(Duration::from_secs(5))?;
++        assert!(
++            matches!(
++                second_rx.recv_timeout(Duration::from_millis(100)),
++                Err(mpsc::RecvTimeoutError::Timeout)
++            ),
++            "second writer must not bypass the first transaction through an alias"
++        );
++        release_tx.send(())?;
++        writer_one.join().expect("first writer")?;
++        writer_two.join().expect("second writer")?;
++        Ok(())
++    })?;
++    let state = load_state(&sandbox_dir(&home).join(DENY_READ_ACL_STATE_FILE))?;
++    assert_eq!(state.principals.len(), 2);
++    assert_eq!(state.principals["S-1-5-21-10-20-30-424243"], vec![first]);
++    assert_eq!(state.principals["S-1-5-21-10-20-30-424244"], vec![second]);
++    Ok(())
++}
++
++#[test]
++fn managed_read_state_lock_process_exit_and_crash_release_without_replacing_lock() -> Result<()> {
++    const HOME_ENV: &str = "CODEX_TEST_DENY_LOCK_HOME";
++    if let Some(home) = std::env::var_os(HOME_ENV) {
++        let home = PathBuf::from(home);
++        let _transaction = lock_state_transaction(&home)?;
++        fs::write(home.join("holder-ready"), b"ready")?;
++        let deadline = Instant::now() + Duration::from_secs(15);
++        while !home.join("holder-release").exists() {
++            ensure!(
++                Instant::now() < deadline,
++                "parent did not release child lock"
++            );
++            std::thread::sleep(Duration::from_millis(10));
++        }
++        return Ok(());
++    }
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let state = sandbox_dir(temp.path()).join(DENY_READ_ACL_STATE_FILE);
++    let original = br#"{"principals":{}}"#;
++    fs::write(&state, original)?;
++    for crash in [false, true] {
++        let mut child = Command::new(std::env::current_exe()?)
++            .args(["--exact", "deny_read_state::tests::managed_read_state_lock_process_exit_and_crash_release_without_replacing_lock", "--nocapture"])
++            .env(HOME_ENV, temp.path())
++            .stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn()?;
++        let result = (|| -> Result<()> {
++            let deadline = Instant::now() + Duration::from_secs(5);
++            while !temp.path().join("holder-ready").exists() {
++                ensure!(
++                    child.try_wait()?.is_none(),
++                    "lock holder exited before readiness"
++                );
++                ensure!(
++                    Instant::now() < deadline,
++                    "lock holder did not become ready"
++                );
++                std::thread::sleep(Duration::from_millis(10));
++            }
++            let lock_path = sandbox_dir(temp.path()).join("deny_read_acl_state.lock");
++            let lock = File::open(&lock_path)?;
++            let mut before = unsafe { std::mem::zeroed::<winfs::BY_HANDLE_FILE_INFORMATION>() };
++            assert_ne!(
++                unsafe {
++                    winfs::GetFileInformationByHandle(lock.as_raw_handle() as _, &mut before)
++                },
++                0
++            );
++            let error = lock_state_transaction(temp.path())
++                .err()
++                .expect("live process owns transaction");
++            assert!(format!("{error:#}").contains("timed out"));
++            assert_eq!(fs::read(&state)?, original);
++            if crash {
++                child.kill()?;
++            } else {
++                fs::write(temp.path().join("holder-release"), b"release")?;
++            }
++            let status = child.wait()?;
++            assert_eq!(status.success(), !crash);
++            let next = lock_state_transaction(temp.path())?;
++            let mut after = unsafe { std::mem::zeroed::<winfs::BY_HANDLE_FILE_INFORMATION>() };
++            assert_ne!(
++                unsafe {
++                    winfs::GetFileInformationByHandle(next._file.as_raw_handle() as _, &mut after)
++                },
++                0
++            );
++            assert_eq!(
++                (
++                    before.dwVolumeSerialNumber,
++                    before.nFileIndexHigh,
++                    before.nFileIndexLow
++                ),
++                (
++                    after.dwVolumeSerialNumber,
++                    after.nFileIndexHigh,
++                    after.nFileIndexLow
++                )
++            );
++            Ok(())
++        })();
++        if child.try_wait()?.is_none() {
++            child.kill()?;
++            child.wait()?;
++        }
++        result?;
++        fs::remove_file(temp.path().join("holder-ready"))?;
++        if temp.path().join("holder-release").exists() {
++            fs::remove_file(temp.path().join("holder-release"))?;
++        }
++    }
++    Ok(())
++}
++
++#[test]
++fn managed_read_state_lock_rejects_linked_leaf_without_touching_victim_or_ledger() -> Result<()> {
++    let temp = TempDir::new()?;
++    fs::create_dir(sandbox_dir(temp.path()))?;
++    let victim = temp.path().join("victim");
++    let original = b"owned fixture unchanged";
++    fs::write(&victim, original)?;
++    let lock_path = sandbox_dir(temp.path()).join("deny_read_acl_state.lock");
++    for kind in ["hardlink", "symlink"] {
++        if kind == "hardlink" {
++            fs::hard_link(&victim, &lock_path)?;
++        } else {
++            std::os::windows::fs::symlink_file(&victim, &lock_path)?;
++        }
++        let error = lock_state_transaction(temp.path())
++            .err()
++            .expect("linked lock must fail");
++        assert!(format!("{error:#}").contains(if kind == "hardlink" {
++            "multiple links"
++        } else {
++            "reparse"
++        }));
++        assert_eq!(fs::read(&victim)?, original);
++        assert!(
++            !sandbox_dir(temp.path())
++                .join(DENY_READ_ACL_STATE_FILE)
++                .exists()
++        );
++        fs::remove_file(&lock_path)?;
++    }
++    Ok(())
++}
++
++fn managed_read_state_dacl_snapshot(path: &Path) -> Result<(u16, Vec<Vec<u8>>)> {
++    use windows_sys::Win32::Security::{ACE_HEADER, GetAce, GetSecurityDescriptorControl};
++    unsafe {
++        let (acl, descriptor) = crate::acl::fetch_dacl_handle(path)?;
++        let mut control = 0;
++        let mut revision = 0;
++        assert_ne!(
++            GetSecurityDescriptorControl(descriptor, &mut control, &mut revision),
++            0
++        );
++        let mut result = Vec::new();
++        if !acl.is_null() {
++            for index in 0..(*acl).AceCount as u32 {
++                let mut ace = std::ptr::null_mut();
++                assert_ne!(GetAce(acl, index, &mut ace), 0);
++                result.push(
++                    std::slice::from_raw_parts(
++                        ace.cast::<u8>(),
++                        (*ace.cast::<ACE_HEADER>()).AceSize as usize,
++                    )
++                    .to_vec(),
++                );
++            }
++        }
++        win::LocalFree(descriptor as _);
++        Ok((control & 0x1500, result))
++    }
++}
++
++#[test]
++fn managed_read_state_atomic_copy_preserves_protected_and_legacy_control() -> Result<()> {
++    use windows_sys::Win32::Security::{
++        DACL_SECURITY_INFORMATION, PROTECTED_DACL_SECURITY_INFORMATION, SetFileSecurityW,
++    };
++    for protected in [false, true] {
++        let temp = TempDir::new()?;
++        let path = temp.path().join(DENY_READ_ACL_STATE_FILE);
++        fs::write(&path, br#"{"principals":{}}"#)?;
++        let sid = LocalSid::from_string("S-1-5-21-10-20-30-4242")?;
++        unsafe {
++            crate::acl::add_deny_read_ace(&path, sid.as_ptr())?;
++            let (_dacl, descriptor) = crate::acl::fetch_dacl_handle(&path)?;
++            let flags = DACL_SECURITY_INFORMATION
++                | if protected {
++                    PROTECTED_DACL_SECURITY_INFORMATION
++                } else {
++                    0
++                };
++            let protect = windows_sys::Win32::Security::SE_DACL_PROTECTED;
++            assert_ne!(
++                windows_sys::Win32::Security::SetSecurityDescriptorControl(
++                    descriptor,
++                    protect,
++                    if protected { protect } else { 0 },
++                ),
++                0
++            );
++            let ok = SetFileSecurityW(crate::winutil::to_wide(&path).as_ptr(), flags, descriptor);
++            win::LocalFree(descriptor as _);
++            assert_ne!(ok, 0);
++        }
++        let before = managed_read_state_dacl_snapshot(&path)?;
++        assert_eq!(before.0 & 0x1000 != 0, protected);
++        store_state(&path, &PersistentDenyReadAclState::default())?;
++        assert_eq!(managed_read_state_dacl_snapshot(&path)?, before);
++    }
++    Ok(())
++}
+--- a/codex-rs/windows-sandbox-rs/src/file_write.rs
++++ b/codex-rs/windows-sandbox-rs/src/file_write.rs
+@@ -42,6 +42,12 @@
+ 
+ #[link(name = "ntdll")]
+ unsafe extern "system" {
++    fn NtSetSecurityObject(
++        handle: HANDLE,
++        security_information: u32,
++        security_descriptor: *const c_void,
++    ) -> NTSTATUS;
++
+     fn NtSetInformationFile(
+         file_handle: HANDLE,
+         io_status_block: *mut IO_STATUS_BLOCK,
+@@ -54,6 +60,108 @@
+ /// Replaces an output with a fresh file that inherits its parent directory's ACL.
+ /// The destination is never opened for writing, even if replacement fails.
+ pub fn write_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
++    write_file_atomically_with(path, contents, 0, |_| Ok(()))
++}
++
++/// Atomic ledger replacement retains its existing DACL and protection flags.
++/// Ownership follows the same authenticated-creator rule as other native outputs.
++/// The supplied validated leaf handle is closed only after capturing security;
++/// an error configuring the fresh temporary file leaves the old state intact.
++pub(crate) fn write_file_atomically_preserving_dacl(
++    path: &Path,
++    contents: &[u8],
++    previous: File,
++) -> Result<()> {
++    use windows_sys::Win32::Foundation::{HLOCAL, LocalFree};
++    use windows_sys::Win32::Security::Authorization::{GetSecurityInfo, SE_FILE_OBJECT};
++    use windows_sys::Win32::Security::{
++        DACL_SECURITY_INFORMATION, GetSecurityDescriptorControl,
++        PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_PROTECTED,
++    };
++    use windows_sys::Win32::Storage::FileSystem::WRITE_DAC;
++    let mut dacl = std::ptr::null_mut();
++    let mut descriptor = std::ptr::null_mut();
++    let information = DACL_SECURITY_INFORMATION;
++    let status = unsafe {
++        GetSecurityInfo(
++            previous.as_raw_handle() as HANDLE,
++            SE_FILE_OBJECT,
++            information,
++            std::ptr::null_mut(),
++            std::ptr::null_mut(),
++            &mut dacl,
++            std::ptr::null_mut(),
++            &mut descriptor,
++        )
++    };
++    if status != 0 {
++        if !descriptor.is_null() {
++            unsafe {
++                LocalFree(descriptor as HLOCAL);
++            }
++        }
++        return Err(std::io::Error::from_raw_os_error(status as i32))
++            .context("read ledger security");
++    }
++    let result = (|| {
++        let mut control = 0;
++        let mut revision = 0;
++        if unsafe { GetSecurityDescriptorControl(descriptor, &mut control, &mut revision) } == 0 {
++            return Err(std::io::Error::last_os_error()).context("read ledger security flags");
++        }
++        let protection = if control & SE_DACL_PROTECTED != 0 {
++            PROTECTED_DACL_SECURITY_INFORMATION
++        } else {
++            0
++        };
++        if control & windows_sys::Win32::Security::SE_DACL_AUTO_INHERITED != 0 {
++            let flag = windows_sys::Win32::Security::SE_DACL_AUTO_INHERIT_REQ;
++            if unsafe {
++                windows_sys::Win32::Security::SetSecurityDescriptorControl(descriptor, flag, flag)
++            } == 0
++            {
++                return Err(std::io::Error::last_os_error())
++                    .context("preserve ledger inheritance control");
++            }
++        }
++        drop(previous);
++        write_file_atomically_with(
++            path,
++            contents,
++            windows_sys::Win32::Storage::FileSystem::READ_CONTROL | WRITE_DAC,
++            |file| {
++                // Preserve the supplied DACL directly on the pinned file handle.
++                // Unlike SetSecurityInfo, this does not synthesize inherited ACEs.
++                let status = unsafe {
++                    NtSetSecurityObject(
++                        file.as_raw_handle() as HANDLE,
++                        information | protection,
++                        descriptor,
++                    )
++                };
++                if status < 0 {
++                    return Err(std::io::Error::from_raw_os_error(unsafe {
++                        RtlNtStatusToDosError(status)
++                    }
++                        as i32))
++                    .context("preserve ledger DACL");
++                }
++                Ok(())
++            },
++        )
++    })();
++    unsafe {
++        LocalFree(descriptor as HLOCAL);
++    }
++    result
++}
++
++fn write_file_atomically_with(
++    path: &Path,
++    contents: &[u8],
++    extra_access: u32,
++    configure: impl FnOnce(&File) -> Result<()>,
++) -> Result<()> {
+     validate_local_directory_path(path)?;
+     let parent = path
+         .parent()
+@@ -63,8 +171,9 @@
+         .context("output must have a file name")?
+         .encode_wide()
+         .collect();
+-    let (mut file, directory) = create_temporary_file(parent, ".tmp")?;
++    let (mut file, directory) = create_temporary_file_with_access(parent, ".tmp", extra_access)?;
+     let result: Result<()> = (|| {
++        configure(&file)?;
+         file.write_all(contents)?;
+ 
+         // FILE_RENAME_INFO ends in a variable-length UTF-16 name. Allocate
+@@ -120,6 +229,14 @@
+ }
+ 
+ pub(crate) fn create_temporary_file(parent: &Path, suffix: &str) -> Result<(File, OwnedHandle)> {
++    create_temporary_file_with_access(parent, suffix, 0)
++}
++
++fn create_temporary_file_with_access(
++    parent: &Path,
++    suffix: &str,
++    extra_access: u32,
++) -> Result<(File, OwnedHandle)> {
+     let directory = open_directory_no_reparse(
+         parent,
+         FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
+@@ -136,7 +253,7 @@
+     let file = open_no_reparse(
+         directory.as_raw_handle() as HANDLE,
+         &mut name,
+-        FILE_WRITE_DATA | DELETE | SYNCHRONIZE,
++        FILE_WRITE_DATA | DELETE | SYNCHRONIZE | extra_access,
+         FILE_SHARE_READ,
+         FILE_CREATE,
+         FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+--- a/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs
++++ b/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs
+@@ -229,6 +229,27 @@
+     disposition: u32,
+     create_options: u32,
+ ) -> Result<OwnedHandle> {
++    open_no_reparse_with_security(
++        root_directory,
++        name,
++        desired_access,
++        share_access,
++        disposition,
++        create_options,
++        ptr::null(),
++    )
++}
++
++/// Same pinned-parent open, with a caller-owned descriptor used only at creation.
++pub(crate) fn open_no_reparse_with_security(
++    root_directory: HANDLE,
++    name: &mut [u16],
++    desired_access: u32,
++    share_access: u32,
++    disposition: u32,
++    create_options: u32,
++    security_descriptor: *const c_void,
++) -> Result<OwnedHandle> {
+     let name_length = u16::try_from((name.len() - 1) * size_of::<u16>())
+         .context("no-reparse path is too long")?;
+     let maximum_length = u16::try_from(size_of_val(name)).context("no-reparse path is too long")?;
+@@ -242,7 +263,7 @@
+         root_directory,
+         object_name: &object_name,
+         attributes: OBJ_CASE_INSENSITIVE | OBJ_DONT_REPARSE,
+-        security_descriptor: ptr::null(),
++        security_descriptor,
+         security_quality_of_service: ptr::null(),
+     };
+     let mut io_status_block = IO_STATUS_BLOCK {
