@@ -16,13 +16,14 @@ import threading
 import time
 from verify_live import Peer,qa_sandbox_mode
 from acceptance_assertions import current_browser_evidence,complete_work_patch,OracleGuard,real_work_passed,real_work_input_hashes,native_host_execution
-from install import python_entry,_support
+from install import python_entry,_support,valid_release
 
 BASE = Path(__file__).resolve().parent.parent / 'delivery/real-work'
 COMPACTION_LIMIT = 500000
 PRINT_LOCK = threading.Lock()
 REQUIRE_WEB_RESEARCH = False
 SANDBOX_MODE = 'workspace-write'
+RUNTIME_HOME = None
 
 
 def log(name, value):
@@ -55,17 +56,41 @@ def run_script(root,label,filename):
             'source_imports':proof,'tail':(p.stdout+p.stderr)[-2200:]}
 
 
+def qualified_entry_release(entry, runtime_home=None):
+    entry=Path(entry).resolve()
+    if runtime_home is None:return entry.parent.parent.parent
+    # Profile launchers live below the home, not under the venv.
+    manifest=entry.parent/'manifest.json';record=json.loads(manifest.read_text(encoding='utf-8'))
+    recipe=record['recipe'];home=Path(runtime_home).resolve()
+    if (Path(recipe.get('home','')).resolve()!=home or set(record.get('files',{}))!={'codex.exe','codex-deepseek.exe'}
+        or entry.name not in record['files'] or not all((entry.parent/name).is_file() and not (entry.parent/name).is_symlink()
+            and hashlib.sha256((entry.parent/name).read_bytes()).hexdigest()==digest for name,digest in record['files'].items())):
+        raise ValueError('Pinned profile entry does not match its home or immutable manifest')
+    interpreter=Path(recipe['interpreter']).resolve();release=interpreter.parent.parent.parent
+    if (interpreter!=python_entry(release/'venv').resolve()
+        or Path(recipe['package_root']).resolve()!=(release/'venv/Lib/site-packages').resolve()):
+        raise ValueError('Pinned profile interpreter/package do not belong to one release')
+    metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    native=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+    if not valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native):
+        raise ValueError('Pinned profile installed release failed validation')
+    return release
+
+
 def scenario(name):
     root = BASE/name
+    home=Path(RUNTIME_HOME).resolve() if RUNTIME_HOME is not None else root/'home'
     controlled_inputs=real_work_input_hashes(root,name)
     if (root/'results.json').exists():
         raise RuntimeError(f'Existing acceptance evidence at {root}; prepare a fresh fixture directory')
     entry=Path(os.environ.get('CODEX_DEEPSEEK_TEST_ENTRY') or Path.home()/'.local/bin/codex-deepseek').resolve()
-    metadata=json.loads((entry.parent.parent.parent/'installation.json').read_text(encoding='utf-8'))
+    release=qualified_entry_release(entry,RUNTIME_HOME)
+    metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
     verifiers=[Path(__file__),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py'),Path(__file__).with_name('host_execution_acceptance.py'),Path(__file__).with_name('real_work_imports.py')]
-    (root/'artifact.json').write_text(json.dumps({'entry':str(entry),'entry_sha256':hashlib.sha256(entry.read_bytes()).hexdigest(),'installation':metadata,'verifier_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in verifiers}},indent=2), encoding='utf-8')
-    (root/'home').mkdir(exist_ok=True)
-    (root/'home/config.toml').write_text(f'''sandbox_mode = {json.dumps(SANDBOX_MODE)}
+    (root/'artifact.json').write_text(json.dumps({'entry':str(entry),'release':str(release),'runtime_home':str(home),'entry_sha256':hashlib.sha256(entry.read_bytes()).hexdigest(),'installation':metadata,'verifier_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in verifiers}},indent=2), encoding='utf-8')
+    if RUNTIME_HOME is None:
+        home.mkdir(exist_ok=True)
+        (home/'config.toml').write_text(f'''sandbox_mode = {json.dumps(SANDBOX_MODE)}
 model_reasoning_effort = "high"
 model_auto_compact_token_limit = {COMPACTION_LIMIT}
 [sandbox_workspace_write]
@@ -73,6 +98,11 @@ network_access = true
 [features]
 multi_agent_v2 = true
 ''', encoding='utf-8')
+    else:
+        import tomllib
+        effective=tomllib.loads((home/'config.toml').read_text(encoding='utf-8'))
+        if effective.get('sandbox_mode')!=SANDBOX_MODE or effective.get('windows',{}).get('sandbox')!='elevated':
+            raise ValueError('Explicit Windows candidate profile must already select workspace sandbox and elevated backend')
     py = python_entry(root/'tools311')
     common = f'''You are maintaining the real open-source {name} repository in the current workspace. Fix the production bug described below, add meaningful regression coverage, and run the full existing test suite. Python and dependencies are already provisioned: use {py} -m pytest with PYTHONPATH={root/'work'/('src' if name=='jinja' else '')}. Do not install dependencies, access sibling directories, fetch upstream code, look up existing patches, change git history, or push. All source edits and test edits must stay within this workspace. You are explicitly authorized to spawn one native subagent for independent read-only review of the relevant code and your final changes; no descendants. Actually use that reviewer and address its findings. Preserve public API and existing behavior. Use normal native tools and inspect actual output. Do not finish before testing. Explain the mechanism, final fix, and test results. '''
     if os.name=='nt':common+=' This is native Windows acceptance: run the provided Windows Python directly in PowerShell with & and quoted paths. Do not run WSL, Bash, containers or another operating system. These restrictions also apply to your reviewer. '
@@ -100,7 +130,7 @@ multi_agent_v2 = true
     (root/'task.txt').write_text(common+task, encoding='utf-8')
     try:
         oracle_guard.lock()
-        peer=Peer(root)
+        peer=Peer(root,runtime_home=RUNTIME_HOME)
         thread = peer.new(sandbox=SANDBOX_MODE)
         report['thread'] = thread
         turn, index = peer.start(thread, common+task)
@@ -155,20 +185,20 @@ multi_agent_v2 = true
     report['diff_stat']=subprocess.run(['git','diff','--stat'],cwd=work,capture_output=True,text=True).stdout
     (root/'agent.patch').write_bytes(complete_work_patch(work))
     report['reviewers']=[]
-    database=next((root/'home').glob('state_*.sqlite'))
+    database=next(home.glob('state_*.sqlite'))
     with sqlite3.connect(database) as db:
         for child,source,path,agent_path in db.execute('SELECT id,source,rollout_path,agent_path FROM threads WHERE agent_path IS NOT NULL'):
             origin=json.loads(source) if source.startswith('{') else {}
             spawn=origin.get('subagent',{}).get('thread_spawn',{})
             if spawn.get('parent_thread_id')!=report.get('thread'):continue
             rollout=Path(path)
-            if not _support.comparison_path(rollout).is_relative_to(_support.comparison_path(root/'home')) or not rollout.is_file():continue
+            if not _support.comparison_path(rollout).is_relative_to(_support.comparison_path(home)) or not rollout.is_file():continue
             events=[json.loads(line) for line in rollout.read_text(encoding='utf-8').splitlines()]
             completions=[event['payload'] for event in events if event.get('type')=='event_msg' and event.get('payload',{}).get('type')=='task_complete']
             report['reviewers'].append({'thread':child,'agent_path':agent_path,'completed':bool(completions),'final_message':completions[-1].get('last_agent_message') if completions else None})
     reviewer_completed=any(item['completed'] for item in report['reviewers'])
     report['fresh_review']=reviewer_completed
-    browser=root/'home/web-cache/pages.sqlite';pages=[]
+    browser=home/'web-cache/pages.sqlite';pages=[]
     if browser.exists():
         with sqlite3.connect(browser) as db:
             pages=[{key:page.get(key) for key in ['url','source_sha256','retrieved_at']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
@@ -190,6 +220,8 @@ multi_agent_v2 = true
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--fixtures',type=Path,default=BASE)
+    parser.add_argument('--case',choices=['jinja','httpcore'],help='Run one real project; required for an existing pinned runtime profile')
+    parser.add_argument('--runtime-home',type=Path,help='Reuse an explicitly owned, prequalified profile without rewriting its config')
     parser.add_argument('--compaction-limit',type=int,default=COMPACTION_LIMIT,
                         help='Use 90000 only for deliberate repeated-compaction stress testing')
     parser.add_argument('--require-web-research',action='store_true')
@@ -197,10 +229,14 @@ if __name__=='__main__':
                         help='Full-access real-work acceptance must be paired with separate native sandbox enforcement evidence')
     options=parser.parse_args()
     BASE=options.fixtures.resolve()
+    RUNTIME_HOME=options.runtime_home.resolve() if options.runtime_home else None
+    if RUNTIME_HOME is not None and not options.case:parser.error('--runtime-home requires one --case')
     COMPACTION_LIMIT=options.compaction_limit
     REQUIRE_WEB_RESEARCH=options.require_web_research
     SANDBOX_MODE=options.sandbox_mode
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        results=list(pool.map(scenario,['httpcore','jinja']))
+    if options.case:results=[scenario(options.case)]
+    else:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(scenario,['httpcore','jinja']))
     (BASE/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2), encoding='utf-8')
     raise SystemExit(0 if all(r['passed'] for r in results) else 1)

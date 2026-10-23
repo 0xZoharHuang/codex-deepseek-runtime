@@ -56,7 +56,7 @@ def test_explicit_prepare_mode_and_safe_profile_override_controller_default(tmp_
 
 def test_every_cli_gate_with_sandbox_option_receives_it_and_unsupported_gates_do_not():
     source=Path(__file__).parents[1]
-    declared={p.name for p in source.glob('verify_*.py') if any(isinstance(node,ast.Constant) and node.value=='--sandbox-mode' for node in ast.walk(ast.parse(p.read_text())))}
+    declared={p.name for p in source.glob('verify_*.py') if any(isinstance(node,ast.Constant) and node.value=='--sandbox-mode' for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))))}
     assert declared==SANDBOX_OPTION_VERIFIERS
     gates={name:[sys.executable,str(source/name),'--output','fixture'] for name in declared}
     gates['guardian']=[sys.executable,str(source/'verify_safety.py'),'--output','fixture']
@@ -115,3 +115,32 @@ def test_qa_selection_is_removed_by_installed_native_environment(tmp_path,monkey
     from codex_deepseek.cli import native_environment
     monkeypatch.setenv(live.QA_SANDBOX_ENV,'danger-full-access')
     assert live.QA_SANDBOX_ENV not in native_environment(tmp_path/'home','local-test-token',tmp_path/'bin/codex',install_shims=False)
+
+
+@pytest.mark.parametrize('matches',[True,False])
+def test_peer_explicit_pinned_home_is_read_only_and_native_initialize_is_checked(tmp_path,monkeypatch,matches):
+    monkeypatch.delenv(live.QA_SANDBOX_ENV,raising=False)
+    root=tmp_path/'evidence';root.mkdir();(root/'work').mkdir()
+    home=tmp_path/'profile';home.mkdir();config=home/'config.toml';config.write_text('sandbox_mode="workspace-write"\n[windows]\nsandbox="elevated"\n');before=config.read_bytes()
+    server=tmp_path/'rpc.py'
+    program='import json,sys,os,tomllib\nfrom pathlib import Path\nhome=Path(sys.argv[1])\nfor line in sys.stdin:\n x=json.loads(line)\n if "id" not in x:continue\n method=x["method"]\n if method=="initialize":r={"codexHome":str(home),"selected_home":os.environ.get("CODEX_DEEPSEEK_HOME")}\n elif method=="config/read":r={"config":tomllib.loads((home/"config.toml").read_text())}\n else:r={}\n print(json.dumps({"id":x["id"],"result":r}),flush=True)\n'
+    server.write_text(program)
+    observed=home if matches else tmp_path/'wrong-profile'
+    kwargs={'command':[sys.executable,'-I',str(server),str(observed)],'runtime_home':home,'environment':{'CODEX_DEEPSEEK_HOME':str(tmp_path/'stale-profile')}}
+    if matches:
+        peer=live.Peer(root,**kwargs)
+        try:
+            assert peer.runtime_home==home and peer.sandbox_evidence['passed']
+            assert peer.events[0]['result']['selected_home']==str(home)
+        finally:peer.close()
+    else:
+        with pytest.raises(AssertionError,match='Native runtime home differs'):live.Peer(root,**kwargs)
+    proof=json.loads(next(root.glob('qa-runtime-home-*.json')).read_text());assert proof['passed'] is matches
+    assert config.read_bytes()==before and not (root/'home').exists() and not (tmp_path/'stale-profile').exists()
+
+
+def test_explicit_profile_without_declared_sandbox_is_not_modified(tmp_path,monkeypatch):
+    home=tmp_path/'profile';home.mkdir();config=home/'config.toml';config.write_text('# original user content\n');before=config.read_bytes()
+    monkeypatch.setattr(live.subprocess,'Popen',lambda *a,**k:pytest.fail('unqualified profile started native process'))
+    with pytest.raises(ValueError,match='must already declare'):live.Peer(tmp_path,runtime_home=home)
+    assert config.read_bytes()==before

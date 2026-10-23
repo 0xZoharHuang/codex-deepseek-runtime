@@ -29,10 +29,13 @@ STARTUP_SECONDS = 180 if WINDOWS else 20
 RECOVERY_SECONDS = 120 if WINDOWS else 10
 
 
-def code_id(catalog,native_binary=None):
+def code_id(catalog,native_binary=None,home=None):
     digest=hashlib.sha256((sys.prefix+'\0'+sys.version).encode())
     for path in sorted(Path(__file__).parent.glob('*.py')):digest.update(path.name.encode()+b'\0'+path.read_bytes())
     digest.update(Path(catalog).read_bytes())
+    if home is not None:
+        image_config=Path(home)/'provider-state/image-transport.json'
+        digest.update(b'image-transport-config\0'+(image_config.read_bytes() if image_config.exists() else b'disabled'))
     digest.update(b'credential-environment\0'+hashlib.sha256(os.environ.get('OPENROUTER_API_KEY','').strip().encode()).digest())
     for key in ['CODEX_CA_CERTIFICATE','SSL_CERT_FILE','SSL_CERT_DIR','HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY',
                 'http_proxy','https_proxy','all_proxy','no_proxy']:
@@ -129,7 +132,7 @@ def healthy(value):
 def ensure(home,catalog,native_binary=None):
     from .policy import isolated_path
     home=isolated_path(Path(home));private_directory(home);state=home/'provider-state';private_directory(state)
-    expected=code_id(catalog,native_binary)
+    expected=code_id(catalog,native_binary,home)
     with (state/'gateway.lock').open('a') as lock, file_lock(lock):
         trace=os.environ.get('CODEX_DEEPSEEK_TRACE_DIR')
         # A daemon keeps operating after its launcher exits. An unrelated
@@ -186,7 +189,7 @@ async def worker(home,catalog,fd):
     value=read_descriptor(home)
     sock=None if WINDOWS else socket.socket(fileno=fd)
     if sock:sock.setblocking(False)
-    if code_id(catalog,value.get('native_binary'))!=value['code_id']:raise RuntimeError('Provider service code changed; restart from an immutable release')
+    if code_id(catalog,value.get('native_binary'),home)!=value['code_id']:raise RuntimeError('Provider service code changed; restart from an immutable release')
     store=Store(Path(home)/'provider-state/adapter.sqlite');stopped=asyncio.Event();loop=asyncio.get_running_loop()
     restore_signals=install_signals(loop,{signal.SIGTERM:stopped.set,signal.SIGINT:stopped.set})
     async def watch_owner():
@@ -234,7 +237,7 @@ def _supervise(home,catalog,native_binary):
         sock.bind(('127.0.0.1',0))
     sock.listen(128)
     value={'schema':1,'pid':os.getpid(),'birth':identity(os.getpid()),'port':sock.getsockname()[1],
-           'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary),'native_binary':str(native_binary) if native_binary else None,
+           'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary,home),'native_binary':str(native_binary) if native_binary else None,
            'environment':sys.prefix,'started':time.time(),'worker_pid':None,'worker_birth':None,'restarts':0}
     atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[]
     def stop(signum,frame):

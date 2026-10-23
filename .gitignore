@@ -13,3 +13,6 @@ dist/
 *.tar.gz
 *.whl
 .DS_Store
+
+# Local source qualification, private resource journals and bounded test scratch.
+.evidence/

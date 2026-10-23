@@ -1,4 +1,6 @@
-# Codex CLI、DSH 与 DeepSeek：本次固定版本比较
+# Codex CLI、DSH 与 DeepSeek：固定版本历史比较
+
+本文保留 2026-10-20 至 2026-10-21 的研究与早期 macOS 验收范围。当前发布状态见 [README](../README.md)；0.6.0 候选不能继承本页的历史验收结论。
 
 本次发布研究快照：2026-10-20 至 2026-10-21。Codex 最新预发布在审计期间
 由 `0.164.0-alpha.6` 更新为 `0.164.0-alpha.7`；最终原生基线固定为 alpha.7，
@@ -68,7 +70,7 @@ loop，不取消原生沙箱、用户审批或 Hook 信任。普通请求优先�
 网页搜索采用 OpenRouter Exa；实际页面读取、查找和链接导航通过 Codex 官方
 支持的 MCP 接口扩展，使用官方 Python SDK。它保留 native 工具调度，提供
 HTML/文本/PDF 文档阅读，不能被描述为拥有登录态和 JavaScript 的视觉浏览器。
-运行方案与当前证据入口见 [稳定方案](stable-solution.zh.md)。
+v0.4.1 的运行方案保留在[历史方案](stable-solution.zh.md)。后续发布状态与证据范围见 [README](../README.md) 和 [0.6.0 候选说明](release-0.6.0-candidate.zh-CN.md)。
 
 本方案始终使用独立 home、进程、服务、Keychain 命名空间和发布入口。运行
 Codex CLI + DeepSeek 不需要改动本机 Codex App 的登录、会话或配置。

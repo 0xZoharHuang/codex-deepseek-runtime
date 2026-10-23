@@ -25,10 +25,18 @@ def network_policy(headers):
     return policy
 
 
+class NativeRawUnavailable(RuntimeError):
+    """No raw request was sent; never fall back to a different encoding."""
+
+
+class NativeRawUnsupported(NativeRawUnavailable):
+    """The selected immutable helper lacks the required protocol version."""
+
+
 class NativeTransport:
     def __init__(self,upstream,*,binary=None,metadata_path=None):
         self.upstream=upstream;self.binary=binary;self.metadata_path=metadata_path;self.failures=[];self.restarts=0;self.process=None;self.client=None
-        self.lock=asyncio.Lock();self.token=secrets.token_urlsafe(48);self.port=None;self.closed=False
+        self.lock=asyncio.Lock();self.token=secrets.token_urlsafe(48);self.port=None;self.closed=False;self.raw_protocol_version=None
 
     async def start(self):
         async with self.lock:
@@ -51,7 +59,7 @@ class NativeTransport:
                 ready=json.loads(await asyncio.wait_for(self.process.stdout.readline(),10))
                 if ready.get('pid')!=self.process.pid or type(ready.get('port')) is not int or not 0<ready['port']<65536:
                     raise RuntimeError('Native HTTP transport returned invalid ownership metadata')
-                self.port=ready['port']
+                self.port=ready['port'];self.raw_protocol_version=ready.get('raw_protocol_version')
                 if self.metadata_path:
                     from .processes import identity
                     from .service import atomic_json
@@ -78,6 +86,30 @@ class NativeTransport:
         async with self.client.post(f'http://127.0.0.1:{self.port}/forward',json={
             'api_key':api_key,'url':url,'method':method,'payload':payload,'policy':policy},
             headers={'Authorization':'Bearer '+self.token},allow_redirects=False) as response:
+            yield response
+
+    async def require_raw(self):
+        try:await self.start()
+        except Exception:
+            raise NativeRawUnavailable('Native raw HTTP transport is unavailable before sending a request') from None
+        if type(self.raw_protocol_version) is not int or self.raw_protocol_version!=1:
+            raise NativeRawUnsupported('Verified native helper does not support raw HTTP protocol v1; a qualified matching build is required')
+
+    @asynccontextmanager
+    async def request_raw(self,method,url,*,api_key,body=b'',content_type=None,policy='default'):
+        # Only metadata is JSON. The potentially large body is never JSON/base64
+        # wrapped or reserialized between Python and the native HTTP factory.
+        if not isinstance(body,bytes) or len(body)>100*1024*1024+16384:
+            raise ValueError('Raw native HTTP body exceeds its bounded IPC budget')
+        if policy not in {'default','default-fallback','system'} or method not in {'POST','GET','DELETE'}:
+            raise ValueError('Unsupported raw native HTTP request')
+        metadata=json.dumps({'api_key':api_key,'url':url,'method':method,'policy':policy,'content_type':content_type},ensure_ascii=True,separators=(',',':'))
+        if len(metadata.encode('ascii'))>8192:
+            raise ValueError('Raw native HTTP metadata exceeds its IPC budget')
+        await self.require_raw()
+        async with self.client.post(f'http://127.0.0.1:{self.port}/forward-raw',data=body,
+                headers={'Authorization':'Bearer '+self.token,'X-CDS-Transport-Metadata':metadata,
+                         'Content-Type':'application/octet-stream'},allow_redirects=False) as response:
             yield response
 
     def post(self,url,*,json,headers,policy='default',**unused):

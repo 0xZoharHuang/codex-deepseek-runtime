@@ -11,8 +11,10 @@ import uuid
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path,PurePosixPath
 import platform
+import re
+import tomllib
 import shutil
 import subprocess
 import sys
@@ -71,12 +73,104 @@ def download(cache,name,url,digest):
 
 def validate_native_layout(tree,package,target):
     """Run the frozen upstream's own package validator, including native resources."""
-    code=('from pathlib import Path;import sys;sys.path.insert(0,sys.argv[1]);'
+    code=('from pathlib import Path,PurePosixPath;import sys;sys.path.insert(0,sys.argv[1]);'
           'from codex_package.layout import validate_package_dir;'
           'from codex_package.targets import PACKAGE_VARIANTS,TARGET_SPECS;'
           'validate_package_dir(Path(sys.argv[2]),PACKAGE_VARIANTS["codex"],TARGET_SPECS[sys.argv[3]])')
-    subprocess.run([sys.executable,'-I','-c',code,str(tree/'scripts'),str(package),target],
+    subprocess.run([sys.executable,'-I','-B','-c',code,str(tree/'scripts'),str(package),target],
                    env={**os.environ,'CODEX_REPO_ROOT':str(tree)},check=True)
+
+
+def runtime_recipe():
+    """Read the explicit patch stack; target qualification remains a separate gate."""
+    def pairs(values):
+        result={}
+        for key,value in values:
+            if key in result:raise ValueError('Duplicate native build recipe key: '+key)
+            result[key]=value
+        return result
+    recipe=json.loads((SOURCE/'native/runtime-overlays.json').read_text(encoding='utf-8'),object_pairs_hook=pairs)
+    if set(recipe)!={'schema','upstream_commit','upstream_toolchain','build_toolchain','required_base_inputs','overlays'} or type(recipe['schema']) is not int or recipe['schema']!=1 or recipe['upstream_commit']!=COMMIT:
+        raise ValueError('Native build recipe has an incompatible schema or upstream baseline')
+    if any(not isinstance(recipe[key],str) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',recipe[key]) for key in ['upstream_toolchain','build_toolchain']):
+        raise ValueError('Native toolchains must be explicit release pins')
+    if set(recipe['required_base_inputs'])!=set(PLATFORM_ASSETS):raise ValueError('Native recipe target set mismatch')
+    order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch']
+    if not isinstance(recipe['overlays'],list) or [item.get('file') for item in recipe['overlays']]!=order:raise ValueError('Native overlay order mismatch')
+    digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
+    for target,inputs in recipe['required_base_inputs'].items():
+        names=['codex-runtime.patch']+(['windows-transport.patch'] if target.endswith('windows-msvc') else [])
+        if not isinstance(inputs,list) or [item.get('file') for item in inputs]!=names or any(set(item)!={'file','sha256'} or not digest(item['sha256']) for item in inputs):raise ValueError('Invalid required native baseline inputs')
+    for item in recipe['overlays']:
+        if set(item)!={'file','sha256','changes_by_target'} or not digest(item['sha256']):raise ValueError('Invalid native overlay identity')
+        expected_targets=set(PLATFORM_ASSETS) if item['file'].startswith('payload-') else {'x86_64-pc-windows-msvc'}
+        if set(item['changes_by_target'])!=expected_targets:raise ValueError('Invalid native overlay target coverage')
+        for changes in item['changes_by_target'].values():
+            if not isinstance(changes,list) or not changes:raise ValueError('Native overlay needs source hash assertions')
+            paths=[]
+            for row in changes:
+                if set(row)!={'path','before_sha256','after_sha256'} or not isinstance(row['path'],str):raise ValueError('Invalid native source hash assertion')
+                path=PurePosixPath(row['path'])
+                if path.is_absolute() or '..' in path.parts or '\\' in row['path'] or not row['path'].startswith('codex-rs/'):raise ValueError('Unsafe native overlay source path')
+                if row['before_sha256'] is not None and not digest(row['before_sha256']):raise ValueError('Invalid native source input hash')
+                if not digest(row['after_sha256']):raise ValueError('Invalid native source output hash')
+                paths.append(row['path'])
+            if len(paths)!=len(set(paths)):raise ValueError('Duplicate native overlay source path')
+    return recipe
+
+
+def overlay_source_hashes(target,recipe=None):
+    recipe=recipe or runtime_recipe()
+    if target not in recipe['required_base_inputs']:raise ValueError('Unsupported native overlay target')
+    return {row['path']:row['after_sha256'] for item in recipe['overlays'] for row in item['changes_by_target'].get(target,[])}
+
+
+def native_recipe_identity(target,recipe=None):
+    recipe=recipe or runtime_recipe()
+    if target not in recipe['required_base_inputs']:raise ValueError('Unsupported native recipe target')
+    selected={'schema':1,'target':target,'upstream_commit':recipe['upstream_commit'],
+              'upstream_toolchain':recipe['upstream_toolchain'],'build_toolchain':recipe['build_toolchain'],
+              'base_inputs':recipe['required_base_inputs'][target],
+              'overlays':[{'file':item['file'],'sha256':item['sha256'],'changes':item['changes_by_target'][target]}
+                          for item in recipe['overlays'] if target in item['changes_by_target']]}
+    return hashlib.sha256(json.dumps(selected,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def apply_runtime_overlays(tree,target,patch_inputs,recipe=None):
+    recipe=recipe or runtime_recipe();tree=Path(tree)
+    if patch_inputs!=recipe['required_base_inputs'].get(target):raise ValueError('Native overlays require the exact published baseline patch stack')
+    upstream=tomllib.loads((tree/'codex-rs/rust-toolchain.toml').read_text(encoding='utf-8'))['toolchain']['channel']
+    if upstream!=recipe['upstream_toolchain']:raise ValueError('Native upstream toolchain baseline changed')
+    selected=[item for item in recipe['overlays'] if target in item['changes_by_target']]
+    for item in selected:
+        if sha(SOURCE/'native'/item['file'])!=item['sha256']:raise ValueError('Native overlay patch checksum mismatch: '+item['file'])
+    for item in selected:
+        changes=item['changes_by_target'][target]
+        for row in changes:
+            path=tree/row['path'];wanted=row['before_sha256']
+            if path.is_symlink() or ((path.exists() or path.is_symlink()) if wanted is None else (not path.is_file() or sha(path)!=wanted)):
+                raise ValueError('Native overlay input identity mismatch: '+row['path'])
+        command=['git','-c','core.longpaths=true','-c','core.autocrlf=false','-c','core.eol=lf','apply']
+        subprocess.run([*command,'--check',str(SOURCE/'native'/item['file'])],cwd=tree,check=True)
+        subprocess.run([*command,str(SOURCE/'native'/item['file'])],cwd=tree,check=True)
+        for row in changes:
+            if sha(tree/row['path'])!=row['after_sha256']:raise ValueError('Native overlay output identity mismatch: '+row['path'])
+        patch_inputs.append({'file':item['file'],'sha256':item['sha256']})
+    return overlay_source_hashes(target,recipe)
+
+
+def combined_patch(tree,archive,paths):
+    """Identity of the final source diff, independent of staging path or target OS."""
+    paths=sorted(set(paths));originals={};prefix='codex-'+COMMIT+'/'
+    with tarfile.open(archive) as bundle:
+        for member in bundle:
+            name=member.name.removeprefix(prefix)
+            if name in paths and member.isfile():originals[name]=bundle.extractfile(member).read().decode('utf-8')
+    result=''
+    for name in paths:
+        before=originals.get(name,'');after=(Path(tree)/name).read_text(encoding='utf-8')
+        result+=''.join(difflib.unified_diff(before.splitlines(True),after.splitlines(True),fromfile='a/'+name if name in originals else '/dev/null',tofile='b/'+name))
+    return result
 
 
 def main():
@@ -128,18 +222,28 @@ def main():
         patch_id=hashlib.sha256(combined.encode()).hexdigest()
         if patch_id!=extra['combined_patch_sha256']:raise RuntimeError('Combined Windows fork identity mismatch')
         patch_inputs.append({'file':'windows-transport.patch','sha256':sha(overlay)})
-    toolchain=subprocess.run(['rustup','run','1.95.0','rustc','--version'],check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
+    recipe=runtime_recipe();recipe_id=native_recipe_identity(target,recipe);overlay_hashes=apply_runtime_overlays(tree,target,patch_inputs,recipe)
+    source_paths={entry['path'] for entry in expected['files']}|set(overlay_hashes)
+    if suffix:source_paths.update(row['path'] for row in extra['files'])
+    combined=combined_patch(tree,archives['source'],source_paths);(build/'combined.patch').write_bytes(combined.encode())
+    patch_id=hashlib.sha256(combined.encode()).hexdigest()
+    toolchain_pin=recipe['build_toolchain']
+    toolchain=subprocess.run(['rustup','run',toolchain_pin,'rustc','--version'],check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
+    if not toolchain.startswith('rustc '+toolchain_pin+' '):raise RuntimeError('Native compiler differs from the explicit qualification pin')
+    cargo=['cargo','+'+toolchain_pin]
     environment={**os.environ,'CARGO_INCREMENTAL':'0','CARGO_BUILD_JOBS':str(args.jobs),'CARGO_PROFILE_RELEASE_DEBUG':'0','CARGO_PROFILE_RELEASE_STRIP':'symbols','CARGO_PROFILE_RELEASE_LTO':'false','CARGO_PROFILE_RELEASE_CODEGEN_UNITS':'16','CARGO_TARGET_DIR':str(work/'target')}
     bwrap_command=None
     if 'linux' in target:
         # Match upstream release ordering: build/strip the resource first, then
         # embed the digest of the exact shipped bytes into the native CLI.
-        bwrap_command=['cargo','+1.95.0','build','--locked','--release','-p','codex-bwrap','--bin','bwrap']
+        bwrap_command=[*cargo,'build','--locked','--release','-p','codex-bwrap','--bin','bwrap']
         subprocess.run(bwrap_command,cwd=tree/'codex-rs',env=environment,check=True)
         bwrap=work/'target/release/bwrap'
         subprocess.run(['strip','--strip-debug','--strip-unneeded',str(bwrap)],check=True)
         environment['CODEX_BWRAP_SHA256']=sha(bwrap)
-    command=['cargo','+1.95.0','build','--locked','--release','-p','codex-cli','-p','codex-deepseek-http-transport','--bin','codex','--bin','codex-http-transport']
+    helper_command=[*cargo,'build','--locked','--release','-p','codex-deepseek-http-transport','--bin','codex-http-transport']
+    subprocess.run(helper_command,cwd=tree/'codex-rs',env=environment,check=True)
+    command=[*cargo,'build','--locked','--release','-p','codex-cli','--bin','codex']
     if suffix:
         command+=['-p','codex-windows-sandbox','-p','codex-windows-sandbox-service','--bin','codex-windows-sandbox-setup','--bin','codex-command-runner','--bin','codex-windows-managed-deny-probe','--bin','codex-windows-sandbox-service']
     subprocess.run(command,cwd=tree/'codex-rs',env=environment,check=True)
@@ -181,11 +285,13 @@ def main():
         },indent=2),encoding='utf-8')
     for executable in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']:(output/(executable+suffix)).chmod(0o755)
     from native_licenses import collect
-    collect(tree/'codex-rs/Cargo.toml',output/'licenses/rust',target=target)
-    metadata={'layoutVersion':1,'version':VERSION,'target':target,'variant':'codex','resourcesDir':'codex-resources','pathDir':'codex-path','entrypoint':'bin/codex'+suffix,'distribution':'codex-deepseek-runtime','upstreamCommit':COMMIT,'patchSha256':patch_id,'patchInputs':patch_inputs}
+    metadata_command=[*cargo,'metadata','--locked','--format-version','1','--manifest-path',str(tree/'codex-rs/Cargo.toml'),'--filter-platform',target]
+    dependency_metadata=json.loads(subprocess.run(metadata_command,env=environment,check=True,capture_output=True,text=True,encoding='utf-8').stdout)
+    collect(tree/'codex-rs/Cargo.toml',output/'licenses/rust',metadata=dependency_metadata,target=target)
+    metadata={'layoutVersion':1,'version':VERSION,'target':target,'variant':'codex','resourcesDir':'codex-resources','pathDir':'codex-path','entrypoint':'bin/codex'+suffix,'distribution':'codex-deepseek-runtime','upstreamCommit':COMMIT,'patchSha256':patch_id,'patchInputs':patch_inputs,'recipeId':recipe_id}
     (output/'codex-package.json').write_text(json.dumps(metadata,indent=2), encoding='utf-8')
     validate_native_layout(tree,output,target)
-    receipt={'schema':1,'profile':'release','upstream_commit':COMMIT,'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},'patch_sha256':patch_id,'patch_inputs':patch_inputs,'rustc':toolchain,'cargo_command':command,'environment':{key:environment[key] for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS','CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP','CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},'files':{path.relative_to(output).as_posix():sha(path) for path in sorted(output.rglob('*')) if path.is_file()}}
+    receipt={'schema':1,'profile':'release','upstream_commit':COMMIT,'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},'patch_sha256':patch_id,'patch_inputs':patch_inputs,'rustc':toolchain,'cargo_command':command,'cargo_commands':[helper_command,command],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'upstream_toolchain_pin':recipe['upstream_toolchain'],'overlay_recipe_sha256':sha(SOURCE/'native/runtime-overlays.json'),'source_files':{name:sha(tree/name) for name in sorted(source_paths)},'combined_patch_sha256':patch_id,'environment':{key:environment[key] for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS','CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP','CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},'files':{path.relative_to(output).as_posix():sha(path) for path in sorted(output.rglob('*')) if path.is_file()}}
     if bwrap_command:receipt['bwrap']={'command':bwrap_command,'embedded_sha256':environment['CODEX_BWRAP_SHA256'],'resource':'codex-resources/bwrap'}
     (output/'build-receipt.json').write_text(json.dumps(receipt,indent=2), encoding='utf-8');print(json.dumps({'package':str(output),'receipt':str(output/'build-receipt.json')},indent=2))
 

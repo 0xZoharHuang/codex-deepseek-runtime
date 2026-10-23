@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
 import codecs
 import hmac
 import json
@@ -16,8 +17,10 @@ from aiohttp import web
 from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response
 
 from .state import Store
-from .native_http import NativeTransport, network_policy, response_headers
+from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers
 from .structured import StructuredOutput
+from .image_provider import ImageProvider,load_image_config
+from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOperationError
 from .platforms import private_fd, private_directory, replace_file
 
 UPSTREAM = "https://openrouter.ai/api/v1/responses"
@@ -105,9 +108,17 @@ class Gateway:
         self.trace_source = trace_source
         self.native_http_binary = native_http_binary
         self.external_port = external_port
+        self.images = None
+        self.image_gc = None
 
     async def __aenter__(self):
         self.client = NativeTransport(UPSTREAM,binary=self.native_http_binary,metadata_path=self.store.path.parent/'native-http.json' if self.store else None)
+        image_config=load_image_config(self.store.path.parent) if self.store else None
+        if image_config is not None:
+            credentials=self.credential_source if callable(self.credential_source) else lambda:self.credential_source
+            self.images=ImageProvider(self.store.path.parent,self.client,credentials,image_config)
+            from .image_maintenance import ImageMaintenance
+            self.image_gc=ImageMaintenance(self.images.root/'maintenance.json',lambda:self.images.transport())
         app = web.Application(client_max_size=96 * 1024 * 1024)
         app.router.add_get("/health", self.health)
         app.router.add_get("/v1/models", self.models)
@@ -115,10 +126,13 @@ class Gateway:
         self.runner = web.AppRunner(app, handler_cancellation=True, shutdown_timeout=5)
         await self.runner.setup()
         if self.external_port is not None:
-            self.port=self.external_port;return self
+            self.port=self.external_port
+            if self.image_gc is not None:self.image_gc.start()
+            return self
         site = web.SockSite(self.runner,self.listen_socket) if self.listen_socket else web.TCPSite(self.runner, "127.0.0.1", 0)
         await site.start()
         self.port = self.runner.addresses[0][1]
+        if self.image_gc is not None:self.image_gc.start()
         return self
 
     async def accept_socket(self,connection):
@@ -130,6 +144,7 @@ class Gateway:
 
     async def __aexit__(self, *exc):
         await self.runner.cleanup()
+        if self.image_gc is not None:await self.image_gc.stop()
         await self.client.close()
 
     def authorized(self, request):
@@ -140,7 +155,8 @@ class Gateway:
             return error_response("Unauthorized", 401)
         return web.json_response({"status": "ready", "model": MODEL, "provider": PROVIDER,
                                   "structured_provider": STRUCTURED_PROVIDER, "serial_provider": SERIAL_PROVIDER,
-                                  "peer_hosted_provider": PEER_HOSTED_PROVIDER,"fallbacks": False})
+                                  "peer_hosted_provider": PEER_HOSTED_PROVIDER,"fallbacks": False,
+                                  "image_maintenance":self.image_gc.snapshot() if self.image_gc else {"enabled":False}})
 
     async def models(self, request):
         if not self.authorized(request):
@@ -162,32 +178,55 @@ class Gateway:
         response = None
         events = Events(registry)
         status = None
+        captured_key = self.key
+        image_stack=AsyncExitStack();prepared_images=None;image_refs=False;image_started=False
+        async def image_terminal(response_id,terminal):
+            if image_refs:
+                self.images.record(receipt,consumption_status='provider_terminal',provider_terminal=terminal,provider_response_id=response_id,response_id=response_id)
+                await prepared_images.mark_upstream_settled(response_id,terminal)
         try:
             from .policy import isolated_path
             trace_root = self.trace_source() if self.trace_source else os.environ.get("CODEX_DEEPSEEK_TRACE_DIR")
             trace = isolated_path(Path(trace_root)) if trace_root else None
-            if not isinstance(self.credential_source,str):
-                self.key = self.credential_source()
+            captured_key=self.credential_source() if callable(self.credential_source) else self.credential_source
+            if not isinstance(captured_key,str) or not captured_key or any(c.isspace() for c in captured_key):
+                raise ValueError('No usable provider credential')
             if trace:
                 private_directory(trace)
                 private_write(trace / (receipt + "-request.json"),json.dumps(payload, ensure_ascii=False, indent=2))
-            async with self.client.post(UPSTREAM, json=payload, policy=transport_policy, allow_redirects=False, headers={
-                "Authorization": "Bearer " + self.key,
-                "Content-Type": "application/json", "X-Title": "Codex DeepSeek Runtime",
-            }) as upstream:
+            if self.images is not None:
+                await self.client.require_raw()
+                transport=self.images.transport(transport_policy)
+                prepared_images=await image_stack.enter_async_context(transport.prepare(payload,credential=captured_key))
+                preparation=prepared_images.receipt(private=False)
+                image_refs=preparation.get('converted_image_occurrences',0)>0
+                self.images.record(receipt,requested_provider=payload['provider']['only'][0],preparation=preparation,
+                    consumption_status='prepared' if image_refs else 'not_applicable',native_outbound_policy=transport_policy)
+                if image_refs:
+                    await prepared_images.mark_upstream_started(receipt);image_started=True
+                    self.images.record(receipt,consumption_status='unknown')
+                upstream_context=self.client.request_raw('POST',UPSTREAM,body=prepared_images.body,content_type='application/json',api_key=captured_key,policy=transport_policy)
+            else:
+                upstream_context=self.client.post(UPSTREAM,json=payload,policy=transport_policy,allow_redirects=False,
+                    headers={'Authorization':'Bearer '+captured_key,'Content-Type':'application/json','X-Title':'Codex DeepSeek Runtime'})
+            async with upstream_context as upstream:
                 status = upstream.status
                 transport_headers=response_headers(upstream.headers)
                 if trace:private_write(trace/(receipt+'-network.json'),json.dumps({'policy':transport_policy,'native_http':True}))
                 if status >= 300:
+                    if image_refs and status in {400,401,403,404,413,415,422,429}:
+                        await prepared_images.mark_upstream_rejected(status)
+                        self.images.record(receipt,consumption_status='http_rejected',status='upstream_error')
                     raw = await upstream.read()
                     if trace:
-                        private_write(trace / (receipt + "-error.json"),raw.replace(self.key.encode(), b"[REDACTED]"))
+                        private_write(trace / (receipt + "-error.json"),raw.replace(captured_key.encode(), b"[REDACTED]"))
                     self.store.finish(receipt, "upstream_error", status)
-                    return web.Response(body=raw.replace(self.key.encode(), b"[REDACTED]"), status=status,
+                    return web.Response(body=raw.replace(captured_key.encode(), b"[REDACTED]"), status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):
                     result = await upstream.json()
                     validate_response(result)
+                    await image_terminal(result['id'],result['status'])
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
@@ -197,6 +236,13 @@ class Gateway:
                                                         "X-Adapter-Request-Id": receipt})
                 await response.prepare(request)
                 async for original in sse_events(upstream.content):
+                    if image_refs and original.get('type') in {'response.completed','response.failed','response.incomplete'}:
+                        terminal=original.get('response');validate_response(terminal)
+                        if events.response_id and terminal['id']!=events.response_id:raise ProtocolError('Provider terminal changed response identity')
+                        await image_terminal(terminal['id'],terminal['status'])
+                    if self.images is not None and original.get('type')=='response.created':
+                        identifier=(original.get('response') or {}).get('id')
+                        if isinstance(identifier,str):self.images.record(receipt,response_id=identifier)
                     for event in structured.events(original):
                         normalized_events = events.transform(event)
                         if event.get('type') == 'response.created':
@@ -216,10 +262,16 @@ class Gateway:
                 self.store.finish(receipt, events.status, status, events)
                 return response
         except asyncio.CancelledError:
+            if self.images is not None and prepared_images is not None:self.images.record(receipt,status='delivery_cancelled')
             self.store.finish(receipt, "cancelled", status, events)
             raise
         except (aiohttp.ClientError, TimeoutError, OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
-            detail = str(exc).replace(self.key, "[REDACTED]") if self.key else str(exc)
+            if captured_key is not None and not isinstance(captured_key, str):
+                # Invalid callback values are not strings and must never be used
+                # for truthiness, repr, or replacement while closing the receipt.
+                detail = "No usable provider credential"
+            else:
+                detail = str(exc).replace(captured_key, "[REDACTED]") if captured_key else str(exc)
             self.store.finish(receipt, "adapter_error", status, events, detail)
             if response is not None and response.prepared:
                 try:
@@ -230,4 +282,15 @@ class Gateway:
                 except (ConnectionError, RuntimeError):
                     pass  # The native client already closed the stream; the receipt records failure.
                 return response
-            return error_response(detail, 502)
+            error_status=413 if isinstance(exc,PayloadBudgetExceeded) else (400 if isinstance(exc,(ImageTransportError,NativeRawUnsupported)) else 502)
+            if isinstance(exc,FileOperationError):
+                error_status=exc.status if exc.status in {400,401,403,404,409,413,415,422,429} else 502
+                result=error_response(detail,error_status)
+                for name,value in exc.safe_headers.items():
+                    if name=='retry-after':result.headers['Retry-After']=value
+                return result
+            return error_response(detail,error_status)
+        finally:
+            try:await image_stack.aclose()
+            except Exception as error:
+                if self.images is not None:self.images.record(receipt,release_error_type=type(error).__name__)

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from build_native import build_target,overlay_source_hashes,runtime_recipe
 
 
 def sha(path):
@@ -25,8 +26,12 @@ def main():
     if os.name=='nt':
         for row in json.loads((package/'native/windows-source-changes.json').read_text(encoding='utf-8'))['files']:
             hashes[row['path']]=row['fork_sha256']
+    recipe=runtime_recipe();hashes.update(overlay_source_hashes(build_target(),recipe))
     for name,digest in hashes.items():
         if sha(root/name)!=digest:raise SystemExit('Native source does not match the pinned target: '+name)
+    toolchain_pin=recipe['build_toolchain']
+    toolchain=subprocess.run(['rustup','run',toolchain_pin,'rustc','--version'],check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
+    if not toolchain.startswith('rustc '+toolchain_pin+' '):raise SystemExit('Native compiler differs from the explicit qualification pin')
     crate,test_name,source_name={
         'network':('http-client','deepseek_policy_revocation','policy-revocation-probe.rs'),
         'secret-key':('secrets','deepseek_fixture_secret_key','secret-key-probe.rs'),
@@ -38,7 +43,7 @@ def main():
         raise SystemExit('A different probe already exists; preserving it')
     target.write_bytes(source.read_bytes())
     output=args.output.resolve();output.mkdir(parents=True,mode=0o700,exist_ok=False)
-    command=['cargo','+1.95.0','test','--locked','--release','--no-run','--message-format=json',
+    command=['cargo','+'+toolchain_pin,'test','--locked','--release','--no-run','--message-format=json',
              '-p','codex-'+crate,'--test',test_name]
     environment=dict(os.environ,CARGO_TARGET_DIR=str(args.target_dir.resolve()),CARGO_INCREMENTAL='0',
                      CARGO_BUILD_JOBS='2',CARGO_PROFILE_RELEASE_DEBUG='0',CARGO_PROFILE_RELEASE_STRIP='symbols',
@@ -56,7 +61,7 @@ def main():
     for name,digest in hashes.items():
         if sha(root/name)!=digest:raise SystemExit('Native source changed during probe build: '+name)
     receipt={'kind':args.kind,'probe':str(binaries[0]),'probe_sha256':sha(binaries[0]),'test_source_sha256':sha(source),
-             'source_root':str(root),'native_source_sha256':hashes,'command':command}
+             'source_root':str(root),'native_source_sha256':hashes,'command':command,'rustc':toolchain,'build_toolchain_pin':toolchain_pin,'overlay_recipe_sha256':sha(package/'native/runtime-overlays.json')}
     (output/'probe-build.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
     print(binaries[0])
 

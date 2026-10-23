@@ -1,5 +1,7 @@
 # 使用与维护
 
+已发布版本是 v0.5.0；当前源码 0.6.0 仍为候选。稳定版安装与旧验收范围见 [README](../README.md)，候选的实际变化、隔离安装和发布前条件见 [0.6.0 说明](release-0.6.0-candidate.zh-CN.md)。本文的通用用法不能替代候选验收。
+
 这个发行包保留固定版本 Codex CLI 的原生执行循环、工具、沙箱、审批、会话、
 多智能体、Code Mode、MCP、Skills、Hooks、队列、goals、记忆及 daemon。
 DeepSeek 通过 OpenRouter 接入；适配器负责协议和传输边界，不执行模型工具。
@@ -15,8 +17,8 @@ codex-deepseek resume --last
 codex-deepseek app-server
 ```
 
-运行入口为 `~/.local/bin/codex-deepseek`。默认 home 是
-`~/.local/share/codex-deepseek/codex-home/`；本机 App 的 `~/.codex` 不参与运行。
+macOS/Linux 的运行入口为 `~/.local/bin/codex-deepseek`，默认 home 是
+`~/.local/share/codex-deepseek/codex-home/`。Windows 入口为 `$HOME\.local\bin\codex-deepseek.exe`，默认 home 是 `%LOCALAPPDATA%\codex-deepseek\codex-home`。本机 App 的 `~/.codex` 不参与运行。
 需要独立工作配置时：
 
 ```sh
@@ -24,7 +26,7 @@ CODEX_DEEPSEEK_HOME=/absolute/path/to/profile codex-deepseek
 ```
 
 独立 home 仍然使用原生项目规则、项目工具和共享 `~/.agents/skills`；它不是虚拟机。
-API Key 使用专属 macOS Keychain 项，`runtime setup-key` 通过隐藏输入设置。
+`runtime setup-key` 通过隐藏输入设置专属系统凭据：macOS Keychain、Windows Credential Manager 或 Linux Secret Service。SSH/CI 可以从安全的父进程环境注入 `OPENROUTER_API_KEY`；环境值优先于系统存储。
 不要把 Key 放进命令行参数、Git、TOML 或截图。
 
 `runtime doctor` 会实际运行原生回合并用 OpenRouter generation 元数据确认
@@ -63,9 +65,24 @@ WebSocket 的端口 0 也保留，由系统分配后通过原生进程的内核�
 禁止 provider fallback，不通过失败后重放工具动作来换路由。generation 记录
 可以核对实际模型和提供商。
 
-固定基线、构建哈希、复杂工程验证和逐方法证据范围见随发布提供的
-`reports/acceptance.json` 与 `reports/runtime-method-matrix.json`。
+固定基线、构建哈希、复杂工程验证和逐方法证据须按发行版本阅读。v0.5.0 的
+三平台入口是 `reports/platforms/<target>/runtime-qualification.json`；0.6.0 的待完成项见候选说明。
 矩阵区分实际场景调用、保留的原生处理器、后端/平台依赖和上游未实现方法。
+
+## 0.6.0 可选图片维护
+
+图片传输默认关闭；使用匹配候选包并按[配置说明](release-0.6.0-candidate.zh-CN.md)启用后，可在选定 home 下执行：
+
+```sh
+codex-deepseek runtime image-status
+codex-deepseek runtime image-cleanup --all-unpinned
+codex-deepseek runtime image-reconcile-uploads
+codex-deepseek runtime image-reconcile-calls
+```
+
+Windows 使用对应的 `.exe` 入口；并行候选应使用自己的绝对入口。`image-status` 返回状态，退出 0 不代表远端文件已清空。其他维护命令仅在对应操作完成时返回 0；未确认消费、未知上传、失败或超时均需保留回执。`--all-unpinned` 不会越过仍在使用或结果未知的文件锁定。
+
+不要复制账本到另一个 home 后尝试清理。账本绑定缓存根路径与 credential scope，非空旧无绑定账本会被保留并拒绝自动采用。更换 key 不会自动删除旧 scope 的文件。删除本地目录或关闭功能不能代替远端 DELETE 与不存在读回。
 
 ## 网页读取
 
@@ -86,14 +103,15 @@ turn interrupt 与 MCP cancellation 是不同事件。按同版官方 CLI 的原
 收到 MCP 的显式 cancellation 通知时会取消 HTTP。不要将这三种情况合并成
 “任意中断都立即停止所有工具”。
 
-完整架构、安装、验收和维护流程见 [固定运行方案](stable-solution.zh.md)。
+完整架构和 v0.5.0 证据范围见 [稳定运行方案](STABLE_PLAN.zh-CN.md)；v0.4.1 的[历史方案](stable-solution.zh.md)仅保留当时结果。
 
-升级必须通过本发行包的验证安装器。原生生产 updater 会覆盖专用补丁，因此被
-明确拒绝；先停止当前 home 的 daemon，再安装通过验收的新发行包，必要时用
-`daemon update --from-cli --yes` 更新其包。不要直接用 npm 更新原生二进制来
-替换本包。旧安装目录在新包验证前保留，便于回退。
+升级通过本发行包的验证安装器；通用上游 updater 被拒绝，以免覆盖专用补丁。
+先在新 root 与独立 home 验证候选，并保留旧入口。做同 home 变更前，确认该 home
+的任务、子进程与 daemon 均已结束；必要时才使用 `daemon update --from-cli --yes`。
+0.6.0 Windows 的 namespace 不能直接采用旧 `.sandbox*` 状态；自动迁移尚未提供。
+候选回退和未来同 home 迁移的区别见 [0.6.0 说明](release-0.6.0-candidate.zh-CN.md)。
 
-等价范围限于已冻结 Codex 版本和已验证 macOS arm64 的本地 runtime。
+每个等价结论仅适用于其报告绑定的 Codex 版本、平台与产物。v0.5.0 的三平台结果不延伸到 0.6.0。
 模型判断质量、厂商隐藏状态、OpenAI 云端权益不属于可由适配器复制的能力。
 原生进程遭 macOS SIGKILL 后可能遗留命令后代，这是官方二进制同样复现的
 上游限制；正常退出、回合取消、包装层退出、服务故障和冷恢复各自独立验证。

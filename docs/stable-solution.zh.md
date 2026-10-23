@@ -1,8 +1,10 @@
-# Codex + DeepSeek 的固定版本运行方案
+# Codex + DeepSeek 的 v0.4.1 历史运行方案
+
+本文保留 v0.4.1 当时的安装身份、macOS 范围和验收结果；其中“本次”“当前安装”均指该历史快照。后续版本应读取 [README](../README.md)、[v0.5.0 稳定方案](STABLE_PLAN.zh-CN.md) 或 [0.6.0 候选说明](release-0.6.0-candidate.zh-CN.md)，不要把以下数量或命令当成新候选已完成的证明。
 
 目标是保留 Codex CLI 的本地执行机制，用 DeepSeek 提供模型推理。版本基线固定为 Codex `0.164.0-alpha.7`、macOS arm64，模型为 `deepseek/deepseek-v4.1-flash-1017`。这是可复现的冻结方案；上游 CLI 是预发布版本，不能由本项目把它变成上游稳定版。
 
-当前交付为 **v0.4.1**，已验收安装的 source ID 为 `98b24d5adbcf145b99ee`。实际交付环境使用独立 Python `3.13.3`；最低版本 Python `3.11.9` 也重新通过全部 162 项离线测试。两者的验证范围不能混写成所有 Python 版本都跑过完整集成场景。
+本历史快照的交付版本为 **v0.4.1**，已验收安装的 source ID 为 `98b24d5adbcf145b99ee`。实际交付环境使用独立 Python `3.13.3`；最低版本 Python `3.11.9` 也重新通过全部 162 项离线测试。两者的验证范围不能混写成所有 Python 版本都跑过完整集成场景。
 
 ```text
 用户任务

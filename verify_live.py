@@ -28,13 +28,14 @@ def qa_sandbox_mode(value=None):
     return selected
 
 
-def fixture_sandbox_mode(root):
+def fixture_sandbox_mode(root, *, runtime_home=None):
     """Supply the QA default only when the fixture has no explicit override."""
     default=qa_sandbox_mode()
-    path=Path(root)/'home/config.toml'
+    path=(Path(runtime_home) if runtime_home is not None else Path(root)/'home')/'config.toml'
     content=path.read_text(encoding='utf-8') if path.exists() else ''
     configured=tomllib.loads(content).get('sandbox_mode')
     if configured is None:
+        if runtime_home is not None:raise ValueError("An explicit runtime home must already declare its sandbox_mode; acceptance will not rewrite it")
         configured=default
         path.write_text('sandbox_mode='+json.dumps(default)+'\n'+content,encoding='utf-8')
     if configured not in (*QA_SANDBOX_MODES,'read-only'):
@@ -59,9 +60,10 @@ def verify_fixture_sandbox(config,expected):
 
 
 class Peer:
-    def __init__(self, root: Path, command=None, environment=None, server_args=None):
+    def __init__(self, root: Path, command=None, environment=None, server_args=None, *, runtime_home=None):
         self.root = root
-        self.sandbox_mode = fixture_sandbox_mode(root)
+        self.runtime_home = Path(runtime_home).resolve() if runtime_home is not None else root / "home"
+        self.sandbox_mode = fixture_sandbox_mode(root,runtime_home=runtime_home)
         self.events = []
         self.queue = queue.Queue()
         self.counter = 0
@@ -72,9 +74,10 @@ class Peer:
         self.dynamic_answers = {}
         self.stderr = (root / f"stderr-{time.time_ns()}.txt").open("w")
         env = dict(os.environ)
-        env["CODEX_DEEPSEEK_HOME"] = str(root / "home")
+        env["CODEX_DEEPSEEK_HOME"] = str(self.runtime_home)
         env["CODEX_DEEPSEEK_TRACE_DIR"] = str(root / "adapter-traces")
         env.update(environment or {})
+        if runtime_home is not None:env["CODEX_DEEPSEEK_HOME"] = str(self.runtime_home)
         env.pop(QA_SANDBOX_ENV,None)
         selected=command or [os.environ.get('CODEX_DEEPSEEK_TEST_ENTRY') or str(Path.home()/".local/bin/codex-deepseek")]
         executable=Path(selected[0]).resolve()
@@ -88,8 +91,13 @@ class Peer:
         self.closed=False
         self.reader=threading.Thread(target=self.read, daemon=True);self.reader.start()
         try:
-            self.call("initialize", {"clientInfo": {"name": "isolated_deepseek_acceptance", "version": "1.0"},
+            initialized=self.call("initialize", {"clientInfo": {"name": "isolated_deepseek_acceptance", "version": "1.0"},
                                      "capabilities": {"experimentalApi": True}})
+            if runtime_home is not None:
+                actual=initialized.get("codexHome")
+                proof={"requested_home":str(self.runtime_home),"native_home":actual,"passed":isinstance(actual,str) and Path(actual).resolve()==self.runtime_home}
+                (root/f"qa-runtime-home-{time.time_ns()}.json").write_text(json.dumps(proof,indent=2),encoding="utf-8")
+                if not proof["passed"]:raise AssertionError("Native runtime home differs from explicit pinned profile")
             self.send({"method": "initialized"})
             self.sandbox_evidence=verify_fixture_sandbox(self.call('config/read',{'includeLayers':False}),self.sandbox_mode)
             (root/f'qa-sandbox-{time.time_ns()}.json').write_text(json.dumps(self.sandbox_evidence,indent=2),encoding='utf-8')

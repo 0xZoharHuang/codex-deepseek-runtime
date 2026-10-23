@@ -15,7 +15,9 @@ def collect(manifest,output,*,metadata=None,target=None):
     platform_target=target or {('Darwin','arm64'):'aarch64-apple-darwin',('Linux','x86_64'):'x86_64-unknown-linux-gnu',('Windows','AMD64'):'x86_64-pc-windows-msvc'}[(platform.system(),platform.machine())]
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     if metadata is None:
-        result=subprocess.run(['cargo','+1.95.0','metadata','--locked','--format-version','1','--filter-platform',platform_target,'--manifest-path',str(manifest)],check=True,capture_output=True,text=True,encoding='utf-8')
+        from build_native import runtime_recipe
+        toolchain_pin=runtime_recipe()['build_toolchain']
+        result=subprocess.run(['cargo','+'+toolchain_pin,'metadata','--locked','--format-version','1','--filter-platform',platform_target,'--manifest-path',str(manifest)],check=True,capture_output=True,text=True,encoding='utf-8')
         metadata=json.loads(result.stdout)
     license_data=json.loads((SOURCE/'native/license-data.json').read_text(encoding='utf-8'))
     for row in license_data['texts']:

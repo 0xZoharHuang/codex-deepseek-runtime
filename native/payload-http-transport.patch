@@ -1,0 +1,166 @@
+--- a/codex-rs/deepseek-http-transport/src/main.rs
++++ b/codex-rs/deepseek-http-transport/src/main.rs
+@@ -1,7 +1,7 @@
+ //! Authenticated, profile-owned native HTTP transport. It performs no tool execution or retries.
+ use axum::{
+     Json, Router,
+-    body::Body,
++    body::{Body, Bytes},
+     extract::{DefaultBodyLimit, State},
+     response::{IntoResponse, Response},
+     routing::post,
+@@ -35,6 +35,43 @@
+     payload: Option<Value>,
+     policy: String,
+ }
++#[derive(Deserialize)]
++#[serde(deny_unknown_fields)]
++struct RawMetadata {
++    api_key: String,
++    url: String,
++    method: String,
++    policy: String,
++    content_type: Option<String>,
++}
++
++const JSON_BYTES_LIMIT: usize = 96 * 1024 * 1024;
++const FILE_BYTES_LIMIT: usize = 100 * 1024 * 1024 + 16384;
++const METADATA_BYTES_LIMIT: usize = 8192;
++
++fn file_object_path(path: &str) -> bool {
++    path.strip_prefix("/api/v1/files/or_file_").is_some_and(|id| {
++        (8..=128).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
++    })
++}
++
++fn raw_request_allowed(url: &Url, upstream: &Url, method: &str, content_type: Option<&str>, size: usize) -> bool {
++    if url.origin() != upstream.origin() || !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
++        return false;
++    }
++    match method {
++        "GET" => size == 0 && content_type.is_none() && (url.path() == "/api/v1/files" || file_object_path(url.path())),
++        "DELETE" => size == 0 && content_type.is_none() && file_object_path(url.path()),
++        "POST" if url.path() == upstream.path() => content_type == Some("application/json") && size <= JSON_BYTES_LIMIT,
++        "POST" if url.path() == "/api/v1/files" => size > 0 && size <= FILE_BYTES_LIMIT && content_type.is_some_and(|value| {
++            value.strip_prefix("multipart/form-data; boundary=").is_some_and(|boundary| {
++                (1..=70).contains(&boundary.len()) && boundary.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
++            })
++        }),
++        _ => false,
++    }
++}
++
+ struct Shared {
+     config: Startup,
+     origin: Url,
+@@ -77,6 +114,33 @@
+     if !authorized(&headers, &shared.config.token) {
+         return failure(StatusCode::UNAUTHORIZED, "Unauthorized");
+     }
++    forward_request(shared, request, None).await
++}
++
++async fn forward_raw(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes) -> Response {
++    if !authorized(&headers, &shared.config.token) {
++        return failure(StatusCode::UNAUTHORIZED, "Unauthorized");
++    }
++    let Some(raw) = headers.get("x-cds-transport-metadata") else {
++        return failure(StatusCode::BAD_REQUEST, "Missing bounded raw request metadata");
++    };
++    if raw.as_bytes().len() > METADATA_BYTES_LIMIT {
++        return failure(StatusCode::BAD_REQUEST, "Raw request metadata exceeds its budget");
++    }
++    let Ok(metadata) = serde_json::from_slice::<RawMetadata>(raw.as_bytes()) else {
++        return failure(StatusCode::BAD_REQUEST, "Invalid raw request metadata");
++    };
++    let Ok(url) = Url::parse(&metadata.url) else {
++        return failure(StatusCode::BAD_REQUEST, "Invalid upstream URL");
++    };
++    if !raw_request_allowed(&url, &shared.origin, &metadata.method, metadata.content_type.as_deref(), body.len()) {
++        return failure(StatusCode::BAD_REQUEST, "Raw method, destination, body or content type is outside its contract");
++    }
++    let request = Request { api_key: metadata.api_key, url: metadata.url, method: metadata.method, payload: None, policy: metadata.policy };
++    forward_request(shared, request, Some((body, metadata.content_type))).await
++}
++
++async fn forward_request(shared: Arc<Shared>, request: Request, raw_body: Option<(Bytes, Option<String>)>) -> Response {
+     let Ok(url) = Url::parse(&request.url) else {
+         return failure(StatusCode::BAD_REQUEST, "Invalid upstream URL");
+     };
+@@ -115,6 +179,7 @@
+     let builder = match request.method.as_str() {
+         "POST" => client.post(url),
+         "GET" => client.get(url),
++        "DELETE" if raw_body.is_some() && file_object_path(url.path()) => client.delete(url),
+         _ => {
+             return failure(
+                 StatusCode::BAD_REQUEST,
+@@ -124,7 +189,10 @@
+     }
+     .bearer_auth(&request.api_key)
+     .header("X-Title", "Codex DeepSeek Runtime");
+-    let builder = if let Some(payload) = request.payload.as_ref() {
++    let builder = if let Some((body, content_type)) = raw_body {
++        let builder = if let Some(content_type) = content_type { builder.header("Content-Type", content_type) } else { builder };
++        builder.body(body)
++    } else if let Some(payload) = request.payload.as_ref() {
+         builder.json(payload)
+     } else {
+         builder
+@@ -205,15 +273,15 @@
+     });
+     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+     let info = serde_json::to_vec(
+-        &json!({"port":listener.local_addr()?.port(),"pid":std::process::id()}),
++        &json!({"port":listener.local_addr()?.port(),"pid":std::process::id(),"raw_protocol_version":1}),
+     )?;
+     let mut stdout = tokio::io::stdout();
+     stdout.write_all(&info).await?;
+     stdout.write_all(b"\n").await?;
+     stdout.flush().await?;
+     let router = Router::new()
+-        .route("/forward", post(forward))
+-        .layer(DefaultBodyLimit::max(96 * 1024 * 1024))
++        .route("/forward", post(forward).layer(DefaultBodyLimit::max(JSON_BYTES_LIMIT)))
++        .route("/forward-raw", post(forward_raw).layer(DefaultBodyLimit::max(FILE_BYTES_LIMIT)))
+         .layer(axum::middleware::from_fn_with_state(shared.clone(), gate))
+         .with_state(shared);
+     let serving = async move { axum::serve(listener, router).await };
+@@ -248,3 +316,37 @@
+         std::process::exit(1);
+     }
+ }
++
++
++#[cfg(test)]
++mod raw_ipc_tests {
++    use super::*;
++    fn upstream() -> Url { Url::parse("https://openrouter.ai/api/v1/responses").unwrap() }
++    #[test]
++    fn raw_scope_is_only_responses_and_files() {
++        let api=upstream();
++        let file=Url::parse("https://openrouter.ai/api/v1/files/or_file_12345678").unwrap();
++        assert!(raw_request_allowed(&api,&api,"POST",Some("application/json"),JSON_BYTES_LIMIT));
++        assert!(raw_request_allowed(&file,&api,"GET",None,0));
++        assert!(raw_request_allowed(&file,&api,"DELETE",None,0));
++        assert!(!raw_request_allowed(&file,&api,"DELETE",None,1));
++        assert!(!raw_request_allowed(&api,&api,"DELETE",None,0));
++        assert!(!raw_request_allowed(&api,&api,"POST",Some("application/json"),JSON_BYTES_LIMIT+1));
++        for value in ["https://other.invalid/api/v1/files/or_file_12345678", "https://openrouter.ai/api/v1/keys/12345678", "https://u:p@openrouter.ai/api/v1/files/or_file_12345678", "https://openrouter.ai/api/v1/files/or_file_12345678#x"] {
++            assert!(!raw_request_allowed(&Url::parse(value).unwrap(),&api,"DELETE",None,0));
++        }
++    }
++    #[test]
++    fn multipart_is_bounded_and_does_not_enable_legacy_delete() {
++        let api=upstream();let files=Url::parse("https://openrouter.ai/api/v1/files").unwrap();
++        assert!(raw_request_allowed(&files,&api,"POST",Some("multipart/form-data; boundary=cds-123"),FILE_BYTES_LIMIT));
++        assert!(!raw_request_allowed(&files,&api,"POST",Some("multipart/form-data; boundary=bad\r\nInjected"),1));
++        assert!(!raw_request_allowed(&files,&api,"POST",Some("application/json"),1));
++        assert!(!raw_request_allowed(&files,&api,"DELETE",None,0));
++    }
++    #[test]
++    fn ambiguous_metadata_is_rejected() {
++        assert!(serde_json::from_str::<RawMetadata>(r#"{"api_key":"a","api_key":"b","url":"x","method":"GET","policy":"default","content_type":null}"#).is_err());
++        assert!(serde_json::from_str::<RawMetadata>(r#"{"api_key":"a","url":"x","method":"GET","policy":"default","content_type":null,"unexpected":true}"#).is_err());
++    }
++}

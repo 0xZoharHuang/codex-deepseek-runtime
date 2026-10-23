@@ -1,5 +1,7 @@
 # Codex CLI + DeepSeek 的稳定运行方案
 
+本文的已交付产物、数量和源码谱系均限定于 v0.5.0。当前源码 0.6.0 尚未发布，其图片传输、Windows namespace 和安装 recipe 变化见 [候选说明](release-0.6.0-candidate.zh-CN.md)。不能将这里的旧结论赋给新源码或二进制。
+
 本项目保留 Codex CLI 的原生运行时，用独立安装、协议转换和平台适配，把模型请求接到 OpenRouter 上固定版本的 DeepSeek。模型质量、OpenAI 账户权益和专属云端服务不属于运行时等价的承诺。
 
 平台是否验收完成，以发布版本随附的 `reports/platforms/<target>/runtime-qualification.json` 为准。源码里存在某个平台的实现、原生二进制编译成功，或某个测试子集通过，都不能替代整个平台的验收报告。
@@ -8,7 +10,7 @@
 
 v0.5.0 使用 Codex `0.164.0-alpha.7` 与 DeepSeek `deepseek/deepseek-v4.1-flash-1017`。原生基线仍是上游预发布版，因此 GitHub release 也保留 prerelease 标记。
 
-| 平台 | 本地方法范围 | 当前交付的完整离线测试 | 结论入口 |
+| 平台 | v0.5.0 本地方法范围 | v0.5.0 完整离线测试 | 结论入口 |
 | --- | --- | --- | --- |
 | Windows x86_64 | 131 项，含实际双模式沙箱 | 666 通过；1 项 Linux 专用 | [Windows 报告](../reports/platforms/x86_64-pc-windows-msvc/runtime-qualification.json) |
 | macOS arm64 | 129 项，通过明确组件谱系关联 | 653 通过；12 项平台不适用 | [macOS 报告](../reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
@@ -16,7 +18,7 @@ v0.5.0 使用 Codex `0.164.0-alpha.7` 与 DeepSeek `deepseek/deepseek-v4.1-flash
 
 Windows 标准门保留原 29 项通过与独立 Guardian 补测；Linux 保留 memory-v1 的提供方失败和独立成功补测；macOS 的四项凭据机制复用未变组件的原始实测，加上当前 File/Ephemeral 桥接。这些是明确组合的证据，不是一次全绿运行。
 
-[发布源码谱系](../reports/release-source-lineage.json) 将实测 94c、069、3a 的精确 Git 对象与最终发布源码关联。最后产品差异只有 README 内容和 Windows manifest 的 CRLF→LF，JSON 对象、全部 runtime Python、原生归档、catalog 与依赖完全相同。历史精确字节用 `git archive <commit>` 恢复；正常 checkout 会按 `.gitattributes` 统一换行符。
+[v0.5.0 发布源码谱系](../reports/release-source-lineage.json) 将当时实测 94c、069、3a 的精确 Git 对象与 v0.5.0 最终源码关联。当时的最后产品差异只有 README 内容和 Windows manifest 的 CRLF→LF，JSON 对象、全部 runtime Python、原生归档、catalog 与依赖完全相同。历史精确字节用 `git archive <commit>` 恢复；正常 checkout 会按 `.gitattributes` 统一换行符。
 
 ## 实际执行路径
 
@@ -55,7 +57,7 @@ cd /path/to/project
 codex-deepseek
 ```
 
-Windows 使用独立 Python 执行同一个安装器，入口是 `codex-deepseek.exe`。默认安装目录为 `%LOCALAPPDATA%/codex-deepseek`；macOS/Linux 默认为 `~/.local/share/codex-deepseek`。需要并行验证候选版本时，使用 `--root <独立目录> --no-activate`，再直接执行该目录下不可变版本的入口。
+Windows 使用独立 Python 执行同一个安装器，入口是 `codex-deepseek.exe`。默认安装目录为 `%LOCALAPPDATA%/codex-deepseek`；macOS/Linux 默认为 `~/.local/share/codex-deepseek`。并行验证 0.6.0 时，需使用此前不存在的新 root、新 home 和匹配当前 recipe 的显式 native manifest/归档；详见[候选安装步骤](release-0.6.0-candidate.zh-CN.md)。`--no-activate` 仍初始化 root 内的 home；运行通用不可变入口时也须显式设置该 home。
 
 `CODEX_DEEPSEEK_HOME` 可以指定另一个独立配置与会话目录。路径不能与 `~/.codex` 重叠。入口会清除继承的 Codex App IPC 和会话标识；项目内再次调用 `codex` 时，独立 profile 中的命令入口会保持在这套安装内。Windows 使用标准 Python `.exe` 启动器，参数和路径不会交给 CMD 展开。
 
@@ -85,7 +87,7 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 ## 完成的判据
 
-发布验收必须覆盖下列互补证据：
+下列是 v0.5.0 固定基线的验收结构。0.6.0 必须把各结论绑定到新源码与实际包，明确复验或可核查的组件复用依据，并补齐新增行为的证据，不能直接沿用数量：
 
 1. 完整原生源码清单与补丁重放，确认保护范围中的会话、工具处理器、调度和沙箱实现保持上游内容。
 2. 同版本官方二进制与本项目二进制的全部 456 份协议 Schema 比较。
@@ -100,7 +102,7 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 完整通过的开发任务证明正常完成路径；包含真实失败与恢复的开发任务证明错误传递和恢复路径。两者共同补充逐接口与平台验收。模型生成代码的正确率不属于 runtime 等价承诺，任何尚未验证的 runtime 能力仍是发布阻断项。Windows 沙箱、凭据、审批和进程清理的实际结果分别记录在最终平台报告中。
 
-宿主 Windows 的复杂任务可明确使用 full-access 模式，以避免修改用户已有沙箱账户；这种任务结果必须配合同一源码、依赖、catalog 和原生产物的隔离 Windows 客体验证，才能覆盖沙箱能力。客体的正向权限结果不能只由 readiness 或 setup 成功代替。
+v0.5.0 曾明确采用宿主 full-access 复杂任务与同身份隔离 Windows 客体沙箱证据的组合。那是当时记录的验收条件，不是 0.6.0 绕过沙箱的操作步骤。新的候选必须按自己的权限与安装方案取得证据；readiness 或 setup 成功仍不能替代实际允许、拒绝与恢复结果。
 
 ## 委派与运行中控制
 
@@ -110,6 +112,8 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 ## 更新、回退和清理
 
-升级使用新不可变目录。当前 profile 仍有原生工作时，不替换它的提供方服务；先结束工作，或使用另一个独立 home。独立 daemon 更新使用原生 `app-server daemon update --from-cli --yes`，保留本发行包的模型提供方边界。
+升级使用新不可变目录。当前 profile 仍有原生任务、子进程或 daemon 时，不替换它的提供方服务。0.6.0 首次验证使用新 root 和新 home，稳定入口保留；候选回退就是结束候选自己的工作并继续使用稳定入口。未来同 home 迁移需单独备份和恢复，保留根目录身份，不复制或清理旧共享 sandbox 资源。具体步骤见[候选说明](release-0.6.0-candidate.zh-CN.md)。
+
+图片传输启用后，应在移除候选环境前核对 owned file 的清理与未知状态。删除本地账本不是远端清理；未解决的回执属于应保留材料。
 
 保留已验证的运行版本及必要回退材料。构建缓存、重复下载和临时虚拟机在停止其确切拥有者后清理；失败证据先压缩、逐文件读回校验，再删除展开副本。项目源码、用户会话、关键回执和 Codex App 数据不属于批量清理对象。实际释放空间以文件系统读数为准。

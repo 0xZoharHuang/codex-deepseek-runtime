@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path,PurePosixPath
 import platform
+import re
+import stat
 import shlex
 import shutil
 import subprocess
@@ -34,15 +36,81 @@ def required_binaries():
     return {name+EXE for name in names}
 
 
-def runtime_manifest():
+def expected_native_recipe(target):
+    spec=importlib.util.spec_from_file_location('dedicated_native_recipe',SOURCE/'build_native.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module.native_recipe_identity(target)
+
+
+
+def archive_info(manifest):
+    """Validate cross-platform archive metadata before it becomes a path."""
+    info=manifest.get('archive') if isinstance(manifest,dict) else None
+    if not isinstance(info,dict):raise SystemExit('Unsafe native archive descriptor')
+    name=info.get('filename');checksum=info.get('sha256')
+    if (not isinstance(name,str) or not name or name in {'.','..'}
+        or name.endswith((' ','.'))
+        or any(ord(char)<32 or ord(char)==127 or char in '<>:"/\\|?*' for char in name)
+        or name.split('.')[0].rstrip(' .').upper() in {
+            'CON','PRN','AUX','NUL','CONIN$','CONOUT$',
+            *('COM'+n for n in '123456789\u00b9\u00b2\u00b3'),
+            *('LPT'+n for n in '123456789\u00b9\u00b2\u00b3')}):
+        raise SystemExit('Unsafe native archive filename: expected a flat portable basename')
+    if not isinstance(checksum,str) or re.fullmatch('[0-9a-f]{64}',checksum) is None:
+        raise SystemExit('Unsafe native archive sha256: expected 64 lowercase hexadecimal characters')
+    return info
+
+
+def owned_native_path(root,path,*,directory=False):
+    """Reject redirected cache/target components, including Windows junctions."""
+    root=Path(root).absolute();path=Path(path).absolute()
+    if not path.is_relative_to(root):raise SystemExit('Unsafe native storage path outside installation root')
+    current=root
+    parts=[root]
+    for name in path.relative_to(root).parts:
+        current=current/name;parts.append(current)
+    for current in parts:
+        try:metadata=current.lstat()
+        except FileNotFoundError:continue
+        except OSError as error:raise SystemExit('Cannot verify owned native storage path') from error
+        if (stat.S_ISLNK(metadata.st_mode)
+            or getattr(metadata,'st_file_attributes',0)&getattr(stat,'FILE_ATTRIBUTE_REPARSE_POINT',0x400)):
+            raise SystemExit('Redirected native storage path is not owned by this installation')
+        if stat.S_ISREG(metadata.st_mode) and metadata.st_nlink!=1:
+            raise SystemExit('Shared native storage file is not an owned cache file')
+        if (current!=path or directory) and not stat.S_ISDIR(metadata.st_mode):
+            raise SystemExit('Unsafe native storage directory')
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise SystemExit('Unsafe native storage path outside installation root')
+    return path
+
+
+def native_storage(root,manifest):
+    """Preflight every native output path before reuse or any filesystem write."""
+    info=archive_info(manifest);checksum=info['sha256'];root=Path(root).absolute()
+    owned_native_path(root,root,directory=True)
+    owned_native_path(root,root/'native',directory=True)
+    owned_native_path(root,root/'downloads',directory=True)
+    target=owned_native_path(root,root/'native'/checksum[:24])
+    downloads=owned_native_path(root,root/'downloads'/checksum[:24],directory=True)
+    archive=owned_native_path(root,downloads/info['filename'])
+    if archive.exists() and not archive.is_file():raise SystemExit('Unsafe native archive cache entry')
+    candidates=[target,*sorted(target.parent.glob(target.name+'-repair-*'),reverse=True)]
+    for candidate in candidates:owned_native_path(root,candidate)
+    return info,target,downloads,archive,candidates
+
+def runtime_manifest(manifest_path=None):
     key=(platform.system(),platform.machine().lower())
     targets={('Darwin','arm64'):'aarch64-apple-darwin',('Linux','x86_64'):'x86_64-unknown-linux-gnu',('Windows','amd64'):'x86_64-pc-windows-msvc'}
     target=targets.get(key)
     if not target:raise SystemExit('Unsupported runtime platform: '+repr(key))
-    path=SOURCE/'native'/('runtime.json' if target=='aarch64-apple-darwin' else 'runtime-'+target+'.json')
+    path=Path(manifest_path).expanduser().resolve() if manifest_path is not None else SOURCE/'native'/('runtime.json' if target=='aarch64-apple-darwin' else 'runtime-'+target+'.json')
     if not path.is_file():raise SystemExit('A qualified native manifest has not been published for '+target)
     manifest=json.loads(path.read_text(encoding='utf-8'))
     if manifest.get('target')!=target:raise SystemExit('Native manifest target mismatch')
+    if manifest.get('native_recipe_id')!=expected_native_recipe(target):
+        raise SystemExit('The '+target+' native manifest is not qualified for this source/toolchain/patch combination. Existing immutable stable releases remain usable; finish target qualification before installing this candidate.')
+    archive_info(manifest)
     return manifest
 
 
@@ -70,25 +138,34 @@ def valid_native(package,manifest):
 
 
 def native_package(root,manifest,archive_override=None):
-    info=manifest['archive'];checksum=info['sha256']
-    target=root/'native'/checksum[:24]
-    candidates=[target,*sorted(target.parent.glob(target.name+'-repair-*'),reverse=True)]
+    info,target,downloads,archive,candidates=native_storage(root,manifest)
+    checksum=info['sha256']
     reusable=next((candidate for candidate in candidates if valid_native(candidate,manifest)),None)
     if reusable and not archive_override:return reusable
-    downloads=root/'downloads'/checksum[:24];downloads.mkdir(parents=True,exist_ok=True)
-    archive=downloads/info['filename']
+    supplied=None
     if archive_override:
         supplied=Path(archive_override).resolve()
         if sha(supplied)!=checksum:raise SystemExit('Supplied native archive checksum mismatch')
-        if not archive.exists():shutil.copy2(supplied,archive)
-    elif not archive.exists():
-        staging=archive.with_suffix('.partial')
-        with urllib.request.urlopen(info['url'],timeout=90) as response,staging.open('wb') as output:shutil.copyfileobj(response,output)
+    downloads.mkdir(parents=True,exist_ok=True)
+    native_storage(root,manifest)
+    if not archive.exists():
+        # Never reuse a predictable .partial path: an earlier interrupted or
+        # unrelated file may be a hardlink, symlink, or an operator's evidence.
+        descriptor,temporary_name=tempfile.mkstemp(prefix='.native-',suffix='.partial',dir=downloads)
+        staging=Path(temporary_name)
+        with os.fdopen(descriptor,'wb') as output:
+            if supplied is not None:
+                with supplied.open('rb') as payload:shutil.copyfileobj(payload,output)
+            else:
+                with urllib.request.urlopen(info['url'],timeout=90) as payload:shutil.copyfileobj(payload,output)
         if sha(staging)!=checksum:raise SystemExit('Downloaded native archive checksum mismatch')
+        owned_native_path(root,staging);owned_native_path(root,archive)
+        if archive.exists():raise SystemExit('Native archive cache changed during download; preserving both files')
         replace_file(staging,archive)
     if sha(archive)!=checksum:raise SystemExit('Cached native archive checksum mismatch; preserving it for inspection')
     if reusable:return reusable
     if target.exists():target=target.with_name(target.name+'-repair-'+uuid.uuid4().hex[:10])
+    owned_native_path(root,target)
     target.mkdir(parents=True,mode=0o700)
     for name in ['bin','codex-resources','codex-path']:(target/name).mkdir()
     seen=set()
@@ -190,9 +267,9 @@ def activate_windows(root,release,bin_dir):
     return launcher
 
 
-def install(root,*,native_archive=None,wheelhouse=None,activate=True):
+def install(root,*,native_archive=None,native_manifest_path=None,wheelhouse=None,activate=True):
     root=isolated(root)
-    native_manifest=runtime_manifest()
+    native_manifest=runtime_manifest(native_manifest_path)
     if any(app in str(Path(sys.executable).resolve()) for app in ['/ChatGPT.app/Contents/','/Codex.app/Contents/']):raise SystemExit('Run the installer with an independent Python 3.11+ interpreter')
     if native_manifest.get('status')!='ready':raise SystemExit('The native release manifest is not ready; finish and verify the release build first')
     source_id,all_hashes=source_identity();source_hashes={name:digest for name,digest in all_hashes.items() if name.startswith('src/')}
@@ -216,7 +293,7 @@ def install(root,*,native_archive=None,wheelhouse=None,activate=True):
             subprocess.run([python,'-I','-c',program],check=True)
         else:entry.write_text('#!/bin/sh\nexec '+shlex.join([python,'-I','-X','utf8','-m','codex_deepseek.cli'])+' "$@"\n', encoding='utf-8');entry.chmod(0o755)
         shutil.copy2(SOURCE/'catalog.json',release/'catalog.json');(release/'native-runtime.json').write_text(json.dumps(native_manifest,indent=2), encoding='utf-8')
-        manifest={'release_id':release.name,'source_id':source_id,'release_environment':str(environment),'source':str(SOURCE),'source_sha256':all_hashes,'adapter_source_sha256':source_hashes,'console_script_sha256':sha(entry),'model_catalog_sha256':catalog_hash,'dependencies_lock_sha256':sha(SOURCE/'requirements.lock'),'native_package':str(package),'native_version':native_manifest['upstream_version'],'native_archive_sha256':native_manifest['archive']['sha256'],'model':json.loads((SOURCE/'catalog.json').read_text(encoding='utf-8'))['models'][0]['slug']}
+        manifest={'release_id':release.name,'source_id':source_id,'release_environment':str(environment),'source':str(SOURCE),'source_sha256':all_hashes,'adapter_source_sha256':source_hashes,'console_script_sha256':sha(entry),'model_catalog_sha256':catalog_hash,'dependencies_lock_sha256':sha(SOURCE/'requirements.lock'),'native_package':str(package),'native_version':native_manifest['upstream_version'],'native_archive_sha256':native_manifest['archive']['sha256'],'native_recipe_id':native_manifest['native_recipe_id'],'model':json.loads((SOURCE/'catalog.json').read_text(encoding='utf-8'))['models'][0]['slug']}
         (release/'installation.json').write_text(json.dumps(manifest,indent=2), encoding='utf-8')
     if not valid_release(release,source_hashes,catalog_hash,native_manifest):raise SystemExit('Installed release failed verification; preserving the current entrypoint')
     if any(sha(SOURCE/name)!=digest for name,digest in all_hashes.items()):raise SystemExit('Source changed during installation; retry from a stable checkout')
@@ -240,11 +317,15 @@ def install(root,*,native_archive=None,wheelhouse=None,activate=True):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--native-archive',type=Path);parser.add_argument('--wheelhouse',type=Path);parser.add_argument('--no-activate',action='store_true');parser.add_argument('--root',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--native-archive',type=Path);parser.add_argument('--native-manifest',type=Path,help='Use an explicit qualified local native manifest; platform, recipe and archive verification remain mandatory');parser.add_argument('--wheelhouse',type=Path);parser.add_argument('--no-activate',action='store_true');parser.add_argument('--root',type=Path);args=parser.parse_args()
     default=Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'AppData/Local')))/'codex-deepseek' if WINDOWS else Path.home()/'.local/share/codex-deepseek'
-    root=isolated(args.root or default);private_directory(root)
+    root=isolated(args.root or default)
+    manifest=runtime_manifest(args.native_manifest)
+    if manifest.get('status')!='ready':raise SystemExit('The native release manifest is not ready; finish and verify the release build first')
+    native_storage(root,manifest)
+    private_directory(root)
     with (root/'installation.lock').open('a') as lock,file_lock(lock):
-        install(root,native_archive=args.native_archive,wheelhouse=args.wheelhouse,activate=not args.no_activate)
+        install(root,native_archive=args.native_archive,native_manifest_path=args.native_manifest,wheelhouse=args.wheelhouse,activate=not args.no_activate)
 
 
 if __name__=='__main__':main()

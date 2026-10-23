@@ -102,14 +102,20 @@ def test_windows_complex_task_requires_native_interpreter_and_no_os_bridge():
     assert not checks.native_host_execution([good,event('wsl.exe python3 -m pytest')],python,'win32')['passed']
 
 
-def test_task_patch_replays_staged_unstaged_and_new_binary_files_without_index_mutation(tmp_path):
+@pytest.mark.parametrize('line_ending',[b'\n',b'\r\n'])
+def test_task_patch_replays_staged_unstaged_and_new_binary_files_without_index_mutation(tmp_path,line_ending):
     import subprocess
     work=tmp_path/'work';work.mkdir();replay=tmp_path/'replay';replay.mkdir()
     subprocess.run(['git','init','-q'],cwd=replay,check=True)
     def git(*args):return subprocess.check_output(['git',*args],cwd=work)
-    git('init','-q');(work/'tracked.py').write_text('before\n');(replay/'tracked.py').write_text('before\n')
+    git('init','-q')
+    # Test exact patch bytes under an explicit repository policy. Host Git
+    # autocrlf settings and Python's platform newline conversion are not inputs.
+    for root in (work,replay):
+        (root/'.gitattributes').write_bytes(b'* -text\n')
+        (root/'tracked.py').write_bytes(b'before'+line_ending)
     git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@localhost','commit','--no-gpg-sign','-qm','base')
-    (work/'tracked.py').write_text('staged\n');git('add','tracked.py');(work/'tracked.py').write_text('final\n')
+    (work/'tracked.py').write_bytes(b'staged'+line_ending);git('add','tracked.py');(work/'tracked.py').write_bytes(b'final'+line_ending)
     (work/'new file.bin').write_bytes(b'\0new\xffdata');before=git('diff','--cached','--binary')
     patch=checks.complete_work_patch(work)
     assert git('diff','--cached','--binary')==before

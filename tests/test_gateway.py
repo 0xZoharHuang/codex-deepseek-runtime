@@ -151,3 +151,74 @@ async def test_structured_faults_never_publish_native_message_completion(fake_up
                 else:assert response.status==502
         assert store.db.execute('SELECT status FROM receipts').fetchall()==[('adapter_error',)]
     finally:store.close()
+
+
+class _OpaqueInvalidCredential:
+    def __bool__(self):
+        raise AssertionError("Credential truthiness must not be inspected")
+    def __str__(self):
+        raise AssertionError("Credential string conversion must not be used")
+    def __repr__(self):
+        raise AssertionError("Credential repr must not be used")
+
+
+@pytest.mark.parametrize("invalid", [
+    None, "", b"synthetic-credential-material", True, 7,
+    {"private": "synthetic-credential-material"}, ["synthetic-credential-material"],
+    _OpaqueInvalidCredential(),
+], ids=["none", "empty", "bytes", "bool", "integer", "mapping", "list", "opaque"])
+@pytest.mark.parametrize("stream", [False, True])
+async def test_invalid_credential_types_finish_receipt_without_transport(tmp_path, invalid, stream):
+    calls = []
+    class NoTransport:
+        def post(self, *args, **kwargs):
+            calls.append(True)
+            raise AssertionError("Invalid credentials must never reach transport")
+    class Request:
+        headers = {"Authorization": "Bearer LOCAL"}
+        async def json(self):
+            return {"model": MODEL, "input": "Synthetic input never sent", "stream": stream}
+    store = Store(tmp_path / "state.sqlite")
+    try:
+        # Direct public handler + real fresh Store: no native helper or HTTP server
+        # needs to start in order to verify this pre-network failure path.
+        gateway = Gateway(lambda: invalid, "LOCAL", store, {}, trace_source=lambda: None)
+        gateway.client = NoTransport()
+        response = await gateway.responses(Request())
+        assert response.status == 502
+        import json
+        assert json.loads(response.text)["error"]["message"] == "No usable provider credential"
+        assert "synthetic-credential-material" not in response.text
+        rows = store.db.execute("SELECT started,finished,status,detail FROM receipts").fetchall()
+        assert len(rows) == 1
+        started, finished, status, detail = rows[0]
+        assert finished is not None and finished >= started
+        assert status == "adapter_error" and detail == "No usable provider credential"
+        assert calls == []
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("callback", [False, True])
+async def test_valid_captured_string_still_redacts_failure_without_native(tmp_path, callback):
+    key = "synthetic-valid-credential-material"
+    class FailingTransport:
+        def post(self, *args, **kwargs):
+            assert kwargs["headers"]["Authorization"] == "Bearer " + key
+            raise OSError("Synthetic transport failure contains " + key)
+    class Request:
+        headers = {"Authorization": "Bearer LOCAL"}
+        async def json(self):
+            return {"model": MODEL, "input": "Synthetic input never sent"}
+    store = Store(tmp_path / "state.sqlite")
+    try:
+        gateway = Gateway((lambda: key) if callback else key, "LOCAL", store, {}, trace_source=lambda: None)
+        gateway.client = FailingTransport()
+        response = await gateway.responses(Request())
+        assert response.status == 502 and key not in response.text
+        assert "Synthetic transport failure" in response.text and "[REDACTED]" in response.text
+        finished, status, detail = store.db.execute("SELECT finished,status,detail FROM receipts").fetchone()
+        assert finished is not None and status == "adapter_error"
+        assert key not in detail and "[REDACTED]" in detail
+    finally:
+        store.close()

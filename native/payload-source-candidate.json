@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "source_candidate_not_a_qualified_native_release",
+  "cds_base_commit": "83056e7cf320461c30a609e911f3bcf0bea41be0",
+  "native_base_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "apply_after": [
+    "native/codex-runtime.patch",
+    "native/windows-transport.patch on Windows only"
+  ],
+  "patches": {
+    "native/payload-http-transport.patch": "4446244dbef16d16ba4e19579f9a730b8280ef01fa9ed82ccc348325a0977eb5",
+    "native/payload-too-large.patch": "b7389c9f5bee1fc3846da4774bd7f40416cb72d1be33ec23156aad3f055395de"
+  },
+  "http_helper_source": {
+    "path": "codex-rs/deepseek-http-transport/src/main.rs",
+    "windows_base_sha256": "d9def75967d5993198dab52acba48b669d549bd7e965cb720211cc465eeca94b",
+    "windows_candidate_sha256": "80b95b4d80af202b3836551780d3f2f6f6d1e6577c110e6b1be4c3541459bfc9",
+    "windows_and_posix_patch_apply_check": true,
+    "raw_protocol_version": 1
+  },
+  "image_migration_origin_sha256": "cb6c14d1bef4fb937815b1cf70143af87de77a663902127418de99e5aa0aec99",
+  "qualification": {
+    "python_fake_and_loopback_wire": "see recorded test result",
+    "rust_compiled": "Windows helper-only release build; 3 Rust unit tests passed",
+    "native_helper_wire_tls_cancel": "Windows: 12 real-helper loopback TLS/proxy fixtures passed",
+    "windows_linux_macos_native_release": "full CDS runtime remains unqualified; Linux helper pending; no Mac testing",
+    "windows_native_cli_413": "7 actual CLI/Gateway/native-helper request-count fixtures passed, including native compaction cold resume; no installed runtime changed",
+    "official_openrouter_native_helper": "One 101-image 34,009,154-byte synthetic request, official DeepSeek only, 16 private refs and 85 inline originals; HTTP 200 and both nonces correct; all 16 files DELETE/GET404"
+  },
+  "no_platform_manifest_updated": true,
+  "windows_helper_candidate_sha256": "f6d12de3595866a9afc69fbe5866ca3c5088bfea0f63d787cb02646e4c35e1e9",
+  "windows_413_cli_candidate_sha256": "6a589d9d6837da715e47bd3f9f7fd6708524be14410a34297c6dbeb474a1ecca"
+}

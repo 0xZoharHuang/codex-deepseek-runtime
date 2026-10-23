@@ -1,0 +1,95 @@
+diff --git a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+--- a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
++++ b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+@@ -203,10 +203,16 @@
+     }
+ }
+ 
+-fn read_acl_mutex_exists(codex_home: &Path) -> Result<bool> {
+-    let name = to_wide(codex_windows_sandbox::sandbox_read_acl_mutex_name(
+-        codex_home,
+-    )?);
++fn read_acl_mutex_name(request: &SpawnRequest) -> Result<Vec<u16>> {
++    // IPC codex_home is the sandbox log directory. The original namespace marker
++    // is under real_codex_home; using the log directory would append .sandbox twice.
++    Ok(to_wide(codex_windows_sandbox::sandbox_read_acl_mutex_name(
++        &request.real_codex_home,
++    )?))
++}
++
++fn read_acl_mutex_exists(request: &SpawnRequest) -> Result<bool> {
++    let name = read_acl_mutex_name(request)?;
+     let handle = unsafe { OpenMutexW(MUTEX_ALL_ACCESS, 0, name.as_ptr()) };
+     if handle.is_null() {
+         let err = unsafe { GetLastError() };
+@@ -222,10 +228,9 @@
+ }
+ 
+ /// Pick an effective CWD, using a junction if the ACL helper is active.
+-fn effective_cwd(req_cwd: &Path, log_dir: Option<&Path>) -> PathBuf {
+-    let state = log_dir
+-        .ok_or_else(|| anyhow::anyhow!("runner has no sandbox home"))
+-        .and_then(read_acl_mutex_exists);
++fn effective_cwd(request: &SpawnRequest, log_dir: Option<&Path>) -> PathBuf {
++    let req_cwd = &request.cwd;
++    let state = read_acl_mutex_exists(request);
+     let use_junction = match state {
+         Ok(exists) => exists,
+         Err(err) => {
+@@ -310,7 +315,7 @@
+         }
+     }
+ 
+-    let effective_cwd = effective_cwd(&req.cwd, Some(log_dir.as_path()));
++    let effective_cwd = effective_cwd(req, Some(log_dir.as_path()));
+     let desktop = LaunchDesktop::open_private(
+         req.private_desktop_name
+             .as_deref()
+@@ -732,3 +737,47 @@
+ 
+     std::process::exit(exit_code);
+ }
++
++#[cfg(test)]
++mod namespace_home_tests {
++    use super::*;
++
++    #[test]
++    fn runner_read_acl_mutex_uses_real_home_from_spawn_request() {
++        let fixture = tempfile::tempdir().expect("owned fixture");
++        let home = fixture.path().join("private-home");
++        let sandbox_base = home.join(".sandbox");
++        std::fs::create_dir_all(&sandbox_base).expect("sandbox directory");
++        let namespace = "a".repeat(64);
++        std::fs::write(
++            sandbox_base.join("setup_marker.json"),
++            serde_json::to_vec(&serde_json::json!({"namespace": namespace})).unwrap(),
++        )
++        .expect("synthetic marker");
++        let mut request = SpawnRequest {
++            command: vec![],
++            cwd: fixture.path().join("workspace"),
++            env: std::collections::HashMap::new(),
++            permission_profile: codex_protocol::models::PermissionProfile::read_only(),
++            workspace_roots: vec![],
++            // Match both actual parent IPC constructors, not the legacy field name.
++            codex_home: sandbox_base.clone(),
++            real_codex_home: home,
++            cap_sids: vec![],
++            network_proxy_restricting_sid: None,
++            timeout_ms: None,
++            tty: false,
++            stdin_open: false,
++            private_desktop_name: None,
++        };
++        let actual = read_acl_mutex_name(&request).expect("real home namespace");
++        assert_eq!(
++            String::from_utf16(&actual[..actual.len() - 1]).unwrap(),
++            format!("Local\\CodexDeepSeekReadAcl-{namespace}")
++        );
++        assert!(!sandbox_base.join(".sandbox").exists());
++        // A regression to the log-directory field must fail, never silently resolve.
++        request.real_codex_home = request.codex_home.clone();
++        assert!(read_acl_mutex_name(&request).is_err());
++    }
++}

@@ -24,23 +24,35 @@ WINDOWS_EXPIRY_FAILURES={
 }
 
 
+# Exactly the three upstream @pytest.mark.xfail functions, each parametrized by
+# anyio's asyncio/trio backend. JUnit represents xfail as skipped; ordinary skips
+# and new xfail markers must still fail this pinned baseline gate.
+HTTPCORE_EXISTING_XFAILS={
+    ('tests.test_cancellations',f'test_h2_timeout_during_{phase}[{backend}]')
+    for phase in ('handshake','request','response') for backend in ('asyncio','trio')
+}
+
+
 def baseline_observation(xml_path,returncode):
     cases=list(ET.parse(xml_path).getroot().iter('testcase'))
     failures=[(c.get('classname'),c.get('name')) for c in cases if c.find('failure') is not None]
     errors=[(c.get('classname'),c.get('name')) for c in cases if c.find('error') is not None]
-    skipped=[(c.get('classname'),c.get('name')) for c in cases if c.find('skipped') is not None]
-    return {'exit':returncode,'collected':len(cases),'failures':failures,'errors':errors,'skipped':skipped}
+    skipped=[(c.get('classname'),c.get('name')) for c in cases if c.find('skipped') is not None and c.find('skipped').get('type')!='pytest.xfail']
+    expected_failures=[(c.get('classname'),c.get('name')) for c in cases if c.find('skipped') is not None and c.find('skipped').get('type')=='pytest.xfail']
+    return {'exit':returncode,'collected':len(cases),'failures':failures,'errors':errors,'skipped':skipped,'expected_failures':expected_failures}
 
 
 def valid_httpcore_baseline(observation,windows):
     failures={tuple(v) for v in observation['failures']}
     known=WINDOWS_EXPIRY_FAILURES if windows else set()
+    xfails=[tuple(v) for v in observation.get('expected_failures',[])]
+    permitted_xfails=len(xfails)==len(set(xfails)) and set(xfails)<=HTTPCORE_EXISTING_XFAILS and not (set(xfails)&failures)
     # Oracle tests against the pre-fix production tree must expose a genuine
     # upstream behavioral difference; an incidental Windows clock failure is
     # not sufficient baseline/oracle separation.
     expected=bool(failures-known) if observation.get('stage')=='heldout' else failures<=known
     return (observation['collected']==213 and not observation['errors'] and not observation['skipped']
-            and len(failures)==len(observation['failures'])
+            and permitted_xfails and len(failures)==len(observation['failures'])
             and observation['exit']==(1 if failures else 0)
             and expected)
 

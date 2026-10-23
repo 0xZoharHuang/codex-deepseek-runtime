@@ -1,6 +1,7 @@
 """Create a deterministic native archive and explicit installer manifest."""
 from __future__ import annotations
 import argparse
+import importlib.util
 import gzip
 import hashlib
 import json
@@ -11,6 +12,13 @@ import tomllib
 
 def sha(path):
     with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def expected_native_recipe(target):
+    spec=importlib.util.spec_from_file_location('package_native_recipe',Path(__file__).with_name('build_native.py'))
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    recipe=module.runtime_recipe()
+    return module.native_recipe_identity(target,recipe),recipe['build_toolchain']
 
 
 def package_native(package,archive,manifest_path,url):
@@ -27,6 +35,10 @@ def package_native(package,archive,manifest_path,url):
         or receipt.get('patch_sha256')!=metadata.get('patchSha256')
         or receipt.get('files')!={name:digest for name,digest in files.items() if name!='build-receipt.json'}):
         raise ValueError('Native package changed after its build receipt was recorded')
+    recipe_id,toolchain_pin=expected_native_recipe(metadata['target'])
+    if (metadata.get('recipeId')!=recipe_id or receipt.get('native_recipe_id')!=recipe_id
+        or receipt.get('build_toolchain_pin')!=toolchain_pin):
+        raise ValueError('Native package recipe or toolchain is not qualified for this source combination')
     suffix='.exe' if metadata['target'].endswith('windows-msvc') else ''
     binaries={name+suffix for name in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']}
     if suffix:binaries|={name+suffix for name in ['bin/codex-windows-sandbox-setup','bin/codex-command-runner','bin/codex-windows-managed-deny-probe','bin/codex-windows-sandbox-service']}
@@ -44,7 +56,7 @@ def package_native(package,archive,manifest_path,url):
             with path.open('rb') as content:bundle.addfile(info,content)
     manifest={'schema':1,'status':'ready','distribution':'codex-deepseek-runtime','distribution_version':tomllib.loads((Path(__file__).parent/'pyproject.toml').read_text(encoding='utf-8'))['project']['version'],
               'upstream_version':metadata['version'],'upstream_commit':metadata['upstreamCommit'],'patch_sha256':metadata['patchSha256'],
-              'target':metadata['target'],'archive':{'filename':archive.name,'url':url,'sha256':sha(archive)},'files':files}
+              'target':metadata['target'],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'archive':{'filename':archive.name,'url':url,'sha256':sha(archive)},'files':files}
     manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n', encoding='utf-8')
     return manifest
 

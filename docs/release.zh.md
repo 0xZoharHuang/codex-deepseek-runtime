@@ -1,4 +1,6 @@
-# 发布与验收记录
+# 历史发布与验收记录
+
+本文保留 v0.3.0、v0.4.0 时的报告入口与实验结果，文中“当前”“本次”均限定于对应章节的历史版本。v0.5.0 的发布范围见[稳定方案](STABLE_PLAN.zh-CN.md)；当前 0.6.0 尚未发布，新增功能和发布前待完成项见[候选说明](release-0.6.0-candidate.zh-CN.md)。历史报告不替代新产物验收。
 
 ## 0.4.0 的新增验收
 
@@ -7,7 +9,7 @@
 进入后端时的 prefill 兼容，以及严格 JSON Schema 结果在验证前被发布为完成
 事件的问题。普通模型调用仍优先官方 DeepSeek，不能表达的后端语义明确报错。
 
-`reports/acceptance.json` 与 `reports/runtime-qualification.json` 是当前发行包
+`reports/acceptance.json` 与 `reports/runtime-qualification.json` 是该历史发行包的
 入口；0.3.0 的原始聚合报告保留在 `reports/history/v0.3.0/`。方法矩阵修正了
 原先范围分类：125 个本地方法均有正向运行证据，其中新增逐项实测 60 个；
 原来缺口列表中的另外 4 个实际属于托管 Apps/远端插件后端，只验证其边界。

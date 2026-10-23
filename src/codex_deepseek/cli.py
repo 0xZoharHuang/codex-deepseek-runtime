@@ -253,10 +253,24 @@ async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
 
 async def run(arguments: list[str]) -> int:
     if arguments==['status']:arguments=['runtime','status']
-    if arguments[:1]==['runtime'] and arguments[1:] not in (['status'],['doctor']):
+    image_operations={'image-status':'status','image-cleanup':'cleanup','image-reconcile-uploads':'reconcile-uploads','image-reconcile-calls':'reconcile-calls'}
+    is_image_command=len(arguments)>=2 and arguments[0]=='runtime' and arguments[1] in image_operations
+    if is_image_command and arguments[2:] not in ([],['--all-unpinned']):raise RuntimeError('Unknown image maintenance arguments')
+    if is_image_command and arguments[2:] and arguments[1]!='image-cleanup':raise RuntimeError('--all-unpinned is only for image-cleanup')
+    if arguments[:1]==['runtime'] and not is_image_command and arguments[1:] not in (['status'],['doctor']):
         raise RuntimeError('Runtime management commands: runtime status, runtime doctor, runtime setup-key. Native doctor remains available as doctor.')
     root = data_root()
     runtime_home = isolated_path(Path(os.environ.get("CODEX_DEEPSEEK_HOME", str(root / "codex-home"))))
+    if is_image_command:
+        from .image_provider import maintenance_command,load_image_config
+        state_root=runtime_home/'provider-state'
+        if load_image_config(state_root) is None:
+            print(json.dumps({'enabled':False,'status':'disabled','complete':False}));return 0 if arguments[1]=='image-status' else 1
+        binary=native();transport=NativeTransport('https://openrouter.ai/api/v1/responses',binary=executable(binary.parent,'codex-http-transport'))
+        try:
+            result,code=await maintenance_command(state_root,transport,credential,image_operations[arguments[1]],all_unpinned='--all-unpinned' in arguments)
+            print(json.dumps(result,ensure_ascii=False,indent=2));return code
+        finally:await transport.close()
     if os.environ.get('CODEX_DEEPSEEK_TRACE_DIR'):
         isolated_path(Path(os.environ['CODEX_DEEPSEEK_TRACE_DIR']))
     if not offline_native(arguments):check_home_ipc(runtime_home)
