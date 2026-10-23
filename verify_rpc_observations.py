@@ -6,7 +6,7 @@ from pathlib import Path,PureWindowsPath
 import re
 
 from assemble_release_acceptance import (qualification_scope,installation_lineage,require,sha,load,validate_standard_gates,
-    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,TERMINAL_GATES)
+    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,TERMINAL_GATES,validate_method_platform_boundaries)
 from install import console_entry,valid_release,_support
 
 comparison_path=_support.comparison_path
@@ -162,7 +162,8 @@ def main():
     for _,(path,identity) in sorted(traces.items()):
         found,count,failures=trace_observations(path,*identity,scope['target']);sessions+=count;errors.extend(failures)
         for method,rows in found.items():observations.setdefault(method,[]).extend(rows)
-    local=set(scope['local_methods']);missing=sorted(local-observations.keys())
+    boundaries=validate_method_platform_boundaries(method_verdict,args.methods,native)
+    local=set(scope['local_methods'])-set(boundaries);missing=sorted(local-observations.keys())
     unchanged=(sha(entry)==entry_sha and load(release/'installation.json')==metadata
                and valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native)
                and all(sha(Path(__file__).with_name(name))==digest for name,digest in verifier_hashes.items()))
@@ -173,7 +174,7 @@ def main():
             'non_rpc_producers':NON_RPC_PRODUCERS,
             'terminal_revalidation':terminal_lineage,
             'supplemental_lifecycle_lineage':supplemental,'local_methods_observed':len(local & observations.keys()),
-            'local_methods_expected':len(local),'missing':missing,'trace_errors':errors,'native_client_sessions':sessions,
+            'local_methods_expected':len(local),'configuration_boundaries':boundaries,'missing':missing,'trace_errors':errors,'native_client_sessions':sessions,
             'methods':{method:observations[method] for method in sorted(local) if method in observations}}
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')

@@ -2,6 +2,7 @@
 from install import python_entry
 import argparse
 import base64
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
@@ -16,7 +17,7 @@ import time
 import traceback
 import uuid
 from urllib.parse import unquote
-from verify_live import Peer,text
+from verify_live import Peer,text,prepare_workspace,workspace_path
 from process_acceptance import python_command,shell_command
 
 
@@ -204,9 +205,90 @@ def migration_history_recorded(result,work,recorded):
                for row in result.get('data',[]))
 
 
+
+WINDOWS_COMMAND_BOUNDARY_ID='windows_restricted_token_command_exec_control_unsupported'
+WINDOWS_COMMAND_TARGET='x86_64-pc-windows-msvc'
+WINDOWS_COMMAND_SCOPE={'sandbox_mode':'workspace-write','windows_backend':'elevated','network_access':False}
+WINDOWS_STREAM_ERROR={'code':-32600,'message':'streaming command/exec is not supported with windows sandbox'}
+WINDOWS_CONTROL_ERROR={'code':-32600,'message':'command/exec/write, command/exec/terminate, and command/exec/resize are not supported for windows sandbox processes'}
+WINDOWS_COMMAND_REFERENCE='CODEX_DEEPSEEK_TEST_WINDOWS_COMMAND_BOUNDARY_REFERENCE'
+WINDOWS_COMMAND_REFERENCE_SHA='CODEX_DEEPSEEK_TEST_WINDOWS_COMMAND_BOUNDARY_REFERENCE_SHA256'
+
+
+def windows_command_boundary_detail_valid(detail,target):
+    if not isinstance(detail,dict) or target!=WINDOWS_COMMAND_TARGET:return False
+    if (detail.get('target')!=target or detail.get('boundary_id')!=WINDOWS_COMMAND_BOUNDARY_ID
+        or detail.get('scope')!=WINDOWS_COMMAND_SCOPE or detail.get('scope',{}).get('network_access') is not False or detail.get('streaming_error')!=WINDOWS_STREAM_ERROR
+        or detail.get('terminate_error')!=WINDOWS_CONTROL_ERROR):return False
+    active=detail.get('active_command',{});reference=detail.get('reference',{})
+    workspace=detail.get('workspace');policy=detail.get('sandbox_policy')
+    if not isinstance(workspace,str) or not workspace or policy!={'type':'workspaceWrite','writableRoots':[workspace],'networkAccess':False,'excludeTmpdirEnvVar':True,'excludeSlashTmp':True}:return False
+    if policy.get('networkAccess') is not False:return False
+    return (isinstance(active,dict) and active.get('process_id')=='native-windows-boundary'
+        and isinstance(active.get('ready_nonce'),str) and re.fullmatch('[0-9a-f]{32}',active['ready_nonce']) is not None
+        and type(active.get('exit_code')) is int and active['exit_code']==0 and active.get('stdout','').strip()==active['ready_nonce']
+        and isinstance(active.get('ready_file_sha256'),str) and re.fullmatch('[0-9a-f]{64}',active['ready_file_sha256']) is not None
+        and active.get('is_admin') is False and isinstance(active.get('sid'),str)
+        and re.fullmatch(r'S-1-5-21-\d+-\d+-\d+-\d+',active['sid']) is not None
+        and isinstance(active.get('owner_sid'),str) and active['owner_sid']!=active['sid']
+        and re.fullmatch(r'S-1-5-21-\d+-\d+-\d+-\d+',active['owner_sid']) is not None
+        and isinstance(reference,dict) and isinstance(reference.get('path'),str)
+        and isinstance(reference.get('sha256'),str) and re.fullmatch('[0-9a-f]{64}',reference['sha256']) is not None)
+
+
+def exact_rpc_error(peer,method,params,expected):
+    start=len(peer.events)
+    try:peer.call(method,params)
+    except RuntimeError:
+        events=[e for e in peer.events[start:] if 'id' in e and 'error' in e]
+        if len(events)!=1 or events[0]['error']!=expected:raise
+        return events[0]['error']
+    raise AssertionError(method+' unexpectedly succeeded')
+
+
+def windows_command_control_boundary(a,work):
+    cfg=a.call('config/read',{'includeLayers':False})['config']
+    assert cfg['sandbox_mode']=='workspace-write' and cfg['windows']['sandbox']=='elevated'
+    policy={'type':'workspaceWrite','writableRoots':[str(work)],'networkAccess':False,'excludeTmpdirEnvVar':True,'excludeSlashTmp':True}
+    reference=Path(os.environ[WINDOWS_COMMAND_REFERENCE]);reference_sha=os.environ[WINDOWS_COMMAND_REFERENCE_SHA]
+    assert hashlib.sha256(reference.read_bytes()).hexdigest()==reference_sha
+    proof=json.loads(reference.read_text());assert proof['passed'] is True and proof['scope']==WINDOWS_COMMAND_SCOPE
+    assert proof['official_terminate_os_execution'] is False and proof['source']['byte_identical'] is True
+    stream=exact_rpc_error(a.peer,'command/exec',{'command':python_command('print("unreachable")'),'processId':'stream-boundary','cwd':str(work),'sandboxPolicy':policy,'streamStdoutStderr':True,'timeoutMs':5000},WINDOWS_STREAM_ERROR)
+    nonce=uuid.uuid4().hex;ready=work/('control-ready-'+nonce+'.json')
+    owner_sid=re.search(r'S-1-5-21-\d+-\d+-\d+-\d+',subprocess.check_output(['whoami.exe','/user','/fo','csv','/nh'],text=True)).group()
+    script='import ctypes,json,os,re,subprocess,time;from pathlib import Path;sid=re.search(r"S-1-5-21-\\d+-\\d+-\\d+-\\d+",subprocess.check_output(["whoami.exe","/user","/fo","csv","/nh"],text=True)).group();Path('+repr(str(ready))+').write_text(json.dumps({"nonce":'+repr(nonce)+',"pid":os.getpid(),"sid":sid,"is_admin":bool(ctypes.windll.shell32.IsUserAnAdmin())}));time.sleep(4);print('+repr(nonce)+',flush=True)'
+    with ThreadPoolExecutor(1) as pool:
+        future=pool.submit(a.call,'command/exec',{'command':python_command(script),'processId':'native-windows-boundary','cwd':str(work),'sandboxPolicy':policy,'timeoutMs':30000})
+        deadline=time.monotonic()+15
+        while not ready.exists() and time.monotonic()<deadline:
+            if future.done():future.result();raise AssertionError('Native command ended before its readiness receipt')
+            time.sleep(.02)
+        assert ready.exists(),'Native restricted command readiness missing'
+        observed=json.loads(ready.read_text());assert observed['nonce']==nonce and observed['is_admin'] is False
+        terminate=exact_rpc_error(a.peer,'command/exec/terminate',{'processId':'native-windows-boundary'},WINDOWS_CONTROL_ERROR)
+        result=future.result(20)
+    detail={'boundary_id':WINDOWS_COMMAND_BOUNDARY_ID,'target':WINDOWS_COMMAND_TARGET,'scope':WINDOWS_COMMAND_SCOPE,
+            'sandbox_policy':policy,'workspace':str(work),'streaming_error':stream,'terminate_error':terminate,'reference':{'path':str(reference),'sha256':reference_sha},
+            'active_command':{'process_id':'native-windows-boundary','ready_nonce':nonce,'ready_file_sha256':hashlib.sha256(ready.read_bytes()).hexdigest(),
+                              'exit_code':result['exitCode'],'stdout':result['stdout'],'sid':observed['sid'],'owner_sid':owner_sid,'is_admin':observed['is_admin']}}
+    assert windows_command_boundary_detail_valid(detail,WINDOWS_COMMAND_TARGET)
+    return detail
+
+
+def wait_command_output_or_error(peer,start,future):
+    if future.done():future.result()
+    event=peer.wait(lambda e:e.get('method')=='command/exec/outputDelta' or ('id' in e and 'error' in e),start,15)
+    if 'error' in event:
+        future.result(15)
+        raise AssertionError('Native command returned an unexpected error')
+    return event
+
+
 def processes(a):
+    work=Path(workspace_path(a.root))
     start=len(a.peer.events);handle='resize-and-kill'
-    a.call('process/spawn',{'command':python_command('import os,time;print("PTY_READY",flush=True);input();s=os.get_terminal_size();print(s.lines,s.columns,flush=True);time.sleep(120)'),'cwd':str(a.root/'work'),'processHandle':handle,'tty':True,'size':{'rows':24,'cols':80},'streamStdin':True,'streamStdoutStderr':True,'timeoutMs':150000})
+    a.call('process/spawn',{'command':python_command('import os,time;print("PTY_READY",flush=True);input();s=os.get_terminal_size();print(s.lines,s.columns,flush=True);time.sleep(120)'),'cwd':str(work),'processHandle':handle,'tty':True,'size':{'rows':24,'cols':80},'streamStdin':True,'streamStdoutStderr':True,'timeoutMs':150000})
     a.peer.wait(lambda e:e.get('method')=='process/outputDelta' and e['params']['processHandle']==handle,start,15)
     def resize():
         result=a.call('process/resizePty',{'processHandle':handle,'size':{'rows':37,'cols':111}})
@@ -219,20 +301,25 @@ def processes(a):
         ended=a.peer.wait(lambda e:e.get('method')=='process/exited' and e['params']['processHandle']==handle,start,15)
         return {'response':result,'exit':ended}
     a.verify('process/kill',kill,lambda r:r['exit']['params'].get('exitCode')!=0)
-    with ThreadPoolExecutor(1) as pool:
-        start=len(a.peer.events)
-        future=pool.submit(a.call,'command/exec',{'command':python_command('import time;print("TERMINATE_READY",flush=True);time.sleep(120)'),'processId':'terminate-command','cwd':str(a.root/'work'),'streamStdoutStderr':True,'timeoutMs':150000})
-        a.peer.wait(lambda e:e.get('method')=='command/exec/outputDelta',start,15)
-        def terminate():
-            result=a.call('command/exec/terminate',{'processId':'terminate-command'})
-            return {'response':result,'command_exit':future.result(15)}
-        a.verify('command/exec/terminate',terminate,lambda r:r['command_exit']['exitCode']!=0)
+    if os.name=='nt':
+        a.verify('command/exec/terminate',lambda:windows_command_control_boundary(a,work),
+                 lambda r:windows_command_boundary_detail_valid(r,WINDOWS_COMMAND_TARGET),
+                 success_status='platform_boundary_verified')
+    else:
+        with ThreadPoolExecutor(1) as pool:
+            start=len(a.peer.events)
+            future=pool.submit(a.call,'command/exec',{'command':python_command('import time;print("TERMINATE_READY",flush=True);time.sleep(120)'),'processId':'terminate-command','cwd':str(work),'streamStdoutStderr':True,'timeoutMs':150000})
+            wait_command_output_or_error(a.peer,start,future)
+            def terminate():
+                result=a.call('command/exec/terminate',{'processId':'terminate-command'})
+                return {'response':result,'command_exit':future.result(15)}
+            a.verify('command/exec/terminate',terminate,lambda r:r['command_exit']['exitCode']!=0)
     with socket.socket() as probe:probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
     import secrets,hashlib
     token=secrets.token_urlsafe(32);token_hash=hashlib.sha256(token.encode()).hexdigest()
     entry=Path(a.peer.process.args[0]);log=(a.root/'executor.log').open('w')
     env={**os.environ,'CODEX_DEEPSEEK_HOME':str(a.root/'executor-home')}
-    executor=subprocess.Popen([str(entry),'exec-server','--listen',f'ws://127.0.0.1:{port}','--ws-auth','capability-token','--ws-token-sha256',token_hash],cwd=a.root/'work',env=env,stdin=subprocess.PIPE,stdout=log,stderr=log)
+    executor=subprocess.Popen([str(entry),'exec-server','--listen',f'ws://127.0.0.1:{port}','--ws-auth','capability-token','--ws-token-sha256',token_hash],cwd=work,env=env,stdin=subprocess.PIPE,stdout=log,stderr=log)
     try:
         end=time.monotonic()+20
         while time.monotonic()<end:
@@ -244,8 +331,8 @@ def processes(a):
         def add_environment():
             result=a.call('environment/add',{'environmentId':eid,'execServerUrl':f'ws://127.0.0.1:{port}','authBearerToken':token,'connectTimeoutMs':10000})
             return {'result':result,'info':a.call('environment/info',{'environmentId':eid})}
-        a.verify('environment/add',add_environment,lambda r:unquote(r['info']['cwd'])==unquote((a.root/'work').as_uri()))
-        a.verify('environment/info',lambda:a.call('environment/info',{'environmentId':eid}),lambda r:bool(r['shell']['path']) and unquote(r['cwd'])==unquote((a.root/'work').as_uri()))
+        a.verify('environment/add',add_environment,lambda r:unquote(r['info']['cwd'])==unquote((work).as_uri()))
+        a.verify('environment/info',lambda:a.call('environment/info',{'environmentId':eid}),lambda r:bool(r['shell']['path']) and unquote(r['cwd'])==unquote((work).as_uri()))
         a.verify('environment/status',lambda:a.call('environment/status',{'environmentId':eid}),lambda r:r['status']=='ready')
     finally:
         executor.stdin.close();executor.terminate()
@@ -381,7 +468,7 @@ m.run(transport='stdio')
 
 
 def migration(a):
-    work=a.root/'work';marker='SCOPED_IMPORT_'+uuid.uuid4().hex
+    work=Path(workspace_path(a.root));marker='SCOPED_IMPORT_'+uuid.uuid4().hex
     subprocess.run(['git','init','-q',str(work)],check=True)
     (work/'CLAUDE.md').write_text('Use integer cents for this test project. '+marker+'\n')
     detected={}
@@ -420,7 +507,7 @@ def control(a):
         paused_turn,paused_start=a.peer.start(queued,'Call audit_queue_barrier exactly once and wait for its result. Do not delegate or use other tools.')
         if not queue_ready.wait(60):raise AssertionError('Queue interruption barrier not reached')
         submission=a.call('thread/queue/add',{'threadId':queued,'clientUserMessageId':uuid.uuid4().hex,'input':[{'type':'text','text':'Do not use tools or delegate. Reply exactly '+nonce}]})
-        a.call('turn/interrupt',{'threadId':queued,'turnId':paused_turn});a.peer.complete(queued,paused_start)
+        a.call('turn/interrupt',{'threadId':queued,'turnId':paused_turn});a.peer.complete(queued,paused_start,expected_status='interrupted',turn_id=paused_turn)
     finally:a.peer.send=queue_send
     def queue_start():
         start=len(a.peer.events)
@@ -480,7 +567,7 @@ def main():
     a=Audit(args.output,args.entry.resolve())
     try:globals()[args.group](a)
     finally:a.close()
-    raise SystemExit(1 if any(x['status'] not in {'passed','backend_boundary_verified'} for x in a.results) else 0)
+    raise SystemExit(1 if any(x['status'] not in {'passed','backend_boundary_verified','platform_boundary_verified'} for x in a.results) else 0)
 
 
 if __name__=='__main__':main()

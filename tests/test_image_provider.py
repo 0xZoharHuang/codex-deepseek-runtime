@@ -295,3 +295,43 @@ async def test_generation_reconciliation_uses_native_get_with_bounded_chunked_me
     assert value['lookup_status']=='found' and value['model_identity']['matches_requested'] is True
     assert calls==[('GET','https://openrouter.ai/api/v1/generation?id=gen-owned',KEY,'system')]
     assert 'NEVER_PERSIST' not in json.dumps(value)
+
+
+def test_image_receipt_connections_close_after_commit_read_and_rollback(tmp_path, monkeypatch):
+    """Receipts commit before close and exceptions roll back before close."""
+    import sqlite3
+    import codex_deepseek.image_provider as module
+
+    connect = sqlite3.connect
+    connections = []
+    fail_insert = False
+
+    class TrackedConnection(sqlite3.Connection):
+        def execute(self, statement, *args, **kwargs):
+            result = super().execute(statement, *args, **kwargs)
+            if fail_insert and statement.startswith("INSERT OR REPLACE INTO calls"):
+                raise RuntimeError("synthetic failure after receipt write")
+            return result
+
+    def tracked_connect(*args, **kwargs):
+        connection = connect(*args, factory=TrackedConnection, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(module.sqlite3, "connect", tracked_connect)
+    try:
+        provider = module.ImageProvider(tmp_path, None, lambda: "SECRET", {})
+        provider.record("receipt", status="completed")
+        assert provider.read_receipt(provider.receipts, "receipt")["status"] == "completed"
+        fail_insert = True
+        with pytest.raises(RuntimeError, match="synthetic failure"):
+            provider.record("receipt", status="cancelled")
+        assert provider.read_receipt(provider.receipts, "receipt")["status"] == "completed"
+        assert len(connections) == 5
+        for connection in connections:
+            with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+                connection.execute("SELECT 1")
+    finally:
+        # Retain a clean failing test if explicit close ever regresses.
+        for connection in connections:
+            connection.close()

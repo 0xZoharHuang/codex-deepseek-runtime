@@ -1,4 +1,5 @@
 """Counterexamples from the independent fixed-source runtime audit."""
+from contextlib import closing
 import json
 import asyncio
 from pathlib import Path
@@ -286,7 +287,7 @@ def test_corrupt_history_does_not_block_unaffected_native_startup_or_claim_compl
     home=tmp_path/'home';(home/'sessions').mkdir(parents=True)
     legacy=tmp_path/'legacy.sqlite'
     item={'type':'openrouter:web_search','id':'provider-id','action':{'query':'known'}}
-    with sqlite3.connect(legacy) as db:
+    with closing(sqlite3.connect(legacy)) as db, db:
         db.execute('CREATE TABLE searches(id TEXT PRIMARY KEY,item TEXT)')
         db.execute('INSERT INTO searches VALUES (?,?)',('known',json.dumps(item)))
     valid=json.dumps({'type':'response_item','payload':{'type':'web_search_call','id':'known'}})+'\n'
@@ -302,7 +303,7 @@ def test_corrupt_history_does_not_block_unaffected_native_startup_or_claim_compl
         assert not (home/'provider-state/migration-v1.json').exists()
         assert {'non_object_record','UnicodeDecodeError','ZstdError'}<={row['error'] for row in result['issues']}
         assert (home/'sessions/truncated.jsonl.zst').read_bytes()==damaged
-        with sqlite3.connect(legacy) as db:assert db.execute('SELECT count(*) FROM searches').fetchone()[0]==1
+        with closing(sqlite3.connect(legacy)) as db, db:assert db.execute('SELECT count(*) FROM searches').fetchone()[0]==1
     finally:store.close()
 
 
@@ -357,7 +358,7 @@ def test_legacy_search_migration_conflicts_are_preserved_and_database_replacemen
     legacy=tmp_path/'legacy.sqlite';path=home/'provider-state/adapter.sqlite'
     own={'type':'openrouter:web_search','id':'own','status':'completed','action':{'query':'authoritative'}}
     wrong={**own,'action':{'query':'conflicting'}}
-    with sqlite3.connect(legacy) as db:
+    with closing(sqlite3.connect(legacy)) as db, db:
         db.execute('CREATE TABLE searches(id TEXT PRIMARY KEY,item TEXT)');db.execute('INSERT INTO searches VALUES (?,?)',('known',json.dumps(wrong)))
     (home/'sessions/valid.jsonl').write_text(json.dumps({'type':'response_item','payload':{'type':'web_search_call','id':'known'}})+'\n')
     store=Store(path)
@@ -365,7 +366,7 @@ def test_legacy_search_migration_conflicts_are_preserved_and_database_replacemen
         store.put('known',own)
         with pytest.warns(RuntimeWarning,match='damaged'):result=migrate_searches(legacy,home,store)
         assert result['complete'] is False and store.get('known')==own
-        with sqlite3.connect(legacy) as db:db.execute('UPDATE searches SET item=?',(json.dumps(own),))
+        with closing(sqlite3.connect(legacy)) as db, db:db.execute('UPDATE searches SET item=?',(json.dumps(own),))
         result=migrate_searches(legacy,home,store);assert result['complete'] is True
         prior=store.database_id
     finally:store.close()

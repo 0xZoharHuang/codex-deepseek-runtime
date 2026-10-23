@@ -4,6 +4,7 @@ The listening socket survives a worker crash. Model requests are never replayed.
 Idle services exit; native daemon and active client leases retain the service.
 """
 import asyncio
+from contextlib import ExitStack, closing
 from .platforms import WINDOWS, executable, file_lock, private_directory, install_signals, replace_file
 import hashlib
 import json
@@ -15,11 +16,13 @@ import socket
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
 
 from .processes import identity,matches,terminate
+from .state import SERVICE_CLIENT_PREFIX
 from .bootstrap import module_command, module_environment
 
 # Windows can cold-load both supervisor and worker from a newly installed
@@ -95,9 +98,10 @@ def native_active(home):
     state=Path(home)/'provider-state/adapter.sqlite'
     if state.exists():
         try:
-            with sqlite3.connect(state,timeout=5) as db:
+            with closing(sqlite3.connect(state,timeout=5)) as db, db:
                 rows=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE closed IS NULL AND native_pid IS NOT NULL').fetchall()
                 requests=db.execute("SELECT pid,birth FROM runtime_owners WHERE owner_id IN (SELECT owner_id FROM receipts WHERE status='running')").fetchall()
+                clients=db.execute("SELECT o.pid,o.birth FROM runtime_owners o JOIN adapter_metadata m ON m.key=? || o.owner_id AND m.value='launcher' WHERE o.closed IS NULL",(SERVICE_CLIENT_PREFIX,)).fetchall()
         except sqlite3.Error:
             # The worker can have created the file without publishing its schema
             # yet. Unknown ownership must retain the service, never crash its
@@ -105,6 +109,7 @@ def native_active(home):
             return True
         if any(matches(pid,birth) for pid,birth in rows):return True
         if any(matches(pid,birth) for pid,birth in requests):return True
+        if any(matches(pid,birth) for pid,birth in clients):return True
     for name in ['daemon.pid','app-server.pid']:
         try:
             record=json.loads((Path(home)/'app-server-daemon'/name).read_text(encoding='utf-8'))
@@ -129,10 +134,27 @@ def healthy(value):
     except (OSError,ValueError):return False
 
 
-def ensure(home,catalog,native_binary=None):
+def _stop_created_process(process,birth):
+    # Popen owns this exact child handle. Never signal a name, descriptor from an
+    # existing service, or an unrelated PID after a failed new launch.
+    if process.poll() is None:
+        if birth is None:process.terminate()  # Original Popen handle still binds this child.
+        else:terminate(process.pid,birth)
+    try:process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=10)
+
+
+def ensure(home,catalog,native_binary=None,owner=None):
     from .policy import isolated_path
     home=isolated_path(Path(home));private_directory(home);state=home/'provider-state';private_directory(state)
     expected=code_id(catalog,native_binary,home)
+    def retained(value):
+        if owner is not None:
+            from .state import Store
+            Store.retain_service(state/'adapter.sqlite',owner)
+        return value
     with (state/'gateway.lock').open('a') as lock, file_lock(lock):
         trace=os.environ.get('CODEX_DEEPSEEK_TRACE_DIR')
         # A daemon keeps operating after its launcher exits. An unrelated
@@ -152,7 +174,7 @@ def ensure(home,catalog,native_binary=None):
                 while time.monotonic()<end:
                     if healthy(old):
                         atomic_json(descriptor_path(home),old)
-                        return old
+                        return retained(old)
                     if not matches(old['pid'],old['birth']):break
                     time.sleep(.1)
                 if native_active(home):raise RuntimeError('Provider service is unhealthy while native sessions are active; inspect this profile gateway.log')
@@ -163,20 +185,31 @@ def ensure(home,catalog,native_binary=None):
             for name in ['CODEX_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_TRACE_DIR']:environment.pop(name,None)
             process=subprocess.Popen(module_command('codex_deepseek.service',home,catalog,str(native_binary) if native_binary else ''),
                 stdin=subprocess.DEVNULL,stdout=log,stderr=log,env=module_environment(environment),**({'creationflags':subprocess.CREATE_NEW_PROCESS_GROUP|subprocess.DETACHED_PROCESS} if WINDOWS else {'start_new_session':True}))
-        birth=identity(process.pid);end=time.monotonic()+STARTUP_SECONDS
-        while time.monotonic()<end:
-            value=read_descriptor(home)
-            if value.get('pid')==process.pid and value.get('code_id')==expected and healthy(value):return value
-            if process.poll() is not None:break
-            time.sleep(.05)
-        terminate(process.pid,birth)
-        raise RuntimeError(f'Provider service failed startup; inspect {log_path}')
+        birth=None
+        try:
+            birth=identity(process.pid)
+            if birth is None:raise RuntimeError(f'Provider supervisor identity is unavailable; inspect {log_path}')
+            # The provider intentionally outlives a launcher. Retain only this new
+            # Popen until its existing supervisor exits; lease/idle policy is unchanged.
+            waiter=threading.Thread(target=process.wait,name="cds-provider-reap",daemon=True)
+            waiter.start()
+            end=time.monotonic()+STARTUP_SECONDS
+            while time.monotonic()<end:
+                value=read_descriptor(home)
+                if value.get('pid')==process.pid and value.get('code_id')==expected and healthy(value):return retained(value)
+                if process.poll() is not None:break
+                time.sleep(.05)
+            raise RuntimeError(f'Provider service failed startup; inspect {log_path}')
+        except BaseException as error:
+            try:_stop_created_process(process,birth)
+            except BaseException as cleanup_error:error.add_note(f'Created provider process cleanup failed: {cleanup_error}')
+            raise
 
 
 class ProviderService:
-    def __init__(self,home,catalog,native_binary=None):self.home=home;self.catalog=catalog;self.native_binary=native_binary
+    def __init__(self,home,catalog,native_binary=None,owner=None):self.home=home;self.catalog=catalog;self.native_binary=native_binary;self.owner=owner
     async def __aenter__(self):
-        self.metadata=await asyncio.to_thread(ensure,self.home,self.catalog,self.native_binary)
+        self.metadata=await asyncio.to_thread(ensure,self.home,self.catalog,self.native_binary,self.owner)
         self.port=self.metadata['port'];self.token=self.metadata['token']
         return self
     async def __aexit__(self,*exc):pass
@@ -220,6 +253,25 @@ def supervise(home,catalog,native_binary=None):
         except BlockingIOError:raise RuntimeError('This profile already has a provider service owner')
 
 
+
+def idle_retirement(home):
+    """Hold startup serialization through the complete idle shutdown."""
+    retained=ExitStack()
+    try:
+        lock=retained.enter_context((Path(home)/'provider-state/gateway.lock').open('a'))
+        retained.enter_context(file_lock(lock,blocking=False))
+        if native_active(home):
+            retained.close()
+            return None
+        return retained
+    except BlockingIOError:
+        retained.close()
+        return None
+    except BaseException:
+        retained.close()
+        raise
+
+
 def _supervise(home,catalog,native_binary):
     home=Path(home);path=descriptor_path(home);previous=read_descriptor(home)
     sock=socket.socket();sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE if WINDOWS else socket.SO_REUSEADDR,1)
@@ -239,7 +291,7 @@ def _supervise(home,catalog,native_binary):
     value={'schema':1,'pid':os.getpid(),'birth':identity(os.getpid()),'port':sock.getsockname()[1],
            'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary,home),'native_binary':str(native_binary) if native_binary else None,
            'environment':sys.prefix,'started':time.time(),'worker_pid':None,'worker_birth':None,'restarts':0}
-    atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[]
+    atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[];retirement=None
     def stop(signum,frame):
         nonlocal stopped
         stopped=True
@@ -256,7 +308,9 @@ def _supervise(home,catalog,native_binary):
                 broker=Broker(sock,child);idle=time.monotonic()
             while child.poll() is None and not stopped:
                 if native_active(home):idle=time.monotonic()
-                if time.monotonic()-idle>float(os.environ.get('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','120')):stopped=True
+                if time.monotonic()-idle>float(os.environ.get('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','120')):
+                    retirement=idle_retirement(home)
+                    if retirement is not None:stopped=True
                 if WINDOWS:
                     try:broker.accept(.1)
                     except HandoffError:
@@ -268,11 +322,14 @@ def _supervise(home,catalog,native_binary):
             if len(failures)>5:raise RuntimeError('Provider worker repeatedly crashed; refusing an infinite restart loop')
             time.sleep(min(len(failures),5))
     finally:
-        if child and child.poll() is None:
-            child.terminate()
-            try:child.wait(timeout=6)
-            except subprocess.TimeoutExpired:child.kill();child.wait()
-        sock.close()
+        try:
+            if child and child.poll() is None:
+                child.terminate()
+                try:child.wait(timeout=6)
+                except subprocess.TimeoutExpired:child.kill();child.wait()
+        finally:
+            sock.close()
+            if retirement is not None:retirement.close()
 
 
 if __name__=='__main__':

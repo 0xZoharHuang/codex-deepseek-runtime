@@ -37,6 +37,8 @@ def main():
     (ROOT/'home').mkdir(parents=True,mode=0o700)
     (ROOT/'home/config.toml').write_text('model_reasoning_effort="low"\nsandbox_mode='+json.dumps(qa_sandbox_mode())+'\napproval_policy="on-request"\n[features]\ncode_mode=true\ncode_mode_host=true\nmulti_agent_v2=true\n', encoding='utf-8')
     (ROOT/'work').mkdir(exist_ok=True);results=[];peer=None
+    from windows_acceptance_setup import configure_fixture_home
+    configure_fixture_home(ROOT/'home',entry=ENTRY)
     def management(command):
         result=subprocess.run([str(ENTRY),'app-server','daemon',command],env={**os.environ,'CODEX_DEEPSEEK_HOME':str(ROOT/'home')},capture_output=True,text=True,encoding='utf-8',timeout=45)
         (ROOT/f'daemon-{command}-{time.time_ns()}.txt').write_text(result.stdout+result.stderr, encoding='utf-8')
@@ -71,7 +73,11 @@ def main():
         except RuntimeError as error:rejected=str(error)
         else:rejected=''
         passed('native_daemon_config_write_respects_managed_binding',bool(rejected),rejected)
-        rg=peer.call('command/exec',{'command':python_command('import shutil;print(shutil.which("rg") or "")'),'cwd':str(ROOT/'work'),'timeoutMs':10000})
+        # The persistent daemon owns a different default cwd; this one-shot
+        # command must name its intended workspace through the native API.
+        command_policy={'type':'workspaceWrite','writableRoots':[str(peer.workspace)],
+                        'networkAccess':False,'excludeTmpdirEnvVar':True,'excludeSlashTmp':True}
+        rg=peer.call('command/exec',{'command':python_command('import shutil;print(shutil.which("rg") or "")'),'cwd':str(peer.workspace),'sandboxPolicy':command_policy,'timeoutMs':10000})
         found=Path(rg['stdout'].strip()) if rg['stdout'].strip() else None
         passed('daemon_uses_owned_bundled_ripgrep',rg['exitCode']==0 and is_daemon_package_file(found,ROOT/'home'),rg)
         objective='Audit persistent goal metadata '+uuid.uuid4().hex

@@ -14,7 +14,7 @@ from codex_deepseek.state import Store
 from verify_live import Peer,text
 from install import console_entry,valid_release,source_identity
 
-VERIFIERS=('verify_protocol_recovery.py','verify_live.py','install.py')
+VERIFIERS=('verify_protocol_recovery.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','install.py')
 
 
 def sha(path):

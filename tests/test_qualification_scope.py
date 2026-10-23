@@ -218,9 +218,13 @@ def test_only_exact_os_inapplicable_cases_may_skip():
     linux=acceptance.expected_offline_skips('x86_64-unknown-linux-gnu')
     mac=acceptance.expected_offline_skips('aarch64-apple-darwin')
     windows=acceptance.expected_offline_skips('x86_64-pc-windows-msvc')
-    assert len(linux)==11 and len(mac)==12 and len(windows)==1
+    assert len(linux)==11 and len(mac)==12 and len(windows)==3
     assert not any('terminal_acceptance' in key or 'test_activation_preserves_unrelated' in key for key in mac)
-    assert set(mac)-set(linux)==set(windows)
+    assert set(mac)-set(linux)=={'test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot'}
+    assert {name:reason for name,reason in windows.items() if name.startswith('test_cds_skill_inspect::')}=={
+        'test_cds_skill_inspect::test_posix_actual_space_path_and_exact_version_argument':'POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check',
+        'test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded':'POSIX shell/shebang timeout fixture; not Windows process execution evidence'}
+    assert not any(name.startswith('test_cds_skill_inspect::') for name in linux|mac)
     assert 'test_windows_console::test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]' in linux
     assert len([name for name in linux if name.startswith('test_windows_launchers::')])==3
     handshake={name:reason for name,reason in linux.items() if 'test_slow_socket_worker_handshake_keeps_identity_check' in name}
@@ -264,7 +268,7 @@ def test_native_browser_result_decodes_nullable_structured_content_without_swall
 
 @pytest.mark.parametrize('change',['none','target','source_archive','source_count','protected_count','external_dependencies',
                                   'no_full_scan','no_replay','missing_patch','extra_changed_file','missing_verifier'])
-def test_source_audit_cannot_omit_native_business_or_build_identity_checks(change):
+def test_legacy_source_audit_cannot_qualify_the_new_recipe(change):
     from build_native import SOURCE_ASSET
     native=acceptance.load(ROOT/'native/runtime-x86_64-unknown-linux-gnu.json')
     common=acceptance.load(ROOT/'native/source-changes.json')
@@ -284,9 +288,8 @@ def test_source_audit_cannot_omit_native_business_or_build_identity_checks(chang
     elif change=='missing_patch':proof['patches']={}
     elif change=='extra_changed_file':proof['changed_native_files'].append('codex-rs/core/src/session.rs')
     elif change=='missing_verifier':proof['verifier_sha256'].pop('build_native.py')
-    if change=='none':assert acceptance.validate_native_source_audit(proof,native)['unchanged_protected_runtime_files']==348
-    else:
-        with pytest.raises(SystemExit):acceptance.validate_native_source_audit(proof,native)
+    # Old boolean/count-only proofs never qualify the new source/package contract.
+    with pytest.raises(SystemExit):acceptance.validate_native_source_audit(proof,native)
 
 
 @pytest.mark.parametrize('script',['run_acceptance.py','verify_remaining_methods.py','verify_local_account.py'])
@@ -335,7 +338,7 @@ def test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_reje
 
 def terminal_fixture(root,entry,interrupt=False):
     import hashlib
-    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py'}
+    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
     if interrupt:names|={'verify_tui_interrupt.py','process_acceptance.py'}
     files={name:acceptance.sha(ROOT/name) for name in sorted(names)}
     installation={'source_id':'fixture','console_script_sha256':acceptance.sha(entry),'native_archive_sha256':'native'}
@@ -475,7 +478,7 @@ def recovery_fixture(root):
         db.executemany('INSERT INTO receipts VALUES(?,?,?,?,?)',[row+[index] for index,row in enumerate(receipt)])
     artifact={'kind':'schema','installation':metadata,'target':native['target'],'native_manifest':native,
               'entry_sha256':metadata['console_script_sha256'],'native_binary_sha256':'native','controller_optimize':0,
-              'verifier_sha256':{name:acceptance.sha(ROOT/name) for name in ['verify_protocol_recovery.py','verify_live.py','install.py']}}
+              'verifier_sha256':{name:acceptance.sha(ROOT/name) for name in ['verify_protocol_recovery.py','verify_live.py','install.py','windows_acceptance_setup.py','qa_workspace.py']}}
     proof={key:value for key,value in observed.items() if key!='items'}
     proof.update(kind='schema',installation=metadata,target=native['target'],passed=True,verifier_and_artifact_unchanged=True,
                  requests=2,receipts=receipt,continuation_context_observed=True)
@@ -633,7 +636,7 @@ def test_current_offline_supplement_requires_full_current_collection_and_exact_t
 @pytest.mark.parametrize('change',['none','default','wrong_snapshot','execution_helper','missing_helper'])
 def test_methods_can_only_reuse_the_exact_audited_scope_helper(tmp_path,monkeypatch,change):
     current=tmp_path/'current';snapshot=tmp_path/'snapshot';current.mkdir();snapshot.mkdir()
-    names=['verify_remaining_methods.py','verify_remaining_local.py','verify_live.py','assemble_release_acceptance.py','process_acceptance.py','install.py']
+    names=['verify_remaining_methods.py','verify_remaining_local.py','verify_live.py','assemble_release_acceptance.py','process_acceptance.py','install.py','windows_acceptance_setup.py','qa_workspace.py']
     for name in names:(current/name).write_text('current '+name)
     (snapshot/'assemble_release_acceptance.py').write_text('audited scope helper')
     artifact={'verifier_sha256':{name:acceptance.sha(current/name) for name in names}}

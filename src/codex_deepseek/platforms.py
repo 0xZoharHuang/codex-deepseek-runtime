@@ -138,3 +138,90 @@ def paths_overlap(left,right):
                 if os.path.samefile(path,target):return True
             except OSError:pass
     return False
+
+
+def native_artifact_access(root,package,manifest_files):
+    """Windows RX for verified public native assets, never private install data.
+
+    Match the official package's restricted-token RX requirement. Everyone is
+    intentional: restricted tokens require access through their restricting SIDs
+    as well as their user SID. No write/delete or inheritable ancestor grant.
+    The installer must verify every manifest hash before and after this call.
+    """
+    if not WINDOWS:return
+    import stat
+    from ctypes import wintypes
+    root=Path(root).absolute();package=Path(package).absolute()
+    if package.parent!=root/'native':raise ValueError('Native artifact outside its owned container')
+    def physical(path,directory=None):
+        info=path.lstat()
+        if stat.S_ISLNK(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:
+            raise ValueError('Redirected native artifact path')
+        if directory is True and not stat.S_ISDIR(info.st_mode):
+            raise ValueError('Native artifact ancestor is not a directory')
+        if not stat.S_ISDIR(info.st_mode) and not (stat.S_ISREG(info.st_mode) and info.st_nlink==1):
+            raise ValueError('Native artifact is nonregular or shared')
+        return stat.S_ISDIR(info.st_mode)
+    for path in [package,*package.parents]:physical(path,True)
+    members=[];pending=[package];actual=set()
+    while pending:
+        directory=pending.pop();members.append((directory,True))
+        for path in directory.iterdir():
+            if physical(path):pending.append(path)
+            else:members.append((path,False));actual.add(path.relative_to(package).as_posix())
+    if actual!=set(manifest_files):raise ValueError('Native artifact inventory changed before permissions')
+    # Normalize only the owned native container and public package. Root retains
+    # its existing private ACL; no parent above root is modified.
+    private_directory(root/'native')
+    private_directory(package)
+    api=ctypes.WinDLL('advapi32',use_last_error=True);kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    class TRUSTEE(ctypes.Structure):
+        _fields_=[('multiple',ctypes.c_void_p),('operation',ctypes.c_int),
+                  ('form',ctypes.c_int),('type',ctypes.c_int),('name',ctypes.c_void_p)]
+    class ACCESS(ctypes.Structure):
+        _fields_=[('permissions',wintypes.DWORD),('mode',ctypes.c_int),
+                  ('inheritance',wintypes.DWORD),('trustee',TRUSTEE)]
+    api.GetNamedSecurityInfoW.argtypes=[wintypes.LPWSTR,ctypes.c_int,wintypes.DWORD,
+        ctypes.c_void_p,ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p),ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p)]
+    api.GetNamedSecurityInfoW.restype=wintypes.DWORD
+    api.SetEntriesInAclW.argtypes=[wintypes.ULONG,ctypes.POINTER(ACCESS),ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p)]
+    api.SetEntriesInAclW.restype=wintypes.DWORD
+    api.SetNamedSecurityInfoW.argtypes=[wintypes.LPWSTR,ctypes.c_int,wintypes.DWORD,
+        ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
+    api.SetNamedSecurityInfoW.restype=wintypes.DWORD
+    api.CreateWellKnownSid.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_void_p,ctypes.POINTER(wintypes.DWORD)]
+    api.CreateWellKnownSid.restype=wintypes.BOOL
+    kernel.LocalFree.argtypes=[ctypes.c_void_p];kernel.LocalFree.restype=ctypes.c_void_p
+    size=wintypes.DWORD(68);world=ctypes.create_string_buffer(size.value)
+    if not api.CreateWellKnownSid(1,None,world,ctypes.byref(size)):raise ctypes.WinError(ctypes.get_last_error())
+    def read_acl(path):
+        acl=ctypes.c_void_p();descriptor=ctypes.c_void_p()
+        error=api.GetNamedSecurityInfoW(str(path),1,4,None,None,ctypes.byref(acl),None,ctypes.byref(descriptor))
+        if error:raise ctypes.WinError(error)
+        return acl,descriptor
+    def with_read(acl,mask,inheritance):
+        updated=ctypes.c_void_p()
+        entry=ACCESS(mask,1,inheritance,TRUSTEE(None,0,0,5,ctypes.cast(world,ctypes.c_void_p)))
+        error=api.SetEntriesInAclW(1,ctypes.byref(entry),acl,ctypes.byref(updated))
+        if error:raise ctypes.WinError(error)
+        return updated
+    def apply(path,acl,protected=False):
+        physical(path)
+        error=api.SetNamedSecurityInfoW(str(path),1,4|(0x80000000 if protected else 0),None,None,acl,None)
+        if error:raise ctypes.WinError(error)
+    private,descriptor=read_acl(package)
+    try:
+        for is_directory in [True,False]:
+            readable=with_read(private,0x1200a9,3 if is_directory else 0)
+            try:
+                for path,directory in members:
+                    if directory==is_directory:apply(path,readable,True)
+            finally:kernel.LocalFree(readable)
+    finally:kernel.LocalFree(descriptor)
+    for path in [root,root/'native']:
+        physical(path,True);acl,descriptor=read_acl(path)
+        try:
+            reachable=with_read(acl,0xa0,0)
+            try:apply(path,reachable)
+            finally:kernel.LocalFree(reachable)
+        finally:kernel.LocalFree(descriptor)

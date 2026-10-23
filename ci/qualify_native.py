@@ -1,6 +1,6 @@
 """Qualify changed native transport behavior without any provider credential.
 
-This runs the real, freshly built CLI and HTTP helper against owned loopback
+This runs the real, identity-verified CLI and HTTP helper against owned loopback
 fixtures. It does not certify live-model quality or whole-product readiness.
 """
 from __future__ import annotations
@@ -28,7 +28,56 @@ def sha(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def package_identity(package: Path) -> dict:
+
+def recipe_scope_identity(receipt: dict, recipe: dict, target: str,
+                          archived_recipe: Path | None) -> dict:
+    """Validate an original build recipe without rewriting its receipt.
+
+    Reuse permits only Windows-specific recipe changes on Linux/macOS.
+    Native target/source/file checks below remain mandatory.
+    """
+    from build_native import native_recipe_identity
+    current_sha = sha(ROOT / "native/runtime-overlays.json")
+    original_sha = receipt.get("overlay_recipe_sha256")
+    if archived_recipe is None:
+        if original_sha != current_sha:
+            raise ValueError("Full recipe file differs from the build receipt")
+        return {"mode": "exact_full_recipe", "original_sha256": original_sha,
+                "current_sha256": current_sha}
+    if target not in {"x86_64-unknown-linux-gnu", "aarch64-apple-darwin"}:
+        raise ValueError("Archived native reuse is limited to the qualified Unix targets")
+    if archived_recipe.is_symlink() or sha(archived_recipe) != original_sha:
+        raise ValueError("Archived recipe bytes do not match the original receipt")
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate archived recipe member")
+            result[key] = value
+        return result
+    original = json.loads(archived_recipe.read_bytes(), object_pairs_hook=unique)
+    def without_windows(value):
+        value = json.loads(json.dumps(value))
+        value["required_base_inputs"].pop("x86_64-pc-windows-msvc")
+        overlays = []
+        for item in value["overlays"]:
+            item["changes_by_target"].pop("x86_64-pc-windows-msvc", None)
+            if item["changes_by_target"]:
+                overlays.append(item)
+        value["overlays"] = overlays
+        return value
+    if without_windows(original) != without_windows(recipe):
+        raise ValueError("Archived recipe differs outside the Windows-only scope")
+    if native_recipe_identity(target, original) != native_recipe_identity(target, recipe):
+        raise ValueError("Archived and current target recipe identities differ")
+    return {"mode": "original_archive_target_equivalence",
+            "original_sha256": original_sha, "current_sha256": current_sha,
+            "archived_recipe": str(archived_recipe.resolve()),
+            "only_windows_recipe_changes": original_sha != current_sha,
+            "target_recipe_id": native_recipe_identity(target, recipe)}
+
+
+def package_identity(package: Path, archived_recipe: Path | None = None) -> dict:
     sys.path.insert(0, str(ROOT))
     from build_native import (COMMIT, VERSION, build_target, build_assets,
                               native_recipe_identity, runtime_recipe, overlay_source_hashes)
@@ -44,8 +93,7 @@ def package_identity(package: Path) -> dict:
     if (receipt.get("build_toolchain_pin") != recipe["build_toolchain"]
             or not str(receipt.get("rustc", "")).startswith("rustc " + recipe["build_toolchain"] + " ")):
         raise ValueError("Compiler pin differs from this checkout")
-    if receipt.get("overlay_recipe_sha256") != sha(ROOT / "native/runtime-overlays.json"):
-        raise ValueError("Full recipe file differs from the build receipt")
+    recipe_validation = recipe_scope_identity(receipt, recipe, target, archived_recipe)
     expected_patches = list(recipe["required_base_inputs"][target]) + [
         {"file": item["file"], "sha256": item["sha256"]}
         for item in recipe["overlays"] if target in item["changes_by_target"]
@@ -62,7 +110,7 @@ def package_identity(package: Path) -> dict:
         item["path"]: item["fork_sha256"]
         for item in json.loads((ROOT / "native/source-changes.json").read_text())["files"]
     }
-    if os.name == "nt":
+    if target.endswith("windows-msvc"):
         expected_sources.update({
             item["path"]: item["fork_sha256"]
             for item in json.loads((ROOT / "native/windows-source-changes.json").read_text())["files"]
@@ -94,13 +142,28 @@ def package_identity(package: Path) -> dict:
         path = package.joinpath(*relative.parts)
         if not path.is_file() or sha(path) != expected_hash:
             raise ValueError("Native package byte mismatch: " + name)
-    suffix = ".exe" if os.name == "nt" else ""
+    if archived_recipe is not None:
+        manifest_path = ROOT / "native" / (
+            "runtime.json" if target == "aarch64-apple-darwin"
+            else "runtime-x86_64-unknown-linux-gnu.json"
+        )
+        manifest = json.loads(manifest_path.read_bytes())
+        files = {name: sha(package / name) for name in actual}
+        if (manifest.get("status") != "ready" or manifest.get("target") != target
+                or manifest.get("native_recipe_id") != expected
+                or manifest.get("upstream_commit") != COMMIT
+                or manifest.get("patch_sha256") != metadata["patchSha256"]
+                or manifest.get("files") != files):
+            raise ValueError("Reused package differs from the complete current target manifest")
+        recipe_validation["native_manifest_sha256"] = sha(manifest_path)
+    suffix = ".exe" if target.endswith("windows-msvc") else ""
     cli = package / ("bin/codex" + suffix)
     helper = package / ("bin/codex-http-transport" + suffix)
     if not cli.is_file() or not helper.is_file():
         raise ValueError("Native CLI or transport helper is missing")
     return {
         "target": target,
+        "recipe_validation": recipe_validation,
         "recipe_id": expected,
         "upstream_commit": COMMIT,
         "compiler": receipt["rustc"],
@@ -170,9 +233,84 @@ def source_identity() -> dict:
     return {name: sha(ROOT / name) for name in sorted(paths) if (ROOT / name).is_file()}
 
 
+
+def run_observed(command, *, cwd, env, log, timeout):
+    """Own only this test process and observed PID/kernel identities."""
+    import psutil
+    from codex_deepseek.processes import identity, matches, terminate
+    seen, unknown = {}, set()
+    report = {"timed_out": False, "forced_cleanup": [], "remaining_before_cleanup": [],
+              "remaining_after_cleanup": [], "unknown_live": []}
+    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT)
+    started = time.monotonic()
+    try:
+        birth = identity(process.pid)
+        if birth is None:
+            unknown.add(process.pid)
+            raise RuntimeError("Created test process has no stable identity")
+        seen[(process.pid, birth)] = {"pid": process.pid, "birth": birth}
+        while process.poll() is None:
+            for pid, stamp in list(seen):
+                if not matches(pid, stamp):
+                    continue
+                try:
+                    for child in psutil.Process(pid).children(recursive=True):
+                        stamp = identity(child.pid)
+                        if stamp is None:
+                            unknown.add(child.pid)
+                        else:
+                            seen[(child.pid, stamp)] = {"pid": child.pid, "birth": stamp}
+                except psutil.NoSuchProcess:
+                    pass
+            if time.monotonic() - started > timeout:
+                report["timed_out"] = True
+                break
+            time.sleep(.1)
+    except BaseException as error:
+        report.update(error_type=type(error).__name__, error=str(error))
+    finally:
+        if process.poll() is None:
+            # This Popen still owns the original process handle; no PID-name kill.
+            try:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+            except Exception as error:
+                report.setdefault("cleanup_errors", []).append(type(error).__name__)
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
+            time.sleep(.05)
+        left = [row for (pid, stamp), row in seen.items() if matches(pid, stamp)]
+        report["remaining_before_cleanup"] = left
+        for row in left:
+            try:
+                terminate(row["pid"], row["birth"], timeout=3)
+                report["forced_cleanup"].append(row)
+            except Exception as error:
+                report.setdefault("cleanup_errors", []).append(type(error).__name__)
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
+            time.sleep(.05)
+        report["remaining_after_cleanup"] = [
+            row for (pid, stamp), row in seen.items() if matches(pid, stamp)
+        ]
+        report["unknown_live"] = sorted(pid for pid in unknown if psutil.pid_exists(pid))
+        report["observed"] = list(seen.values())
+        report["returncode"] = process.returncode
+        report["seconds"] = time.monotonic() - started
+    report["passed"] = (report["returncode"] == 0 and not report["timed_out"]
+                        and not report.get("error") and not report["remaining_before_cleanup"]
+                        and not report["remaining_after_cleanup"] and not report["unknown_live"]
+                        and not report.get("cleanup_errors"))
+    return report
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--package", type=Path, required=True)
+    parser.add_argument("--archived-recipe", type=Path)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
     args = parser.parse_args()
@@ -206,16 +344,22 @@ def main() -> int:
         result_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
     save()
     try:
-        identity = package_identity(package)
+        identity = package_identity(package, args.archived_recipe)
         record["package"] = identity
         record["adapter"] = adapter_identity()
         source_before = source_identity()
+        record["source_sha256"] = source_before
+        record["native_builds"] = 0 if args.archived_recipe is not None else None
         env = {
             key: value for key, value in os.environ.items()
             if not key.startswith(("CODEX_", "CDS_", "OPENAI_", "OPENROUTER_", "OTEL_", "PYTEST_", "ACTIONS_", "GITHUB_"))
             and key not in {"GH_TOKEN", "GITHUB_TOKEN", "PYTHONPATH", "PYTHONHOME"}
         }
+        for name in ("home", "tmp"):
+            (work / name).mkdir(mode=0o700)
         env.update({
+            "HOME": str(work / "home"),
+            "TMPDIR": str(work / "tmp"),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
             "CODEX_DEEPSEEK_TEST_CLI_BINARY": identity["cli"],
@@ -223,14 +367,16 @@ def main() -> int:
             "CDS_RETRY_EVIDENCE_DIR": str(evidence / "retry"),
         })
         command = [
-            sys.executable, "-I", "-m", "pytest",
-            "-p", "pytest_asyncio.plugin",
+            sys.executable, "-I", "-B", "-m", "pytest",
+            "-p", "pytest_asyncio.plugin", "-W", "error",
+            "-o", "asyncio_default_fixture_loop_scope=function",
             *SUITES, "-q", "-p", "no:cacheprovider",
             "--basetemp", str(work / "pytest"),
             "--junitxml", str(evidence / "native.xml"),
         ]
         collection_command = [
-            sys.executable, "-I", "-m", "pytest", "-p", "pytest_asyncio.plugin",
+            sys.executable, "-I", "-B", "-m", "pytest", "-p", "pytest_asyncio.plugin",
+            "-W", "error", "-o", "asyncio_default_fixture_loop_scope=function",
             *SUITES, "-q", "--collect-only", "-p", "no:cacheprovider",
         ]
         collected = subprocess.run(
@@ -251,15 +397,13 @@ def main() -> int:
         record["command"] = command
         save()
         with (evidence / "pytest.log").open("wb") as log:
-            completed = subprocess.run(
-                command, cwd=ROOT, env=env, stdout=log,
-                stderr=subprocess.STDOUT, timeout=1200,
-            )
-        record["pytest_exit_code"] = completed.returncode
-        if completed.returncode != 0:
-            raise RuntimeError("Native qualification failed; inspect pytest.log")
+            process_proof = run_observed(command, cwd=ROOT, env=env, log=log, timeout=1200)
+        record["processes"] = process_proof
+        record["pytest_exit_code"] = process_proof["returncode"]
+        if not process_proof["passed"]:
+            raise RuntimeError("Native qualification or owned process cleanup failed; inspect pytest.log")
         record["junit"] = junit_result(evidence / "native.xml", collected_names)
-        record["package_after"] = package_identity(package)
+        record["package_after"] = package_identity(package, args.archived_recipe)
         if record["package_after"] != identity:
             raise RuntimeError("Native package changed during qualification")
         if adapter_identity() != record["adapter"]:
@@ -278,9 +422,12 @@ def main() -> int:
         # This directory is created by this invocation and contains only synthetic
         # fixture material. Never remove package, source, user homes, or evidence.
         try:
+            processes = record.get("processes", {})
+            if processes.get("remaining_after_cleanup") or processes.get("unknown_live") or processes.get("error"):
+                raise RuntimeError("Preserve fixture paths while an owned process is unresolved")
             shutil.rmtree(work)
             record["owned_fixture_directory_removed"] = not work.exists()
-        except OSError as error:
+        except Exception as error:
             record["owned_fixture_directory_removed"] = False
             record["cleanup_error"] = type(error).__name__
             record["status"] = "failed"

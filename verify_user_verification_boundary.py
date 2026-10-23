@@ -41,7 +41,7 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--official',type=Path,required=True);p.add_argument('--patched',type=Path,required=True);p.add_argument('--output',type=Path,required=True);args=p.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());root.mkdir(parents=True)
     digests={name:sha(binary) for name,binary in [('official',args.official),('patched',args.patched)]}
-    verifiers={name:sha(Path(__file__).parent/name) for name in ['verify_user_verification_boundary.py','verify_live.py','src/codex_deepseek/cli.py']}
+    verifiers={name:sha(Path(__file__).parent/name) for name in ['verify_user_verification_boundary.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','src/codex_deepseek/cli.py']}
     results={name:check(binary.resolve(),root/name) for name,binary in [('official',args.official),('patched',args.patched)]}
     unchanged=all(sha(binary)==digests[name] for name,binary in [('official',args.official),('patched',args.patched)]) and all(sha(Path(__file__).parent/name)==digest for name,digest in verifiers.items())
     report={'passed':results['official']==results['patched'] and unchanged,'positive_credential_lifecycle_exercised':False,'source_contract':'app-server user_verification::identity requires a ChatGPT account user ID before constructing the native credential provider; empty isolated homes have no such identity. These five methods are account-dependent, including on macOS.','binary_sha256':digests,'verifier_sha256':verifiers,'binary_and_verifier_unchanged':unchanged,'results':results}

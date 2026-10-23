@@ -90,7 +90,7 @@ for line in sys.stdin:
     row=json.loads(line)
     if 'id' not in row:continue
     method=row['method'];params=row.get('params',{})
-    if method=='initialize':result={'codexHome':str(root/'home'),'qa_env_leaked':'CODEX_DEEPSEEK_TEST_SANDBOX_MODE' in os.environ}
+    if method=='initialize':result={'codexHome':str(root/'home'),'qa_env_leaked':'CODEX_DEEPSEEK_TEST_SANDBOX_MODE' in os.environ,'process_cwd':os.getcwd()}
     elif method=='config/read':result={'config':tomllib.loads((root/'home/config.toml').read_text())}
     elif method=='thread/start':result={'thread':{'id':'thread-'+str(row['id'])},'sandbox':{'requested':params['sandbox']}}
     else:raise RuntimeError(method)
@@ -102,6 +102,9 @@ for line in sys.stdin:
         assert peer.sandbox_mode==(configured or 'danger-full-access')
         assert peer.sandbox_evidence['passed']
         assert peer.events[0]['result']['qa_env_leaked'] is False
+        assert Path(peer.events[0]['result']['process_cwd']).samefile(peer.workspace)
+        launch=json.loads(next(tmp_path.glob('launch-*.json')).read_text())
+        assert Path(launch['process_cwd']).samefile(peer.workspace)
         messages=[json.loads(line) for line in (tmp_path/'client-requests.jsonl').read_text().splitlines()]
         assert any(row.get('method')=='config/read' for row in messages)
         starts=[row['params'] for row in messages if row.get('method')=='thread/start']

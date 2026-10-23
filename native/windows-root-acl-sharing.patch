@@ -1,0 +1,512 @@
+--- a/codex-rs/windows-sandbox-rs/src/acl.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl.rs
+@@ -64,7 +64,6 @@
+ use windows_sys::Win32::Storage::FileSystem::VOLUME_NAME_NONE;
+ use windows_sys::Win32::Storage::FileSystem::WRITE_DAC;
+ use windows_sys::Win32::Storage::FileSystem::WRITE_OWNER;
+-use windows_sys::Win32::System::SystemServices::MAXIMUM_ALLOWED;
+ const SE_KERNEL_OBJECT: u32 = 6;
+ const OBJECT_INHERIT_ACE_FLAG: u8 = 0x01;
+ const INHERIT_ONLY_ACE: u8 = 0x08;
+@@ -546,8 +545,9 @@
+     access_mode: ACCESS_MODE,
+     inheritance: u32,
+ ) -> Result<bool> {
+-    // Only directories need MAXIMUM_ALLOWED to suppress child ACL propagation.
+-    // On active EXE/DLL files, it can request access that causes sharing violations.
++    // Pin root-only directories with ACL access. MAXIMUM_ALLOWED also requests
++    // data/DELETE rights and can conflict with directory watchers. The native
++    // DACL setter below preserves the original no-propagation behavior.
+     let directory = if inheritance == 0
+         && path
+             .metadata()
+@@ -556,11 +556,26 @@
+     {
+         Some(
+             OpenOptions::new()
+-                .access_mode(MAXIMUM_ALLOWED)
++                .access_mode(READ_CONTROL | WRITE_DAC)
+                 .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+                 .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+                 .open(path)
+-                .context("open ACL target for root-only update (MAXIMUM_ALLOWED)")?,
++                .or_else(|error| {
++                    if error.raw_os_error()
++                        != Some(windows_sys::Win32::Foundation::ERROR_ACCESS_DENIED as i32)
++                    {
++                        return Err(error);
++                    }
++                    // A read-only directory may already have the requested grant
++                    // (or an existing deny). Keep one pinned handle; if an update
++                    // is required, the setter must fail without WRITE_DAC.
++                    OpenOptions::new()
++                        .access_mode(READ_CONTROL)
++                        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
++                        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++                        .open(path)
++                })
++                .context("open ACL target for root-only update")?,
+         )
+     } else {
+         None
+@@ -652,8 +667,9 @@
+         }
+         // For files and inheriting directory grants, request ACL-write access only
+         // when an update is needed. Use the same long-path support as the read handle.
++        let root_only_directory = directory.is_some();
+         let handle = match directory {
+-            // MAXIMUM_ALLOWED suppresses propagation of existing inheritable ACEs too.
++            // The same pinned handle owns both the ACL read and root-only write.
+             Some(directory) => directory,
+             None => OpenOptions::new()
+                 .access_mode(READ_CONTROL | WRITE_DAC)
+@@ -662,17 +678,25 @@
+                 .open(path)
+                 .context("open ACL target for update (READ_CONTROL | WRITE_DAC)")?,
+         };
+-        let code3 = SetSecurityInfo(
+-            handle.as_raw_handle() as _,
+-            1,
+-            DACL_SECURITY_INFORMATION,
+-            std::ptr::null_mut(),
+-            std::ptr::null_mut(),
+-            p_new_dacl,
+-            std::ptr::null_mut(),
+-        );
+-        if code3 != ERROR_SUCCESS {
+-            return Err(anyhow!("SetSecurityInfo failed: {code3}"));
++        if root_only_directory {
++            set_directory_dacl_without_propagation(
++                handle.as_raw_handle() as HANDLE,
++                p_sd,
++                p_new_dacl,
++            )?;
++        } else {
++            let code3 = SetSecurityInfo(
++                handle.as_raw_handle() as _,
++                1,
++                DACL_SECURITY_INFORMATION,
++                std::ptr::null_mut(),
++                std::ptr::null_mut(),
++                p_new_dacl,
++                std::ptr::null_mut(),
++            );
++            if code3 != ERROR_SUCCESS {
++                return Err(anyhow!("SetSecurityInfo failed: {code3}"));
++            }
+         }
+         Ok(true)
+     })();
+@@ -683,6 +707,69 @@
+         LocalFree(p_sd as HLOCAL);
+     }
+     result
++}
++
++// Match the pinned-handle DACL write used by file_write: preserve protection
++// and automatic-inheritance control without asking SetSecurityInfo to walk
++// children. Only the supplied directory handle is changed.
++unsafe fn set_directory_dacl_without_propagation(
++    handle: HANDLE,
++    original_descriptor: *mut c_void,
++    dacl: *mut ACL,
++) -> Result<()> {
++    use windows_sys::Win32::Foundation::RtlNtStatusToDosError;
++    use windows_sys::Win32::Security::{
++        GetSecurityDescriptorControl, InitializeSecurityDescriptor,
++        PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_AUTO_INHERIT_REQ, SE_DACL_AUTO_INHERITED,
++        SE_DACL_DEFAULTED, SE_DACL_PROTECTED, SECURITY_DESCRIPTOR, SetSecurityDescriptorControl,
++        SetSecurityDescriptorDacl,
++    };
++    #[link(name = "ntdll")]
++    unsafe extern "system" {
++        fn NtSetSecurityObject(handle: HANDLE, information: u32, descriptor: *const c_void) -> i32;
++    }
++    let mut control = 0;
++    let mut revision = 0;
++    if GetSecurityDescriptorControl(original_descriptor, &mut control, &mut revision) == 0 {
++        return Err(std::io::Error::last_os_error()).context("read root-only DACL control");
++    }
++    let mut descriptor: SECURITY_DESCRIPTOR = std::mem::zeroed();
++    let descriptor_ptr = (&mut descriptor as *mut SECURITY_DESCRIPTOR).cast::<c_void>();
++    if InitializeSecurityDescriptor(descriptor_ptr, 1) == 0
++        || SetSecurityDescriptorDacl(
++            descriptor_ptr,
++            1,
++            dacl,
++            i32::from(control & SE_DACL_DEFAULTED != 0),
++        ) == 0
++    {
++        return Err(std::io::Error::last_os_error()).context("prepare root-only DACL");
++    }
++    let flags = SE_DACL_PROTECTED | SE_DACL_AUTO_INHERITED | SE_DACL_AUTO_INHERIT_REQ;
++    let mut desired = control & flags;
++    if control & SE_DACL_AUTO_INHERITED != 0 {
++        desired |= SE_DACL_AUTO_INHERIT_REQ;
++    }
++    if SetSecurityDescriptorControl(descriptor_ptr, flags, desired) == 0 {
++        return Err(std::io::Error::last_os_error()).context("preserve root-only DACL control");
++    }
++    let protection = if control & SE_DACL_PROTECTED != 0 {
++        PROTECTED_DACL_SECURITY_INFORMATION
++    } else {
++        0
++    };
++    let status = NtSetSecurityObject(
++        handle,
++        DACL_SECURITY_INFORMATION | protection,
++        descriptor_ptr,
++    );
++    if status < 0 {
++        return Err(std::io::Error::from_raw_os_error(
++            RtlNtStatusToDosError(status) as i32,
++        ))
++        .context("set root-only DACL without descendant propagation");
++    }
++    Ok(())
+ }
+ 
+ /// Ensure all provided SIDs have an allow ACE with the requested mask on the path.
+--- a/codex-rs/windows-sandbox-rs/src/acl_tests.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl_tests.rs
+@@ -363,3 +363,340 @@
+         LocalFree(descriptor as HLOCAL);
+     }
+ }
++
++#[test]
++fn root_only_acl_update_with_read_watcher_preserves_children_and_flags() {
++    use windows_sys::Win32::Security::Authorization::SetNamedSecurityInfoW;
++    use windows_sys::Win32::Security::{
++        PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_AUTO_INHERITED,
++    };
++    use windows_sys::Win32::Storage::FileSystem::{
++        FILE_LIST_DIRECTORY, FILE_SHARE_READ, FILE_SHARE_WRITE,
++    };
++    use windows_sys::Win32::System::SystemServices::MAXIMUM_ALLOWED;
++    for protected in [true, false] {
++        let temporary = tempfile::tempdir().unwrap();
++        let root = temporary.path().join("root");
++        std::fs::create_dir(&root).unwrap();
++        let marker = LocalSid::from_string("S-1-5-21-10-20-30-4245").unwrap();
++        let target = LocalSid::from_string("S-1-5-21-10-20-30-4246").unwrap();
++        unsafe {
++            ensure_allow_mask_aces_with_inheritance(
++                &root,
++                &[marker.as_ptr()],
++                FILE_READ_ATTRIBUTES,
++                super::CONTAINER_INHERIT_ACE | super::OBJECT_INHERIT_ACE,
++            )
++            .unwrap();
++            let (acl, sd) = fetch_dacl_handle(&root).unwrap();
++            let flag = if protected {
++                PROTECTED_DACL_SECURITY_INFORMATION
++            } else {
++                UNPROTECTED_DACL_SECURITY_INFORMATION
++            };
++            assert_eq!(
++                SetNamedSecurityInfoW(
++                    to_wide(&root).as_ptr() as _,
++                    1,
++                    DACL_SECURITY_INFORMATION | flag,
++                    std::ptr::null_mut(),
++                    std::ptr::null_mut(),
++                    acl,
++                    std::ptr::null_mut()
++                ),
++                0
++            );
++            LocalFree(sd as HLOCAL);
++        }
++        let child = root.join("child");
++        std::fs::create_dir(&child).unwrap();
++        let leaf = child.join("leaf");
++        std::fs::write(&leaf, "synthetic").unwrap();
++        let before = acl_snapshot(&root);
++        assert_eq!(before.0 & SE_DACL_PROTECTED != 0, protected);
++        if !protected {
++            assert_ne!(before.0 & SE_DACL_AUTO_INHERITED, 0);
++        }
++        let child_before = acl_snapshot(&child);
++        let leaf_before = acl_snapshot(&leaf);
++        let watcher = OpenOptions::new()
++            .access_mode(FILE_LIST_DIRECTORY)
++            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
++            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++            .open(&root)
++            .unwrap();
++        let error = OpenOptions::new()
++            .access_mode(MAXIMUM_ALLOWED)
++            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | super::FILE_SHARE_DELETE)
++            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++            .open(&root)
++            .unwrap_err();
++        assert_eq!(error.raw_os_error(), Some(32));
++        assert!(unsafe {
++            ensure_allow_mask_aces_with_inheritance(
++                &root,
++                &[target.as_ptr()],
++                FILE_READ_ATTRIBUTES,
++                0,
++            )
++            .unwrap()
++        });
++        assert_eq!(acl_snapshot(&root).0, before.0);
++        assert_eq!(acl_snapshot(&child), child_before);
++        assert_eq!(acl_snapshot(&leaf), leaf_before);
++        assert!(
++            super::path_mask_allows(&root, &[target.as_ptr()], FILE_READ_ATTRIBUTES, true).unwrap()
++        );
++        assert!(
++            !super::path_mask_allows(&child, &[target.as_ptr()], FILE_READ_ATTRIBUTES, true)
++                .unwrap()
++        );
++        assert!(!unsafe {
++            ensure_allow_mask_aces_with_inheritance(
++                &root,
++                &[target.as_ptr()],
++                FILE_READ_ATTRIBUTES,
++                0,
++            )
++            .unwrap()
++        });
++        drop(watcher);
++    }
++}
++
++#[test]
++fn root_only_acl_update_with_read_watcher_preserves_deny() {
++    use windows_sys::Win32::Storage::FileSystem::{
++        FILE_LIST_DIRECTORY, FILE_SHARE_READ, FILE_SHARE_WRITE,
++    };
++    let root = tempfile::tempdir().unwrap();
++    let target = LocalSid::from_string("S-1-5-21-10-20-30-4247").unwrap();
++    unsafe {
++        super::add_deny_read_ace(root.path(), target.as_ptr()).unwrap();
++    }
++    let before = acl_snapshot(root.path());
++    let _watcher = OpenOptions::new()
++        .access_mode(FILE_LIST_DIRECTORY)
++        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
++        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++        .open(root.path())
++        .unwrap();
++    assert!(!unsafe {
++        ensure_allow_mask_aces_with_inheritance(
++            root.path(),
++            &[target.as_ptr()],
++            FILE_READ_ATTRIBUTES,
++            0,
++        )
++        .unwrap()
++    });
++    assert_eq!(acl_snapshot(root.path()), before);
++}
++
++#[test]
++fn root_only_acl_update_without_write_dac_fails_unchanged() {
++    use std::os::windows::io::AsRawHandle;
++    let root = tempfile::tempdir().unwrap();
++    let before = acl_snapshot(root.path());
++    let handle = OpenOptions::new()
++        .access_mode(READ_CONTROL)
++        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++        .open(root.path())
++        .unwrap();
++    unsafe {
++        let (acl, sd) = fetch_dacl_handle(root.path()).unwrap();
++        let error =
++            super::set_directory_dacl_without_propagation(handle.as_raw_handle() as _, sd, acl)
++                .unwrap_err();
++        assert!(error.to_string().contains("root-only DACL"));
++        LocalFree(sd as HLOCAL);
++    }
++    assert_eq!(acl_snapshot(root.path()), before);
++}
++
++// Keep the original write-capable handle so every assertion path restores the
++// isolated fixture, even after OWNER RIGHTS removes implicit WRITE_DAC.
++struct RestoreFixtureDacl {
++    handle: std::fs::File,
++    descriptor: *mut c_void,
++    dacl: *mut windows_sys::Win32::Security::ACL,
++}
++impl Drop for RestoreFixtureDacl {
++    fn drop(&mut self) {
++        use std::os::windows::io::AsRawHandle;
++        unsafe {
++            let _ = super::set_directory_dacl_without_propagation(
++                self.handle.as_raw_handle() as _,
++                self.descriptor,
++                self.dacl,
++            );
++            LocalFree(self.descriptor as HLOCAL);
++        }
++    }
++}
++fn install_readonly_fixture_dacl(path: &Path, target_deny: bool) -> RestoreFixtureDacl {
++    let handle = OpenOptions::new()
++        .access_mode(READ_CONTROL | super::WRITE_DAC)
++        .share_mode(super::FILE_SHARE_READ | super::FILE_SHARE_WRITE | super::FILE_SHARE_DELETE)
++        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++        .open(path)
++        .unwrap();
++    unsafe {
++        let (dacl, descriptor) = fetch_dacl_handle(path).unwrap();
++        let guard = RestoreFixtureDacl {
++            handle,
++            descriptor,
++            dacl,
++        };
++        let target = if target_deny {
++            "(D;;0x80;;;S-1-5-21-10-20-30-4248)"
++        } else {
++            "(A;;0x80;;;S-1-5-21-10-20-30-4248)"
++        };
++        let sddl = format!("D:P(D;;WD;;;OW)(D;;WD;;;WD)(A;;FR;;;WD){target}");
++        let mut next = std::ptr::null_mut();
++        assert_ne!(
++            ConvertStringSecurityDescriptorToSecurityDescriptorW(
++                to_wide(sddl).as_ptr(),
++                SDDL_REVISION_1,
++                &mut next,
++                std::ptr::null_mut()
++            ),
++            0
++        );
++        let outcome = SetFileSecurityW(
++            to_wide(path).as_ptr(),
++            DACL_SECURITY_INFORMATION
++                | windows_sys::Win32::Security::PROTECTED_DACL_SECURITY_INFORMATION,
++            next,
++        );
++        LocalFree(next as HLOCAL);
++        assert_ne!(outcome, 0);
++        guard
++    }
++}
++
++struct FixtureImpersonation;
++impl Drop for FixtureImpersonation {
++    fn drop(&mut self) {
++        unsafe {
++            windows_sys::Win32::Security::RevertToSelf();
++        }
++    }
++}
++fn disable_fixture_thread_privileges() -> FixtureImpersonation {
++    use windows_sys::Win32::Foundation::CloseHandle;
++    use windows_sys::Win32::Security::{
++        CreateRestrictedToken, ImpersonateLoggedOnUser, TOKEN_DUPLICATE, TOKEN_QUERY,
++    };
++    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
++    unsafe {
++        let mut original = std::ptr::null_mut();
++        assert_ne!(
++            OpenProcessToken(
++                GetCurrentProcess(),
++                TOKEN_DUPLICATE | TOKEN_QUERY,
++                &mut original
++            ),
++            0
++        );
++        let mut restricted = std::ptr::null_mut();
++        let created = CreateRestrictedToken(
++            original,
++            1,
++            0,
++            std::ptr::null(),
++            0,
++            std::ptr::null(),
++            0,
++            std::ptr::null(),
++            &mut restricted,
++        );
++        CloseHandle(original);
++        assert_ne!(created, 0);
++        let impersonated = ImpersonateLoggedOnUser(restricted);
++        CloseHandle(restricted);
++        assert_ne!(impersonated, 0);
++    }
++    FixtureImpersonation
++}
++
++#[test]
++fn root_only_readonly_dacl_preserves_noop_and_refuses_required_write() {
++    use windows_sys::Win32::System::SystemServices::MAXIMUM_ALLOWED;
++    for target_deny in [false, true] {
++        let root = tempfile::tempdir().unwrap();
++        let target = LocalSid::from_string("S-1-5-21-10-20-30-4248").unwrap();
++        let other = LocalSid::from_string("S-1-5-21-10-20-30-4249").unwrap();
++        let _restore = install_readonly_fixture_dacl(root.path(), target_deny);
++        let _impersonation = disable_fixture_thread_privileges();
++        let before = acl_snapshot(root.path());
++        let denied = OpenOptions::new()
++            .access_mode(READ_CONTROL | super::WRITE_DAC)
++            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++            .open(root.path())
++            .unwrap_err();
++        assert_eq!(denied.raw_os_error(), Some(ERROR_ACCESS_DENIED as i32));
++        let _old = OpenOptions::new()
++            .access_mode(MAXIMUM_ALLOWED)
++            .share_mode(super::FILE_SHARE_READ | super::FILE_SHARE_WRITE | super::FILE_SHARE_DELETE)
++            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
++            .open(root.path())
++            .unwrap();
++        assert!(!unsafe {
++            ensure_allow_mask_aces_with_inheritance(
++                root.path(),
++                &[target.as_ptr()],
++                FILE_READ_ATTRIBUTES,
++                0,
++            )
++            .unwrap()
++        });
++        assert_eq!(acl_snapshot(root.path()), before);
++        if !target_deny {
++            let error = unsafe {
++                ensure_allow_mask_aces_with_inheritance(
++                    root.path(),
++                    &[other.as_ptr()],
++                    FILE_READ_ATTRIBUTES,
++                    0,
++                )
++            }
++            .unwrap_err();
++            assert!(error.chain().any(|cause| {
++                cause
++                    .downcast_ref::<std::io::Error>()
++                    .and_then(std::io::Error::raw_os_error)
++                    == Some(ERROR_ACCESS_DENIED as i32)
++            }));
++            assert_eq!(acl_snapshot(root.path()), before);
++        }
++    }
++}
++#[test]
++fn root_only_null_dacl_is_noop() {
++    let root = tempfile::tempdir().unwrap();
++    let target = LocalSid::from_string("S-1-5-21-10-20-30-4250").unwrap();
++    let _restore = install_readonly_fixture_dacl(root.path(), false);
++    // Use the pinned write-capable handle to install a null DACL for this fixture.
++    unsafe {
++        super::set_directory_dacl_without_propagation(
++            std::os::windows::io::AsRawHandle::as_raw_handle(&_restore.handle) as _,
++            _restore.descriptor,
++            std::ptr::null_mut(),
++        )
++        .unwrap();
++        assert!(
++            !ensure_allow_mask_aces_with_inheritance(
++                root.path(),
++                &[target.as_ptr()],
++                FILE_READ_ATTRIBUTES,
++                0
++            )
++            .unwrap()
++        );
++        let (dacl, descriptor) = fetch_dacl_handle(root.path()).unwrap();
++        assert!(dacl.is_null());
++        LocalFree(descriptor as HLOCAL);
++    }
++}

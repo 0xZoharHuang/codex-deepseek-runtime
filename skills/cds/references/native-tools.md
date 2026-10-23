@@ -56,6 +56,8 @@
 - 网页文档读取器不是完整的登录态浏览器或桌面 UI 自动化。需要页面交互、登录态或客户端渲染时，确认另有已授权的对应工具，不把文本 `click` 当成任意浏览器鼠标操作。
 - 原生 CLI 子命令存在，并不使 OpenAI 云任务、账户服务、专属模型功能或第三方服务授权自动可用。先区分 runtime、provider/model、账户、平台和权限问题，再选择解决路径；不要偷偷切换到另一套产品完成后仍标为 CDS。
 
+Shell 的网络权限与联网检索是两个执行路径。`workspace-write`、`-a never` 或 `--search` 都不能单独证明 shell 可以访问公网。子任务出现 DNS 失败、HTTP 000 或零字节时，应先核对其实际网络策略；不能直接写成“服务器不可达”。具体配置与诊断见[启动权限](launch-and-permissions.md#outbound-network-is-separate-from-workspace-write)和[网络错误判断](diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage)。
+
 ## 用与任务相称的证据判断完成
 
 把 **模型/provider 回执、原生工具结果、外层脚本退出、用户要求的实际效果** 分开看。对一般代码任务，实际 diff、相关测试和目标产物通常比额外堆统计更有用；涉及会话控制或外部操作时，再核对对应 thread/turn/item/操作标识。

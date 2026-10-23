@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
 import errno
 import hashlib
@@ -26,6 +26,7 @@ from urllib.parse import urlsplit
 
 import psutil
 from .platforms import comparison_path
+from .processes import identity as process_identity
 
 FILE_ID = re.compile(r"or_file_[A-Za-z0-9_-]{8,128}\Z")
 DATA_URL = re.compile(r"data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/]*={0,2})\Z")
@@ -543,22 +544,32 @@ async def _file_lock(path: Path, timeout: float):
         handle.close()
 
 
-def _owner_alive(pid: int, birth: float) -> bool | None:
+def _owner_alive(pid: int, birth: str | float) -> bool | None:
+    if isinstance(birth, str):
+        observed = process_identity(pid)
+        if observed is not None:
+            return observed == birth
+    # Legacy epoch timestamps cannot distinguish clock adjustment from PID reuse.
+    # An unreadable stable identity is also unknown, never proof of owner death.
     try:
-        return psutil.Process(pid).create_time() == birth
+        psutil.Process(pid)
     except psutil.NoSuchProcess:
         return False
     except (psutil.AccessDenied, OSError):
-        return None  # Do not reap on an observation failure.
+        return None
+    return None
 
 
 class ImageTransport:
     def __init__(self, cache_root: Path, credentials: Callable[[], str], backend: FilesBackend,
                  policy: TransportPolicy, *, clock: Callable[[], float] = time.time,
-                 owner_alive: Callable[[int, float], bool | None] = _owner_alive):
+                 owner_alive: Callable[[int, str | float], bool | None] = _owner_alive):
         self.root, self.credentials, self.backend, self.policy = Path(cache_root), credentials, backend, policy
         self.clock, self.owner_alive = clock, owner_alive
-        self.pid, self.birth = os.getpid(), psutil.Process().create_time()
+        self.pid = os.getpid()
+        self.birth = process_identity(self.pid)
+        if self.birth is None:
+            raise ImageTransportError("Cannot confirm image transport owner identity")
         _private_directory(self.root)
 
     async def _scope(self, key: str) -> tuple[str, Path]:
@@ -583,7 +594,7 @@ class ImageTransport:
         if selected.parent!=root or not re.fullmatch(r'[0-9a-f]{64}',selected.name):
             raise ImageTransportError('Image ledger is outside its credential scope')
         root_hash=hashlib.sha256(os.path.normcase(str(root)).encode('utf-8')).hexdigest()
-        return (1,1,selected.name,root_hash)
+        return (1,2,selected.name,root_hash)
 
     def _verify_ledger_identity(self, db, directory: Path, *, initialize: bool = False) -> None:
         expected=self._ledger_identity(directory)
@@ -607,6 +618,26 @@ class ImageTransport:
         if columns!=['id','schema_version','credential_scope','cache_root_sha256']:
             raise ImageTransportError('Invalid image ledger ownership metadata')
         rows=[tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
+        legacy = (expected[0],1,*expected[2:])
+        if rows == [legacy]:
+            if not initialize:
+                # Foreign-scope diagnostics open mode=ro: a bound v1 ledger can
+                # be counted without rewriting it or adopting its owner records.
+                return
+            # Only a ledger already bound to this exact root/scope may upgrade.
+            # Keep legacy numeric owner rows unchanged. Version 2 prevents old
+            # readers from mistaking new kernel-identity strings for dead PIDs.
+            db.execute('BEGIN IMMEDIATE')
+            try:
+                changed = db.execute('UPDATE cache_identity SET schema_version=2 WHERE id=? AND schema_version=1 AND credential_scope=? AND cache_root_sha256=?',
+                                     (expected[0],expected[2],expected[3])).rowcount
+                if changed != 1:
+                    raise ImageTransportError('Image ledger ownership changed during upgrade')
+                db.execute('COMMIT')
+            except BaseException:
+                if db.in_transaction:db.execute('ROLLBACK')
+                raise
+            rows = [tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
         if rows!=[expected]:
             raise ImageTransportError('Image ledger ownership does not match this profile and credential scope')
 
@@ -624,6 +655,8 @@ class ImageTransport:
                 if before is not None and not os.path.samestat(before,current):
                     raise ImageTransportError('Image ledger file identity changed before use')
                 self._verify_ledger_identity(db,directory,initialize=True)
+                # SQLite REAL affinity retains nonnumeric kernel identity strings
+                # as TEXT while preserving legacy numeric rows without a table rewrite.
                 db.executescript("""
                     PRAGMA foreign_keys=ON;
                     PRAGMA synchronous=FULL;
@@ -990,7 +1023,7 @@ class ImageTransport:
                 continue
             try:
                 _private_file_stat(database)
-                with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as db:
+                with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as db:
                     self._verify_ledger_identity(db,directory)
                     count = db.execute("SELECT COUNT(*) FROM assets WHERE state NOT IN ('deleted','upload_rejected')").fetchone()[0]
                 if count:

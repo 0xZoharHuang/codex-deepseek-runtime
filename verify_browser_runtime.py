@@ -36,7 +36,7 @@ def main():
     if lifetime['binary_sha256']['patched']!=sha(_support.executable(Path(metadata['native_package'])/'bin','codex')):
         raise SystemExit('Native lifetime proof belongs to a different patched binary')
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir()
-    verifiers={name:sha(Path(__file__).with_name(name)) for name in ['verify_browser_runtime.py','verify_live.py','install.py','acceptance_assertions.py']}
+    verifiers={name:sha(Path(__file__).with_name(name)) for name in ['verify_browser_runtime.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','install.py','acceptance_assertions.py']}
     artifact={'entry':str(entry),'entry_sha256':sha(entry),'installation':metadata,'native_manifest':native,'target':native['target'],'sandbox_mode':args.sandbox_mode,'verifier_sha256':verifiers,'native_lifetime_proof_sha256':sha(args.native_lifetime_proof)}
     (root/'artifact.json').write_text(json.dumps(artifact,indent=2),encoding='utf-8')
     nonce='ACTUAL_LINK_'+uuid.uuid4().hex;hits=[];results=[]
@@ -85,7 +85,7 @@ def main():
         cancelling=peer.new(sandbox=args.sandbox_mode)
         turn,start=peer.start(cancelling,'Do not delegate or use shell. Use the fixture_web MCP browser to open '+url.rsplit('/',1)[0]+'/slow and wait for the document. Do not substitute another URL.')
         check('slow_native_browser_request_actually_started',slow_started.wait(45),{'hits':list(hits)})
-        peer.call('turn/interrupt',{'threadId':cancelling,'turnId':turn});peer.complete(cancelling,start)
+        peer.call('turn/interrupt',{'threadId':cancelling,'turnId':turn});peer.complete(cancelling,start,expected_status='interrupted',turn_id=turn)
         interrupted=[e for e in peer.events[start:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==cancelling][-1]
         closed_on_interrupt=slow_closed.wait(2)
         check('native_interrupt_preserves_official_mcp_lifetime',interrupted['params']['turn']['status']=='interrupted' and closed_on_interrupt==lifetime['results']['official']['http_closed_on_turn_interrupt'],{'terminal':interrupted,'http_connection_closed':closed_on_interrupt,'official_baseline':str(args.native_lifetime_proof),'note':'Upstream native MCP calls can outlive sampling-turn interruption; this is not an HTTP abort guarantee.'})

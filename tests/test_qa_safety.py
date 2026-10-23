@@ -55,9 +55,10 @@ def test_approval_thread_requires_review_while_cancellation_keeps_full_access(tm
             assert 'sandbox_permissions `require_escalated`' in prompt
             self.events=approved_events()
             return 'turn',0
-        def complete(self,thread,start):return []
+        def complete(self,thread,start,**options):return []
         def close(self):pass
     monkeypatch.setattr(safety,'Peer',FixturePeer)
+    monkeypatch.setattr(safety,'wait_guardian_approval',lambda *args,**kwargs:{'passed':True,'scope':'Approval routing tested separately'})
     monkeypatch.setenv('CODEX_DEEPSEEK_TEST_SANDBOX_MODE','danger-full-access')
     monkeypatch.setattr(sys,'argv',['verify_safety.py','--output',str(tmp_path)])
     with pytest.raises(CancellationThreadReached):safety.main()

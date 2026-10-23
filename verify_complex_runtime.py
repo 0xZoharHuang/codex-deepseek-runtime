@@ -12,17 +12,20 @@ import json
 from pathlib import Path
 import re
 import sqlite3
+from contextlib import closing
 import subprocess
 
 from acceptance_assertions import (complete_work_patch, current_browser_evidence,
-                                   real_work_input_hashes, real_work_input_names)
+                                   real_work_input_hashes, real_work_input_names, real_work_tools_binding)
 from install import valid_release, _support
+from verify_real_work import native_reviewer_completions
 
 canonical = _support.comparison_path
 
 VERSION = 1
 HELPERS = ('verify_complex_runtime.py', 'acceptance_assertions.py', 'install.py',
-           'host_execution_acceptance.py', 'real_work_imports.py')
+           'host_execution_acceptance.py', 'real_work_imports.py', 'verify_real_work.py',
+           'verify_live.py', 'windows_acceptance_setup.py', 'qa_workspace.py')
 
 
 def sha(path):
@@ -32,6 +35,44 @@ def sha(path):
 
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+
+def producer_provenance(artifact, *, followup, source):
+    required = {'verify_real_work.py', 'verify_live.py', 'acceptance_assertions.py',
+                'host_execution_acceptance.py', 'real_work_imports.py',
+                'windows_acceptance_setup.py', 'qa_workspace.py'}
+    if followup:
+        required.add('verify_real_work_followup.py')
+    declared = artifact.get('verifier_sha256', {})
+    return (set(declared) == required and all(
+        (source / name).is_file() and sha(source / name) == value
+        for name, value in declared.items()))
+
+
+def review_delivery_evidence(history, events, child, agent_path, deliveries, parent_turn):
+    completions = [item for item in native_reviewer_completions(history, events, child)
+                   if parent_turn and item['root_turn_id'] == parent_turn]
+    messages = {item['final_message'] for item in completions}
+    delivered = sorted({call for path, text, call in deliveries
+                        if path == agent_path and text in messages})
+    return {'delivered_call_ids': delivered,
+            'completed_turn_ids': [item['turn_id'] for item in completions],
+            'verified_completions': completions,
+            'passed': bool(completions and delivered)}
+
+
+def tool_environment_evidence(root,report):
+    declared=report.get('tool_environment',{})
+    before=declared.get('before',{})
+    selected=before.get('paths',{}).get('selected',{}).get('root')
+    if not selected:return {'passed':False,'reason':'Missing declared real-work tool environment'}
+    try:current=real_work_tools_binding(root,selected)
+    except (OSError,ValueError) as error:return {'passed':False,'reason':str(error)}
+    return {'passed':(declared.get('unchanged') is True and before==declared.get('after')==current
+                      and current['same_bytes'] is True
+                      and report.get('native_host_execution',{}).get('declared_python')==current['paths']['selected']['python']),
+            'current':current}
 
 
 def read(path):
@@ -124,7 +165,7 @@ def application_outcome(report, suites, validation):
     return {'original_report_passed': report.get('passed'), 'turn_status': report.get('turn_status'),
             'controller_error': report.get('error'), 'suites': suites, 'diff_check': report.get('diff_check'),
             'application_task_passed': report.get('passed') is True and report.get('turn_status') == 'completed'
-            and not report.get('error') and validation and all(x['exit'] == 0 for x in suites)}
+            and not report.get('error') and validation and all(x['exit'] == 0 and x.get('pytest_application_passed',True) for x in suites)}
 
 
 def function_outputs(parts, call):
@@ -165,6 +206,34 @@ def function_outputs(parts, call):
     return values
 
 
+def provider_transport_evidence(provider_requests, receipts, installed_model):
+    """Require a complete trace/receipt join; unknown requests cannot disappear."""
+    from collections import Counter
+    requested = set(provider_requests)
+    counts = Counter(row[0] for row in receipts)
+    observed = set(counts)
+    missing = sorted(requested - observed)
+    untraced = sorted(observed - requested)
+    duplicates = sorted(key for key, count in counts.items() if count != 1)
+    unresolved = sorted(row[0] for row in receipts
+                        if row[1] not in {'completed', 'cancelled'})
+    routes = [{'status': row[1], 'upstream_status': row[2],
+               'provider': row[3], 'route_reason': row[5]} for row in receipts]
+    valid_ids = all(isinstance(key, str) and key for key in requested | observed)
+    passed = (bool(requested) and valid_ids and not missing and not untraced
+              and not duplicates and not unresolved
+              and all(row[2] == 200 and row[3] for row in receipts
+                      if row[1] == 'completed')
+              and all(value['model'] == installed_model
+                      for value in provider_requests.values()))
+    return {'passed': bool(passed), 'receipt_rows_sha256': digest(receipts),
+            'routes': sorted({json.dumps(row, sort_keys=True) for row in routes}),
+            'request_ids': sorted(requested), 'receipt_ids': sorted(observed),
+            'missing_receipt_ids': missing, 'untraced_receipt_ids': untraced,
+            'duplicate_receipt_ids': duplicates,
+            'unresolved_or_failed_receipt_ids': unresolved}
+
+
 def reconstruct_case(root, entry):
     """Read-only reconstruction. Missing or inconsistent evidence fails closed."""
     root, entry = canonical(Path(root)), canonical(Path(entry))
@@ -194,11 +263,8 @@ def reconstruct_case(root, entry):
             raise ValueError('Followup evidence escapes fixture')
         active_artifact = load(attempt/'artifact.json')
         previous_report_link = sha(bind(attempt/'results.json')) == report['followup']['previous_report_sha256'] == active_artifact.get('previous_report_sha256')
-    required_producers = {'verify_real_work.py', 'verify_live.py', 'acceptance_assertions.py', 'host_execution_acceptance.py', 'real_work_imports.py'}
-    if report.get('followup'): required_producers.add('verify_real_work_followup.py')
-    verifier_matches = previous_report_link and set(active_artifact.get('verifier_sha256', {})) == required_producers and all(
-        Path(__file__).with_name(name).is_file() and sha(Path(__file__).with_name(name)) == value
-        for name, value in active_artifact.get('verifier_sha256', {}).items())
+    verifier_matches = previous_report_link and producer_provenance(
+        active_artifact, followup=bool(report.get('followup')), source=Path(__file__).parent)
     launches = [load(p) for p in sorted(root.glob('launch-*.json'))]
     event_groups = [load(p) for p in sorted(root.glob('events-*.json'))]
     events = [event for group in event_groups for event in group]
@@ -265,7 +331,7 @@ def reconstruct_case(root, entry):
     database = next((root/'home').glob('state_*.sqlite')); bind(database)
     for path in database.parent.glob(database.name+'-wal'): bind(path)
     reviews = []
-    with readonly(database) as db:
+    with closing(readonly(database)) as db, db:
         rows = db.execute('SELECT id,source,rollout_path,agent_path FROM threads WHERE agent_path IS NOT NULL').fetchall()
     for child, source, rollout_path, agent_path in rows:
         source = json.loads(source) if source.startswith('{') else {}
@@ -275,25 +341,16 @@ def reconstruct_case(root, entry):
         if not rollout.is_relative_to(root/'home'):
             continue
         history = [json.loads(x) for x in bind(rollout).read_text(encoding='utf-8').splitlines()]
-        messages = [x['payload'].get('last_agent_message') for x in history if x.get('type') == 'event_msg'
-                    and x.get('payload', {}).get('type') == 'task_complete']
-        terminals = [e['params']['turn'] for e in events if e.get('method') == 'turn/completed'
-                     and e['params'].get('threadId') == child and e['params']['turn'].get('status') == 'completed'
-                     and e['params']['turn'].get('error') is None]
-        delivered = [call for path, text, call in deliveries if path == agent_path and text in messages]
+        review = review_delivery_evidence(history, events, child, agent_path, deliveries,
+                                          report.get('final_turn_id'))
         seen_child = any(x['thread'] == child for x in provider_requests.values())
         reviews.append({'thread_id': child, 'agent_path': agent_path, 'rollout_sha256': sha(rollout),
-                        'delivered_call_ids': sorted(set(delivered)), 'completed_turn_ids': [t['id'] for t in terminals],
-                        'passed': bool(messages and terminals and delivered and seen_child)})
+                        **review, 'passed': review['passed'] and seen_child})
     state = root/'home/provider-state/adapter.sqlite'; bind(state)
     for path in state.parent.glob(state.name+'-wal'): bind(path)
-    with readonly(state) as db:
+    with closing(readonly(state)) as db, db:
         receipts = db.execute('SELECT id,status,upstream_status,provider,context_key,route_reason FROM receipts ORDER BY id').fetchall()
-    observed_receipts = [r for r in receipts if r[0] in provider_requests]
-    routes = [{'status': r[1], 'upstream_status': r[2], 'provider': r[3], 'route_reason': r[5]} for r in observed_receipts]
-    provider_ok = (bool(observed_receipts) and all(r[1] in {'completed', 'cancelled'} for r in observed_receipts)
-                   and all(r[2] == 200 and r[3] for r in observed_receipts if r[1] == 'completed')
-                   and all(x['model'] == installed['model'] for x in provider_requests.values()))
+    provider_proof = provider_transport_evidence(provider_requests, receipts, installed['model'])
     controls = report.get('fixture_inputs', {})
     current = real_work_input_hashes(root, root.name)
     for name in real_work_input_names(root.name): bind(root/name)
@@ -302,18 +359,27 @@ def reconstruct_case(root, entry):
     oracle_ok = all(oracle_guard.get(k) is True for k in ('read_probe_denied', 'restored_probe_unchanged', 'source_unchanged'))
     oracle_files = {p.relative_to(root/'oracle').as_posix(): sha(p) for p in sorted((root/'oracle').rglob('*'))
                     if p.is_file() and not any(x in {'__pycache__', '.pytest_cache', '.git'} for x in p.parts)}
+    from acceptance_assertions import pytest_execution_evidence,real_work_pytest_executed
     suites = []
     for suite in report['validation']:
         label = suite['suite']; imports = load(root/f'final-{label}-imports.json'); text = bind(root/f'final-{label}.txt').read_text(encoding='utf-8')
-        suites.append({'suite': label, 'exit': suite['exit'], 'tail': suite.get('tail'), 'output_sha256': sha(root/f'final-{label}.txt'),
+        pytest_suite=label in {'workspace','upstream-heldout','independent-cancellation'}
+        executed=pytest_execution_evidence(bind(root/f'final-{label}.junit.xml')) if pytest_suite else None
+        execution_ok=(not pytest_suite or (executed==suite.get('pytest_execution')
+                      and real_work_pytest_executed({**suite,'pytest_execution':executed})))
+        pytest_ok=(not pytest_suite or (execution_ok and executed['counts']['failure']==executed['counts']['error']==0))
+        suites.append({'suite': label, 'exit': suite['exit'],
+                       'pytest_execution':executed,'test_execution_verified':execution_ok,'pytest_application_passed':pytest_ok, 'tail': suite.get('tail'), 'output_sha256': sha(root/f'final-{label}.txt'),
                        'source_imports_verified': source_imports(root, label, imports),
                        'receipt_matches_report': imports == suite.get('source_imports'),
                        'output_matches_report': text.endswith(suite.get('tail', '')) and bool(suite.get('tail'))})
     required = {'workspace', 'upstream-heldout'}
     if root.name == 'httpcore': required |= {'independent-cancellation', 'real-tcp-0', 'real-tcp-1', 'real-tcp-2', 'tls-socket'}
     validation = set(x['suite'] for x in suites) == required and all(
-        x['source_imports_verified'] and x['receipt_matches_report'] and x['output_matches_report'] for x in suites)
+        x['source_imports_verified'] and x['receipt_matches_report'] and x['output_matches_report']
+        and x['test_execution_verified'] for x in suites)
     from acceptance_assertions import native_host_execution
+    tool_proof=tool_environment_evidence(root,report)
     host = native_host_execution(events, report['native_host_execution']['declared_python'], report['host_platform'])
     mechanisms = {
         'immutable_artifact': {'passed': immutable, 'source_id': installed['source_id'], 'native_manifest_sha256': sha(release/'native-runtime.json')},
@@ -322,9 +388,9 @@ def reconstruct_case(root, entry):
         'nonzero_tool_output_delivery': {'passed': failure_delivery, 'proofs': failure_proofs,
             'scope': 'Exact native nonzero command output delivered in model input. Numeric exit delivery and explicit model-selected output-only projections are recorded separately; representative failure round trips.'},
         'reviewer_lifecycle': {'passed': any(x['passed'] for x in reviews), 'reviewers': reviews},
-        'linked_browser_navigation': web, 'provider_transport': {'passed': provider_ok, 'receipt_rows_sha256': digest(receipts),
-            'routes': sorted({json.dumps(r, sort_keys=True) for r in routes})},
+        'linked_browser_navigation': web, 'provider_transport': provider_proof,
         'controlled_inputs': {'passed': inputs_ok, 'sha256': current},
+        'tool_environment': tool_proof,
         'oracle_isolation': {'passed': oracle_ok and bool(oracle_files) and verifier_matches,
             'recorded_guard': oracle_guard, 'current_tree_sha256': digest(oracle_files),
             'provenance': 'Historical before/after and denied-read observations from hash-matched task verifier; current tree bound separately.'},

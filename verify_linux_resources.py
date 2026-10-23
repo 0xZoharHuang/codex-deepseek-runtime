@@ -42,7 +42,9 @@ else:raise SystemExit('outside permission unexpectedly granted')
     # No bwrap is discoverable through PATH; the native resource fallback must run.
     environment.update(CODEX_HOME=str(root/'home'),PATH=str(root/'empty-path'))
     (root/'empty-path').mkdir()
-    arguments=['sandbox','-c','sandbox_mode="workspace-write"','-c','features.use_linux_sandbox_bwrap=true','--',sys._base_executable,'-I','-c',program,str(outside)]
+    # Fixtures may live under /tmp, which native workspace-write otherwise allows.
+    # Exclude both implicit temp roots so the outside-write assertion is meaningful.
+    arguments=['sandbox','-c','sandbox_mode="workspace-write"','-c','features.use_linux_sandbox_bwrap=true','-c','sandbox_workspace_write.exclude_slash_tmp=true','-c','sandbox_workspace_write.exclude_tmpdir_env_var=true','--',sys._base_executable,'-I','-c',program,str(outside)]
     result=subprocess.run([str(binary),*arguments],env=environment,cwd=root/'work',capture_output=True,text=True,timeout=45)
     (root/'native-sandbox.txt').write_text(result.stdout+result.stderr)
     assert result.returncode==0 and 'NATIVE_OUTSIDE_DENIED' in result.stdout,(result.returncode,result.stdout,result.stderr)

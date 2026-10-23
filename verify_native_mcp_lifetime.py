@@ -77,7 +77,7 @@ def scenario(root,binary,python,catalog):
         peer=Peer(root,command=[str(binary)],environment=env)
         tid=peer.new();turn,start=peer.start(tid,'Run the actual browser open tool against the owned slow document.')
         if not started.wait(20):raise AssertionError('Native MCP request never reached HTTP server')
-        peer.call('turn/interrupt',{'threadId':tid,'turnId':turn});peer.complete(tid,start)
+        peer.call('turn/interrupt',{'threadId':tid,'turnId':turn});peer.complete(tid,start,expected_status='interrupted',turn_id=turn)
         report['http_closed_on_turn_interrupt']=closed.wait(2)
         peer.close();peer=None
         report['http_closed_on_owner_exit']=closed.wait(8)
@@ -99,7 +99,7 @@ def main():
     digests={name:sha(binary) for name,binary in [('official',args.official),('patched',args.patched)]}
     if digests['patched']!=native['files']['bin/codex'+('.exe' if native['target']=='x86_64-pc-windows-msvc' else '')]:
         raise SystemExit('Native MCP comparison binary differs from its installed browser runtime')
-    verifiers={name:sha(Path(__file__).parent/name) for name in ['verify_native_mcp_lifetime.py','verify_live.py','install.py','src/codex_deepseek/cli.py']}
+    verifiers={name:sha(Path(__file__).parent/name) for name in ['verify_native_mcp_lifetime.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','install.py','src/codex_deepseek/cli.py']}
     results={}
     for name,binary in [('official',args.official),('patched',args.patched)]:
         results[name]=scenario(root/name,binary.resolve(),python,args.catalog.resolve());print(name,json.dumps(results[name]),flush=True)

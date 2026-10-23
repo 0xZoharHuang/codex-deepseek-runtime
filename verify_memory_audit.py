@@ -11,7 +11,7 @@ import sys
 import time
 import uuid
 
-from verify_live import Peer,text,qa_sandbox_mode
+from verify_live import Peer,text,qa_sandbox_mode,prepare_workspace,workspace_path
 from process_acceptance import shell_command
 from host_execution_acceptance import host_execution_evidence
 
@@ -132,10 +132,52 @@ def native_verification_commands(items,interpreter,verifier,workspace):
     return accepted
 
 
-def source_work_evidence(items,verified,ledger,ledger_hash,fixtures,interpreter,verifier,nonce):
+def publish_memory_verifier(root,work,source):
+    if work==root/'work':return source,None
+    # Only a read-only input is published; its private original stays preserved.
+    published=work.parent/(work.name+'-verify_ledger_fixture.py')
+    with published.open('xb') as stream:stream.write(source.read_bytes())
+    binding={'sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
+             'scope':'Owned QA executable input outside workspace writable roots',
+             'files':{}}
+    for name,path in [('source',source),('published',published)]:
+        info=path.stat()
+        binding['files'][name]={'path':str(path),'identity':[info.st_dev,info.st_ino]}
+    (root/'qa-readonly-fixture.json').write_text(json.dumps(binding,indent=2),encoding='utf-8')
+    return published,binding
+
+
+def memory_source_options(root, verifier, sandbox_mode):
+    """Give the owned verifier a native read grant without granting writes."""
+    if sys.platform != 'win32' or sandbox_mode != 'workspace-write':
+        return {'sandbox': sandbox_mode}
+    profile = 'cds-memory-verification'
+    config = root / 'home/config.toml'
+    with config.open('a', encoding='utf-8', newline='\n') as stream:
+        stream.write('\n[permissions.' + profile + ']\nextends = ":workspace"\n'
+                     '[permissions.' + profile + '.filesystem]\n'
+                     + json.dumps(str(verifier)) + ' = "read"\n')
+    return {'sandbox': None, 'permissions': profile}
+
+
+def memory_verifier_binding_unchanged(binding):
+    if binding is None:return True
+    try:
+        for item in binding['files'].values():
+            path=Path(item['path']);info=path.lstat()
+            if (path.is_symlink() or getattr(info,'st_file_attributes',0)&0x400 or info.st_nlink!=1
+                    or [info.st_dev,info.st_ino]!=item['identity']
+                    or hashlib.sha256(path.read_bytes()).hexdigest()!=binding['sha256']):return False
+        return set(binding['files'])=={'source','published'}
+    except (OSError,KeyError,TypeError):return False
+
+
+def source_work_evidence(items,verified,ledger,ledger_hash,fixtures,interpreter,verifier,nonce,verifier_binding=None):
     """Bind native tool execution to independently checked filesystem effects."""
     fixture_hashes={str(path):hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None for path in fixtures}
     unchanged=all(fixture_hashes[str(path)]==expected for path,expected in fixtures.items())
+    binding_ok=memory_verifier_binding_unchanged(verifier_binding)
+    unchanged=unchanged and binding_ok
     current_ledger_hash=hashlib.sha256(ledger.read_bytes()).hexdigest() if ledger.is_file() else None
     changed=current_ledger_hash is not None and current_ledger_hash!=ledger_hash
     commands=native_verification_commands(items,interpreter,verifier,ledger.parent)
@@ -145,7 +187,7 @@ def source_work_evidence(items,verified,ledger,ledger_hash,fixtures,interpreter,
     # independent oracle against unmodified fixtures.
     return {'passed':verified.returncode==0 and verified.stdout.strip()=='NATIVE_LEDGER_VERIFIED' and unchanged and changed and bool(commands),
             'answer':text(items),'verification_fixture_unchanged':unchanged,
-            'fixture_sha256':fixture_hashes,'verification_exit_code':verified.returncode,
+            'fixture_sha256':fixture_hashes,'readonly_verifier_binding':verifier_binding,'readonly_verifier_unchanged':binding_ok,'verification_exit_code':verified.returncode,
             'verification_stdout':verified.stdout,'verification_stderr':verified.stderr,
             'ledger_changed':changed,'ledger_sha256_before':ledger_hash,'ledger_sha256_after':current_ledger_hash,
             'native_verification_commands':commands,'native_completed_file_changes':file_changes,
@@ -203,30 +245,34 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True);parser.add_argument('--version',choices=['v1','v2'],default='v2')
     parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default=qa_sandbox_mode());args=parser.parse_args()
     root=args.output.resolve()/str(uuid.uuid4());(root/'home').mkdir(parents=True);(root/'work').mkdir()
+    work=prepare_workspace(root)
     (root/'home/config.toml').write_text(f'sandbox_mode="{args.sandbox_mode}"\nmodel_reasoning_effort="low"\n[features]\nmemories=false\n[memories]\nversion="{args.version}"\nmin_rollout_idle_hours=1\nmax_rollouts_per_startup=4\nuse_memories=true\n', encoding='utf-8')
     nonce='MIGRATION_'+uuid.uuid4().hex
-    (root/'work/ledger.py').write_text('import sqlite3\ndef credit(db,key,amount):\n    db.execute("INSERT INTO credits VALUES (?,?)",(key,amount))\n    db.commit()\n', encoding='utf-8')
-    ledger_hash=hashlib.sha256((root/'work/ledger.py').read_bytes()).hexdigest()
-    (root/'work/test_ledger.py').write_text('import sqlite3\nfrom ledger import credit\ndef test_repeated_credit_is_idempotent():\n    db=sqlite3.connect(":memory:")\n    db.execute("CREATE TABLE credits (key TEXT PRIMARY KEY, amount INTEGER NOT NULL)")\n    credit(db,"same",125)\n    credit(db,"same",125)\n    assert db.execute("SELECT sum(amount) FROM credits").fetchone()[0]==125\n', encoding='utf-8')
-    test_hash=hashlib.sha256((root/'work/test_ledger.py').read_bytes()).hexdigest()
+    (work/'ledger.py').write_text('import sqlite3\ndef credit(db,key,amount):\n    db.execute("INSERT INTO credits VALUES (?,?)",(key,amount))\n    db.commit()\n', encoding='utf-8')
+    ledger_hash=hashlib.sha256((work/'ledger.py').read_bytes()).hexdigest()
+    (work/'test_ledger.py').write_text('import sqlite3\nfrom ledger import credit\ndef test_repeated_credit_is_idempotent():\n    db=sqlite3.connect(":memory:")\n    db.execute("CREATE TABLE credits (key TEXT PRIMARY KEY, amount INTEGER NOT NULL)")\n    credit(db,"same",125)\n    credit(db,"same",125)\n    assert db.execute("SELECT sum(amount) FROM credits").fetchone()[0]==125\n', encoding='utf-8')
+    test_hash=hashlib.sha256((work/'test_ledger.py').read_bytes()).hexdigest()
     verifier=root/'verify_ledger_fixture.py'
+    private_verifier=verifier
     verifier.write_text('import sys\nsys.path.insert(0,sys.argv[1])\nfrom test_ledger import test_repeated_credit_is_idempotent\ntest_repeated_credit_is_idempotent()\nprint("NATIVE_LEDGER_VERIFIED")\n',encoding='utf-8')
+    verifier,verifier_binding=publish_memory_verifier(root,work,verifier)
     verifier_hash=hashlib.sha256(verifier.read_bytes()).hexdigest()
-    verification_command=shell_command([sys.executable,'-I',str(verifier),str(root/'work')])
+    verification_command=shell_command([sys.executable,'-I',str(verifier),str(work)])
     results=[];peer=None
     def passed(name,condition,detail):
         record={'name':name,'passed':bool(condition),'sandbox_mode':args.sandbox_mode,'detail':detail};results.append(record)
         (root/'results.json').write_text(json.dumps(results,indent=2), encoding='utf-8');print(json.dumps(record),flush=True)
         if not condition:raise AssertionError(name)
     try:
-        peer=Peer(root);source=peer.new(sandbox=args.sandbox_mode)
+        source_options=memory_source_options(root,verifier,args.sandbox_mode)
+        peer=Peer(root);source=peer.new(**source_options)
         source_prompt=f'This is the persistent ledger project for {nonce}. My durable project preferences: store money as integer cents, use SQLite transactions, preserve existing customer data, and treat repeated identical idempotency keys as a successful no-op. Never replace those requirements with floating-point arithmetic or destructive migration. Fix only ledger.py so the supplied repeat-credit test passes. Do not modify test_ledger.py or the supplied verification fixture. Run this exact verification command using the installed native host Python; do not use WSL, Cygwin, MSYS, Docker, Podman or another interpreter/environment:\n```\n{verification_command}\n```\nDo not delegate, search, or write memory artifacts yourself. Explain the root cause, fix, and actual verification.'
         items=peer.turn(source,source_prompt)
         host_evidence=host_execution_evidence(items)
-        observed_host=bool(native_verification_commands(items,sys.executable,verifier,root/'work'))
+        observed_host=bool(native_verification_commands(items,sys.executable,verifier,work))
         passed('memory_source_uses_native_host_environment',host_evidence['passed'] and observed_host,{**host_evidence,'native_host_python_observed':observed_host,'declared_interpreter':sys.executable})
-        verified=subprocess.run([sys.executable,'-I',str(verifier),str(root/'work')],capture_output=True,text=True,encoding='utf-8')
-        work_evidence=source_work_evidence(items,verified,root/'work/ledger.py',ledger_hash,{root/'work/test_ledger.py':test_hash,verifier:verifier_hash},sys.executable,verifier,nonce)
+        verified=subprocess.run([sys.executable,'-I',str(verifier),str(work)],capture_output=True,text=True,encoding='utf-8')
+        work_evidence=source_work_evidence(items,verified,work/'ledger.py',ledger_hash,{work/'test_ledger.py':test_hash,verifier:verifier_hash,private_verifier:verifier_hash},sys.executable,verifier,nonce,verifier_binding)
         passed('memory_source_real_tool_work',work_evidence['passed'],work_evidence)
         completed=[event['params']['turn']['id'] for event in peer.events if event.get('method')=='turn/completed' and event.get('params',{}).get('threadId')==source][-1]
         sample_prompt='Without tools, return the persistent project identifier and its integer-money convention.'

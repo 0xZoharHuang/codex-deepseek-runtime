@@ -1,0 +1,117 @@
+name: Current source with verified native packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/cds-qualification
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cds-native-reuse-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macos-arm64
+            runner: macos-15
+            architecture: arm64
+            uname: arm64
+          - label: linux-x64
+            runner: ubuntu-24.04
+            architecture: x64
+            uname: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 55
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+    steps:
+      - name: Check out current source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select fixed Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13.3"
+          architecture: ${{ matrix.architecture }}
+      - name: Verify disposable host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(uname -m)" = "${{ matrix.uname }}"
+          mkdir "$RUNNER_TEMP/cds-reuse-evidence"
+          python -c 'import json,os,platform,shutil; d=shutil.disk_usage(os.environ["RUNNER_TEMP"]); r={"platform":platform.platform(),"machine":platform.machine(),"free_bytes":d.free,"minimum_free_bytes":4*1024**3}; print(json.dumps(r)); assert d.free>=r["minimum_free_bytes"]' > "$RUNNER_TEMP/cds-reuse-evidence/runner-capacity.json"
+      - name: Install Linux runtime libraries
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libcap2 libasound2t64
+          dpkg-query -W libcap2 libasound2t64 > "$RUNNER_TEMP/cds-reuse-evidence/linux-runtime-libraries.txt"
+      - name: Install locked Python dependencies and current adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/cds-reuse-venv"
+          echo "$RUNNER_TEMP/cds-reuse-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/cds-reuse-venv/bin/python" -m pip install --only-binary=:all: --require-hashes -r ci/requirements-test.lock
+          "$RUNNER_TEMP/cds-reuse-venv/bin/python" -m pip install --no-deps --no-build-isolation .
+      - name: Check reuse controller rejection cases
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-reuse-controller-tests" --junitxml "$RUNNER_TEMP/cds-reuse-evidence/controller.xml"
+      - name: Acquire and verify the fixed original native artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B ci/reuse_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
+      - name: Run all 15 actual native transport cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B ci/qualify_native.py --package "$RUNNER_TEMP/cds-reused-package" --archived-recipe "$RUNNER_TEMP/cds-reuse-download/runtime-overlays.json" --evidence "$RUNNER_TEMP/cds-reuse-evidence/native" --work "$RUNNER_TEMP/cds-reuse-native-work"
+      - name: Run the remainder of the complete current offline collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B ci/qualify_adapter.py --package "$RUNNER_TEMP/cds-reused-package" --archived-recipe "$RUNNER_TEMP/cds-reuse-download/runtime-overlays.json" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" --native-evidence "$RUNNER_TEMP/cds-reuse-evidence/native" --evidence "$RUNNER_TEMP/cds-reuse-evidence/offline" --work "$RUNNER_TEMP/cds-reuse-offline-work"
+      - name: Preserve current and original provenance
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cds-reuse-evidence"
+          git rev-parse HEAD > "$RUNNER_TEMP/cds-reuse-evidence/current-source-commit.txt"
+          cp native/runtime-overlays.json "$RUNNER_TEMP/cds-reuse-evidence/current-runtime-overlays.json"
+          cp ci/requirements-test.lock "$RUNNER_TEMP/cds-reuse-evidence/requirements-test.lock"
+          if [[ -f "$RUNNER_TEMP/cds-reused-package/build-receipt.json" ]]; then
+            cp "$RUNNER_TEMP/cds-reused-package/build-receipt.json" "$RUNNER_TEMP/cds-reuse-evidence/original-build-receipt.json"
+            cp "$RUNNER_TEMP/cds-reuse-download/runtime-overlays.json" "$RUNNER_TEMP/cds-reuse-evidence/original-runtime-overlays.json"
+          fi
+      - name: Upload proofs and original failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cds-reused-${{ matrix.label }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-reuse-evidence/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6

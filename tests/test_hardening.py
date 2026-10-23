@@ -1,4 +1,5 @@
 """Real transport/process failure regressions, beyond model response examples."""
+from contextlib import closing
 
 import asyncio
 import json
@@ -107,6 +108,7 @@ asyncio.run(cli.run(['app-server']))
         assert not matches(native_pid,birth),'Owned native process outlived its killed wrapper'
     finally:
         if process.poll() is None:process.kill();process.wait()
+        if process.stderr:process.stderr.close()
         if native_pid:terminate(native_pid,birth,timeout=1)
 
 
@@ -137,7 +139,7 @@ asyncio.run(cli.run(['exec','test']))
         end=time.monotonic()+8;row=None
         while time.monotonic()<end:
             if pidfile.exists() and state.exists():
-                with sqlite3.connect(state) as db:row=db.execute('SELECT supervisor_pid,native_pid,native_birth FROM runtime_owners WHERE native_pid IS NOT NULL').fetchone()
+                with closing(sqlite3.connect(state)) as db, db:row=db.execute('SELECT supervisor_pid,native_pid,native_birth FROM runtime_owners WHERE native_pid IS NOT NULL').fetchone()
                 if row:break
             time.sleep(.025)
         assert row,wrapper.stderr.read().decode('utf-8',errors='replace') if wrapper.poll() is not None else 'Native did not register'
@@ -159,6 +161,7 @@ asyncio.run(cli.run(['exec','test']))
         assert identity(os.getpid()) is not None
     finally:
         if wrapper.poll() is None:wrapper.kill();wrapper.wait(timeout=3)
+        if wrapper.stderr:wrapper.stderr.close()
         if native_pid:terminate(native_pid,birth,timeout=1)
         if supervisor_pid and matches(supervisor_pid,supervisor_birth):
             try:psutil.Process(supervisor_pid).resume()

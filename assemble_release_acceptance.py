@@ -27,8 +27,9 @@ TARGETS={'aarch64-apple-darwin':('macOS arm64',129),
 KEYRING_PROBE_GATES={'auth-stores','oauth-secrets'}
 TERMINAL_GATES={'tui','tui-interrupt'}
 TERMINAL_EXECUTION_SOURCES={'run_acceptance.py','install.py','verify_tui_audit.py','verify_tui_interrupt.py',
-                            'terminal_acceptance.py','credential_acceptance.py','process_acceptance.py'}
+                            'terminal_acceptance.py','credential_acceptance.py','process_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
 RECOVERY_KINDS={'undeclared-tool','schema','schema-multiple','schema-tool-final','schema-tool-before-terminal','schema-overflow'}
+NATIVE_FAULT_KINDS={'truncated','tcp-reset','auth401','auth403','effect-before','effect-after','effect-worker'}
 INSTALLATION_PATH_FIELDS={'release_id','release_environment','source','native_package','console_script_sha256'}
 INSTALLATION_CONTENT_FIELDS={'source_id','source_sha256','adapter_source_sha256','model_catalog_sha256',
                              'dependencies_lock_sha256','native_version','native_archive_sha256','model'}
@@ -53,6 +54,104 @@ def validate_complex_runtime(path,root,entry,installation):
     return actual
 
 
+
+def validate_peer_verifiers(artifact,expected,label):
+    hashes=artifact.get('verifier_sha256',{})
+    expected=set(expected)|{'verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
+    require(isinstance(hashes,dict) and set(hashes)==expected,label+' verifier/helper inventory differs')
+    for name,digest in hashes.items():require(sha(SOURCE/name)==digest,label+' verifier changed: '+name)
+    return hashes
+
+def validate_fault_rows(rows):
+    expected={(kind,variant) for kind in NATIVE_FAULT_KINDS for variant in ('official','candidate')}
+    require(isinstance(rows,list) and len(rows)==len(expected)
+            and {(row.get('kind'),row.get('variant')) for row in rows}==expected
+            and all(row.get('passed') is True for row in rows),
+            'Native fault proof requires all fourteen unique passing cases')
+    return rows
+
+
+def validate_native_faults(root,entry,installation,native,official_sha256):
+    from contextlib import closing
+    from verify_fault_boundaries import VERIFIERS
+    root=Path(root);artifact=load(root/'artifact.json');complete=load(root/'complete.json')
+    require(complete.get('passed') is True and complete.get('all_scenarios') is True
+            and complete.get('artifact')==sha(root/'artifact.json'),
+            'Native fault proof is incomplete or belongs to another artifact')
+    selected=complete.get('selected_scenarios',[])
+    require(len(selected)==7 and set(selected)==NATIVE_FAULT_KINDS,
+            'Native fault selected scenario set differs')
+    require(artifact.get('model_calls')==complete.get('model_calls')==0
+            and artifact.get('real_credentials')==complete.get('real_credentials')==0,
+            'Controlled native fault proof used real credentials or inference')
+    require(comparison_path(artifact.get('entry',''))==comparison_path(entry)
+            and artifact.get('entry_sha256')==installation['console_script_sha256']
+            and artifact.get('installation_sha256')==sha(entry.parent.parent.parent/'installation.json')
+            and artifact.get('candidate_sha256')==native['files']['bin/codex.exe']
+            and artifact.get('official_sha256')==official_sha256,
+            'Native fault proof has a different installation or reference')
+    checks=load(root/'final-artifact-check.json')
+    require(set(checks)=={'entry','installation','candidate','reference','native_manifest','valid_release','direct_reference_verdicts'}
+            and all(value is True for value in checks.values()),'Native fault final artifact checks failed')
+    hashes=artifact.get('verifier_sha256',{})
+    require(set(hashes)==set(VERIFIERS) and all(sha(SOURCE/name)==digest for name,digest in hashes.items()),
+            'Native fault verifier/helper identity changed')
+    raw=artifact.get('auth_native_default_basis',{}).get('raw',{})
+    require(set(raw)=={'auth401','auth403'},'Native direct auth reference evidence is missing')
+    evidence={}
+    for kind,row in raw.items():
+        path=Path(row['path']);require(sha(path)==row['sha256'],'Native direct auth reference changed')
+        proof=load(path)
+        require(proof.get('passed') is True and proof.get('binary_sha256')==official_sha256
+                and proof.get('request_count')==row['requests'] and row['requests']>0,
+                'Native direct auth reference identity or count differs')
+        evidence['direct_'+kind]=row['sha256']
+    rows=validate_fault_rows(load(root/'results.json'))
+    comparisons=load(root/'comparisons.json')
+    require(comparisons==complete.get('comparisons') and len(comparisons)==7
+            and {row.get('kind') for row in comparisons}==NATIVE_FAULT_KINDS,
+            'Native fault comparison set differs')
+    rebuilt={}
+    for row in rows:
+        kind,variant=row['kind'],row['variant'];case=root/(kind+'-'+variant)
+        require(comparison_path(row['evidence'])==comparison_path(case/'verdict.json'),
+                'Native fault evidence escaped its named case')
+        proof=load(case/'verdict.json')
+        require(proof.get('passed') is True and proof.get('kind')==kind
+                and proof.get('binary_sha256')==artifact['official_sha256' if variant=='official' else 'candidate_sha256']
+                and proof.get('cleanup_errors')==[] and proof.get('remaining_before_forced_cleanup')==[],
+                'Native fault case failed, changed identity or left owned processes')
+        effect_path=case/'effects.jsonl'
+        actual_effects=[json.loads(line) for line in effect_path.read_text(encoding='utf-8').splitlines() if line] if effect_path.exists() else []
+        require(actual_effects==proof['effects'] and len(actual_effects)==(1 if kind in {'effect-after','effect-worker'} else 0),
+                'Native fault side effects differ from actual append ledger')
+        requests=load(case/'upstream-requests.json')
+        require(len(requests)==proof['requests'],'Native fault actual request count differs')
+        state=case/'home/provider-state/adapter.sqlite'
+        with closing(sqlite3.connect(state.as_uri()+'?mode=ro',uri=True)) as db:
+            actual_receipts=[dict(zip(['id','status','upstream_status','response_id','detail'],value))
+                             for value in db.execute('SELECT id,status,upstream_status,response_id,detail FROM receipts ORDER BY started')]
+        require(actual_receipts==proof['receipts'],'Native fault actual receipt history differs')
+        cold=proof.get('cold_evidence',{})
+        if kind in {'effect-after','effect-worker'}:
+            require(cold.get('mcp_events')==[] and cold.get('ledger')==actual_effects and bool(cold.get('call')),
+                    'Native fault cold recovery lacks original call or redispatched MCP')
+        semantic={'requests':proof['requests'],'effects':len(actual_effects),
+                  'receipts':[[item['status'],item['upstream_status']] for item in actual_receipts],
+                  'auth_attempts':proof.get('failed_auth_attempts'),
+                  'cold_mcp_count':len(cold.get('mcp_events',[]))}
+        rebuilt[(kind,variant)]=semantic
+    for row in comparisons:
+        require(row.get('passed') is True and row.get('official')==rebuilt[(row['kind'],'official')]
+                and row.get('candidate')==rebuilt[(row['kind'],'candidate')] and row['official']==row['candidate'],
+                'Native fault comparison does not match its raw cases')
+    for path in root.rglob('*'):
+        if path.is_file():evidence[path.relative_to(root).as_posix()]=sha(path)
+    return {'passed':True,'scenarios':sorted(NATIVE_FAULT_KINDS),'actual_cases':14,
+            'model_calls':0,'real_credentials':0,'raw_effect_and_receipt_reconstruction':True,
+            'evidence_sha256':evidence}
+
+
 def validate_protocol_recovery(path,installation,native):
     """Reconstruct the retry outcome from hash-bound native and provider records."""
     path=Path(path);artifact=load(path/'artifact.json');proof=load(path/'verdict.json')
@@ -65,9 +164,7 @@ def validate_protocol_recovery(path,installation,native):
             'Protocol recovery launcher/native binary differs')
     require(artifact.get('controller_optimize')==0 and proof.get('passed') is True and
             proof.get('verifier_and_artifact_unchanged') is True,'Protocol recovery integrity or scenario failed')
-    require(set(artifact.get('verifier_sha256',{}))=={'verify_protocol_recovery.py','verify_live.py','install.py'},
-            'Protocol recovery verifier inventory differs')
-    for name,digest in artifact['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'Protocol recovery verifier changed: '+name)
+    validate_peer_verifiers(artifact,{'verify_protocol_recovery.py','install.py'},'Protocol recovery')
     events_paths=list(path.glob('events-*.json'));launch_paths=list(path.glob('launch-*.json'))
     require(len(events_paths)==len(launch_paths)==1,'Protocol recovery must have exactly one native session')
     names={'request-bodies.json','receipts.json','observed.json','client-requests.jsonl','state.sqlite',events_paths[0].name,launch_paths[0].name}
@@ -209,6 +306,9 @@ def expected_offline_skips(target):
     result={}
     if target!='x86_64-unknown-linux-gnu':
         result['test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot']='Native Linux daemon process identity contract'
+    if target=='x86_64-pc-windows-msvc':
+        result['test_cds_skill_inspect::test_posix_actual_space_path_and_exact_version_argument']='POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check'
+        result['test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded']='POSIX shell/shebang timeout fixture; not Windows process execution evidence'
     if target!='x86_64-pc-windows-msvc':
         result['test_platforms::test_extended_paths_cannot_alias_codex_app_state']='Win32 extended-length directory aliases'
         for name in ['daemon.pid','app-server.pid']:
@@ -222,6 +322,84 @@ def expected_offline_skips(target):
                      'test_locked_activation_fails_atomically_and_preserves_current_receipt']:
             result['test_windows_launchers::'+name]='Exercises Windows PE executable launchers'
     return result
+
+
+def validate_method_platform_boundaries(report,root,native):
+    """Verify the one fixed Windows restricted-token control boundary, never as positive execution."""
+    from verify_remaining_local import (windows_command_boundary_detail_valid,WINDOWS_COMMAND_SCOPE,
+                                       WINDOWS_STREAM_ERROR,WINDOWS_CONTROL_ERROR)
+    target=native['target'];expected={'command/exec/terminate'} if target=='x86_64-pc-windows-msvc' else set()
+    rows=report.get('methods',{})
+    actual={name for name,row in rows.items() if row.get('status')=='platform_boundary_verified'}
+    require(actual==expected,'Unexpected or missing platform/configuration boundary')
+    verified={}
+    for name in sorted(expected):
+        row=rows[name];detail=row.get('detail')
+        require(windows_command_boundary_detail_valid(detail,target),'Windows restricted-token boundary detail differs')
+        evidence=(Path(root)/row['evidence']).resolve()
+        require(comparison_path(evidence).is_relative_to(comparison_path(root)),'Boundary method evidence escaped its run')
+        original=[item for item in load(evidence) if item.get('method')==name]
+        require(len(original)==1 and original[0]=={k:v for k,v in row.items() if k!='evidence'},'Boundary method raw row differs')
+        case=evidence.parent
+        reference=Path(detail['reference']['path'])
+        require(sha(reference)==detail['reference']['sha256'],'Official boundary reference changed')
+        proof=load(reference)
+        require(proof.get('passed') is True and proof.get('scope')==WINDOWS_COMMAND_SCOPE
+                and proof.get('official_terminate_os_execution') is False,'Reference must describe only the compared configuration guard')
+        source=proof.get('source',{})
+        require(source.get('upstream_commit')==BASELINE_COMMIT and source.get('byte_identical') is True
+                and source.get('sha256')=='772a643ee76491d9103698ad64872af85d273529a6da74e48e2af8861b557738'
+                and sha(source['upstream_file'])==sha(source['patched_file'])==source['sha256'],'Native control guard source differs from the fixed official source')
+        files={str(evidence):sha(evidence),str(reference):sha(reference),
+               source['upstream_file']:sha(source['upstream_file']),source['patched_file']:sha(source['patched_file'])}
+        for label in ['official','patched']:
+            compared=proof['cases'][label]
+            binary_expected=('8c24181c61c94ce8982ab6a5a9408a068f1385d1427c6d424edd5cd330fb6994'
+                             if label=='official' else native['files']['bin/codex.exe'])
+            require(compared['binary_sha256']==sha(compared['binary'])==binary_expected,'Boundary comparison binary identity differs')
+            require(compared.get('setup_state_absent') is True,'Official guard comparison must not provision shared sandbox state')
+            for part in ['response','config']:
+                require(sha(compared[part])==compared[part+'_sha256'],'Boundary reference raw bytes changed')
+                files[compared[part]]=compared[part+'_sha256']
+            response=load(compared['response'])
+            require(response.get('error')==WINDOWS_STREAM_ERROR and 'result' not in response,'Official/final streaming guard differs')
+            config=load(compared['config']);config=config.get('config',config)
+            require(config.get('sandbox_mode')=='workspace-write' and config.get('windows',{}).get('sandbox')=='elevated','Compared native configuration is not the restricted Windows scope')
+        traces=list(case.glob('client-requests.jsonl'));event_files=list(case.glob('events-*.json'))
+        require(len(traces)==len(event_files)==1,'Boundary must retain one unambiguous native session')
+        requests=[json.loads(line) for line in traces[0].read_text(encoding='utf-8').splitlines()]
+        events=load(event_files[0]);paired={}
+        for req in requests:
+            if 'method' not in req or 'id' not in req:continue
+            key=(type(req['id']).__name__,req['id'])
+            require(key not in paired,'Duplicate boundary RPC request identity')
+            replies=[v for v in events if 'method' not in v and type(v.get('id')) is type(req['id']) and v.get('id')==req['id']]
+            require(len(replies)==1,'Boundary request lacks exactly one native reply')
+            paired[key]=(req,replies[0])
+        def single(method,predicate):
+            found=[pair for pair in paired.values() if pair[0]['method']==method and predicate(pair[0]['params'])]
+            require(len(found)==1,'Boundary operation is ambiguous or missing: '+method)
+            return found[0]
+        stream,stream_reply=single('command/exec',lambda v:v.get('processId')=='stream-boundary')
+        active,active_reply=single('command/exec',lambda v:v.get('processId')=='native-windows-boundary')
+        terminate,terminate_reply=single(name,lambda v:v.get('processId')=='native-windows-boundary')
+        require(stream_reply.get('error')==WINDOWS_STREAM_ERROR and terminate_reply.get('error')==WINDOWS_CONTROL_ERROR,'Current native guard reply differs')
+        for req in [stream,active]:
+            policy=req['params'].get('sandboxPolicy',{})
+            require(policy==detail['sandbox_policy'] and policy.get('networkAccess') is False
+                    and req['params'].get('cwd')==detail['workspace'],'Boundary must retain the declared workspace without elevated execution')
+        command=detail['active_command'];ready=Path(active['params']['cwd'])/('control-ready-'+command['ready_nonce']+'.json')
+        require(sha(ready)==command['ready_file_sha256'],'Actual restricted child readiness changed')
+        ready_value=load(ready)
+        require(ready_value.get('nonce')==command['ready_nonce'] and ready_value.get('is_admin') is False
+                and ready_value.get('sid')==command['sid'],'Restricted child identity differs')
+        require(active_reply.get('result',{}).get('exitCode')==0
+                and active_reply['result'].get('stdout','').strip()==command['ready_nonce'],'Restricted command must complete naturally after rejected termination')
+        files.update({str(traces[0]):sha(traces[0]),str(event_files[0]):sha(event_files[0]),str(ready):sha(ready)})
+        verified[name]={'boundary_id':detail['boundary_id'],'scope':detail['scope'],'positive_execution_claimed':False,
+                        'reason':'Fixed upstream legacy command/exec control is unavailable with Windows restricted-token sandbox; process APIs have separate positive tests.',
+                        'evidence_sha256':files}
+    return verified
 
 
 def validate_offline_collection(cases,collection):
@@ -348,7 +526,7 @@ def superseded_terminal_roots(root):
 
 def validate_method_verifiers(artifact,snapshot=None,method_snapshot=None):
     hashes=artifact.get('verifier_sha256',{});expected={'verify_remaining_methods.py','verify_remaining_local.py','verify_live.py',
-                                                    'assemble_release_acceptance.py','process_acceptance.py','install.py'}
+                                                    'assemble_release_acceptance.py','process_acceptance.py','install.py','windows_acceptance_setup.py','qa_workspace.py'}
     require(set(hashes)==expected,'Per-method producer/helper inventory differs')
     legacy=None
     for name,digest in hashes.items():
@@ -457,31 +635,13 @@ def external_offline_receipt(root,installation,native,scope):
 
 
 def validate_native_source_audit(proof,native):
-    from build_native import SOURCE_ASSET
-    require(proof.get('passed') is True and proof.get('target')==native.get('target')
-            and proof.get('upstream_commit')==BASELINE_COMMIT==native.get('upstream_commit')
-            and proof.get('upstream_archive_sha256')==SOURCE_ASSET[1],
-            'Native source audit target/upstream/archive identity mismatch')
-    require(proof.get('source_files')==9353 and proof.get('unchanged_protected_runtime_files')==348
-            and proof.get('external_cargo_packages_unchanged') is True
-            and proof.get('full_source_hashes_verified') is True and proof.get('patch_replay_passed') is True,
-            'Native source audit omitted full source, protected runtime, dependency or replay checks')
-    common=load(SOURCE/'native/source-changes.json')
-    require(common['base_commit']==BASELINE_COMMIT and proof.get('changed_native_files')==sorted(row['path'] for row in common['files']),
-            'Native source audit declared file set differs from the frozen patch')
-    patches={'codex-runtime.patch':sha(SOURCE/'native/codex-runtime.patch')}
-    patch_identity=patches['codex-runtime.patch']
-    if native['target']=='x86_64-pc-windows-msvc':
-        overlay=load(SOURCE/'native/windows-source-changes.json')
-        require(overlay['base_patch_sha256']==patch_identity,'Windows overlay does not apply to this common patch')
-        patches['windows-transport.patch']=sha(SOURCE/'native/windows-transport.patch')
-        patch_identity=overlay['combined_patch_sha256']
-    require(proof.get('patches')==patches and native.get('patch_sha256')==patch_identity,'Native source patch identity differs from the release')
-    verifiers=proof.get('verifier_sha256',{})
-    require(set(verifiers)=={'verify_native_source.py','build_native.py'},'Native source verifier identity incomplete')
-    for name,digest in verifiers.items():require(sha(SOURCE/name)==digest,'Native source verifier changed: '+name)
-    return {'upstream_source_files':9353,'unchanged_protected_runtime_files':348,'external_cargo_packages_unchanged':True,
-            'patch_replay_passed':True,'patch_sha256':patch_identity,'declared_changed_files':proof['changed_native_files']}
+    # Reconstruct the pinned archive inventory and target recipe, then recheck
+    # the exact source tree and shipped package rather than trusting counts.
+    from verify_native_source import validate_audit
+    try:
+        return validate_audit(proof,native)
+    except (OSError,ValueError,KeyError,TypeError) as error:
+        raise SystemExit('Native source/package audit failed: '+str(error)) from error
 
 
 def validate_linux_resources(path,installation,native):
@@ -520,7 +680,7 @@ def gate_evidence(regression,gate):
 
 def validate_terminal_qa(path,entry,installation,native,mode,*,interrupt=False):
     qa=load(path/'qa-source.json')
-    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py'}
+    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
     if interrupt:names|={'verify_tui_interrupt.py','process_acceptance.py'}
     files=qa.get('qa_files_sha256',{})
     require(set(files)==names and all(sha(SOURCE/name)==digest for name,digest in files.items()),'Terminal QA source identity changed or is incomplete')
@@ -587,11 +747,81 @@ def validate_terminal_qa(path,entry,installation,native,mode,*,interrupt=False):
             'background_retained_until_native_stop':True,'native_stop_kernel_cleanup_verified':True,'sandbox_mode':mode}
 
 
+def validate_hook_trust_cases(root, rows):
+    """Reconstruct UI, exact turn, trust hashes and effects from immutable raw files."""
+    from verify_hook_trust import CASE_NAMES, case_contract, one_fixture_hook
+    root=Path(root).resolve()
+    require(isinstance(rows,list) and [row.get('name') for row in rows]==list(CASE_NAMES),
+            'Hook trust requires all three distinct native lifecycle cases')
+    all_files={};previous_calls=[];declarations=[];hashes=[];nonces=[]
+    for row in rows:
+        name=row['name']
+        require(row.get('passed') is True and row.get('root')==name,'Hook trust case failed or escaped its scope')
+        case=root/name;recorded=row.get('evidence_sha256')
+        require(isinstance(recorded,dict) and recorded,'Hook trust raw inventory missing')
+        actual={}
+        for path in case.rglob('*'):
+            require(not path.is_symlink() and not getattr(path,'is_junction',lambda:False)(),
+                    'Hook trust evidence contains a link')
+            if path.is_file():
+                require(comparison_path(path).is_relative_to(comparison_path(case)),'Hook trust evidence escaped case')
+                actual[path.relative_to(case).as_posix()]=sha(path)
+        require(actual==recorded,'Hook trust raw evidence inventory/hash differs')
+        required={'expectations.json','hooks-before.json','hooks-after.json','config-before.toml','config-after.toml',
+                  'hook-calls-before.json','hook-calls-after.json','shell-effect.json','terminal.pty','inputs.json',
+                  'completion.json','native-thread.json','cleanup.json','hooks-declaration.json',
+                  'native-session.jsonl','rollout.jsonl'}
+        require(required<=set(actual),'Hook trust lifecycle raw files missing')
+        expected=load(case/'expectations.json')
+        require(expected.get('name')==name,'Hook trust expectations belong to another case')
+        before=one_fixture_hook(load(case/'hooks-before.json'))
+        after=one_fixture_hook(load(case/'hooks-after.json'))
+        require(before==expected['before_hook'] and after==expected['after_hook'],'Hook trust raw discovery differs')
+        calls_before=load(case/'hook-calls-before.json');calls_after=load(case/'hook-calls-after.json')
+        require(calls_before==previous_calls,'Hook execution history is discontinuous between cases')
+        cleanup=load(case/'cleanup.json')
+        require(cleanup.get('passed') is True and cleanup.get('errors')==[],'Hook terminal/process cleanup failed')
+        case_contract(name,before,after,(case/'config-before.toml').read_bytes(),
+                      (case/'config-after.toml').read_bytes(),calls_before,calls_after,
+                      expected['hook_nonce'],load(case/'shell-effect.json'),expected['shell_effect'],
+                      (case/'terminal.pty').read_bytes(),load(case/'inputs.json'),
+                      load(case/'completion.json'),load(case/'native-thread.json'))
+        previous_calls=calls_after;declarations.append((case/'hooks-declaration.json').read_bytes())
+        hashes.append(before['currentHash']);nonces.append(expected['shell_effect']['nonce'])
+        all_files.update({name+'/'+rel:digest for rel,digest in actual.items()})
+    require(declarations[0]==declarations[1] and declarations[2]!=declarations[1],
+            'Hook declaration did not change only at retrust case')
+    require(hashes[0]==hashes[1] and hashes[2]!=hashes[1],'Native changed-declaration hash was not observed')
+    require(len(set(nonces))==3,'Hook lifecycle reused a shell-effect identity')
+    return {'passed':True,'cases':list(CASE_NAMES),'raw_reconstructed':True,'evidence_sha256':all_files}
+
+
+def validate_hook_trust(root,installation,native):
+    from verify_hook_trust import CASE_NAMES, VERIFIERS
+    root=Path(root)
+    identity=load(root/'artifact.json');proof=load(root/'verdict.json')
+    installation_lineage(installation,native,identity)
+    require(proof.get('installation')==installation and proof.get('target')==native['target'],
+            'Hook trust verdict installation differs')
+    require(proof.get('passed') is True and proof.get('verifier_and_artifact_unchanged') is True
+            and proof.get('native_trust_ui_exercised') is True and proof.get('bypass_hook_trust_used') is False
+            and proof.get('failure') is None,'Native hook trust was not fully verified')
+    require(identity.get('controller_optimize')==0 and identity.get('cases')==list(CASE_NAMES),
+            'Hook trust controller contract differs')
+    verifiers=identity.get('verifier_sha256',{})
+    require(set(verifiers)==set(VERIFIERS) and all(sha(SOURCE/name)==digest for name,digest in verifiers.items()),
+            'Hook trust verifier dependency inventory differs')
+    require(load(root/'results.json')==proof.get('cases'),'Hook trust result rows differ from verdict')
+    return validate_hook_trust_cases(root,proof['cases'])
+
+
 def main():
     p=argparse.ArgumentParser()
     for flag in ['entry','regression','methods','local-account','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','native-source-audit','fixtures','rpc-observations']:
         p.add_argument('--'+flag,type=Path,required=True)
     p.add_argument('--windows-sandbox',type=Path)
+    p.add_argument('--fault-boundaries',type=Path,help='Required Windows native network/auth/non-idempotent effect fault comparison')
+    p.add_argument('--hook-trust',type=Path,required=True,help='Actual native first trust, skip and changed-hook UI lifecycle evidence')
     p.add_argument('--linux-resources',type=Path)
     p.add_argument('--regression-source',type=Path,help='Explicit frozen producer QA directory with a same-name .manifest.json sidecar')
     p.add_argument('--offline-regression',type=Path,help='Current-source complete offline-only acceptance run')
@@ -610,6 +840,12 @@ def main():
     evidence={}
     def record(label,path):evidence[label]=sha(path)
     def same_install(a,label):require(a['installation']==metadata,'Mixed runtime installations in '+label)
+    hook_trust=validate_hook_trust(args.hook_trust,metadata,native)
+    for name in ['artifact.json','verdict.json','results.json']:
+        record('hook_trust_'+name,args.hook_trust/name)
+    for name,expected in hook_trust.pop('evidence_sha256').items():
+        record('hook_trust_raw_'+name,args.hook_trust/name)
+        require(evidence['hook_trust_raw_'+name]==expected,'Hook evidence changed during assembly')
     native_source=validate_native_source_audit(load(args.native_source_audit),native)
     record('native_source_audit',args.native_source_audit)
     linux_resources=None
@@ -643,7 +879,10 @@ def main():
     record('regression_artifact',args.regression/'artifact.json');record('regression_verdict',args.regression/'verdict.json')
     methods=load(args.methods/'verdict.json');method_artifact=load(args.methods/'artifact.json');same_install(method_artifact,'per-method acceptance')
     require(method_artifact.get('target')==scope['target'] and method_artifact.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,'Per-method platform/baseline identity missing')
-    require(methods['passed'] and methods['verifier_and_artifact_unchanged'] and methods['positive_local_methods']==60 and methods['backend_boundaries_verified']==4 and not methods['missing'] and not methods['unexpected'] and not methods['invalid'],'Per-method acceptance incomplete')
+    platform_boundaries=validate_method_platform_boundaries(methods,args.methods,native)
+    require(methods['passed'] and methods['verifier_and_artifact_unchanged'] and methods['positive_local_methods']==60-len(platform_boundaries)
+            and methods['backend_boundaries_verified']==4 and methods.get('platform_boundaries_verified',0)==len(platform_boundaries)
+            and not methods['missing'] and not methods['unexpected'] and not methods['invalid'],'Per-method acceptance incomplete')
     expected=set(load(SOURCE/'reports/runtime-v0.3-unexercised-local.json')['methods'])
     require(set(methods['methods'])==expected,'Per-method names differ from the frozen gap inventory')
     require({g['group'] for g in methods['groups']}==set(method_artifact['groups']) and len(methods['groups'])==7 and all(g['exit']==0 for g in methods['groups']),'Per-method group did not complete')
@@ -653,7 +892,7 @@ def main():
         require(comparison_path(path).is_relative_to(comparison_path(args.methods)),'Method evidence escaped its run')
         original=[r for r in load(path) if r['method']==name]
         require(len(original)==1 and original[0]=={k:v for k,v in row.items() if k!='evidence'},'Per-method postcondition receipt differs: '+name)
-        require(row['status']==('backend_boundary_verified' if name in REMOTE else 'passed'),'Per-method status differs: '+name)
+        require(row['status']==('backend_boundary_verified' if name in REMOTE else 'platform_boundary_verified' if name in platform_boundaries else 'passed'),'Per-method status differs: '+name)
     require({n for n,r in methods['methods'].items() if r['status']=='backend_boundary_verified'}==REMOTE,'Incorrect backend scope classification')
     record('methods_artifact',args.methods/'artifact.json');record('methods_verdict',args.methods/'verdict.json')
     lifecycle_lineage={}
@@ -663,8 +902,8 @@ def main():
         require(proof.get('installation')==identity['installation'],label+' verdict and artifact installations differ')
         require(proof.get('passed') is True and proof.get('target')==scope['target'] and identity.get('target')==scope['target'],label+' platform/lifecycle failed')
         require(proof.get('verifier_and_artifact_unchanged') is True,label+' verifier/artifact immutability was not verified')
-        require(identity.get('verifier_sha256'),label+' verifier identity missing')
-        for name,digest in identity['verifier_sha256'].items():require(sha(SOURCE/name)==digest,label+' verifier changed: '+name)
+        producer='verify_local_account.py' if label=='local_account' else 'verify_windows_sandbox.py'
+        validate_peer_verifiers(identity,{producer,'install.py'},label)
         rows=proof['methods'];require(len(rows)==len(names) and {r['method'] for r in rows}==names and all(r['status']=='passed' for r in rows),label+' method postconditions incomplete')
         require(load(path/'results.json')==rows,label+' raw results differ from verdict')
         for filename in ['artifact.json','verdict.json','results.json']:record(label+'_'+filename,path/filename)
@@ -697,8 +936,7 @@ def main():
             (browser_artifact.get('sandbox_mode')=='workspace-write' or
              (scope['target']=='x86_64-pc-windows-msvc' and browser_artifact.get('sandbox_mode')=='danger-full-access' and 'windows_sandbox' in lifecycle_lineage)),
             'Native browser sandbox mode is missing or lacks a matching positive native Windows sandbox lifecycle')
-    require(browser_artifact.get('verifier_sha256'),'Native browser verifier identity missing')
-    for name,digest in browser_artifact['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'Native browser verifier changed: '+name)
+    validate_peer_verifiers(browser_artifact,{'verify_browser_runtime.py','install.py','acceptance_assertions.py'},'Native browser')
     required_browser={'native_direct_mcp_actual_open_find_click','cold_native_mcp_page_reference_recovery','model_native_browse_find_follow_and_file_effect','bundled_public_browser_actual_https_find_and_link','slow_native_browser_request_actually_started','native_interrupt_preserves_official_mcp_lifetime','browser_remains_usable_after_turn_interruption','native_owner_shutdown_closes_browser_http_request'}
     require(required_browser<={r['name'] for r in browser} and all(r['passed'] for r in browser),'Native browser acceptance incomplete')
     record('browser_artifact',args.browser/'artifact.json');record('browser_results',args.browser/'results.json');record('browser_verdict',args.browser/'verdict.json')
@@ -723,18 +961,26 @@ def main():
         require(row['passed'] and row['binary_sha256']['patched']==expected_native,'Native comparison mismatch: '+label)
         require(row['binary_sha256']['official']==schema.get('official_binary_sha256'),'Native comparisons did not use the same archive-verified official binary: '+label)
         require(row.get('binary_and_verifier_unchanged') is True and row.get('verifier_sha256'),'Native comparison artifact/verifier identity missing: '+label)
-        for name,digest in row['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'Native comparison verifier changed: '+name)
+        expected={'verify_native_mcp_lifetime.py','install.py','src/codex_deepseek/cli.py'} if label=='native_lifetime' else {'verify_user_verification_boundary.py','src/codex_deepseek/cli.py'}
+        validate_peer_verifiers(row,expected,label)
     require(uv['positive_credential_lifecycle_exercised'] is False,'Do not conflate account guard with real biometric enrollment')
     require(browser_artifact['native_lifetime_proof_sha256']==sha(args.native_lifetime/'verdict.json'),'Browser interruption witness used another native lifetime baseline')
     require(schema['passed'] and schema['schemas_compared']==scope['native_schema_count'] and not schema['differences'] and schema['patched_binary_sha256']==expected_native,'Native schema comparison incomplete')
     require(schema.get('binary_and_verifier_unchanged') is True and schema.get('target')==scope['target'] and schema.get('native_manifest')==native and schema.get('verifier_sha256'),'Native schema provenance incomplete')
     for name,digest in schema['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'Native schema verifier changed: '+name)
     record('native_lifetime',args.native_lifetime/'verdict.json');record('user_verification_boundary',args.user_verification/'verdict.json');record('schema_comparison',args.schema)
+    native_faults=None
+    if scope['target']=='x86_64-pc-windows-msvc':
+        require(args.fault_boundaries is not None,'Windows requires native network/auth/tool-effect fault boundary evidence')
+        native_faults=validate_native_faults(args.fault_boundaries,entry,metadata,native,schema['official_binary_sha256'])
+        for name,digest in native_faults.pop('evidence_sha256').items():evidence['native_fault_'+name]=digest
+    else:require(args.fault_boundaries is None,'Windows native fault evidence cannot qualify another platform')
     real={}
     for name in ['jinja','httpcore']:
         root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
-        require(bool(real_artifact.get('verifier_sha256')),name+' real-task verifier identity is missing')
-        for file,digest in real_artifact['verifier_sha256'].items():require(sha(SOURCE/file)==digest,name+' real-task verifier changed: '+file)
+        expected={'verify_real_work.py','acceptance_assertions.py','host_execution_acceptance.py','real_work_imports.py'}
+        if 'verify_real_work_followup.py' in real_artifact.get('verifier_sha256',{}):expected.add('verify_real_work_followup.py')
+        validate_peer_verifiers(real_artifact,expected,name+' real task')
         complex_proof=None
         if args.complex_runtime:
             complex_path=args.complex_runtime/(name+'.json')
@@ -778,7 +1024,8 @@ def main():
     same_install(observed,'positive RPC observations')
     require(observed['passed'] and observed['source_id']==metadata['source_id']
             and observed.get('target')==scope['target'] and observed.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256
-            and not observed['missing'] and not observed['trace_errors'] and set(observed['methods'])==set(scope['local_methods']),
+            and not observed['missing'] and not observed['trace_errors'] and set(observed['methods'])==set(scope['local_methods'])-set(platform_boundaries)
+            and observed.get('configuration_boundaries',{})==platform_boundaries,
             'Positive RPC observations do not cover the exact target-local method inventory')
     rpc_roots={args.regression:(str(entry),metadata['console_script_sha256']),args.methods:(str(entry),metadata['console_script_sha256']),
                args.local_account:(str(entry),metadata['console_script_sha256'])}
@@ -787,7 +1034,7 @@ def main():
     require(observed.get('terminal_revalidation')==terminal_lineage,'RPC terminal replacement lineage differs')
     if args.windows_sandbox:
         identity=load(args.windows_sandbox/'artifact.json');rpc_roots[args.windows_sandbox]=(identity['entry'],identity['entry_sha256'])
-    rpc_reconstruction=validate_rpc_witnesses(observed,rpc_roots,scope['target'],scope['local_methods'],excluded_roots=excluded_rpc_roots)
+    rpc_reconstruction=validate_rpc_witnesses(observed,rpc_roots,scope['target'],sorted(set(scope['local_methods'])-set(platform_boundaries)),excluded_roots=excluded_rpc_roots)
     record('current_local_rpc_observations',args.rpc_observations)
     matrix=scope['matrix']
     for row in matrix:
@@ -796,6 +1043,8 @@ def main():
             result=methods['methods'][method]
             row.update(observed_in_passing_acceptance=result['status']=='passed',execution_status=result['status'],execution_evidence='Current installed-artifact per-method postconditions; see remaining-local-methods.json')
             if method in REMOTE:row['upstream_source_note']=result['reason']
+            if method in platform_boundaries:
+                row.update(configuration_boundary_verified=True,upstream_source_note=platform_boundaries[method]['reason'])
         elif method in LOCAL_ACCOUNT:
             row.update(observed_in_passing_acceptance=True,execution_status='local_variant_passed',execution_evidence='Current native local account lifecycle with nonfunctional fixture credentials; see local_account evidence receipts.')
         elif method in WINDOWS_SANDBOX and scope['target']=='x86_64-pc-windows-msvc':
@@ -806,7 +1055,7 @@ def main():
             row.update(observed_in_passing_acceptance=bool(observed['methods'].get(method)),execution_status='observed_in_native_scenarios',execution_evidence='Current matched native RPC response plus the complete frozen scenario gate set.')
         else:row['execution_status']='not_applicable_to_frozen_local_scope'
     local=[r for r in matrix if r['scope']=='local_runtime_surface']
-    require({r['method'] for r in local}==set(scope['local_methods']) and all(r['observed_in_passing_acceptance'] for r in local),'Local method matrix still has an unverified entry')
+    require({r['method'] for r in local}==set(scope['local_methods']) and all(r['observed_in_passing_acceptance'] or r['method'] in platform_boundaries for r in local),'Local method matrix still has an unverified entry')
     original_offline=validate_offline_run(args.regression,metadata,native,scope,terminal_revalidated=args.terminal_regression is not None)
     selected_offline=validate_offline_run(args.offline_regression,metadata,native,scope,current=True) if args.offline_regression else original_offline
     qa_lineage['original_offline']=original_offline;qa_lineage['current_offline']=selected_offline
@@ -825,8 +1074,9 @@ def main():
              'native_schemas_compared':scope['native_schema_count'],'native_schema_differences':[],'client_methods':len(matrix),
              'native_source_audit':native_source,'browser_sandbox_mode':browser_artifact['sandbox_mode'],
              'linux_bundled_sandbox_resources':linux_resources,
-             'native_terminal_lifecycles':tui_proofs,
-             'local_methods_positive_evidence':len(local),'new_local_methods_individually_passed':methods['positive_local_methods'],
+             'native_fault_boundaries':native_faults,
+             'native_terminal_lifecycles':tui_proofs,'native_hook_trust_lifecycle':hook_trust,
+             'local_methods_positive_evidence':len(local)-len(platform_boundaries),'local_configuration_boundaries':platform_boundaries,'new_local_methods_individually_passed':methods['positive_local_methods'],
              'rpc_raw_witness_reconstruction':rpc_reconstruction,
              'rpc_non_rpc_producers':observed['non_rpc_producers'],
              'local_account_variants_verified':sorted(LOCAL_ACCOUNT),'windows_sandbox_lifecycle_verified':scope['target']=='x86_64-pc-windows-msvc',
@@ -837,7 +1087,7 @@ def main():
              'acceptance_gates':[{'name':r['gate'],'exit':r['exit'],'seconds':r['seconds'],
                                   'producer':'current_terminal_revalidation' if args.terminal_regression and r['gate'] in TERMINAL_GATES else 'original_frozen_run'} for r in effective_gates],
              'additional_acceptance':{'method_gap_list':True,'local_account_lifecycle':True,'native_browser':True,'browser_mcp_cancellation':True,
-                                     'native_mcp_lifetime_comparison':True,'protocol_fault_recovery':True,'os_user_verification_account_boundary':True,'complex_real_tasks':True},
+                                     'native_mcp_lifetime_comparison':True,'native_hook_trust_lifecycle':True,'protocol_fault_recovery':True,'os_user_verification_account_boundary':True,'complex_real_tasks':True},
              'real_work':real,
              'limits':['Qualification applies to the frozen '+scope['platform']+' target and its current artifact identities.',
                        'Model judgment and cloud/account entitlements are outside runtime equivalence.',
@@ -845,7 +1095,7 @@ def main():
                        'Cached/indexed OpenAI search, location bias and image-search backend semantics remain explicit compatibility errors on Exa.',
                        'Document browsing does not execute JavaScript or use authenticated website sessions.',
                        'Native MCP operations can outlive turn interruption; explicit MCP cancellation and owner shutdown have separate passing evidence.',
-                       'All applicable local methods have positive evidence for specified scenarios, not exhaustive input or fault-space coverage.',
+                       'Local methods have positive evidence for declared scenarios or an explicitly verified fixed-platform configuration boundary; neither is exhaustive fault-space coverage.',
                        'The prediction endpoint is declared but unimplemented in frozen upstream.'],
              'evidence_sha256':evidence,'qualification_protocol':'One frozen installed target; exact standard gates plus per-method postconditions, local account and applicable sandbox lifecycles, complex saved tasks, actual browsing and protocol fault recovery. Initial failures remain preserved.',
              'stable_solution':'docs/STABLE_PLAN.zh-CN.md','historical_release_reports':'reports/history/v0.3.0/'}
@@ -859,7 +1109,7 @@ def main():
         dest=history/path.name
         if not dest.exists():shutil.copy2(path,dest)
     write=lambda name,value:(output/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    write('runtime-method-matrix.json',matrix);write('remaining-local-methods.json',{'status':'passed','baseline_gap_count':64,'positive_local_methods':60,'backend_boundary_count':4,'methods':{name:{'status':row['status'],'scope':'backend' if name in REMOTE else 'local','reason':row.get('reason'),'evidence_sha256':sha(args.methods/row['evidence'])} for name,row in methods['methods'].items()}})
+    write('runtime-method-matrix.json',matrix);write('remaining-local-methods.json',{'status':'passed','baseline_gap_count':64,'positive_local_methods':methods['positive_local_methods'],'platform_boundary_count':len(platform_boundaries),'backend_boundary_count':4,'methods':{name:{'status':row['status'],'scope':'backend' if name in REMOTE else 'platform_configuration_boundary' if name in platform_boundaries else 'local','reason':row.get('reason'),'evidence_sha256':sha(args.methods/row['evidence'])} for name,row in methods['methods'].items()}})
     write('native-schema-comparison.json',schema);write('runtime-qualification.json',summary);write('acceptance.json',summary)
     write('qualification-lineage.json',{'version':version,'source_id':metadata['source_id'],'runtime_sources_immutable':True,'evidence_sha256':evidence,'initial_failures_preserved':True,'no_automatic_adapter_tool_replay':True,'note':'Native retry and explicit saved-task continuations are separately recorded. Real-task source fixes belong to test workspaces, not the runtime implementation.'})
     print(json.dumps({'passed':True,'source_id':metadata['source_id'],'target':scope['target'],'positive_local_methods':len(local),'standard_gates':len(GATES),'output':str(output)}),flush=True)

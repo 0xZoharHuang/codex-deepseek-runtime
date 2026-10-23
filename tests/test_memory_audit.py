@@ -218,3 +218,67 @@ def test_cold_read_rejects_prose_echoes_and_wrong_persistence_context(tmp_path,f
     elif failure=='empty_artifact':snapshots={'home/memories/memory_summary.md':'  '}
     elif failure=='different_artifact':snapshots={'home/memories/memory_summary.md':'a different generated summary'}
     assert not audit.cold_memory_evidence([request(tmp_path,body)],'reader',snapshots)
+
+
+def test_memory_verifier_copy_is_outside_workspace_and_preserves_private_original(tmp_path):
+    root=tmp_path/'private';root.mkdir();source=root/'verify.py';source.write_text('print("fixture")\n')
+    work=tmp_path/'ordinary/work';work.mkdir(parents=True)
+    published,binding=audit.publish_memory_verifier(root,work,source)
+    assert published.parent==work.parent and not published.is_relative_to(work)
+    assert published.read_bytes()==source.read_bytes()
+    assert audit.memory_verifier_binding_unchanged(binding)
+    assert json.loads((root/'qa-readonly-fixture.json').read_text())==binding
+    with pytest.raises(FileExistsError):audit.publish_memory_verifier(root,work,source)
+
+
+@pytest.mark.parametrize('change',['source','published','replace','hardlink'])
+def test_memory_verifier_copy_rejects_changed_bytes_or_identity(tmp_path,change):
+    root=tmp_path/'private';root.mkdir();source=root/'verify.py';source.write_text('print("fixture")\n')
+    work=tmp_path/'ordinary/work';work.mkdir(parents=True)
+    published,binding=audit.publish_memory_verifier(root,work,source)
+    if change in {'source','published'}:
+        (source if change=='source' else published).write_text('changed')
+    elif change=='replace':
+        old=published.with_suffix('.original');published.rename(old);published.write_bytes(old.read_bytes())
+    else:
+        import os
+        os.link(published,published.with_suffix('.linked'))
+    assert not audit.memory_verifier_binding_unchanged(binding)
+
+
+def test_unchanged_memory_layout_keeps_original_verifier(tmp_path):
+    source=tmp_path/'verify.py';source.write_text('x')
+    assert audit.publish_memory_verifier(tmp_path,tmp_path/'work',source)==(source,None)
+    assert audit.memory_verifier_binding_unchanged(None)
+
+
+def test_windows_memory_verifier_uses_native_read_only_input_profile(tmp_path, monkeypatch):
+    import tomllib
+    import verify_memory_audit as module
+    monkeypatch.setattr(module.sys, 'platform', 'win32')
+    (tmp_path/'home').mkdir()
+    config=tmp_path/'home/config.toml'
+    config.write_text('sandbox_mode="workspace-write"\n[memories]\nversion="v2"\n',encoding='utf-8')
+    verifier=tmp_path/'readonly fixture.py'
+    verifier.write_text('raise SystemExit(0)\n',encoding='utf-8')
+    before=verifier.read_bytes()
+    options=module.memory_source_options(tmp_path,verifier,'workspace-write')
+    assert options=={'sandbox':None,'permissions':'cds-memory-verification'}
+    data=tomllib.loads(config.read_text(encoding='utf-8'))
+    assert data['sandbox_mode']=='workspace-write' and data['memories']=={'version':'v2'}
+    assert data['permissions']=={'cds-memory-verification':{
+        'extends':':workspace','filesystem':{str(verifier):'read'}}}
+    assert verifier.read_bytes()==before
+
+
+@pytest.mark.parametrize('platform,mode', [
+    ('linux','workspace-write'),('darwin','workspace-write'),('win32','danger-full-access')
+])
+def test_memory_read_profile_does_not_change_other_execution_policies(tmp_path,monkeypatch,platform,mode):
+    import verify_memory_audit as module
+    monkeypatch.setattr(module.sys,'platform',platform)
+    (tmp_path/'home').mkdir()
+    config=tmp_path/'home/config.toml';original=b'sandbox_mode="workspace-write"\n'
+    config.write_bytes(original)
+    assert module.memory_source_options(tmp_path,tmp_path/'verifier.py',mode)=={'sandbox':mode}
+    assert config.read_bytes()==original

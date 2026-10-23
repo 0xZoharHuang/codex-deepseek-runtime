@@ -1,6 +1,6 @@
 # 0.6.0 候选：安装、图片传输与 Windows 隔离
 
-**0.6.0 尚未发布。** 当前已发布版本仍是 v0.5.0，稳定安装命令见 [README](../README.md)。本页说明候选已有的源码行为、如何隔离验证以及发布前还需要哪些证据；没有可供引用的 0.6.0 release 下载或完整三平台验收。
+**0.6.0 尚未发布。** 现有 v0.5.0 稳定安装请从对应 tag 取得源码；本分支的安装条件和版本状态见 [README](../README.md)。本页说明候选已有的源码行为、如何隔离验证以及发布前还需要哪些证据；没有可供引用的 0.6.0 release 下载或完整三平台验收。
 
 ## 这次改变了什么
 
@@ -103,6 +103,8 @@ codex-deepseek runtime image-reconcile-calls
 
 账本位于 `<home>/provider-state/image-transport/`，绑定 credential scope 与 canonical cache root。**不要复制或移动账本到另一 home 后接管其云端对象。** 锁、salt 与账本拒绝链接、junction 和硬链接；正常同根 Windows 大小写或扩展路径别名可继续使用。空的旧未绑定账本可初始化，非空未绑定账本会保留并拒绝自动采用。更换 key 不会用新 key 清理旧 scope；它会报告仍待处理的其他 scope。
 
+图片 owner 记录采用内核进程身份，避免系统时钟校正造成仍在使用的锁被误清理。匹配当前根目录与 credential scope 的已绑定账本可从内部版本 1 升至 2；旧数值型 owner 记录保留，存活不明时不会删除。升级后旧版读者会明确拒绝该账本，不能将新锁误判为过期。该内部版本与上面的配置 schema_version=1 不同。使用旧入口回退时应回到其原 home；不要将版本 2 账本交给旧实现，也不要删账本来绕过拒绝。
+
 删除本地 cache、安装目录或配置文件都不会替你删除远端文件。应保留账本与回执，直到所属对象已确认不存在，或明确保留未知状态以便后续处理。
 
 ## Windows 升级和回退
@@ -121,7 +123,7 @@ codex-deepseek runtime image-reconcile-calls
 
 - [图片传输与分阶段取证](payload-capacity-source.md)。
 - [初始隔离缺陷与修复边界](payload-isolation-audit.md)、[Windows namespace](windows-sandbox-isolation.md)、[四类 artifact 只读目录](windows-artifact-read-roots.md)。
-- [native platform CI](../ci/README.md) 与 [workflow](../.github/workflows/native-platform-qualification.yml)。当前只准备了配置，尚未推送或执行；macos-15 arm64 使用 1 个构建 job，ubuntu-24.04 x64 使用 2 个。CI 的 synthetic transport 结果即使通过，也不代替真实模型、安装或平台权限验收。
+- [native platform CI](../ci/README.md) 与 [workflow](../.github/workflows/native-platform-qualification.yml)。固定候选源码的[实际 CI 运行](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/39899815305)已完成；macos-15 arm64 使用 1 个构建 job，ubuntu-24.04 x64 使用 2 个。CI 的 synthetic transport 通过不代替真实模型、安装或平台权限验收；后续源码变化按[本版本验收记录](release-0.6.0-acceptance.zh-CN.md)单独核验。
 
 发布前仍须把下列项目绑定到最终提交和产物，补入可公开、去除私人信息的 receipt；本页不预填通过结果或下载 URL：
 
@@ -136,3 +138,15 @@ codex-deepseek runtime image-reconcile-calls
 维护者的私有项目证据保存在 `.evidence/payload-capacity/`。版本冻结、独立复核、Windows build/acceptance 与 CI 准备记录是定位线索；公开发布应整理必要的脱敏摘要，而不是上传原始模型上下文、真实 home、密钥或完整私有日志。
 
 `package_native.py` 在库存、哈希与 recipe 校验后写出的 `status: ready` 是安装清单字段。它自身不读取完整产品验收，也不发布 GitHub release；维护者必须在对应验收闭合后才把新清单晋升为公开平台入口。旧 v0.5.0 的 manifest、tag 和报告保留原身份。
+
+## OpenRouter 402：账户余额与密钥额度
+
+HTTP 402 是提供方支付／额度边界，不能归类为上下文溢出、内容风控或沙箱失败。账户有余额时，单独 API key 的上限仍可能耗尽；并发请求的预估费用也可能暂时占满可用预算。OpenRouter 会按输入及允许的最大输出估算费用，错误里的“requested tokens”不代表模型已经生成或实际扣费了那么多 token。[官方额度说明](https://openrouter.ai/docs/api/reference/limits)
+
+处理时先核对专用凭据的 GET /api/v1/key 返回的 limit_remaining、limit_reset，以及错误 metadata.limit_source。需要区分账户余额时再读取 /api/v1/credits。诊断只保存必要的数值与错误分类，不把 Authorization、密钥或完整账户标识放进命令参数和日志。Codex 订阅周额度与 OpenRouter key 额度相互独立。
+
+- openrouter_key_limit：检查这把 key 的限额及重置条件；提高上限须由密钥所有者明确授权。
+- openrouter_credits：余额或单请求预估成本不足；不能通过自动切换提供方、削减历史或默默降低输出预算掩盖。
+- openrouter_in_flight_budget：按响应给出的 Retry-After 等待；没有等待建议的 402 不应被描述为“稍后必定恢复”。原始状态码、响应和每次原生重试仍须保留。[官方错误与重试说明](https://openrouter.ai/docs/api/reference/errors-and-debugging)
+
+修复外部额度条件后，可从原来的 CDS 会话继续。提高额度不会自动完成、重放或迁移此前失败的任务；先回读原生失败终态与现有文件，再明确续接。现有凭据或额度不会由安装、诊断、重试过程自动修改。

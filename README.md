@@ -8,7 +8,7 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **已发布版本：v0.5.0。当前源码：0.6.0 候选，尚未发布。** 下文的稳定安装命令和三平台验收报告对应 v0.5.0。0.6.0 增加可选的无损图片传输、HTTP 413 处理和 Windows 隔离修复；候选的安装条件、图片维护与待完成事项见 [0.6.0 候选说明](docs/release-0.6.0-candidate.zh-CN.md)。旧版本报告不自动证明新版本通过。
+> **本源码版本：0.6.0。** 是否已正式发布，以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 为准；当前实测状态、失败修复及平台范围见 [0.6.0 验收记录](docs/release-0.6.0-acceptance.zh-CN.md)。源码分支、安装清单的 `ready` 字段和旧版本报告都不能代替完整验收。正式 release 发布前，使用[隔离候选流程](docs/release-0.6.0-candidate.zh-CN.md)，保留现有稳定入口。
 
 ## 它怎样工作
 
@@ -38,9 +38,11 @@
 
 这里的“等价”指**固定版本 Codex CLI 的本地 runtime 机制**。DeepSeek 的代码质量、推理水平和模态能力由模型决定；OpenAI 的云服务及账户权益需要相应服务，换模型不会获得这些权益。
 
-## v0.5.0 的支持范围与验收状态
+## 支持范围与验收状态
 
-| 平台 | 当前结论 | 运行条件与证据 |
+当前 0.6.0 的资格与各平台证据见[本版本验收记录](docs/release-0.6.0-acceptance.zh-CN.md)。下面保留 v0.5.0 的历史支持范围，不能据此推定新版本通过。
+
+| 平台 | v0.5.0 历史结论 | 运行条件与证据 |
 | --- | --- | --- |
 | macOS Apple Silicon | 固定目标 runtime 验收通过 | 独立 Python 3.11+；[平台报告](reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
 | Linux x86_64 GNU | 固定目标 runtime 验收通过 | Ubuntu 24.04 上验证；glibc、OpenSSL 3、`libcap.so.2`；[平台报告](reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
@@ -48,13 +50,13 @@
 
 原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
 
-验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。Windows 的 Jinja 与 HTTPcore 任务均通过独立业务验收。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
+v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。该版本的 Windows Jinja 与 HTTPcore 任务均通过独立业务验收。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
 
-验收保留原始失败与补测身份：Windows 的 Guardian 初次夹具未触发审批，修正受限权限夹具后单独验证；Linux memory-v1 曾遇到提供方临时失败，另有完整成功运行。报告明确标记组合验收，不把原始失败改写成一次全绿。macOS 凭据部分复用同字节组件的既有真实证据，避免再次触发系统钥匙串提示。
+上述 v0.5.0 验收保留原始失败与补测身份：Windows 的 Guardian 初次夹具未触发审批，修正受限权限夹具后单独验证；Linux memory-v1 曾遇到提供方临时失败，另有完整成功运行。报告明确标记组合验收，不把原始失败改写成一次全绿。macOS 凭据部分复用同字节组件的既有真实证据，避免再次触发系统钥匙串提示。
 
-## 安装并运行 v0.5.0
+## 安装并运行
 
-以下命令安装已发布的 v0.5.0。当前 0.6.0 源码会拒绝旧版原生 manifest；请勿混用两版源码和归档。候选安装见[单独说明](docs/release-0.6.0-candidate.zh-CN.md)。
+以下命令针对 v0.6.0，**仅在 GitHub 上对应正式 release 已发布时使用**。若尚未发布，请选用已有稳定 release，或按[隔离候选说明](docs/release-0.6.0-candidate.zh-CN.md)验证本地合格包。源码、平台原生清单及归档必须属于同一版本和 recipe；安装器会拒绝混用。
 
 准备 Git、独立 Python 3.11+ 和有可用额度的 OpenRouter key。不要使用 Codex App 或 ChatGPT App 内置的 Python。安装器下载当前平台的固定原生归档，检查 SHA-256 和完整文件清单，然后建立独立 Python 环境；正常使用不需要编译 Rust。
 
@@ -63,7 +65,7 @@
 在终端执行：
 
 ```sh
-git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -81,7 +83,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -99,7 +101,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.5.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -121,14 +123,14 @@ codex-deepseek.exe
 可以预先下载与当前源码发布版本匹配的原生归档，再让安装器校验：
 
 ```sh
-python3 install.py --native-archive /path/to/codex-deepseek-native-0.5.0-aarch64-apple-darwin.tar.gz
+python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz
 ```
 
-另外两份文件名是 `codex-deepseek-native-0.5.0-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.5.0-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+另外两份文件名是 `codex-deepseek-native-0.6.0-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.0-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
-0.6.0 候选还需要匹配当前平台和 recipe 的 `--native-manifest <本地清单>` 与 `--native-archive <本地归档>`；尚无可供这里引用的 0.6.0 发布下载。清单、归档、具体不可变入口和验证步骤见 [候选安装](docs/release-0.6.0-candidate.zh-CN.md)。
+发布前的本地候选必须显式提供匹配当前平台和 recipe 的 `--native-manifest <本地清单>` 与 `--native-archive <本地归档>`；不要把尚未发布的下载地址视作可用。清单、不可变入口和验证步骤见[候选安装](docs/release-0.6.0-candidate.zh-CN.md)。
 
 ## Key、配置与 Codex App 隔离
 
@@ -205,7 +207,7 @@ codex-deepseek app-server
 enabled = false
 ```
 
-## 0.6.0 候选的图片传输
+## 可选图片传输
 
 这项功能默认关闭。启用后，适配器可将体积较大的请求中的部分图片原字节上传为私有 Files 对象，再把对应 HTTP 请求位置改为 file reference。原生历史仍保留原图，顺序、detail 与其余图片保持原样。
 
@@ -258,10 +260,11 @@ codex-deepseek doctor
 | Linux 缺少动态库或 venv | 安装与系统匹配的 glibc/OpenSSL 3/libcap 运行库及 Python venv 支持；当前验证目标是 Ubuntu 24.04 GNU。 |
 | 模型未宣告 Code Mode 元数据的提醒 | 当前 catalog 不强制工具模式，提醒来自原生检查；模式使用情况见报告，不通过隐藏提醒制造通过。 |
 | 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
+| 子任务 DNS 失败 / `curl` 退出 6 / HTTP 000 | 先核对实际子任务网络策略；宿主能解析不等于沙箱能联网，也不能据此断言远端宕机。见[诊断指引](skills/cds/references/diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage)。 |
 
 已发布版本的升级先在新 root 和独立 home 中验证，再切换入口；确认该 home 的任务、子进程和 daemon 都已结束后才做同 home 变更。单独停止 daemon 不等于所有工作已退出。
 
-0.6.0 目前仅按[隔离候选流程](docs/release-0.6.0-candidate.zh-CN.md)验证，不切换稳定入口。新的 Windows sandbox 资源按 home 身份独立管理，旧 `.sandbox`、`.sandbox-secrets`、`.sandbox-bin` 不能直接复制到新 home；也没有自动完成旧 home 迁移的命令。
+验证新版本时使用[隔离候选流程](docs/release-0.6.0-candidate.zh-CN.md)，验收前不切换稳定入口。新的 Windows sandbox 资源按 home 身份独立管理，旧 `.sandbox`、`.sandbox-secrets`、`.sandbox-bin` 不能直接复制到新 home；也没有自动完成旧 home 迁移的命令。
 
 原生命令用于管理选定 home 的 daemon：
 

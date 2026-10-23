@@ -144,6 +144,12 @@ def test_complex_task_cannot_pass_with_missing_runtime_evidence(missing):
             'oracle_guard':dict.fromkeys(['source_unchanged','read_probe_denied','restored_probe_unchanged'],True),
             'web_research':{'required':True,'current_turn':{'passed':True}},
             'validation':[{'suite':name,'exit':0,'source_imports':{'passed':True}} for name in ['workspace','upstream-heldout','independent-cancellation','real-tcp-0','real-tcp-1','real-tcp-2','tls-socket']]}
+    for suite in report['validation']:
+        if suite['suite'] in {'workspace','upstream-heldout','independent-cancellation'}:
+            names=([f'test_cancel_during_expired_connection_close_releases_queue[{backend}]' for backend in ('asyncio','trio')]
+                   if suite['suite']=='independent-cancellation' else ['test_example'])
+            cases=[{'classname':'cancellation_regression','name':name,'outcome':'passed'} for name in names]
+            suite['pytest_execution']={'cases':cases,'counts':{'passed':len(cases),'failure':0,'error':0,'skipped':0}}
     controls=dict.fromkeys(checks.real_work_input_names('httpcore'),'0'*64)
     report['fixture_inputs']={'before':controls.copy(),'after':controls.copy(),'unchanged':True}
     assert checks.real_work_passed(report)

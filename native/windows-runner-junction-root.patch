@@ -1,0 +1,88 @@
+diff --git a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+--- a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
++++ b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+@@ -238,7 +238,13 @@
+         }
+     };
+     if use_junction {
+-        cwd_junction::create_cwd_junction(req_cwd, log_dir).unwrap_or_else(|| req_cwd.to_path_buf())
++        // The spawn request's sandbox base already hosts this runner's logs.
++        // USERPROFILE is intentionally hidden and points at Default, not this home.
++        log_dir
++            .and_then(|sandbox_dir| {
++                cwd_junction::create_cwd_junction(req_cwd, sandbox_dir, log_dir)
++            })
++            .unwrap_or_else(|| req_cwd.to_path_buf())
+     } else {
+         req_cwd.to_path_buf()
+     }
+diff --git a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs
+--- a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs
++++ b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs
+@@ -14,16 +14,12 @@
+     format!("{:x}", hasher.finish())
+ }
+ 
+-fn junction_root_for_userprofile(userprofile: &str) -> PathBuf {
+-    PathBuf::from(userprofile)
+-        .join(".codex")
+-        .join(".sandbox")
+-        .join("cwd")
+-}
+-
+-pub fn create_cwd_junction(requested_cwd: &Path, log_dir: Option<&Path>) -> Option<PathBuf> {
+-    let userprofile = std::env::var("USERPROFILE").ok()?;
+-    let junction_root = junction_root_for_userprofile(&userprofile);
++pub fn create_cwd_junction(
++    requested_cwd: &Path,
++    sandbox_dir: &Path,
++    log_dir: Option<&Path>,
++) -> Option<PathBuf> {
++    let junction_root = sandbox_dir.join("cwd");
+     if let Err(err) = std::fs::create_dir_all(&junction_root) {
+         log_note(
+             &format!(
+@@ -138,3 +134,43 @@
+     );
+     None
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn junction_uses_supplied_private_sandbox_and_preserves_target() {
++        let root = std::env::temp_dir().join(format!(
++            "codex-junction-root-{}-{}",
++            std::process::id(),
++            std::time::SystemTime::now()
++                .duration_since(std::time::UNIX_EPOCH)
++                .unwrap()
++                .as_nanos()
++        ));
++        let target = root.join("workspace with spaces");
++        let sandbox = root.join("private home").join(".sandbox");
++        std::fs::create_dir_all(&target).unwrap();
++        std::fs::create_dir_all(&sandbox).unwrap();
++        let marker = target.join("marker.txt");
++        std::fs::write(&marker, "actual target").unwrap();
++        let junction = create_cwd_junction(&target, &sandbox, None)
++            .expect("create junction in explicit sandbox directory");
++        assert_eq!(junction.parent(), Some(sandbox.join("cwd").as_path()));
++        assert_eq!(
++            std::fs::read_to_string(junction.join("marker.txt")).unwrap(),
++            "actual target"
++        );
++        std::fs::write(junction.join("via-junction.txt"), "native alias write").unwrap();
++        assert_eq!(
++            std::fs::read_to_string(target.join("via-junction.txt")).unwrap(),
++            "native alias write"
++        );
++        let reused = create_cwd_junction(&target, &sandbox, None).unwrap();
++        assert_eq!(junction, reused);
++        std::fs::remove_dir(&junction).unwrap();
++        assert_eq!(std::fs::read_to_string(&marker).unwrap(), "actual target");
++        std::fs::remove_dir_all(&root).unwrap();
++    }
++}

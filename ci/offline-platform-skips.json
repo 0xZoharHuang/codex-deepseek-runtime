@@ -1,0 +1,167 @@
+{
+  "common": [
+    {
+      "classname": "tests.test_install",
+      "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[False]",
+      "message": "Windows native artifact DACL contract"
+    },
+    {
+      "classname": "tests.test_install",
+      "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[True]",
+      "message": "Windows native artifact DACL contract"
+    },
+    {
+      "classname": "tests.test_platforms",
+      "name": "test_extended_paths_cannot_alias_codex_app_state",
+      "message": "Win32 extended-length directory aliases"
+    },
+    {
+      "classname": "tests.test_platforms",
+      "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]",
+      "message": "Native Windows daemon creation FILETIME record"
+    },
+    {
+      "classname": "tests.test_platforms",
+      "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]",
+      "message": "Native Windows daemon creation FILETIME record"
+    },
+    {
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]",
+      "message": "Windows socket ownership handshake"
+    },
+    {
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]",
+      "message": "Windows socket ownership handshake"
+    },
+    {
+      "classname": "tests.test_windows_console",
+      "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]",
+      "message": "Windows socket ownership handshake"
+    },
+    {
+      "classname": "tests.test_windows_console",
+      "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]",
+      "message": "Windows console control events; requires a Windows native package"
+    },
+    {
+      "classname": "tests.test_windows_console",
+      "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]",
+      "message": "Windows console control events; requires a Windows native package"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_locked_activation_fails_atomically_and_preserves_current_receipt",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_launcher_temp_outputs_bind_current_user_before_publish[staging]",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_launcher_temp_outputs_bind_current_user_before_publish[installed]",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_launchers",
+      "name": "test_launcher_temp_outputs_bind_current_user_before_publish[profile]",
+      "message": "Exercises Windows PE executable launchers"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_wrong_identity_never_arms_preparation[sid-another]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_wrong_identity_never_arms_preparation[session_id-0]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_wrong_identity_never_arms_preparation[elevated-True]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_unrelated_output_refused_before_arming",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_unadmitted_verifier_refused",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_partial_admission_cannot_fall_back_to_guest",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_other_host_still_requires_explicit_admission",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_declared_limited_owned_scope",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_native_eof_precedes_generic_cleanup",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options0]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options1]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options2]",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_shutdown_preserves_primary_error_when_cleanup_also_fails",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_cleanup_error_cannot_be_a_successful_shutdown",
+      "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_windows_sandbox_admission",
+      "name": "test_main_retains_failure_receipt_when_final_cleanup_also_raises",
+      "message": "Windows-only lifecycle admission contract"
+    }
+  ],
+  "linux": [],
+  "darwin": [
+    {
+      "classname": "tests.test_platforms",
+      "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+      "message": "Native Linux daemon process identity contract"
+    }
+  ]
+}

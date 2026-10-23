@@ -1,4 +1,5 @@
 """Live Exa constraints and cited provenance, using the official DeepSeek route."""
+import argparse
 import asyncio
 import json
 import os
@@ -15,7 +16,9 @@ from codex_deepseek.native_http import NativeTransport
 
 
 async def main():
-    root=Path(__file__).resolve().parent.parent/'delivery/independent-audit/search'/str(uuid.uuid4())
+    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path);args=parser.parse_args()
+    base=args.output or (Path(os.environ['CODEX_DEEPSEEK_TEST_EVIDENCE_ROOT'])/'search' if os.environ.get('CODEX_DEEPSEEK_TEST_EVIDENCE_ROOT') else Path(__file__).resolve().parent.parent/'delivery/independent-audit/search')
+    root=base.expanduser().resolve()/str(uuid.uuid4())
     root.mkdir(parents=True,mode=0o700);os.environ['CODEX_DEEPSEEK_TRACE_DIR']=str(root/'traces')
     helper=Path(os.environ['CODEX_DEEPSEEK_TEST_HTTP_BINARY']) if os.environ.get('CODEX_DEEPSEEK_TEST_HTTP_BINARY') else None
     model_catalog=json.loads(Path(os.environ['CODEX_DEEPSEEK_TEST_CATALOG']).read_text()) if os.environ.get('CODEX_DEEPSEEK_TEST_CATALOG') else catalog()
@@ -35,7 +38,7 @@ async def main():
             urls=[item.get('url') or item.get('url_citation',{}).get('url') for item in citations]
             sources=[source['url'] for search in searches for source in search.get('action',{}).get('sources',[])]
             queries=[search.get('action',{}).get('query') for search in searches]
-            result={'passed':queries==[query] and bool(sources) and bool(urls) and all(url and urlsplit(url).hostname=='docs.python.org' for url in urls+sources),
+            result={'passed':reply.get('status')=='completed' and not reply.get('error') and queries==[query] and bool(sources) and bool(urls) and all(url and urlsplit(url).hostname=='docs.python.org' for url in urls+sources),
                     'response_id':reply['id'],'status':reply['status'],'search_count':len(searches),'actual_queries':queries,'search_source_urls':sources,'citation_urls':urls,'usage':reply.get('usage')}
             assert result['passed'],result
     finally:

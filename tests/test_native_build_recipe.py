@@ -145,7 +145,8 @@ def test_windows_network_overlay_is_explicit_and_does_not_qualify_other_platform
 
 def test_final_windows_readiness_and_artifacts_are_ordered_and_target_scoped():
     recipe=build.runtime_recipe()
-    entries=recipe['overlays'][-5:-3]
+    names=['windows-wfp-readiness.patch','windows-artifact-readroots.patch']
+    entries=[next(row for row in recipe['overlays'] if row['file']==name) for name in names]
     assert [x['file'] for x in entries]==['windows-wfp-readiness.patch','windows-artifact-readroots.patch']
     assert all(set(x['changes_by_target'])=={WIN} for x in entries)
     first={x['path']:x['after_sha256'] for x in entries[0]['changes_by_target'][WIN]}
@@ -162,13 +163,13 @@ def test_final_overlay_omission_cannot_reuse_a_previous_ready_manifest(tmp_path,
 
 
 def test_runner_home_fix_precedes_token_coordination_and_changes_only_the_native_runner():
-    recipe=build.runtime_recipe();entry=recipe['overlays'][-3]
+    recipe=build.runtime_recipe();entry=next(row for row in recipe['overlays'] if row['file']=='windows-sandbox-runner-home.patch')
     assert entry['file']=='windows-sandbox-runner-home.patch'
     assert set(entry['changes_by_target'])=={WIN}
     changed=entry['changes_by_target'][WIN]
     assert len(changed)==1
     assert changed[0]['path']=='codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs'
-    previous=next(row for item in recipe['overlays'][:-3] for row in item['changes_by_target'].get(WIN,[]) if row['path']==changed[0]['path'])
+    previous=next(row for item in recipe['overlays'][:recipe['overlays'].index(entry)] for row in item['changes_by_target'].get(WIN,[]) if row['path']==changed[0]['path'])
     assert changed[0]['before_sha256']==previous['after_sha256']
 
 
@@ -205,7 +206,8 @@ print("ISOLATED_BUILD_LICENSE_INPUTS_OK")
 
 def test_final_recovery_overlays_are_windows_only_and_follow_the_exact_runner_preimage():
     recipe=build.runtime_recipe()
-    runner,coordination,deny=recipe['overlays'][-3:]
+    runner,coordination,deny=[next(row for row in recipe['overlays'] if row['file']==name) for name in (
+        'windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch')]
     assert [item['file'] for item in (runner,coordination,deny)]==[
         'windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch',
         'windows-managed-deny-revoke.patch']
@@ -218,3 +220,77 @@ def test_final_recovery_overlays_are_windows_only_and_follow_the_exact_runner_pr
     assert len(deny_paths)==7 and not deny_paths.intersection(coordination_rows)
     assert 'codex-rs/windows-sandbox-rs/src/deny_read_state.rs' in deny_paths
     assert 'codex-rs/windows-sandbox-rs/src/file_write.rs' in deny_paths
+
+
+def test_junction_overlay_only_connects_the_existing_runner_sandbox_base():
+    recipe=build.runtime_recipe()
+    leaf=next(row for row in recipe['overlays'] if row['file']=='windows-runner-junction-root.patch')
+    assert set(leaf['changes_by_target'])=={WIN}
+    paths={row['path'] for row in leaf['changes_by_target'][WIN]}
+    assert paths=={
+        'codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs',
+        'codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs'}
+    runner=next(row for row in leaf['changes_by_target'][WIN] if row['path'].endswith('/win.rs'))
+    coordination=next(row for row in recipe['overlays'] if row['file']=='windows-sandbox-coordination.patch')
+    previous=next(row for row in coordination['changes_by_target'][WIN] if row['path']==runner['path'])
+    assert runner['before_sha256']==previous['after_sha256']
+
+
+def test_home_metadata_overlay_is_a_single_windows_native_setup_change():
+    recipe=build.runtime_recipe()
+    leaf=next(item for item in recipe['overlays'] if item['file']=='windows-home-metadata.patch')
+    assert set(leaf['changes_by_target'])=={WIN}
+    assert len(leaf['changes_by_target'][WIN])==1
+    row=leaf['changes_by_target'][WIN][0]
+    assert row['path']=='codex-rs/windows-sandbox-rs/src/setup_provisioning.rs'
+    predecessors=[entry for overlay in recipe['overlays'][:recipe['overlays'].index(leaf)]
+                  for entry in overlay['changes_by_target'].get(WIN,[]) if entry['path']==row['path']]
+    assert row['before_sha256']==predecessors[-1]['after_sha256']
+
+
+def test_root_acl_sharing_overlay_is_windows_only_and_chains_the_reviewed_acl_sources():
+    recipe=build.runtime_recipe()
+    leaf=next(item for item in recipe['overlays'] if item['file']=='windows-root-acl-sharing.patch')
+    assert set(leaf['changes_by_target'])=={WIN}
+    rows=leaf['changes_by_target'][WIN]
+    assert {row['path'] for row in rows}=={'codex-rs/windows-sandbox-rs/src/acl.rs','codex-rs/windows-sandbox-rs/src/acl_tests.rs'}
+    for row in rows:
+        predecessors=[entry for overlay in recipe['overlays'][:recipe['overlays'].index(leaf)]
+                      for entry in overlay['changes_by_target'].get(WIN,[]) if entry['path']==row['path']]
+        assert row['before_sha256']==predecessors[-1]['after_sha256']
+
+
+def test_plugin_git_lifecycle_overlay_is_windows_only_and_declares_native_regressions():
+    recipe=build.runtime_recipe()
+    leaf=next(item for item in recipe['overlays'] if item['file']=='windows-plugin-git-lifecycle.patch')
+    assert set(leaf['changes_by_target'])=={WIN}
+    rows=leaf['changes_by_target'][WIN]
+    assert {row['path'] for row in rows}=={
+        'codex-rs/Cargo.lock','codex-rs/core-plugins/Cargo.toml',
+        'codex-rs/core-plugins/src/startup_sync.rs',
+        'codex-rs/core-plugins/src/marketplace_upgrade/git.rs',
+        'codex-rs/core-plugins/src/git_lifetime_windows_tests.rs',
+        'codex-rs/utils/pty/src/win/job.rs',
+        'codex-rs/utils/pty/src/win/job_std_tests.rs',
+    }
+    new={row['path'] for row in rows if row['before_sha256'] is None}
+    assert new=={'codex-rs/core-plugins/src/git_lifetime_windows_tests.rs',
+                 'codex-rs/utils/pty/src/win/job_std_tests.rs'}
+
+def test_background_helper_handle_overlay_preserves_nonwindows_recipes():
+    recipe=build.runtime_recipe()
+    matches=[(index,leaf) for index,leaf in enumerate(recipe['overlays'])
+             if leaf['file']=='windows-setup-background-handles.patch']
+    assert len(matches)==1
+    index,leaf=matches[0]
+    assert set(leaf['changes_by_target'])=={WIN}
+    rows={row['path']:row for row in leaf['changes_by_target'][WIN]}
+    existing=rows['codex-rs/windows-sandbox-rs/src/setup_provisioning.rs']
+    preceding=[row for overlay in recipe['overlays'][:index]
+               for row in overlay['changes_by_target'].get(WIN,[]) if row['path']==existing['path']]
+    assert existing['before_sha256']==preceding[-1]['after_sha256']
+    assert rows['codex-rs/windows-sandbox-rs/src/setup_background.rs']['before_sha256'] is None
+    assert len(rows)==2
+    for target in ['aarch64-apple-darwin','x86_64-unknown-linux-gnu']:
+        before={**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
+        assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,before)

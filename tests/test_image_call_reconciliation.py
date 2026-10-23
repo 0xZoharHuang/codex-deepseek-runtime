@@ -1,3 +1,4 @@
+from contextlib import closing
 import asyncio,copy,hashlib,json,sqlite3
 from pathlib import Path
 import pytest
@@ -18,7 +19,7 @@ def receipt(ref='request-one',**extra):
 
 
 def database(path,receipts):
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute('PRAGMA user_version=3')
         db.execute('CREATE TABLE receipts(id TEXT PRIMARY KEY,status TEXT,response_id TEXT,requested_model TEXT,requested_upstream_model TEXT,requested_provider TEXT,adaptations TEXT)')
         for value in receipts:
@@ -174,7 +175,7 @@ def test_read_only_receipt_cannot_create_missing_db_or_accept_wrong_schema(tmp_p
     with pytest.raises(CallReconciliationError):read_project_receipt(path,'one')
     assert not path.exists()
     database(path,[receipt()])
-    with sqlite3.connect(path) as db:db.execute('PRAGMA user_version=4')
+    with closing(sqlite3.connect(path)) as db, db:db.execute('PRAGMA user_version=4')
     with pytest.raises(CallReconciliationError):read_project_receipt(path,'one')
 
 
@@ -246,3 +247,28 @@ def test_claimed_model_match_must_have_matching_exact_or_alias_evidence(case):
         if case=='alias_wrong_model':data['model_identity']['proof']['metadata']['id']='other/model'
         if case=='alias_bad_digest':data['model_identity']['proof']['raw_sha256']='invalid'
     assert generation_terminal(data,value) is None
+
+
+@pytest.mark.parametrize('invalid_schema', [False, True])
+def test_receipt_reader_closes_connection_on_success_and_schema_error(tmp_path, monkeypatch, invalid_schema):
+    from codex_deepseek import image_call_reconciliation as module
+    path=database(tmp_path/'receipts.sqlite',[receipt()])
+    if invalid_schema:
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute('PRAGMA user_version=4')
+    original=sqlite3.connect
+    opened=[]
+    def connect(*args,**kwargs):
+        connection=original(*args,**kwargs);opened.append(connection);return connection
+    monkeypatch.setattr(module.sqlite3,'connect',connect)
+    try:
+        if invalid_schema:
+            with pytest.raises(CallReconciliationError,match='Unsupported'):
+                module.read_project_receipt(path,'request-one')
+        else:
+            assert module.read_project_receipt(path,'request-one')['id']=='request-one'
+        assert len(opened)==1
+        with pytest.raises(sqlite3.ProgrammingError,match='closed'):
+            opened[0].execute('SELECT 1')
+    finally:
+        for connection in opened:connection.close()

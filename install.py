@@ -125,28 +125,72 @@ def isolated(path):
     return path
 
 
+def native_package_files(package,manifest):
+    """Return only a complete, physical distribution; never publish extra files."""
+    package=Path(package).absolute()
+    expected=manifest.get('files')
+    if not isinstance(expected,dict) or not required_binaries()<=set(expected):
+        raise ValueError('Incomplete native manifest')
+    for name in expected:
+        if (not isinstance(name,str) or not name or '\\' in name or ':' in name
+            or PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts
+            or PurePosixPath(name).as_posix()!=name):
+            raise ValueError('Unsafe native manifest path')
+    for ancestor in [package,*package.parents]:
+        metadata=ancestor.lstat()
+        if (not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode)
+            or getattr(metadata,'st_file_attributes',0)&0x400):
+            raise ValueError('Redirected native package ancestry')
+    actual={}
+    pending=[package]
+    while pending:
+        directory=pending.pop()
+        for path in directory.iterdir():
+            metadata=path.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or getattr(metadata,'st_file_attributes',0)&0x400:
+                raise ValueError('Redirected native package member')
+            if stat.S_ISDIR(metadata.st_mode):pending.append(path)
+            elif stat.S_ISREG(metadata.st_mode) and metadata.st_nlink==1:
+                actual[path.relative_to(package).as_posix()]=sha(path)
+            else:raise ValueError('Nonregular or shared native package member')
+    if actual!=expected:raise ValueError('Native package differs from its complete manifest')
+    if not all((package/name).is_dir() for name in ['bin','codex-resources','codex-path']):
+        raise ValueError('Native package layout is incomplete')
+    return actual
+
+
 def valid_native(package,manifest):
     try:
-        if not required_binaries()<=set(manifest['files']):return False
-        if not all((package/name).is_dir() for name in ['bin','codex-resources','codex-path']):return False
-        for name,digest in manifest['files'].items():
-            path=package/name
-            if not path.resolve().is_relative_to(package.resolve()) or path.is_symlink() or sha(path)!=digest:return False
-        return all((package/name).is_file() and os.access(package/name,os.X_OK)
-                   for name in required_binaries())
+        native_package_files(package,manifest)
+        return all(os.access(package/name,os.X_OK) for name in required_binaries())
     except (OSError,ValueError,KeyError,TypeError):return False
+
+
+def readable_native_package(root,package,manifest):
+    # Public executable assets need RX for the native restricted token. Keep the
+    # container and private siblings non-listable; never relax the entire install.
+    native_package_files(package,manifest)
+    if WINDOWS:
+        _support.native_artifact_access(root,package,manifest['files'])
+        native_package_files(package,manifest)
+    return package
 
 
 def native_package(root,manifest,archive_override=None):
     info,target,downloads,archive,candidates=native_storage(root,manifest)
     checksum=info['sha256']
     reusable=next((candidate for candidate in candidates if valid_native(candidate,manifest)),None)
-    if reusable and not archive_override:return reusable
+    if reusable and not archive_override:return readable_native_package(root,reusable,manifest)
     supplied=None
     if archive_override:
         supplied=Path(archive_override).resolve()
         if sha(supplied)!=checksum:raise SystemExit('Supplied native archive checksum mismatch')
-    downloads.mkdir(parents=True,exist_ok=True)
+    # Python 3.13 Windows mode=0700 follows the elevated token owner (BA),
+    # which can exclude the same user's Limited token. Bind private storage to
+    # TokenUser through the existing platform helper before creating children.
+    private_directory(root)
+    private_directory(downloads.parent)
+    private_directory(downloads)
     native_storage(root,manifest)
     if not archive.exists():
         # Never reuse a predictable .partial path: an earlier interrupted or
@@ -163,10 +207,12 @@ def native_package(root,manifest,archive_override=None):
         if archive.exists():raise SystemExit('Native archive cache changed during download; preserving both files')
         replace_file(staging,archive)
     if sha(archive)!=checksum:raise SystemExit('Cached native archive checksum mismatch; preserving it for inspection')
-    if reusable:return reusable
+    if reusable:return readable_native_package(root,reusable,manifest)
     if target.exists():target=target.with_name(target.name+'-repair-'+uuid.uuid4().hex[:10])
     owned_native_path(root,target)
-    target.mkdir(parents=True,mode=0o700)
+    private_directory(target.parent)
+    target.mkdir()
+    private_directory(target)
     for name in ['bin','codex-resources','codex-path']:(target/name).mkdir()
     seen=set()
     with tarfile.open(archive) as bundle:
@@ -180,7 +226,7 @@ def native_package(root,manifest,archive_override=None):
             with bundle.extractfile(member) as payload,destination.open('xb') as output:shutil.copyfileobj(payload,output)
             destination.chmod(0o755 if name in required_binaries() else 0o644)
     if seen!=set(manifest['files']) or not valid_native(target,manifest):raise SystemExit('Native package content failed integrity validation')
-    return target
+    return readable_native_package(root,target,manifest)
 
 
 def valid_release(release,source_hashes,catalog_hash,native_manifest=None):
@@ -280,7 +326,10 @@ def install(root,*,native_archive=None,native_manifest_path=None,wheelhouse=None
     if reusable:release=reusable
     else:
         if release.exists():release=release.with_name(source_id+'-repair-'+uuid.uuid4().hex[:10])
-        release.mkdir(parents=True,mode=0o700);environment=release/'venv';venv.create(environment,with_pip=True)
+        private_directory(release.parent)
+        release.mkdir()
+        private_directory(release)
+        environment=release/'venv';venv.create(environment,with_pip=True)
         python=str(python_entry(environment))
         options=['--no-index','--find-links',str(Path(wheelhouse).resolve())] if wheelhouse else []
         subprocess.run([python,'-I','-m','pip','install','--disable-pip-version-check','--require-hashes','--only-binary=:all:',*options,'-r',str(SOURCE/'requirements.lock')],check=True)

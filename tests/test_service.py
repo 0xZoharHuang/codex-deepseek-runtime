@@ -1,4 +1,5 @@
 """Real private provider worker crash/restart with a retained listening socket."""
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -25,7 +26,7 @@ def test_cold_windows_startup_waits_for_authenticated_health_without_relaunch(tm
     monkeypatch.setattr(service.time,'sleep',lambda seconds:clock.__setitem__(0,clock[0]+seconds))
     def launch(*args,**kwargs):
         launched.append(args)
-        return SimpleNamespace(pid=431,poll=lambda:None)
+        return SimpleNamespace(pid=431,poll=lambda:None,wait=lambda timeout=None:0)
     monkeypatch.setattr(service.subprocess,'Popen',launch)
     monkeypatch.setattr(service,'terminate',lambda *args:terminated.append(args))
     assert ensure(tmp_path/'home',tmp_path/'catalog')==value
@@ -45,7 +46,7 @@ def test_startup_timeout_still_terminates_only_its_owned_process(tmp_path,monkey
     monkeypatch.setattr(service,'healthy',lambda metadata:False)
     monkeypatch.setattr(service.time,'monotonic',lambda:clock[0])
     monkeypatch.setattr(service.time,'sleep',lambda seconds:clock.__setitem__(0,clock[0]+seconds))
-    monkeypatch.setattr(service.subprocess,'Popen',lambda *args,**kwargs:SimpleNamespace(pid=431,poll=lambda:None))
+    monkeypatch.setattr(service.subprocess,'Popen',lambda *args,**kwargs:SimpleNamespace(pid=431,poll=lambda:None,wait=lambda timeout=None:0))
     monkeypatch.setattr(service,'terminate',lambda *args:terminated.append(args))
     with pytest.raises(RuntimeError,match='failed startup'):ensure(tmp_path/'home',tmp_path/'catalog')
     assert 180<=clock[0]<181 and terminated==[(431,'exact-birth')]
@@ -117,9 +118,9 @@ def test_schema_initialization_window_retains_service_until_ownership_is_known(t
     import sqlite3
     from codex_deepseek.state import Store
     home=tmp_path/'profile';state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
-    with sqlite3.connect(state) as db:db.execute('PRAGMA journal_mode=WAL')
+    with closing(sqlite3.connect(state)) as db, db:db.execute('PRAGMA journal_mode=WAL')
     assert native_active(home) is True
-    with sqlite3.connect(state) as db:
+    with closing(sqlite3.connect(state)) as db, db:
         db.execute('CREATE TABLE searches(id TEXT PRIMARY KEY,item TEXT NOT NULL)')
     assert native_active(home) is True
     store=Store(state)

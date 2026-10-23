@@ -16,9 +16,20 @@ Collect the smallest relevant non-sensitive evidence: actual executable/version,
 | CLI exit 0 with unusable output | Process success versus actual requested result |
 | HTTP/model error with unknown side effects | Request/receipt state versus retry safety |
 | Works on host but fails when delegated | Different user, permissions, cwd, HOME, PATH, tool versions or transport |
+| Shell DNS failure, `curl` exit 6 / HTTP 000 / zero bytes | Child network policy versus DNS/route/proxy/TLS/server availability; no HTTP response was observed |
 | App-server cannot find the active turn | Different in-memory owner, wrong profile or stale expected ID |
 
 Do not infer a CDS defect solely from a tool failure, and do not dismiss a reproducible adapter error as “the model.” Preserve the original outcome. Correct the demonstrated layer, then retest that affected behavior.
+
+## Shell network errors do not prove a remote outage
+
+Record the failing child command's exact exit code, stderr, bytes received and current thread/turn. `curl` exit 6 means that this invocation could not resolve its destination. HTTP 000 is not an HTTP response, and zero bytes do not prove that a remote service is down or that content does not exist.
+
+Check the **child's effective native policy** before another attempt. A parent host resolving the same name is a useful contrast, but it does not share the child's sandbox, proxy, resolver or network identity. A host DNS success alone neither proves nor rules out a CDS defect. State an unproven diagnosis as “resolution failed in the child; sandbox/network policy has not yet been excluded.”
+
+`workspace-write` and tool network access are separate settings. Search and the bundled web reader also have their own execution paths; a working `--search` does not grant shell commands network access. `-a never` prevents requesting an approval; it does not authorize outbound networking.
+
+When the task already authorizes the required public-network operation, configure the supported **invocation-local** network policy and read back the effective setting. See [Launch and permissions](launch-and-permissions.md#outbound-network-is-separate-from-workspace-write). Preserve the original failed result and then make only a bounded, appropriate continuation. Do not silently switch to full access, another endpoint, a host-side download, or a different transport to manufacture success. Unknown outcomes or side effects still require reconciliation.
 
 ## A useful integration acceptance
 

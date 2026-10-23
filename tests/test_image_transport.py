@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import closing
 import asyncio,base64,copy,hashlib,json,os,sqlite3,struct,subprocess,sys,time,zlib
 from pathlib import Path
 import pytest
@@ -244,7 +245,7 @@ async def test_dead_transport_owner_pin_reaped_but_unknown_owner_kept(tmp_path):
     async with tr.prepare(payload()) as value:
         scope=value.scope
     database=tmp_path/'cache'/scope/'files.sqlite'
-    with sqlite3.connect(database) as db:db.execute('INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)',('simulated-crash',hashlib.sha256(png()).hexdigest(),999999,0))
+    with closing(sqlite3.connect(database)) as db, db:db.execute('INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)',('simulated-crash',hashlib.sha256(png()).hexdigest(),999999,0))
     alive[0]=None
     assert (await tr.cleanup(all_unpinned=True))['pinned']==1
     alive[0]=False
@@ -256,7 +257,7 @@ async def test_crashed_pending_upload_is_unknown_not_retried(tmp_path):
     backend=FakeFiles();tr=transport(tmp_path,backend)
     async with tr.prepare(payload()) as value:scope=value.scope
     database=tmp_path/'cache'/scope/'files.sqlite'
-    with sqlite3.connect(database) as db:db.execute("UPDATE assets SET state='upload_pending',file_id=NULL")
+    with closing(sqlite3.connect(database)) as db, db:db.execute("UPDATE assets SET state='upload_pending',file_id=NULL")
     with pytest.raises(UploadOutcomeUnknown):
         async with tr.prepare(payload()):pass
     assert len(backend.uploaded)==1
@@ -784,10 +785,10 @@ async def test_ledger_identity_rejects_corruption_before_state_or_network(tmp_pa
     backend=FakeFiles();tr=transport(tmp_path,backend)
     async with tr.prepare(payload()):pass
     snapshot=await tr.diagnostics(private=True);path=tr.root/snapshot['scope']/'files.sqlite'
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         if corruption=='wrong-scope':db.execute("UPDATE cache_identity SET credential_scope=?",('a'*64,))
         elif corruption=='wrong-root':db.execute("UPDATE cache_identity SET cache_root_sha256=?",('b'*64,))
-        elif corruption=='wrong-schema':db.execute("UPDATE cache_identity SET schema_version=2")
+        elif corruption=='wrong-schema':db.execute("UPDATE cache_identity SET schema_version=3")
         elif corruption=='missing-row':db.execute('DELETE FROM cache_identity')
         else:
             db.execute('DROP TABLE cache_identity');db.execute('CREATE TABLE cache_identity(id INTEGER)')
@@ -802,13 +803,13 @@ async def test_ledger_identity_rejects_corruption_before_state_or_network(tmp_pa
 async def test_empty_legacy_ledger_can_bind_but_nonempty_legacy_is_preserved(tmp_path):
     backend=FakeFiles();tr=transport(tmp_path,backend)
     snapshot=await tr.diagnostics();path=tr.root/snapshot['scope']/'files.sqlite'
-    with sqlite3.connect(path) as db:db.execute('DROP TABLE cache_identity')
+    with closing(sqlite3.connect(path)) as db, db:db.execute('DROP TABLE cache_identity')
     reopened=transport(tmp_path,backend)
     assert (await reopened.diagnostics())['assets']==[]
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute('SELECT credential_scope FROM cache_identity').fetchone()==(snapshot['scope'],)
     async with reopened.prepare(payload()):pass
-    with sqlite3.connect(path) as db:db.execute('DROP TABLE cache_identity')
+    with closing(sqlite3.connect(path)) as db, db:db.execute('DROP TABLE cache_identity')
     before=path.read_bytes();before_gets=len(backend.gets)
     with pytest.raises(ImageTransportError,match='Unbound legacy image ledger'):
         await transport(tmp_path,backend).cleanup(all_unpinned=True)

@@ -1,0 +1,1309 @@
+--- a/codex-rs/windows-sandbox-rs/src/acl.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl.rs
+@@ -587,7 +587,7 @@
+         access_mode
+     };
+ 
+-    let (p_dacl, p_sd) = match directory.as_ref() {
++    let (mut p_dacl, mut p_sd) = match directory.as_ref() {
+         Some(directory) => {
+             let mut security_descriptor: *mut c_void = std::ptr::null_mut();
+             let mut acl: *mut ACL = std::ptr::null_mut();
+@@ -614,56 +614,51 @@
+         }
+         None => fetch_dacl_handle(path)?,
+     };
+-    let mut entries: Vec<EXPLICIT_ACCESS_W> = Vec::new();
+-    for sid in sids {
+-        // A new allow can outrank another trustee's inherited deny, including a
+-        // file-only deny on children. Without the complete token, preserve every deny.
+-        if access_mode == GRANT_ACCESS
+-            && dacl_has_deny_mask(
+-                p_dacl,
+-                DenyAceScope::Any,
+-                allow_mask
+-                    | GENERIC_READ_MASK
+-                    | GENERIC_WRITE_MASK
+-                    | GENERIC_EXECUTE_MASK
+-                    | GENERIC_ALL_MASK,
+-            )
+-        {
+-            continue;
+-        }
+-        if !dacl_allow_mask_needs_refresh(p_dacl, *sid, allow_mask, disallow_mask)
+-            || inheritance == 0 && p_dacl.is_null()
+-        {
+-            continue;
+-        }
+-        entries.push(EXPLICIT_ACCESS_W {
+-            grfAccessPermissions: allow_mask,
+-            grfAccessMode: access_mode,
+-            grfInheritance: inheritance,
+-            Trustee: TRUSTEE_W {
+-                pMultipleTrustee: std::ptr::null_mut(),
+-                MultipleTrusteeOperation: 0,
+-                TrusteeForm: TRUSTEE_IS_SID,
+-                TrusteeType: TRUSTEE_IS_UNKNOWN,
+-                ptstrName: *sid as *mut u16,
+-            },
+-        });
+-    }
++    let collect_entries = |p_dacl: *mut ACL| {
++        let mut entries: Vec<EXPLICIT_ACCESS_W> = Vec::new();
++        for sid in sids {
++            // A new allow can outrank another trustee's inherited deny, including a
++            // file-only deny on children. Without the complete token, preserve every deny.
++            if access_mode == GRANT_ACCESS
++                && dacl_has_deny_mask(
++                    p_dacl,
++                    DenyAceScope::Any,
++                    allow_mask
++                        | GENERIC_READ_MASK
++                        | GENERIC_WRITE_MASK
++                        | GENERIC_EXECUTE_MASK
++                        | GENERIC_ALL_MASK,
++                )
++            {
++                continue;
++            }
++            if !dacl_allow_mask_needs_refresh(p_dacl, *sid, allow_mask, disallow_mask)
++                || inheritance == 0 && p_dacl.is_null()
++            {
++                continue;
++            }
++            entries.push(EXPLICIT_ACCESS_W {
++                grfAccessPermissions: allow_mask,
++                grfAccessMode: access_mode,
++                grfInheritance: inheritance,
++                Trustee: TRUSTEE_W {
++                    pMultipleTrustee: std::ptr::null_mut(),
++                    MultipleTrusteeOperation: 0,
++                    TrusteeForm: TRUSTEE_IS_SID,
++                    TrusteeType: TRUSTEE_IS_UNKNOWN,
++                    ptstrName: *sid as *mut u16,
++                },
++            });
++        }
++        entries
++    };
++    let mut entries = collect_entries(p_dacl);
+     let mut p_new_dacl: *mut ACL = std::ptr::null_mut();
+     // Collect errors before releasing either allocation so every update path
+     // shares the same cleanup, including failure to open the write handle.
+     let result = (|| -> Result<bool> {
+         if entries.is_empty() {
+             return Ok(false);
+-        }
+-        let code2 = SetEntriesInAclW(
+-            entries.len() as u32,
+-            entries.as_ptr(),
+-            p_dacl,
+-            &mut p_new_dacl,
+-        );
+-        if code2 != ERROR_SUCCESS {
+-            return Err(anyhow!("SetEntriesInAclW failed: {code2}"));
+         }
+         // For files and inheriting directory grants, request ACL-write access only
+         // when an update is needed. Use the same long-path support as the read handle.
+@@ -678,11 +673,67 @@
+                 .open(path)
+                 .context("open ACL target for update (READ_CONTROL | WRITE_DAC)")?,
+         };
++        // Only an update to a target owned by this real user joins the same
++        // metadata lock. Public no-op paths and other owners keep native behavior.
++        let _owner_lock = lock_owned_metadata_update(&handle)?;
++        if let Some((_, owner_sid)) = &_owner_lock {
++            let (mut fresh_acl, mut fresh_sd, mut fresh_owner) = (
++                std::ptr::null_mut(),
++                std::ptr::null_mut(),
++                std::ptr::null_mut(),
++            );
++            let status = GetSecurityInfo(
++                handle.as_raw_handle() as HANDLE,
++                1,
++                DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION,
++                &mut fresh_owner,
++                std::ptr::null_mut(),
++                &mut fresh_acl,
++                std::ptr::null_mut(),
++                &mut fresh_sd,
++            );
++            let owned = status == ERROR_SUCCESS
++                && !fresh_owner.is_null()
++                && EqualSid(fresh_owner, owner_sid.as_ptr() as *mut c_void) != 0;
++            if !owned {
++                if !fresh_sd.is_null() {
++                    LocalFree(fresh_sd as HLOCAL);
++                }
++                return Err(anyhow!(
++                    "read locked owner ACL or owner identity changed: {status}"
++                ));
++            }
++            if !p_sd.is_null() {
++                LocalFree(p_sd as HLOCAL);
++            }
++            p_sd = fresh_sd;
++            p_dacl = fresh_acl;
++            entries = collect_entries(p_dacl);
++            if entries.is_empty() {
++                return Ok(false);
++            }
++        }
++        let code2 = SetEntriesInAclW(
++            entries.len() as u32,
++            entries.as_ptr(),
++            p_dacl,
++            &mut p_new_dacl,
++        );
++        if code2 != ERROR_SUCCESS {
++            return Err(anyhow!("SetEntriesInAclW failed: {code2}"));
++        }
++        // SET_ACCESS may merge/remove an independently owned metadata-only ACE.
++        // Keep its exact bytes when the new grant already includes that right.
++        // This changes ownership representation, never the effective access mask.
++        let mut preserved = preserve_standalone_metadata_entries(p_dacl, p_new_dacl, &entries)?;
++        let effective_dacl = preserved
++            .as_mut()
++            .map_or(p_new_dacl, |storage| storage.as_mut_ptr().cast::<ACL>());
+         if root_only_directory {
+             set_directory_dacl_without_propagation(
+                 handle.as_raw_handle() as HANDLE,
+                 p_sd,
+-                p_new_dacl,
++                effective_dacl,
+             )?;
+         } else {
+             let code3 = SetSecurityInfo(
+@@ -691,7 +742,7 @@
+                 DACL_SECURITY_INFORMATION,
+                 std::ptr::null_mut(),
+                 std::ptr::null_mut(),
+-                p_new_dacl,
++                effective_dacl,
+                 std::ptr::null_mut(),
+             );
+             if code3 != ERROR_SUCCESS {
+@@ -709,10 +760,163 @@
+     result
+ }
+ 
++// Metadata grants and the existing asynchronous read-ACL refresh can share a
++// private ancestor. Serialize only real-owner updates, after proving work exists.
++fn lock_owned_metadata_update(
++    target: &std::fs::File,
++) -> Result<Option<(crate::setup_mutex::SandboxSetupLock, Vec<u8>)>> {
++    use std::os::windows::io::{FromRawHandle, OwnedHandle};
++    use windows_sys::Win32::Security::TOKEN_QUERY;
++    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
++    let mut token = std::ptr::null_mut();
++    ensure!(
++        unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } != 0,
++        "read real owner for metadata ACL lock"
++    );
++    let token = unsafe { OwnedHandle::from_raw_handle(token) };
++    let user = unsafe { crate::token::get_user_sid_bytes(token.as_raw_handle() as _) }?;
++    let (mut owner, mut descriptor) = (std::ptr::null_mut(), std::ptr::null_mut());
++    let status = unsafe {
++        GetSecurityInfo(
++            target.as_raw_handle() as _,
++            1,
++            OWNER_SECURITY_INFORMATION,
++            &mut owner,
++            std::ptr::null_mut(),
++            std::ptr::null_mut(),
++            std::ptr::null_mut(),
++            &mut descriptor,
++        )
++    };
++    let is_owner = status == ERROR_SUCCESS
++        && !owner.is_null()
++        && unsafe { EqualSid(owner, user.as_ptr() as *mut c_void) } != 0;
++    if !descriptor.is_null() {
++        unsafe {
++            LocalFree(descriptor as HLOCAL);
++        }
++    }
++    ensure!(
++        status == ERROR_SUCCESS,
++        "inspect target owner for metadata ACL update: {status}"
++    );
++    if !is_owner {
++        return Ok(None);
++    }
++    let owner = crate::winutil::string_from_sid_bytes(&user).map_err(anyhow::Error::msg)?;
++    let guard = crate::setup_mutex::acquire_metadata_acl_lock(&owner, 5_000)?;
++    Ok(Some((guard, user)))
++}
++
++// Preserve a separate non-inheriting metadata ACE through the native allow setter.
++// The requested permission already contains FILE_READ_ATTRIBUTES; the retained
++// ACE is redundant for access but necessary for exact ownership-based revocation.
++unsafe fn preserve_standalone_metadata_entries(
++    previous: *mut ACL,
++    updated: *mut ACL,
++    requested: &[EXPLICIT_ACCESS_W],
++) -> Result<Option<Vec<u32>>> {
++    use windows_sys::Win32::Security::AddAce;
++    use windows_sys::Win32::Storage::FileSystem::FILE_READ_ATTRIBUTES;
++    if previous.is_null() || updated.is_null() {
++        return Ok(None);
++    }
++    ensure!(
++        IsValidAcl(previous) != 0 && IsValidAcl(updated) != 0,
++        "invalid metadata preservation ACL"
++    );
++    let mut additional = Vec::new();
++    for index in 0..(*previous).AceCount as u32 {
++        let mut raw = std::ptr::null_mut();
++        ensure!(
++            GetAce(previous, index, &mut raw) != 0,
++            "read original metadata ACE"
++        );
++        let header = &*raw.cast::<ACE_HEADER>();
++        if header.AceType != ACCESS_ALLOWED_ACE_TYPE
++            || header.AceFlags != 0
++            || (header.AceSize as usize) < size_of::<ACCESS_ALLOWED_ACE>()
++        {
++            continue;
++        }
++        let ace = &*raw.cast::<ACCESS_ALLOWED_ACE>();
++        if ace.Mask != FILE_READ_ATTRIBUTES
++            || !requested.iter().any(|request| {
++                request.grfAccessPermissions & FILE_READ_ATTRIBUTES != 0
++                    && request.grfInheritance & u32::from(INHERIT_ONLY_ACE) == 0
++                    && EqualSid(
++                        (&raw const ace.SidStart) as *mut c_void,
++                        request.Trustee.ptstrName.cast(),
++                    ) != 0
++            })
++        {
++            continue;
++        }
++        let bytes = std::slice::from_raw_parts(raw.cast::<u8>(), header.AceSize as usize);
++        let mut exists = false;
++        for i in 0..(*updated).AceCount as u32 {
++            let mut current = std::ptr::null_mut();
++            ensure!(
++                GetAce(updated, i, &mut current) != 0,
++                "read updated metadata ACE"
++            );
++            let size = (*current.cast::<ACE_HEADER>()).AceSize as usize;
++            if size == bytes.len()
++                && std::slice::from_raw_parts(current.cast::<u8>(), size) == bytes
++            {
++                exists = true;
++                break;
++            }
++        }
++        if !exists {
++            additional.push(bytes.to_vec());
++        }
++    }
++    if additional.is_empty() {
++        return Ok(None);
++    }
++    let old_size = (*updated).AclSize as usize;
++    let size = old_size + additional.iter().map(Vec::len).sum::<usize>();
++    ensure!(
++        size <= u16::MAX as usize,
++        "metadata-preserving ACL is too large"
++    );
++    let mut storage = vec![0u32; size.div_ceil(size_of::<u32>())];
++    let acl = storage.as_mut_ptr().cast::<ACL>();
++    std::ptr::copy_nonoverlapping(updated.cast::<u8>(), acl.cast::<u8>(), old_size);
++    (*acl).AclSize = size as u16;
++    let mut insertion = (*acl).AceCount as u32;
++    for index in 0..(*acl).AceCount as u32 {
++        let mut raw = std::ptr::null_mut();
++        ensure!(
++            GetAce(acl, index, &mut raw) != 0,
++            "find metadata ACE insertion"
++        );
++        if (*raw.cast::<ACE_HEADER>()).AceFlags & INHERITED_ACE != 0 {
++            insertion = index;
++            break;
++        }
++    }
++    for bytes in additional {
++        ensure!(
++            AddAce(
++                acl,
++                (*acl).AclRevision as u32,
++                insertion,
++                bytes.as_ptr().cast(),
++                bytes.len() as u32
++            ) != 0,
++            "preserve standalone metadata ACE"
++        );
++        insertion += 1;
++    }
++    Ok(Some(storage))
++}
++
+ // Match the pinned-handle DACL write used by file_write: preserve protection
+ // and automatic-inheritance control without asking SetSecurityInfo to walk
+ // children. Only the supplied directory handle is changed.
+-unsafe fn set_directory_dacl_without_propagation(
++pub(crate) unsafe fn set_directory_dacl_without_propagation(
+     handle: HANDLE,
+     original_descriptor: *mut c_void,
+     dacl: *mut ACL,
+--- /dev/null
++++ b/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
+@@ -0,0 +1,793 @@
++//! Namespace-owned, non-inheriting directory metadata for CODEX_HOME ancestors.
++//! PowerShell resolves ancestor attributes before selecting its initial location.
++//! Never grant directory enumeration, file data access, or descendant inheritance.
++use anyhow::{Context, Result, bail, ensure};
++use serde::{Deserialize, Serialize};
++use std::ffi::c_void;
++use std::fs::OpenOptions;
++use std::io::Read;
++use std::os::windows::fs::OpenOptionsExt;
++use std::os::windows::io::{AsRawHandle, OwnedHandle};
++use std::path::{Path, PathBuf};
++use windows_sys::Win32::Foundation::{HANDLE, LocalFree};
++use windows_sys::Win32::Security::Authorization::{GetSecurityInfo, SE_FILE_OBJECT};
++use windows_sys::Win32::Security::{
++    ACE_HEADER, ACL, AddAce, DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetLengthSid,
++    INHERIT_ONLY_ACE, INHERITED_ACE, InitializeAcl, IsValidAcl, IsValidSid,
++    OWNER_SECURITY_INFORMATION,
++};
++use windows_sys::Win32::Storage::FileSystem as fs;
++
++use crate::deny_read_state::{lock_private_state_transaction, validate_state_file};
++use crate::namespace::SandboxNamespace;
++use crate::no_reparse_dir::{DirectoryOpenDisposition, open_directory_no_reparse};
++
++const STATE: &str = "ancestor_metadata_acl_state.json";
++const LOCK: &str = "ancestor_metadata_acl_state.lock";
++
++#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
++#[serde(deny_unknown_fields)]
++struct DirectoryId {
++    volume: u64,
++    file_id: [u8; 16],
++}
++
++#[derive(Clone, Debug, Deserialize, Serialize)]
++#[serde(deny_unknown_fields)]
++struct Grant {
++    path: PathBuf,
++    identity: DirectoryId,
++    ace: Vec<u8>,
++    #[serde(default)]
++    revoking: bool,
++}
++
++#[derive(Debug, Deserialize, Serialize)]
++#[serde(deny_unknown_fields)]
++struct Ledger {
++    schema: u32,
++    namespace: String,
++    owner_sid: String,
++    group_sid: String,
++    grants: Vec<Grant>,
++}
++
++struct PinnedDirectory {
++    path: PathBuf,
++    handle: OwnedHandle,
++    identity: DirectoryId,
++}
++
++impl PinnedDirectory {
++    fn open(path: &Path) -> Result<Self> {
++        // FILE_TRAVERSE participates in sharing checks; no SHARE_DELETE pins the name.
++        let handle = open_directory_no_reparse(
++            path,
++            fs::READ_CONTROL | fs::FILE_READ_ATTRIBUTES | fs::FILE_TRAVERSE,
++            fs::FILE_SHARE_READ | fs::FILE_SHARE_WRITE,
++            DirectoryOpenDisposition::OpenExisting,
++        )?;
++        let identity = directory_id(handle.as_raw_handle() as _)?;
++        Ok(Self {
++            path: path.to_owned(),
++            handle,
++            identity,
++        })
++    }
++
++    fn write_handle(&self) -> Result<OwnedHandle> {
++        let handle = open_directory_no_reparse(
++            &self.path,
++            fs::READ_CONTROL | fs::WRITE_DAC | fs::FILE_READ_ATTRIBUTES,
++            fs::FILE_SHARE_READ | fs::FILE_SHARE_WRITE,
++            DirectoryOpenDisposition::OpenExisting,
++        )?;
++        ensure!(
++            directory_id(handle.as_raw_handle() as _)? == self.identity,
++            "metadata target changed before its ACL update"
++        );
++        Ok(handle)
++    }
++}
++
++fn directory_id(handle: HANDLE) -> Result<DirectoryId> {
++    let mut info = fs::FILE_ID_INFO::default();
++    ensure!(
++        unsafe {
++            fs::GetFileInformationByHandleEx(
++                handle,
++                fs::FileIdInfo,
++                (&mut info as *mut fs::FILE_ID_INFO).cast(),
++                size_of::<fs::FILE_ID_INFO>() as u32,
++            )
++        } != 0,
++        "read metadata directory identity: {}",
++        std::io::Error::last_os_error()
++    );
++    ensure!(
++        info.FileId.Identifier != [0; 16],
++        "metadata directory has no stable identity"
++    );
++    Ok(DirectoryId {
++        volume: info.VolumeSerialNumber,
++        file_id: info.FileId.Identifier,
++    })
++}
++
++fn pin_ancestors(namespace: &SandboxNamespace) -> Result<Vec<PinnedDirectory>> {
++    let mut paths = namespace.home.ancestors().collect::<Vec<_>>();
++    paths.reverse();
++    let pinned = paths
++        .into_iter()
++        .map(PinnedDirectory::open)
++        .collect::<Result<Vec<_>>>()?;
++    let home = pinned.last().context("metadata home is missing")?;
++    let actual = crate::namespace_key::NamespaceKey::for_directory(
++        &namespace.home.to_string_lossy().to_lowercase(),
++        &namespace.owner_sid,
++        home.identity.volume,
++        home.identity.file_id,
++    );
++    ensure!(
++        actual.id() == namespace.key.id(),
++        "metadata home identity changed"
++    );
++    namespace.validate_existing_state()?;
++    Ok(pinned)
++}
++
++struct Dacl {
++    descriptor: *mut c_void,
++    owner: *mut c_void,
++    acl: *mut ACL,
++}
++
++impl Drop for Dacl {
++    fn drop(&mut self) {
++        if !self.descriptor.is_null() {
++            unsafe {
++                LocalFree(self.descriptor);
++            }
++        }
++    }
++}
++
++impl Dacl {
++    fn read(directory: &PinnedDirectory) -> Result<Self> {
++        let mut value = Self {
++            descriptor: std::ptr::null_mut(),
++            owner: std::ptr::null_mut(),
++            acl: std::ptr::null_mut(),
++        };
++        let code = unsafe {
++            GetSecurityInfo(
++                directory.handle.as_raw_handle() as _,
++                SE_FILE_OBJECT,
++                DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION,
++                &mut value.owner,
++                std::ptr::null_mut(),
++                &mut value.acl,
++                std::ptr::null_mut(),
++                &mut value.descriptor,
++            )
++        };
++        ensure!(code == 0, "read ancestor DACL: {code}");
++        ensure!(
++            value.acl.is_null() || unsafe { IsValidAcl(value.acl) } != 0,
++            "invalid ancestor DACL"
++        );
++        Ok(value)
++    }
++
++    fn require_owner(&self, expected: &str) -> Result<()> {
++        let expected = crate::token::LocalSid::from_string(expected)?;
++        ensure!(
++            !self.owner.is_null() && unsafe { EqualSid(self.owner, expected.as_ptr()) } != 0,
++            "refusing to modify another owner's ancestor metadata"
++        );
++        Ok(())
++    }
++
++    fn entries(&self) -> Result<Vec<Vec<u8>>> {
++        let mut entries = Vec::new();
++        if self.acl.is_null() {
++            return Ok(entries);
++        }
++        for index in 0..unsafe { (*self.acl).AceCount } as u32 {
++            let mut raw = std::ptr::null_mut();
++            ensure!(
++                unsafe { GetAce(self.acl, index, &mut raw) } != 0,
++                "read metadata ACE"
++            );
++            let header = unsafe { &*raw.cast::<ACE_HEADER>() };
++            ensure!(
++                header.AceSize as usize >= size_of::<ACE_HEADER>(),
++                "invalid metadata ACE size"
++            );
++            entries.push(
++                unsafe { std::slice::from_raw_parts(raw.cast::<u8>(), header.AceSize as usize) }
++                    .to_vec(),
++            );
++        }
++        Ok(entries)
++    }
++
++    fn write(&self, directory: &PinnedDirectory, entries: &[Vec<u8>]) -> Result<()> {
++        ensure!(!self.acl.is_null(), "a null DACL already permits metadata");
++        let size = size_of::<ACL>() + entries.iter().map(Vec::len).sum::<usize>();
++        ensure!(size <= u16::MAX as usize, "ancestor DACL is too large");
++        let mut storage = vec![0u32; size.div_ceil(size_of::<u32>())];
++        let acl = storage.as_mut_ptr().cast::<ACL>();
++        let revision = unsafe { (*self.acl).AclRevision } as u32;
++        ensure!(
++            unsafe { InitializeAcl(acl, size as u32, revision) } != 0,
++            "initialize metadata DACL"
++        );
++        for ace in entries {
++            ensure!(
++                unsafe {
++                    AddAce(
++                        acl,
++                        revision,
++                        u32::MAX,
++                        ace.as_ptr().cast(),
++                        ace.len() as u32,
++                    )
++                } != 0,
++                "copy metadata DACL entry"
++            );
++        }
++        let handle = directory.write_handle()?;
++        unsafe {
++            crate::acl::set_directory_dacl_without_propagation(
++                handle.as_raw_handle() as _,
++                self.descriptor,
++                acl,
++            )
++        }
++    }
++}
++
++fn metadata_mask(mask: u32) -> bool {
++    mask & (fs::FILE_READ_ATTRIBUTES | 0x8000_0000 | 0x2000_0000 | 0x1000_0000) != 0
++}
++
++fn entry_sid(ace: &[u8]) -> Result<&[u8]> {
++    ensure!(ace.len() >= 16, "truncated metadata trustee");
++    let sid = &ace[8..];
++    ensure!(
++        unsafe { IsValidSid(sid.as_ptr() as *mut c_void) } != 0,
++        "invalid metadata trustee"
++    );
++    let len = unsafe { GetLengthSid(sid.as_ptr() as *mut c_void) } as usize;
++    ensure!(len <= sid.len(), "metadata trustee exceeds ACE");
++    Ok(&sid[..len])
++}
++
++fn already_readable(dacl: &Dacl, entries: &[Vec<u8>], principals: &[Vec<u8>]) -> Result<bool> {
++    if dacl.acl.is_null() {
++        return Ok(true);
++    }
++    let mut allowed = false;
++    for ace in entries {
++        if ace[1] & INHERIT_ONLY_ACE as u8 != 0 || ace.len() < 8 {
++            continue;
++        }
++        let mask = u32::from_le_bytes(ace[4..8].try_into().unwrap());
++        if !metadata_mask(mask) {
++            continue;
++        }
++        match ace[0] {
++            0 | 1 => {
++                let trustee = entry_sid(ace)?;
++                if principals.iter().any(|sid| trustee == sid) {
++                    ensure!(
++                        ace[0] != 1,
++                        "explicit ancestor metadata denial must not be weakened"
++                    );
++                    allowed = true;
++                }
++            }
++            // Conditional/object denials need a full token evaluation; do not override them.
++            6 | 10 | 12 => bail!("conditional ancestor metadata denial cannot be replaced"),
++            _ => {}
++        }
++    }
++    Ok(allowed)
++}
++
++fn metadata_ace(sid: &[u8]) -> Result<Vec<u8>> {
++    ensure!(
++        sid.len() >= 8 && unsafe { IsValidSid(sid.as_ptr() as *mut c_void) } != 0,
++        "invalid metadata SID"
++    );
++    ensure!(
++        unsafe { GetLengthSid(sid.as_ptr() as *mut c_void) } as usize == sid.len(),
++        "invalid metadata SID size"
++    );
++    let size = 8 + sid.len();
++    let mut ace = vec![0, 0]; // ACCESS_ALLOWED_ACE, no inheritance flags.
++    ace.extend_from_slice(&(size as u16).to_le_bytes());
++    ace.extend_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
++    ace.extend_from_slice(sid);
++    Ok(ace)
++}
++
++fn exact_index(entries: &[Vec<u8>], owned: &[u8]) -> Result<Option<usize>> {
++    let exact = entries
++        .iter()
++        .enumerate()
++        .filter(|(_, ace)| ace.as_slice() == owned)
++        .map(|(i, _)| i)
++        .collect::<Vec<_>>();
++    ensure!(exact.len() <= 1, "duplicate owned ancestor metadata ACE");
++    Ok(exact.first().copied())
++}
++
++fn owned_index(entries: &[Vec<u8>], owned: &[u8], sid: &[u8]) -> Result<Option<usize>> {
++    if let Some(index) = exact_index(entries, owned)? {
++        return Ok(Some(index));
++    }
++    for ace in entries {
++        if ace[0] == 0
++            && ace.len() >= 16
++            && entry_sid(ace)? == sid
++            && metadata_mask(u32::from_le_bytes(ace[4..8].try_into().unwrap()))
++        {
++            bail!("owned metadata ACE was changed; preserve the ledger and unrelated permissions");
++        }
++    }
++    Ok(None)
++}
++
++fn load(path: &Path) -> Result<Option<Ledger>> {
++    let mut file = match OpenOptions::new()
++        .read(true)
++        .share_mode(fs::FILE_SHARE_READ | fs::FILE_SHARE_DELETE)
++        .custom_flags(fs::FILE_FLAG_OPEN_REPARSE_POINT)
++        .open(path)
++    {
++        Ok(file) => file,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
++        Err(error) => return Err(error).context("open ancestor metadata ledger"),
++    };
++    validate_state_file(&file)?;
++    let mut bytes = Vec::new();
++    file.read_to_end(&mut bytes)?;
++    Ok(Some(serde_json::from_slice(&bytes).context(
++        "invalid ancestor metadata ledger; preserve it for recovery",
++    )?))
++}
++
++fn save(path: &Path, ledger: &Ledger) -> Result<()> {
++    let file = OpenOptions::new()
++        .write(true)
++        .create(true)
++        .truncate(false)
++        .share_mode(fs::FILE_SHARE_READ | fs::FILE_SHARE_WRITE)
++        .custom_flags(fs::FILE_FLAG_OPEN_REPARSE_POINT)
++        .open(path)?;
++    validate_state_file(&file)?;
++    crate::file_write::write_file_atomically_preserving_dacl(
++        path,
++        &serde_json::to_vec_pretty(ledger)?,
++        file,
++    )?;
++    // A successful atomic rename alone does not flush the ownership record.
++    // Persist it before any ACL mutation, including each successful revocation.
++    let committed = OpenOptions::new()
++        .write(true)
++        .share_mode(fs::FILE_SHARE_READ)
++        .custom_flags(fs::FILE_FLAG_OPEN_REPARSE_POINT)
++        .open(path)?;
++    validate_state_file(&committed)?;
++    committed
++        .sync_all()
++        .context("flush ancestor metadata ownership before ACL mutation")
++}
++
++fn validate(
++    ledger: &Ledger,
++    namespace: &SandboxNamespace,
++    pinned: &[PinnedDirectory],
++) -> Result<Vec<u8>> {
++    ensure!(
++        ledger.schema == 1
++            && ledger.namespace == namespace.key.id()
++            && ledger.owner_sid == namespace.owner_sid,
++        "ancestor metadata ledger owner mismatch"
++    );
++    let sid = crate::token::LocalSid::from_string(&ledger.group_sid)?;
++    let bytes = unsafe {
++        std::slice::from_raw_parts(
++            sid.as_ptr().cast::<u8>(),
++            GetLengthSid(sid.as_ptr()) as usize,
++        )
++    }
++    .to_vec();
++    let expected = metadata_ace(&bytes)?;
++    let mut used = std::collections::HashSet::new();
++    for grant in &ledger.grants {
++        let target = pinned
++            .iter()
++            .find(|directory| directory.path == grant.path)
++            .context("ledger target is not a current CODEX_HOME ancestor")?;
++        ensure!(
++            target.path != namespace.home && target.path.parent().is_some(),
++            "ledger may not target home itself or a volume root"
++        );
++        ensure!(
++            target.identity == grant.identity
++                && grant.ace == expected
++                && used.insert(grant.path.clone()),
++            "ancestor metadata identity/ACE mismatch"
++        );
++    }
++    Ok(bytes)
++}
++
++/// Grant only missing metadata to the validated namespace group, journal before mutation.
++pub(crate) fn grant(namespace: &SandboxNamespace, group_sid: &[u8]) -> Result<()> {
++    let _serial = crate::setup_mutex::acquire_metadata_acl_lock(&namespace.owner_sid, 5_000)?;
++    let pinned = pin_ancestors(namespace)?;
++    let transaction = lock_private_state_transaction(
++        &crate::setup::sandbox_secrets_dir(&namespace.home),
++        STATE,
++        LOCK,
++    )?;
++    let group = crate::winutil::string_from_sid_bytes(group_sid).map_err(anyhow::Error::msg)?;
++    let mut ledger = load(&transaction.state_path)?.unwrap_or_else(|| Ledger {
++        schema: 1,
++        namespace: namespace.key.id(),
++        owner_sid: namespace.owner_sid.clone(),
++        group_sid: group.clone(),
++        grants: Vec::new(),
++    });
++    validate(&ledger, namespace, &pinned)?;
++    ensure!(
++        !ledger.grants.iter().any(|grant| grant.revoking),
++        "ancestor metadata revocation is incomplete; finish native uninstall before setup"
++    );
++    if ledger.group_sid != group {
++        ensure!(
++            ledger.grants.is_empty(),
++            "ancestor metadata group SID changed with pending grants"
++        );
++        // A completed uninstall leaves no owned grants; reprovisioning may create a new SID.
++        ledger.group_sid = group.clone();
++        save(&transaction.state_path, &ledger)?;
++    }
++    let ace = metadata_ace(group_sid)?;
++    let principals = vec![
++        group_sid.to_vec(),
++        crate::resolve_sid("Users")?,
++        crate::resolve_sid("Authenticated Users")?,
++        crate::resolve_sid("Everyone")?,
++    ];
++    for directory in pinned
++        .iter()
++        .filter(|p| p.path != namespace.home && p.path.parent().is_some())
++    {
++        let dacl = Dacl::read(directory)?;
++        let mut entries = dacl.entries()?;
++        if let Some(owned) = ledger.grants.iter().find(|g| g.path == directory.path) {
++            owned_index(&entries, &owned.ace, group_sid)?;
++        }
++        if already_readable(&dacl, &entries, &principals)? {
++            continue;
++        }
++        // Public/readable ancestors remain untouched. Any new grant must be
++        // confined to this owner; native allow refreshes use this same mutex.
++        dacl.require_owner(&namespace.owner_sid)?;
++        if !ledger.grants.iter().any(|g| g.path == directory.path) {
++            ledger.grants.push(Grant {
++                path: directory.path.clone(),
++                identity: directory.identity.clone(),
++                ace: ace.clone(),
++                revoking: false,
++            });
++            // On interruption, an absent ACE is harmless; unrecorded grants are not.
++            save(&transaction.state_path, &ledger)?;
++        }
++        let index = entries
++            .iter()
++            .position(|entry| entry[1] & INHERITED_ACE as u8 != 0)
++            .unwrap_or(entries.len());
++        entries.insert(index, ace.clone());
++        dacl.write(directory, &entries)?;
++        let actual = Dacl::read(directory)?.entries()?;
++        ensure!(
++            owned_index(&actual, &ace, group_sid)?.is_some(),
++            "metadata ACE did not persist"
++        );
++    }
++    Ok(())
++}
++
++/// Remove only the exact ACEs journaled by this namespace on the same directory objects.
++pub(crate) fn revoke(namespace: &SandboxNamespace) -> Result<()> {
++    let path = crate::setup::sandbox_secrets_dir(&namespace.home).join(STATE);
++    if !path.try_exists()? {
++        return Ok(());
++    }
++    let _serial = crate::setup_mutex::acquire_metadata_acl_lock(&namespace.owner_sid, 5_000)?;
++    let pinned = pin_ancestors(namespace)?;
++    let transaction = lock_private_state_transaction(
++        &crate::setup::sandbox_secrets_dir(&namespace.home),
++        STATE,
++        LOCK,
++    )?;
++    let Some(mut ledger) = load(&transaction.state_path)? else {
++        return Ok(());
++    };
++    let sid = validate(&ledger, namespace, &pinned)?;
++    if ledger.grants.is_empty() {
++        return Ok(());
++    }
++    // A missing group is a recoverable interrupted uninstall; a replacement is not.
++    if crate::namespace::local_group_exists(&namespace.key.group())? {
++        ensure!(
++            crate::resolve_sid(&namespace.key.group())? == sid,
++            "metadata group identity changed"
++        );
++    }
++    while let Some(grant) = ledger.grants.last().cloned() {
++        let directory = pinned.iter().find(|p| p.path == grant.path).unwrap();
++        let dacl = Dacl::read(directory)?;
++        let mut entries = dacl.entries()?;
++        let index = if grant.revoking {
++            // Intent was flushed only after the original exact-ownership check.
++            // A crash after deletion must not adopt or remove a later READ ACE.
++            exact_index(&entries, &grant.ace)?
++        } else {
++            let index = owned_index(&entries, &grant.ace, &sid)?;
++            if index.is_some() {
++                dacl.require_owner(&namespace.owner_sid)?;
++                ledger.grants.last_mut().unwrap().revoking = true;
++                save(&transaction.state_path, &ledger)?;
++            }
++            index
++        };
++        if let Some(index) = index {
++            dacl.require_owner(&namespace.owner_sid)?;
++            entries.remove(index);
++            dacl.write(directory, &entries)?;
++            ensure!(
++                exact_index(&Dacl::read(directory)?.entries()?, &grant.ace)?.is_none(),
++                "owned ancestor metadata ACE remains after revocation"
++            );
++        }
++        ledger.grants.pop();
++        // Persist each successful removal; failures retain the exact unfinished tail.
++        save(&transaction.state_path, &ledger)?;
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn sid(rid: u32) -> Vec<u8> {
++        let sid = crate::token::LocalSid::from_string(&format!("S-1-5-21-1-2-3-{rid}")).unwrap();
++        unsafe {
++            std::slice::from_raw_parts(sid.as_ptr().cast(), GetLengthSid(sid.as_ptr()) as usize)
++        }
++        .to_vec()
++    }
++
++    #[test]
++    fn metadata_entry_is_exactly_noninheriting_attributes() {
++        let principal = sid(1101);
++        let ace = metadata_ace(&principal).unwrap();
++        assert_eq!(ace[0], 0);
++        assert_eq!(ace[1], 0);
++        assert_eq!(
++            u32::from_le_bytes(ace[4..8].try_into().unwrap()),
++            fs::FILE_READ_ATTRIBUTES
++        );
++        assert_eq!(entry_sid(&ace).unwrap(), principal);
++    }
++
++    #[test]
++    fn exact_revocation_preserves_other_namespace_and_other_masks() {
++        let principal = sid(1101);
++        let owned = metadata_ace(&principal).unwrap();
++        let other_namespace = metadata_ace(&sid(1102)).unwrap();
++        let mut other_mask = owned.clone();
++        other_mask[4..8].copy_from_slice(&fs::FILE_GENERIC_WRITE.to_le_bytes());
++        let mut entries = vec![other_namespace.clone(), owned.clone(), other_mask.clone()];
++        let index = owned_index(&entries, &owned, &principal).unwrap().unwrap();
++        entries.remove(index);
++        assert_eq!(entries, [other_namespace, other_mask]);
++        assert_eq!(owned_index(&entries, &owned, &principal).unwrap(), None);
++    }
++
++    #[test]
++    fn revocation_intent_preserves_later_read_and_other_namespace() -> Result<()> {
++        let principal = sid(1101);
++        let owned = metadata_ace(&principal)?;
++        let mut later_read = owned.clone();
++        later_read[4..8].copy_from_slice(&fs::FILE_GENERIC_READ.to_le_bytes());
++        let other = metadata_ace(&sid(1102))?;
++        let mut entries = vec![owned.clone(), later_read.clone(), other.clone()];
++        // The initial transition must prove the exact owned entry is still present.
++        let index = owned_index(&entries, &owned, &principal)?.unwrap();
++        entries.remove(index);
++        // Simulates a crash after deletion, before journal removal was saved.
++        assert_eq!(exact_index(&entries, &owned)?, None);
++        assert_eq!(entries, [later_read, other]);
++        // Without the persisted intent, the same input must remain fail-closed.
++        assert!(owned_index(&entries, &owned, &principal).is_err());
++        Ok(())
++    }
++
++    #[test]
++    fn ambiguous_modified_or_duplicate_owned_entries_are_rejected() {
++        let principal = sid(1101);
++        let owned = metadata_ace(&principal).unwrap();
++        let mut changed = owned.clone();
++        changed[4..8].copy_from_slice(&fs::FILE_GENERIC_READ.to_le_bytes());
++        assert!(owned_index(&[changed], &owned, &principal).is_err());
++        assert!(owned_index(&[owned.clone(), owned.clone()], &owned, &principal).is_err());
++    }
++
++    #[test]
++    fn real_pinned_dacl_round_trip_does_not_propagate_to_children() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let parent = root.path().join("parent");
++        let child = parent.join("child");
++        std::fs::create_dir_all(&child)?;
++        let parent = PinnedDirectory::open(&parent)?;
++        let child = PinnedDirectory::open(&child)?;
++        let before = Dacl::read(&parent)?.entries()?;
++        let child_before = Dacl::read(&child)?.entries()?;
++        let principal = sid(1101);
++        let ace = metadata_ace(&principal)?;
++        let mut changed = before.clone();
++        let index = changed
++            .iter()
++            .position(|entry| entry[1] & INHERITED_ACE as u8 != 0)
++            .unwrap_or(changed.len());
++        changed.insert(index, ace.clone());
++        Dacl::read(&parent)?.write(&parent, &changed)?;
++        assert_eq!(Dacl::read(&parent)?.entries()?, changed);
++        assert_eq!(Dacl::read(&child)?.entries()?, child_before);
++        let mut after = Dacl::read(&parent)?.entries()?;
++        let index = owned_index(&after, &ace, &principal)?.unwrap();
++        after.remove(index);
++        Dacl::read(&parent)?.write(&parent, &after)?;
++        assert_eq!(Dacl::read(&parent)?.entries()?, before);
++        assert_eq!(Dacl::read(&child)?.entries()?, child_before);
++        Ok(())
++    }
++
++    #[test]
++    fn native_read_setter_keeps_owned_metadata_for_exact_revocation() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let directory = PinnedDirectory::open(root.path())?;
++        let before = Dacl::read(&directory)?.entries()?;
++        let principal = sid(1101);
++        let owned = metadata_ace(&principal)?;
++        let other = metadata_ace(&sid(1102))?;
++        let mut entries = before.clone();
++        let index = entries
++            .iter()
++            .position(|ace| ace[1] & INHERITED_ACE as u8 != 0)
++            .unwrap_or(entries.len());
++        entries.splice(index..index, [owned.clone(), other.clone()]);
++        Dacl::read(&directory)?.write(&directory, &entries)?;
++        unsafe {
++            crate::acl::ensure_allow_mask_aces_with_inheritance(
++                root.path(),
++                &[principal.as_ptr() as *mut c_void],
++                fs::FILE_GENERIC_READ | fs::FILE_GENERIC_EXECUTE,
++                (windows_sys::Win32::Security::OBJECT_INHERIT_ACE
++                    | windows_sys::Win32::Security::CONTAINER_INHERIT_ACE) as u32,
++            )?;
++        }
++        let mut granted = Dacl::read(&directory)?.entries()?;
++        assert!(exact_index(&granted, &owned)?.is_some());
++        assert!(granted.contains(&other));
++        assert!(granted.iter().any(|ace| ace[0] == 0
++            && ace[1] == 3
++            && entry_sid(ace).is_ok_and(|sid| sid == principal)
++            && u32::from_le_bytes(ace[4..8].try_into().unwrap())
++                == fs::FILE_GENERIC_READ | fs::FILE_GENERIC_EXECUTE));
++        let index = owned_index(&granted, &owned, &principal)?.unwrap();
++        granted.remove(index);
++        Dacl::read(&directory)?.write(&directory, &granted)?;
++        let after = Dacl::read(&directory)?.entries()?;
++        assert!(exact_index(&after, &owned)?.is_none());
++        assert_eq!(after, granted);
++        assert!(after.contains(&other));
++        Dacl::read(&directory)?.write(&directory, &before)?;
++        Ok(())
++    }
++
++    #[test]
++    fn restricted_ancestor_owner_must_match_namespace() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let directory = PinnedDirectory::open(root.path())?;
++        let dacl = Dacl::read(&directory)?;
++        assert!(dacl.require_owner("S-1-5-21-1-2-3-1101").is_err());
++        let owner = unsafe {
++            std::slice::from_raw_parts(dacl.owner.cast::<u8>(), GetLengthSid(dacl.owner) as usize)
++        };
++        let owner = crate::winutil::string_from_sid_bytes(owner).map_err(anyhow::Error::msg)?;
++        dacl.require_owner(&owner)?;
++        Ok(())
++    }
++
++    #[test]
++    fn existing_metadata_is_recognized_but_denial_is_never_overridden() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let directory = PinnedDirectory::open(root.path())?;
++        let dacl = Dacl::read(&directory)?;
++        let principal = sid(1101);
++        let ace = metadata_ace(&principal)?;
++        assert!(already_readable(
++            &dacl,
++            &[ace.clone()],
++            &[principal.clone()]
++        )?);
++        let mut deny = ace.clone();
++        deny[0] = 1;
++        assert!(already_readable(&dacl, &[deny, ace], &[principal]).is_err());
++        Ok(())
++    }
++
++    #[test]
++    fn ledger_rejects_foreign_namespace_path_identity_and_permissions() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let home = root.path().join("home");
++        std::fs::create_dir(&home)?;
++        let namespace = SandboxNamespace::current(&home)?;
++        let pinned = pin_ancestors(&namespace)?;
++        let target = pinned.iter().find(|p| p.path == root.path()).unwrap();
++        let principal = sid(1101);
++        let group =
++            crate::winutil::string_from_sid_bytes(&principal).map_err(anyhow::Error::msg)?;
++        let mut ledger = Ledger {
++            schema: 1,
++            namespace: namespace.key.id(),
++            owner_sid: namespace.owner_sid.clone(),
++            group_sid: group,
++            grants: vec![Grant {
++                path: target.path.clone(),
++                identity: target.identity.clone(),
++                ace: metadata_ace(&principal)?,
++                revoking: false,
++            }],
++        };
++        validate(&ledger, &namespace, &pinned)?;
++        ledger.namespace.push('x');
++        assert!(validate(&ledger, &namespace, &pinned).is_err());
++        ledger.namespace = namespace.key.id();
++        ledger.grants[0].identity.file_id[0] ^= 1;
++        assert!(validate(&ledger, &namespace, &pinned).is_err());
++        ledger.grants[0].identity = target.identity.clone();
++        ledger.grants[0].ace[4..8].copy_from_slice(&fs::FILE_GENERIC_READ.to_le_bytes());
++        assert!(validate(&ledger, &namespace, &pinned).is_err());
++        ledger.grants[0].ace = metadata_ace(&principal)?;
++        ledger.grants[0].path = root.path().join("not-an-ancestor");
++        assert!(validate(&ledger, &namespace, &pinned).is_err());
++        Ok(())
++    }
++
++    #[test]
++    fn malformed_or_reparse_ledger_is_not_recovered_as_empty() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let path = root.path().join(STATE);
++        std::fs::write(&path, b"{invalid")?;
++        assert!(load(&path).is_err());
++        assert_eq!(std::fs::read(&path)?, b"{invalid");
++        std::fs::remove_file(&path)?;
++        let other = root.path().join("other");
++        std::fs::write(&other, b"{}")?;
++        std::fs::hard_link(&other, &path)?;
++        assert!(load(&path).is_err());
++        assert_eq!(std::fs::read(&other)?, b"{}");
++        Ok(())
++    }
++}
+--- a/codex-rs/windows-sandbox-rs/src/deny_read_state.rs
++++ b/codex-rs/windows-sandbox-rs/src/deny_read_state.rs
+@@ -131,13 +131,35 @@
+ /// The lock inode never changes when the JSON is atomically replaced. Its
+ /// private DACL and pinned physical parent keep a different path from becoming
+ /// a second lock for this same ledger. Dropping the handles releases the lock.
+-struct StateTransaction {
++pub(crate) struct StateTransaction {
+     _file: File,
+     _parent: std::os::windows::io::OwnedHandle,
+-    state_path: PathBuf,
++    pub(crate) state_path: PathBuf,
+ }
+ 
+ fn lock_state_transaction(codex_home: &Path) -> Result<StateTransaction> {
++    lock_private_state_transaction(
++        &sandbox_dir(codex_home),
++        DENY_READ_ACL_STATE_FILE,
++        "deny_read_acl_state.lock",
++    )
++}
++
++/// Reuse the same owner-private, non-reparse lock for another native ACL ledger.
++pub(crate) fn lock_private_state_transaction(
++    directory: &Path,
++    state_name: &str,
++    lock_name: &str,
++) -> Result<StateTransaction> {
++    ensure!(
++        Path::new(state_name)
++            .file_name()
++            .is_some_and(|name| name == state_name)
++            && Path::new(lock_name)
++                .file_name()
++                .is_some_and(|name| name == lock_name),
++        "ACL ledger names must be plain leaf names"
++    );
+     use crate::no_reparse_dir::{
+         DirectoryOpenDisposition, open_directory_no_reparse, open_no_reparse_with_security,
+     };
+@@ -186,15 +208,15 @@
+             .context("prepare private ledger lock security");
+     }
+ 
+-    let physical_parent = dunce::canonicalize(sandbox_dir(codex_home))
+-        .context("resolve physical deny-read state directory")?;
++    let physical_parent =
++        dunce::canonicalize(directory).context("resolve physical deny-read state directory")?;
+     let parent = open_directory_no_reparse(
+         &physical_parent,
+         winfs::FILE_TRAVERSE | winfs::FILE_READ_ATTRIBUTES,
+         winfs::FILE_SHARE_READ | winfs::FILE_SHARE_WRITE,
+         DirectoryOpenDisposition::OpenExisting,
+     )?;
+-    let mut lock_name = crate::winutil::to_wide("deny_read_acl_state.lock");
++    let mut lock_name = crate::winutil::to_wide(lock_name);
+     let handle = open_no_reparse_with_security(
+         parent.as_raw_handle() as _,
+         &mut lock_name,
+@@ -296,7 +318,7 @@
+     Ok(StateTransaction {
+         _file: file,
+         _parent: parent,
+-        state_path: physical_parent.join(DENY_READ_ACL_STATE_FILE),
++        state_path: physical_parent.join(state_name),
+     })
+ }
+ 
+@@ -388,7 +410,7 @@
+     .with_context(|| format!("write deny-read ACL state {}", path.display()))
+ }
+ 
+-fn validate_state_file(file: &File) -> Result<()> {
++pub(crate) fn validate_state_file(file: &File) -> Result<()> {
+     let mut info = unsafe { std::mem::zeroed::<winfs::BY_HANDLE_FILE_INFORMATION>() };
+     if unsafe { winfs::GetFileInformationByHandle(file.as_raw_handle() as win::HANDLE, &mut info) }
+         == 0
+--- a/codex-rs/windows-sandbox-rs/src/lib.rs
++++ b/codex-rs/windows-sandbox-rs/src/lib.rs
+@@ -59,6 +59,8 @@
+ 
+ #[cfg(target_os = "windows")]
+ mod acl;
++#[cfg(target_os = "windows")]
++mod ancestor_metadata;
+ #[cfg(target_os = "windows")]
+ mod allow;
+ #[cfg(target_os = "windows")]
+--- a/codex-rs/windows-sandbox-rs/src/namespace.rs
++++ b/codex-rs/windows-sandbox-rs/src/namespace.rs
+@@ -153,7 +153,7 @@
+         Ok(())
+     }
+ }
+-fn local_group_exists(name: &str) -> Result<bool> {
++pub(crate) fn local_group_exists(name: &str) -> Result<bool> {
+     use windows_sys::Win32::NetworkManagement::NetManagement as net;
+     let mut data = std::ptr::null_mut();
+     let status = unsafe {
+--- a/codex-rs/windows-sandbox-rs/src/setup_mutex.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_mutex.rs
+@@ -42,7 +42,29 @@
+ 
+ /// Waits up to `timeout_ms` for exclusive access by LocalSystem or an elevated administrator.
+ pub fn acquire_sandbox_setup_lock(timeout_ms: u32) -> Result<SandboxSetupLock> {
+-    let sddl = to_wide("D:P(A;;GA;;;SY)(A;;GA;;;BA)");
++    acquire_named_lock(
++        r"Global\CodexSandboxSetup",
++        "D:P(A;;GA;;;SY)(A;;GA;;;BA)",
++        timeout_ms,
++    )
++}
++
++/// Serialize this owner's metadata-only updates across home namespaces and sessions.
++/// Unlike account provisioning, an ordinary owner refresh must also use this lock.
++pub(crate) fn acquire_metadata_acl_lock(
++    owner_sid: &str,
++    timeout_ms: u32,
++) -> Result<SandboxSetupLock> {
++    let _sid = crate::token::LocalSid::from_string(owner_sid)?;
++    acquire_named_lock(
++        &format!(r"Global\CodexDeepSeekMetadataAcl-{owner_sid}"),
++        &format!("D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;{owner_sid})"),
++        timeout_ms,
++    )
++}
++
++fn acquire_named_lock(name: &str, security: &str, timeout_ms: u32) -> Result<SandboxSetupLock> {
++    let sddl = to_wide(security);
+     let mut descriptor = null_mut();
+     if unsafe {
+         ConvertStringSecurityDescriptorToSecurityDescriptorW(
+@@ -60,7 +82,7 @@
+         lpSecurityDescriptor: descriptor,
+         bInheritHandle: 0,
+     };
+-    let name = to_wide(r"Global\CodexSandboxSetup");
++    let name = to_wide(name);
+     let handle = unsafe {
+         CreateMutexW(&attributes, /*binitialowner*/ 0, name.as_ptr())
+     };
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+@@ -974,6 +974,7 @@
+     }
+ 
+     ensure_codex_home_metadata(&payload.codex_home, sandbox_group_psid)?;
++    crate::ancestor_metadata::grant(&validate_payload_namespace(payload)?, &sandbox_group_sid)?;
+ 
+     // These pure artifacts are intentionally inside a private CODEX_HOME. Ensure
+     // their authorized read grants synchronously before the first workload reads
+--- a/codex-rs/windows-sandbox-rs/src/uninstall_windows.rs
++++ b/codex-rs/windows-sandbox-rs/src/uninstall_windows.rs
+@@ -132,6 +132,9 @@
+         }
+         self.namespace.validate_existing_state()?;
+         self.users.validate_current()?;
++        // Revoke only journaled ancestor metadata ACEs before deleting the group or ledger.
++        // A failure retains identities and ownership evidence for an exact retry.
++        crate::ancestor_metadata::revoke(&self.namespace)?;
+         let mut errors = Vec::new();
+ 
+         if let Some(codex_home) = codex_home {

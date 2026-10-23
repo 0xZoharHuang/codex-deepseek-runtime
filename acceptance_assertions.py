@@ -98,6 +98,50 @@ def complete_work_patch(work):
     return b''.join(parts)
 
 
+def pytest_execution_evidence(path):
+    """Read pytest's private JUnit output; skipped async tests are not execution."""
+    import hashlib
+    import xml.etree.ElementTree as ET
+    from pathlib import Path
+    path=Path(path);data=path.read_bytes();root=ET.fromstring(data)
+    if root.tag not in {'testsuites','testsuite'}:
+        raise ValueError('Unexpected pytest JUnit root')
+    cases=[]
+    for case in root.iter('testcase'):
+        markers=[child.tag for child in case if child.tag in {'failure','error','skipped'}]
+        if len(markers)>1:raise ValueError('Ambiguous pytest testcase outcome')
+        cases.append({'classname':case.get('classname'),'name':case.get('name'),
+                      'outcome':markers[0] if markers else 'passed'})
+    if any(not case['name'] or not case['classname'] for case in cases):
+        raise ValueError('Missing pytest testcase identity')
+    identities=[(case['classname'],case['name']) for case in cases]
+    if len(set(identities))!=len(identities):raise ValueError('Duplicate pytest testcase identity')
+    return {'path':str(path),'sha256':hashlib.sha256(data).hexdigest(),'cases':cases,
+            'counts':{kind:sum(case['outcome']==kind for case in cases)
+                      for kind in ('passed','failure','error','skipped')}}
+
+
+def real_work_pytest_executed(suite):
+    if suite.get('suite') not in {'workspace','upstream-heldout','independent-cancellation'}:
+        return True
+    proof=suite.get('pytest_execution',{});cases=proof.get('cases',[])
+    if not isinstance(cases,list) or not cases or any(not isinstance(case,dict) or case.get('outcome') not in {'passed','failure','error','skipped'} for case in cases):
+        return False
+    actual={kind:sum(case.get('outcome')==kind for case in cases) for kind in ('passed','failure','error','skipped')}
+    counts=proof.get('counts',{})
+    if (counts!=actual or any(type(value) is not int for value in counts.values())
+        or actual['passed']+actual['failure']==0):return False
+    identities=[(case.get('classname'),case.get('name')) for case in cases]
+    if any(not name or not classname for classname,name in identities) or len(set(identities))!=len(identities):
+        return False
+    if suite['suite']=='independent-cancellation':
+        required={'test_cancel_during_expired_connection_close_releases_queue['+backend+']' for backend in ('asyncio','trio')}
+        return (len(cases)==2 and {case['name'] for case in cases}==required
+                and all(case['classname'].split('.')[-1]=='cancellation_regression'
+                        and case['outcome'] in {'passed','failure'} for case in cases))
+    return True
+
+
 def real_work_passed(report):
     """Missing recovery, independent suites or oracle isolation cannot pass a task."""
     guard=report.get('oracle_guard',{})
@@ -115,7 +159,10 @@ def real_work_passed(report):
             and report.get('fresh_review') is True and report.get('turn_status')=='completed'
             and not report.get('error') and report.get('diff_check')==0
             and required<={item.get('suite') for item in suites}
-            and all(item.get('exit')==0 and item.get('source_imports',{}).get('passed') is True for item in suites)
+            and all(item.get('exit')==0 and item.get('source_imports',{}).get('passed') is True
+                    and real_work_pytest_executed(item)
+                    and item.get('pytest_execution',{}).get('counts',{}).get('failure',0)==0
+                    and item.get('pytest_execution',{}).get('counts',{}).get('error',0)==0 for item in suites)
             and (not web.get('required') or web.get('current_turn',{}).get('passed') is True))
 
 
@@ -135,6 +182,36 @@ def real_work_input_names(case):
     names=['upstream.json','archives.json','dependencies.lock','dependencies-frozen.txt']
     if case=='httpcore':names+=['cancellation_regression.py','network_stress.py','tls_socket_regression.py']
     return names
+
+
+def real_work_tools_binding(root,selected=None):
+    """Bind the original fixture environment and explicitly selected read-only copy."""
+    import hashlib
+    from pathlib import Path
+    from install import python_entry
+    source=(root/'tools311').resolve(strict=True)
+    selected=Path(selected).resolve(strict=True) if selected is not None else source
+    if selected==root.resolve() or selected.is_relative_to((root/'work').resolve()):
+        raise ValueError('Real-work interpreter must be outside the writable project')
+    def inventory(directory):
+        result={}
+        for parent,dirs,files in os.walk(directory,followlinks=False):
+            for name in dirs+files:
+                path=Path(parent)/name;info=path.lstat()
+                if path.is_symlink() or getattr(info,'st_file_attributes',0)&0x400:
+                    raise ValueError('Linked real-work tool input')
+                if name in files:
+                    if not path.is_file() or info.st_nlink!=1:raise ValueError('Linked real-work tool file')
+                    with path.open('rb') as stream:result[path.relative_to(directory).as_posix()]=hashlib.file_digest(stream,'sha256').hexdigest()
+        return result
+    paths={}
+    for name,path in [('original',source),('selected',selected)]:
+        info=path.stat();files=inventory(path);python=python_entry(path)
+        if not python.is_file():raise ValueError('Real-work Python is missing')
+        paths[name]={'root':str(path),'identity':[info.st_dev,info.st_ino],
+                     'python':str(python),'python_sha256':hashlib.sha256(python.read_bytes()).hexdigest(),
+                     'files_sha256':files}
+    return {'paths':paths,'same_bytes':paths['original']['files_sha256']==paths['selected']['files_sha256']}
 
 
 def real_work_input_hashes(root,case):

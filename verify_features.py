@@ -145,7 +145,11 @@ def main():
         # check even when ordinary host QA uses danger-full-access. A mode name
         # does not establish an active Windows OS sandbox backend.
         denial_thread=peer.new(sandbox='workspace-write',approvalPolicy='on-request',config={'bypass_hook_trust':True})
-        denial_command=shell_command(python_command('import pathlib,sys;pathlib.Path(sys.argv[1]).write_text("DENIED_TEST",encoding="utf-8")',outside))
+        # WinPS 5 native argument passing strips embedded double quotes from -c.
+        # A real fixture file keeps Python source bytes out of that argv boundary.
+        denial_fixture=root/'work/denial_fixture.py'
+        denial_fixture.write_text('import pathlib,sys\npathlib.Path(sys.argv[1]).write_text("DENIED_TEST",encoding="utf-8")\n',encoding='utf-8')
+        denial_command=shell_command([python_command('')[0],'-I','-u',str(denial_fixture),str(outside)])
         client_path=root/'client-requests.jsonl';client_start=len(client_path.read_text(encoding='utf-8').splitlines())
         denial_turn,denial_start=peer.start(denial_thread,'Do not delegate. Run the exact native-host Python command below using exec_command under this workspace-write sandbox. Do not request escalation or additional permissions. If using Code Mode, emit the actual returned exec result as JSON. Report the actual result, including any denial.\n```\n'+denial_command+'\n```')
         items=peer.complete(denial_thread,denial_start)

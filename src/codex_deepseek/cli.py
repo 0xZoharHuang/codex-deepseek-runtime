@@ -208,7 +208,7 @@ async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
 async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
     """Probe the actual native runtime, then verify its billed provider receipt."""
     work=home/'provider-state/doctor-work'
-    work.mkdir(exist_ok=True,mode=0o700)
+    private_directory(work)
     flags={'mcp_servers':'{}','web_search':'"disabled"','model_reasoning_effort':'"low"',
            **{'features.'+name:'false' for name in ['apps','plugins','memories','multi_agent','multi_agent_v2','shell_tool','code_mode','code_mode_only']}}
     arguments=['-a','never','exec','--skip-git-repo-check','--ephemeral','--json','--sandbox','read-only','-C',str(work),*[part for name,value in flags.items() for part in ['-c',name+'='+value]],
@@ -278,7 +278,8 @@ async def run(arguments: list[str]) -> int:
         binary=native()
         process=await asyncio.create_subprocess_exec(str(binary),*arguments,env=native_environment(runtime_home,'',binary,install_shims=False))
         return await process.wait()
-    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Match the installer's inheriting Windows container; private data is below runtime_home.
+    root.mkdir(parents=True, exist_ok=True, mode=0o777 if WINDOWS else 0o700)
     private_directory(runtime_home)
     from .web_config import ensure_browser
     ensure_browser(runtime_home)
@@ -290,17 +291,24 @@ async def run(arguments: list[str]) -> int:
     store = Store(runtime_home / 'provider-state' / 'adapter.sqlite')
     try:
         migrate_searches(root / 'adapter.sqlite', runtime_home, store)
-        async with ProviderService(runtime_home,catalog_path(),native_binary=binary) as gateway:
+        async with ProviderService(runtime_home,catalog_path(),native_binary=binary,owner=store.owner) as gateway:
             values = dict(arg.split('=',1) for arg in overrides(gateway.port)[1::2])
             expected = bindings(tomllib.loads('value='+values['model_providers.deepseek_runtime'])['value'],catalog_path(),runtime_home)
             check_cli(arguments,expected)
-            policy_home=runtime_home/'runtime-policy';policy_home.mkdir(exist_ok=True,mode=0o700)
+            policy_home=runtime_home/'runtime-policy';private_directory(policy_home)
             policy=policy_home/'config.toml'
             content='\n'.join(key+'='+value for key,value in values.items() if key in expected)+'\n'
-            if not policy.exists() or policy.read_text(encoding='utf-8')!=content:
-                temporary=policy.with_name('config.'+str(os.getpid())+'.tmp')
-                with open(temporary,'w',opener=lambda name,flags:os.open(name,flags,0o600)) as output:output.write(content)
-                replace_file(temporary,policy)
+            # Windows replaces even identical generated content so an older BA/OW-only
+            # file inherits the same-user directory ACL during a normal elevated upgrade.
+            if WINDOWS or not policy.exists() or policy.read_text(encoding='utf-8')!=content:
+                temporary=None
+                try:
+                    with tempfile.NamedTemporaryFile('w',encoding='utf-8',dir=policy_home,prefix='.config-',delete=False) as output:
+                        temporary=Path(output.name);private_fd(output.fileno())
+                        output.write(content);output.flush();os.fsync(output.fileno())
+                    replace_file(temporary,policy)
+                finally:
+                    if temporary is not None:temporary.unlink(missing_ok=True)
             if arguments == ["runtime","doctor"]:
                 return await doctor(credential(), gateway, store, runtime_home,native_binary=binary)
             if arguments == ["runtime","status"]:

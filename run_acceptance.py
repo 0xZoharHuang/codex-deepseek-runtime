@@ -101,15 +101,36 @@ def import_offline_evidence(external,root):
 
 def main():
     if not __debug__:raise SystemExit('Acceptance must run with Python assertions enabled')
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');parser.add_argument('--offline-report',type=Path,help='Reuse a separately executed complete Windows offline suite with exact source and installation identity');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');parser.add_argument('--offline-report',type=Path,help='Reuse a separately executed complete Windows offline suite with exact source and installation identity');parser.add_argument('--native-source-archive',type=Path,help='Exact cached upstream archive required by complete offline source-replay tests');parser.add_argument('--windows-prepare-manifest',type=Path,help='Explicit bounded native sandbox preparation admission for this QA run');parser.add_argument('--windows-prepare-sha256');args=parser.parse_args()
     entry=args.entry.expanduser().resolve()
     release=entry.parent.parent.parent
     metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
     native=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'));scope=qualification_scope(native)
     if entry!=console_entry(release/'venv'):raise SystemExit('Acceptance requires an actual immutable installed entrypoint')
     root=args.output.expanduser().resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()));root.mkdir(parents=True,mode=0o700)
+    # The complete High offline receipt must remain readable by the same user's
+    # Limited runtime controller; Python's Windows mode=700 can otherwise bind BA/OW.
+    _support.private_directory(root)
     environment={**os.environ,'CODEX_DEEPSEEK_TEST_ENTRY':str(entry),'CODEX_DEEPSEEK_TEST_HTTP_BINARY':str(_support.executable(Path(metadata['native_package'])/'bin','codex-http-transport'))}
     environment['CODEX_DEEPSEEK_TEST_CATALOG']=str(release/'catalog.json')
+    environment['CODEX_DEEPSEEK_TEST_CLI_BINARY']=str(_support.executable(Path(metadata['native_package'])/'bin','codex'))
+    environment['PYTEST_DISABLE_PLUGIN_AUTOLOAD']='1'
+    environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_MANIFEST',None)
+    environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_SHA256',None)
+    windows_preparation=None
+    if args.windows_prepare_manifest is not None or args.windows_prepare_sha256 is not None:
+        if os.name!='nt' or args.windows_prepare_manifest is None or args.windows_prepare_sha256 is None:
+            raise SystemExit('Windows preparation requires both explicit manifest and SHA256 on Windows')
+        from windows_acceptance_setup import _read_manifest
+        admission=_read_manifest(args.windows_prepare_manifest,args.windows_prepare_sha256)
+        if (Path(admission['installed_entry']).resolve()!=entry or admission['installed_entry_sha256']!=digest(entry)
+            or Path(admission['native_binary']).resolve()!=Path(environment['CODEX_DEEPSEEK_TEST_CLI_BINARY']).resolve()):
+            raise SystemExit('Windows preparation is not bound to this immutable installation')
+        environment['CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_MANIFEST']=str(args.windows_prepare_manifest.resolve())
+        environment['CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_SHA256']=args.windows_prepare_sha256
+        windows_preparation={'manifest':str(args.windows_prepare_manifest.resolve()),'sha256':args.windows_prepare_sha256,
+                             'run_id':admission['run_id'],'scope':'QA-only ProvisionOnly; actual permission/tool effects remain required'}
+    environment.pop('CODEX_DEEPSEEK_TEST_SOURCE_ARCHIVE',None)
     environment['PYTHONPATH']=str(SOURCE/'src') # verifier helpers only; installed entry and private helpers use -I.
     environment['PYTHONUTF8']='1'
     environment['CODEX_DEEPSEEK_TEST_EVIDENCE_ROOT']=str(root/'evidence')
@@ -124,7 +145,7 @@ def main():
         'tui-interrupt':[sys.executable,str(SOURCE/'verify_tui_interrupt.py'),'--entry',str(entry),'--output',output('tui-interrupt'),'--sandbox-mode',args.sandbox_mode],
         'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),'--sandbox-mode',args.sandbox_mode,*(['--require-web-research'] if args.require_web_research else [])],
         'native-revocation':[sys.executable,str(SOURCE/'verify_native_revocation.py'),'--probe',str(args.native_probe.resolve()),'--http-binary',environment['CODEX_DEEPSEEK_TEST_HTTP_BINARY'],'--output',output('native-revocation')],
-        'offline':[sys.executable,'-m','pytest','-p','run_acceptance','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
+        'offline':[sys.executable,'-m','pytest','-p','run_acceptance','-p','pytest_asyncio.plugin','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
         'live':[sys.executable,str(SOURCE/'verify_live.py'),'--agents','--output',output('live')],
         'plugin':[sys.executable,str(SOURCE/'verify_plugin_audit.py'),'--output',output('plugin')],
         'features':[sys.executable,str(SOURCE/'verify_features.py'),'--output',output('features')],
@@ -149,7 +170,7 @@ def main():
         'memory-v2':[sys.executable,str(SOURCE/'verify_memory_audit.py'),'--version','v2','--output',output('memory-v2')],
         'goal-sample':[sys.executable,str(SOURCE/'verify_goal_sample_audit.py'),'--output',output('goal-sample')],
         'crash-recovery':[sys.executable,str(SOURCE/'verify_crash_recovery.py')],
-        'search':[sys.executable,str(SOURCE/'verify_search_audit.py')],
+        'search':[sys.executable,str(SOURCE/'verify_search_audit.py'),'--output',output('search')],
         'routes':[sys.executable,str(SOURCE/'verify_routes.py')],
     }
     gates=sandbox_gate_commands(gates,args.sandbox_mode)
@@ -157,6 +178,16 @@ def main():
     # in the assembler. Keep them explicitly runnable without silently adding an
     # extra gate to the exact standard regression set.
     selected=args.only or sorted(GATES)
+    offline_archive=None
+    if 'offline' in selected and args.offline_report is None:
+        if args.native_source_archive is None:
+            raise SystemExit('--native-source-archive is required for complete offline source-replay coverage')
+        from build_native import SOURCE_ASSET
+        archive=args.native_source_archive.expanduser().resolve(strict=True)
+        if not archive.is_file() or digest(archive)!=SOURCE_ASSET[1]:
+            raise SystemExit('Offline native source archive does not match the pinned upstream source')
+        offline_archive={'path':str(archive),'sha256':digest(archive)}
+        environment['CODEX_DEEPSEEK_TEST_SOURCE_ARCHIVE']=str(archive)
     if any(name not in gates for name in selected):raise SystemExit('Unknown gate')
     if len(selected)!=len(set(selected)):raise SystemExit('Duplicate acceptance gate')
     probes=native_probe_attestation(selected,args.native_probe,args.keyring_probe)
@@ -179,6 +210,8 @@ def main():
         external=external_offline_receipt(args.offline_report,metadata,native,scope)
     attestation={'entry':str(entry),'entry_sha256':digest(entry),'release':str(release),'installation':metadata,'native_manifest':native,'target':scope['target'],'tui_sandbox_mode':args.sandbox_mode,'qa_default_sandbox_mode':args.sandbox_mode,'sandbox_scope':'Default native policy selection; explicit safety/profile overrides are retained. OS enforcement is independently qualified.','required_local_methods':scope['local_methods'],'baseline_matrix_sha256':scope['baseline_matrix_sha256'],'selected_gates':selected,'native_probes':probes,'evidence_roots':[str(root)],'verifier_source_sha256':verifier_hashes,'controller_environment':controller,'started':time.time()}
     if external is not None:attestation['external_offline']=external
+    if offline_archive is not None:attestation['offline_native_source_archive']=offline_archive
+    if windows_preparation is not None:attestation['windows_preparation']=windows_preparation
     (root/'artifact.json').write_text(json.dumps(attestation,indent=2),encoding='utf-8')
     results=[]
     def run(name):
@@ -186,7 +219,12 @@ def main():
             return import_offline_evidence(external,root)
         started=time.monotonic()
         with (root/(name+'.log')).open('w',encoding='utf-8') as log:
-            process=subprocess.run(gates[name],cwd=SOURCE,env=environment,stdout=log,stderr=log)
+            gate_environment=dict(environment)
+            if name=='offline':
+                gate_environment.pop('CODEX_DEEPSEEK_TEST_WORKSPACE_LAYOUT',None)
+                gate_environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_MANIFEST',None)
+                gate_environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_SHA256',None)
+            process=subprocess.run(gates[name],cwd=SOURCE,env=gate_environment,stdout=log,stderr=log)
         return {'gate':name,'exit':process.returncode,'seconds':round(time.monotonic()-started,2),'log':name+'.log','qa_default_sandbox_mode':args.sandbox_mode}
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures={pool.submit(run,name):name for name in selected}
@@ -196,6 +234,10 @@ def main():
     current_files=[*SOURCE.glob('*.py'),*(SOURCE/'tests').rglob('*.py'),*(SOURCE/'src').rglob('*.py')]
     verifier_unchanged={str(path.relative_to(SOURCE)):digest(path) for path in current_files}==verifier_hashes
     probes_unchanged=all(Path(p['path']).is_file() and digest(p['path'])==p['sha256'] for p in probes.values())
+    if offline_archive is not None:
+        probes_unchanged=probes_unchanged and Path(offline_archive['path']).is_file() and digest(offline_archive['path'])==offline_archive['sha256']
+    if windows_preparation is not None:
+        probes_unchanged=probes_unchanged and Path(windows_preparation['manifest']).is_file() and digest(windows_preparation['manifest'])==windows_preparation['sha256']
     external_unchanged=True;external_error=None
     if external is not None:
         try:

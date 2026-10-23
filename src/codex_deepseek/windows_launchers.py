@@ -58,6 +58,8 @@ def make_launchers(directory, recipe, names=('codex', 'codex-deepseek')):
     directory.mkdir(parents=True, exist_ok=True)
     if any(directory.iterdir()):
         raise RuntimeError('Launcher output directory must be empty')
+    # Temp directories created while elevated must also admit the same user unelevated.
+    private_directory(directory)
     with tempfile.TemporaryDirectory(prefix='launcher-source-', dir=directory.parent) as source:
         maker = ScriptMaker(source, str(directory))
         maker.executable = recipe['interpreter']

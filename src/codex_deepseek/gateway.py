@@ -94,6 +94,15 @@ def error_response(message, status=400):
     return web.json_response({"error": {"type": "invalid_request_error", "code": "provider_compatibility", "message": message}}, status=status)
 
 
+class _DownstreamDisconnected(ConnectionError):
+    """A connection failure originating only from local response delivery."""
+
+    def __init__(self, operation, error_type):
+        self.operation = operation
+        self.error_type = error_type
+        super().__init__(f"Downstream response disconnected during {operation}; delivery outcome unknown")
+
+
 class Gateway:
     def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None):
         self.key = key if isinstance(key,str) else None
@@ -180,6 +189,11 @@ class Gateway:
         status = None
         captured_key = self.key
         image_stack=AsyncExitStack();prepared_images=None;image_refs=False;image_started=False
+        async def deliver(operation, *args):
+            try:
+                return await getattr(response, operation)(*args)
+            except ConnectionError as exc:
+                raise _DownstreamDisconnected(operation, type(exc).__name__) from exc
         async def image_terminal(response_id,terminal):
             if image_refs:
                 self.images.record(receipt,consumption_status='provider_terminal',provider_terminal=terminal,provider_response_id=response_id,response_id=response_id)
@@ -234,7 +248,7 @@ class Gateway:
                     return web.json_response(result, headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 response = web.StreamResponse(headers={**transport_headers,"Content-Type": "text/event-stream", "Cache-Control": "no-store",
                                                         "X-Adapter-Request-Id": receipt})
-                await response.prepare(request)
+                await deliver('prepare', request)
                 async for original in sse_events(upstream.content):
                     if image_refs and original.get('type') in {'response.completed','response.failed','response.incomplete'}:
                         terminal=original.get('response');validate_response(terminal)
@@ -252,15 +266,28 @@ class Gateway:
                             # native logs remain authoritative for tool effects.
                             self.store.finish(receipt, events.status, status, events)
                         for normalized in normalized_events:
-                            await response.write(encode_sse(normalized))
+                            await deliver('write', encode_sse(normalized))
                         if events.terminal:
-                            await response.write_eof()
+                            await deliver('write_eof')
                             return response
                 if not events.terminal:
                     raise ProtocolError("Upstream disconnected without a terminal Responses event")
-                await response.write_eof()
+                await deliver('write_eof')
                 self.store.finish(receipt, events.status, status, events)
                 return response
+        except _DownstreamDisconnected as exc:
+            if self.images is not None and prepared_images is not None:self.images.record(receipt,status='delivery_cancelled')
+            # finish only closes a running receipt. An already-known upstream
+            # terminal and its history fingerprints remain authoritative; neither
+            # that result nor this disconnect proves native delivery/tool effects.
+            self.store.finish(receipt, "cancelled", status, events, str(exc))
+            if trace:
+                private_write(trace / (receipt + "-delivery.json"), json.dumps({
+                    "connection_status": "disconnected", "delivery_status": "unknown",
+                    "operation": exc.operation, "error_type": exc.error_type,
+                    "upstream_terminal": events.status if events.terminal else None,
+                }))
+            return response
         except asyncio.CancelledError:
             if self.images is not None and prepared_images is not None:self.images.record(receipt,status='delivery_cancelled')
             self.store.finish(receipt, "cancelled", status, events)

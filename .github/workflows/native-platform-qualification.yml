@@ -2,9 +2,6 @@ name: Native platform transport qualification
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/cds-qualification
 
 permissions:
   contents: read
@@ -125,6 +122,7 @@ jobs:
               skipped = [{"class":c.get("classname"), "case":c.get("name"), "reason":c.find("skipped").get("message")} for c in cases if c.find("skipped") is not None]
               allowed = {
                   "tests.test_windows_launchers":{"Exercises Windows PE executable launchers"},
+                  "tests.test_windows_sandbox_admission":{"Windows-only lifecycle admission contract"},
                   "tests.test_windows_console":{"Windows socket ownership handshake", "Windows console control events; requires a Windows native package"},
                   "tests.test_platforms":{"Win32 extended-length directory aliases", "Native Windows daemon creation FILETIME record"},
               }

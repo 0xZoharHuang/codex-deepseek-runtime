@@ -258,3 +258,107 @@ def test_download_uses_exclusive_staging_without_overwriting_unowned_partial(tmp
     assert outside.read_bytes()==b'preserve external bytes'
     assert prior_partial.read_bytes()==b'preserve external bytes'
     assert (cache/source.name).read_bytes()==source.read_bytes()
+
+
+def test_new_native_cache_and_extraction_bind_owner_privacy(tmp_path,assert_private):
+    source=tmp_path/'native.tar.gz'
+    manifest=archive_at(source,{name:b'NONEXECUTABLE_FIXTURE' for name in installer.required_binaries()})
+    root=tmp_path/'new-install'
+    package=installer.native_package(root,manifest,source)
+    if installer.WINDOWS:
+        for path in [root/'downloads',root/'downloads'/manifest['archive']['sha256'][:24]]:
+            assert_private(path)
+        for path in [root,root/'native']:
+            assert world_access(path)==[(0,0xa0)]
+        for path in [package,package/'bin',package/'codex-resources',package/'codex-path']:
+            assert world_access(path)==[(3,0x1200a9)]
+        assert world_access(package/next(iter(installer.required_binaries())))==[(0,0x1200a9)]
+    if not installer.WINDOWS:
+        for path in [root,root/'downloads',root/'downloads'/manifest['archive']['sha256'][:24],root/'native',package]:
+            assert path.stat().st_mode & 0o777 == 0o700
+
+
+def test_release_private_directory_precedes_venv_creation(tmp_path,monkeypatch,assert_private):
+    root=tmp_path/'new-install'
+    native={'status':'ready','native_recipe_id':'fixture','upstream_version':'fixture',
+            'archive':{'sha256':'a'*64},'files':{}}
+    monkeypatch.setattr(installer,'runtime_manifest',lambda path=None:native)
+    monkeypatch.setattr(installer,'native_package',lambda *args:root/'native/fixture')
+    monkeypatch.setattr(installer,'source_identity',lambda:('source-fixture',{}))
+    entry_path=installer.console_entry(root/'releases/source-fixture/venv')
+    monkeypatch.setattr(installer,'valid_release',lambda path,*args:installer.console_entry(path/'venv').is_file())
+    calls=[]
+    real_private=installer.private_directory
+    def private(path):
+        calls.append(Path(path))
+        return real_private(path)
+    monkeypatch.setattr(installer,'private_directory',private)
+    def create(environment,with_pip):
+        assert environment.parent in calls and environment.parent.parent in calls
+        if installer.WINDOWS:assert_private(environment.parent)
+        entry_path.parent.mkdir(parents=True);entry_path.write_bytes(b'NOT_EXECUTABLE')
+    monkeypatch.setattr(installer.venv,'create',create)
+    from types import SimpleNamespace
+    monkeypatch.setattr(installer.subprocess,'run',lambda *args,**kwargs:SimpleNamespace(returncode=0))
+    result=installer.install(root,activate=False)
+    assert result==root/'releases/source-fixture'
+    assert result in calls
+    if installer.WINDOWS:assert_private(entry_path)
+
+
+def world_access(path):
+    import win32security
+    acl=win32security.GetFileSecurity(str(path),win32security.DACL_SECURITY_INFORMATION).GetSecurityDescriptorDacl()
+    result=[]
+    for index in range(acl.GetAceCount()):
+        header,mask,sid=acl.GetAce(index)
+        if win32security.ConvertSidToStringSid(sid)=='S-1-1-0':
+            assert header[0]==win32security.ACCESS_ALLOWED_ACE_TYPE
+            result.append((header[1],mask))
+    return result
+
+
+@pytest.mark.skipif(not installer.WINDOWS,reason='Windows native artifact DACL contract')
+@pytest.mark.parametrize('with_archive',[False,True])
+def test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings(tmp_path,assert_private,with_archive):
+    source=tmp_path/'native.tar.gz'
+    manifest=archive_at(source,{name:b'PUBLIC_DISTRIBUTION' for name in installer.required_binaries()})
+    root=tmp_path/'install'
+    package=installer.native_package(root,manifest,source)
+    canaries=[]
+    for name in ['codex-home','releases','downloads']:
+        directory=root/name;installer.private_directory(directory)
+        canary=directory/'private-canary';canary.write_bytes(b'PRIVATE');canaries.append(canary)
+    installer.private_directory(package)
+    assert world_access(package)==[]
+    restored=installer.native_package(root,manifest,source if with_archive else None)
+    assert restored==package and installer.valid_native(package,manifest)
+    assert world_access(package)==[(3,0x1200a9)]
+    for path in [root,root/'native']:assert world_access(path)==[(0,0xa0)]
+    for canary in canaries:
+        assert canary.read_bytes()==b'PRIVATE'
+        assert_private(canary.parent);assert_private(canary)
+        assert world_access(canary)==[]
+
+
+@pytest.mark.parametrize('corruption',['extra-file','hardlink','bad-hash','directory-junction'])
+def test_artifact_permissions_require_complete_regular_unredirected_manifest(tmp_path,monkeypatch,corruption):
+    import os
+    source=tmp_path/'native.tar.gz'
+    manifest=archive_at(source,{name:b'PUBLIC_DISTRIBUTION' for name in installer.required_binaries()})
+    root=tmp_path/'install';package=installer.native_package(root,manifest,source)
+    target=package/next(iter(installer.required_binaries()))
+    external=tmp_path/'external';external.mkdir();canary=external/'sentinel';canary.write_bytes(b'PRIVATE')
+    link=None
+    if corruption=='extra-file':(package/'unlisted-secret').write_bytes(b'PRIVATE')
+    elif corruption=='hardlink':os.link(target,external/'shared')
+    elif corruption=='bad-hash':target.write_bytes(b'TAMPERED')
+    else:
+        link=package/'unexpected-link';_redirect_directory(link,external)
+    monkeypatch.setattr(installer._support,'native_artifact_access',lambda *args:pytest.fail('Unverified package reached permission mutation'))
+    try:
+        assert not installer.valid_native(package,manifest)
+        with pytest.raises(ValueError):installer.readable_native_package(root,package,manifest)
+        assert canary.read_bytes()==b'PRIVATE'
+    finally:
+        if link is not None:link.rmdir() if installer.WINDOWS else link.unlink()

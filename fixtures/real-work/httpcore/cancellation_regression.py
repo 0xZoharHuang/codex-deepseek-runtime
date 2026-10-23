@@ -20,7 +20,12 @@ class Backend(httpcore.AsyncMockBackend):
 async def test_cancel_during_expired_connection_close_releases_queue():
     async with httpcore.AsyncConnectionPool(network_backend=Backend([]), max_connections=1, keepalive_expiry=0.001) as pool:
         await pool.request('GET', 'http://example.com/')
-        await anyio.sleep(0.01)
+        # Windows' coarse monotonic clock can leave the connection unexpired
+        # after a 10 ms sleep. Establish the actual precondition before canceling.
+        connection, = pool.connections
+        with anyio.fail_after(1):
+            while not connection.has_expired():
+                await anyio.lowlevel.checkpoint()
         with anyio.move_on_after(0.01) as scope:
             await pool.request('GET', 'http://example.com/')
         assert scope.cancel_called

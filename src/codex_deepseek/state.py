@@ -1,5 +1,6 @@
 """Profile-scoped recovery evidence. An interrupted model request is never replayed here."""
 
+from contextlib import closing
 import json
 import io
 import os
@@ -14,6 +15,7 @@ from .processes import identity, matches, terminate
 from .platforms import private_directory
 
 SCHEMA_VERSION = 3
+SERVICE_CLIENT_PREFIX = "service-launcher-v1:"
 
 
 class Store:
@@ -63,13 +65,24 @@ class Store:
         self.db.commit()
 
     @staticmethod
+    def retain_service(path,owner):
+        # Register only explicit CLI clients, never the provider worker's own Store.
+        # The service calls this while holding its startup/retirement lock.
+        with closing(sqlite3.connect(path,timeout=30)) as db, db:
+            row=db.execute('SELECT pid,birth FROM runtime_owners WHERE owner_id=? AND closed IS NULL',(owner,)).fetchone()
+            if row is None or not matches(*row):
+                raise RuntimeError('Provider client owner is no longer alive')
+            db.execute('INSERT OR REPLACE INTO adapter_metadata(key,value) VALUES (?,?)',
+                       (SERVICE_CLIENT_PREFIX+owner,'launcher'))
+
+    @staticmethod
     def bind_native(path,owner,supervisor_pid,native_pid):
-        with sqlite3.connect(path,timeout=30) as db:
+        with closing(sqlite3.connect(path,timeout=30)) as db, db:
             db.execute('UPDATE runtime_owners SET supervisor_pid=?,supervisor_birth=?,native_pid=?,native_birth=? WHERE owner_id=?',
                        (supervisor_pid,identity(supervisor_pid),native_pid,identity(native_pid),owner))
 
     def cleanup_native(self):
-        with sqlite3.connect(self.path,timeout=30) as db:
+        with closing(sqlite3.connect(self.path,timeout=30)) as db, db:
             row=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE owner_id=?',(self.owner,)).fetchone()
         if row:terminate(*row)
 
@@ -114,11 +127,12 @@ class Store:
 
     @staticmethod
     def owner_lost(path, owner):
-        with sqlite3.connect(path, timeout=30) as db:
+        with closing(sqlite3.connect(path, timeout=30)) as db, db:
             db.execute('''UPDATE receipts SET finished=?,status='owner_lost',detail=?
                           WHERE owner_id=? AND status='running' ''',
                        (time.time(), 'Owner exited without a terminal response; upstream outcome unknown', owner))
             db.execute('UPDATE runtime_owners SET closed=? WHERE owner_id=?',(time.time(),owner))
+            db.execute('DELETE FROM adapter_metadata WHERE key=?',(SERVICE_CLIENT_PREFIX+owner,))
 
     def close(self):
         self.db.execute('''UPDATE receipts SET finished=?,status='owner_closed',detail=?
@@ -126,6 +140,7 @@ class Store:
                         (time.time(), 'No terminal response recorded before owner shutdown', self.owner))
         self.db.commit()
         self.db.execute('UPDATE runtime_owners SET closed=? WHERE owner_id=?',(time.time(),self.owner))
+        self.db.execute('DELETE FROM adapter_metadata WHERE key=?',(SERVICE_CLIENT_PREFIX+self.owner,))
         self.db.commit()
         self.db.close()
 
@@ -199,7 +214,7 @@ def migrate_searches(legacy: Path, home: Path, store: Store):
             issues.append({'path':str(path.relative_to(home)),'error':type(error).__name__})
     copied=0
     try:
-        with sqlite3.connect(legacy.resolve().as_uri()+'?mode=ro',uri=True) as db:
+        with closing(sqlite3.connect(legacy.resolve().as_uri()+'?mode=ro',uri=True)) as db, db:
             for key in ids:
                 row=db.execute('SELECT item FROM searches WHERE id=?',(key,)).fetchone()
                 if row:

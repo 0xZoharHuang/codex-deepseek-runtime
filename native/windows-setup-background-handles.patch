@@ -1,0 +1,235 @@
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+@@ -54,11 +54,9 @@
+ use std::ffi::c_void;
+ use std::io::Write;
+ use std::os::windows::io::AsRawHandle;
+-use std::os::windows::process::CommandExt;
+ use std::path::Path;
+ use std::path::PathBuf;
+ use std::process::Command;
+-use std::process::Stdio;
+ use std::sync::mpsc;
+ use windows_sys::Win32::Foundation::GetLastError;
+ use windows_sys::Win32::Foundation::HLOCAL;
+@@ -208,6 +206,9 @@
+     Ok(sid_strs)
+ }
+ 
++#[path = "setup_background.rs"]
++mod setup_background;
++
+ fn spawn_read_acl_helper(payload: &Payload, _log: &mut dyn Write) -> Result<()> {
+     let mut read_payload = payload.clone();
+     read_payload.mode = SetupMode::ReadAclsOnly;
+@@ -217,13 +218,7 @@
+     let exe = std::env::current_exe().context("locate setup helper")?;
+     let mut command = Command::new(&exe);
+     crate::launch_environment::configure_command(&mut command, &payload_b64)?;
+-    command
+-        .stdin(Stdio::null())
+-        .stdout(Stdio::null())
+-        .stderr(Stdio::null())
+-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+-        .spawn()
+-        .context("spawn read ACL helper")?;
++    setup_background::spawn_read_acl_helper(&command).context("spawn read ACL helper")?;
+     Ok(())
+ }
+ 
+--- /dev/null
++++ b/codex-rs/windows-sandbox-rs/src/setup_background.rs
+@@ -0,0 +1,193 @@
++//! Background ACL repair must not retain unrelated app-server pipe handles.
++//! This is only the existing read-ACL helper launch, not a command runtime.
++use crate::proc_thread_attr::ProcThreadAttributeList;
++use crate::winutil::to_wide;
++use std::cmp::Ordering;
++use std::ffi::OsString;
++use std::fs::OpenOptions;
++use std::io;
++use std::os::windows::ffi::OsStrExt;
++use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
++use std::process::Command;
++use windows_sys::Win32::Foundation::{DUPLICATE_SAME_ACCESS, DuplicateHandle};
++use windows_sys::Win32::System::Threading::{
++    CREATE_NO_WINDOW, CREATE_UNICODE_ENVIRONMENT, CreateProcessW, EXTENDED_STARTUPINFO_PRESENT,
++    GetCurrentProcess, PROCESS_INFORMATION, STARTF_USESTDHANDLES, STARTUPINFOEXW,
++};
++
++#[link(name = "kernel32")]
++unsafe extern "system" {
++    fn CompareStringOrdinal(
++        a: *const u16,
++        na: i32,
++        b: *const u16,
++        nb: i32,
++        ignore_case: i32,
++    ) -> i32;
++}
++
++fn compare_keys(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> io::Result<Ordering> {
++    let a: Vec<_> = a.encode_wide().collect();
++    let b: Vec<_> = b.encode_wide().collect();
++    let na = i32::try_from(a.len()).map_err(|_| io::ErrorKind::InvalidInput)?;
++    let nb = i32::try_from(b.len()).map_err(|_| io::ErrorKind::InvalidInput)?;
++    // SAFETY: Both counted UTF-16 slices are valid throughout this call.
++    match unsafe { CompareStringOrdinal(a.as_ptr(), na, b.as_ptr(), nb, 1) } {
++        1 => Ok(Ordering::Less),
++        2 => Ok(Ordering::Equal),
++        3 => Ok(Ordering::Greater),
++        _ => Err(io::Error::last_os_error()),
++    }
++}
++
++fn environment_with_payload_overrides(command: &Command) -> io::Result<Vec<u16>> {
++    // configure_command only adds/removes its invocation-scoped payload keys.
++    // Preserve every other inherited value as UTF-16, including non-UTF-8 values.
++    let mut entries: Vec<(OsString, OsString)> = std::env::vars_os().collect();
++    for (key, value) in command.get_envs() {
++        if !crate::environment_transport::is_key(key) {
++            return Err(io::Error::new(
++                io::ErrorKind::InvalidInput,
++                "read-ACL helper may only override launch-payload environment keys",
++            ));
++        }
++        let mut kept = Vec::with_capacity(entries.len() + 1);
++        for (old_key, old_value) in entries {
++            if compare_keys(&old_key, key)? != Ordering::Equal {
++                kept.push((old_key, old_value));
++            }
++        }
++        if let Some(value) = value {
++            kept.push((key.to_os_string(), value.to_os_string()));
++        }
++        entries = kept;
++    }
++    let mut error = None;
++    entries.sort_by(|a, b| match compare_keys(&a.0, &b.0) {
++        Ok(order) => order,
++        Err(value) => {
++            error = Some(value);
++            Ordering::Equal
++        }
++    });
++    if let Some(error) = error {
++        return Err(error);
++    }
++    let mut block = Vec::new();
++    for (key, value) in entries {
++        block.extend(key.encode_wide());
++        block.push(b'=' as u16);
++        block.extend(value.encode_wide());
++        block.push(0);
++    }
++    if block.is_empty() {
++        block.push(0);
++    }
++    block.push(0);
++    Ok(block)
++}
++
++// Mirror the existing CRT quoting rules over UTF-16 code units so a valid
++// Windows OsStr (including unpaired surrogates) never passes through UTF-8.
++fn command_line(command: &Command) -> io::Result<Vec<u16>> {
++    let mut line = Vec::new();
++    for (index, value) in std::iter::once(command.get_program())
++        .chain(command.get_args())
++        .enumerate()
++    {
++        let value: Vec<u16> = value.encode_wide().collect();
++        if value.contains(&0) {
++            return Err(io::Error::new(
++                io::ErrorKind::InvalidInput,
++                "NUL in setup argument",
++            ));
++        }
++        if index > 0 {
++            line.push(b' ' as u16);
++        }
++        let quoted = value.is_empty() || value.iter().any(|x| matches!(*x, 9 | 10 | 13 | 32 | 34));
++        if !quoted {
++            line.extend(value);
++            continue;
++        }
++        line.push(b'"' as u16);
++        let mut slashes = 0;
++        for unit in value {
++            if unit == b'\\' as u16 {
++                slashes += 1;
++                continue;
++            }
++            if unit == b'"' as u16 {
++                line.extend(std::iter::repeat_n(b'\\' as u16, slashes * 2 + 1));
++            } else {
++                line.extend(std::iter::repeat_n(b'\\' as u16, slashes));
++            }
++            line.push(unit);
++            slashes = 0;
++        }
++        line.extend(std::iter::repeat_n(b'\\' as u16, slashes * 2));
++        line.push(b'"' as u16);
++    }
++    line.push(0);
++    Ok(line)
++}
++
++pub(super) fn spawn_read_acl_helper(command: &Command) -> io::Result<()> {
++    let program = to_wide(command.get_program());
++    let mut command_line = command_line(command)?;
++    let environment = environment_with_payload_overrides(command)?;
++    let cwd = command.get_current_dir().map(to_wide);
++    let null = OpenOptions::new().read(true).write(true).open("NUL")?;
++    let mut inherited = std::ptr::null_mut();
++    // SAFETY: Duplicate only the newly opened NUL handle, never caller stdio.
++    if unsafe {
++        DuplicateHandle(
++            GetCurrentProcess(),
++            null.as_raw_handle(),
++            GetCurrentProcess(),
++            &mut inherited,
++            0,
++            1,
++            DUPLICATE_SAME_ACCESS,
++        )
++    } == 0
++    {
++        return Err(io::Error::last_os_error());
++    }
++    // SAFETY: A successful DuplicateHandle returned a uniquely owned handle.
++    let inherited = unsafe { OwnedHandle::from_raw_handle(inherited) };
++    let mut attributes = ProcThreadAttributeList::new(1)?;
++    attributes.set_handle_list(vec![inherited.as_raw_handle()])?;
++    let mut startup: STARTUPINFOEXW = unsafe { std::mem::zeroed() };
++    startup.StartupInfo.cb = std::mem::size_of::<STARTUPINFOEXW>() as u32;
++    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
++    startup.StartupInfo.hStdInput = inherited.as_raw_handle();
++    startup.StartupInfo.hStdOutput = inherited.as_raw_handle();
++    startup.StartupInfo.hStdError = inherited.as_raw_handle();
++    startup.lpAttributeList = attributes.as_mut_ptr();
++    let mut child: PROCESS_INFORMATION = unsafe { std::mem::zeroed() };
++    // SAFETY: All strings, environment, allowed handle and attributes outlive creation.
++    // bInheritHandles must be TRUE for the explicit HANDLE_LIST, which excludes all
++    // other handles. Closing our process handle does not terminate background ACL work.
++    if unsafe {
++        CreateProcessW(
++            program.as_ptr(),
++            command_line.as_mut_ptr(),
++            std::ptr::null(),
++            std::ptr::null(),
++            1,
++            CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
++            environment.as_ptr().cast(),
++            cwd.as_ref().map_or(std::ptr::null(), |x| x.as_ptr()),
++            &startup.StartupInfo,
++            &mut child,
++        )
++    } == 0
++    {
++        return Err(io::Error::last_os_error());
++    }
++    // SAFETY: Successful CreateProcessW returns these two uniquely owned handles.
++    let _thread = unsafe { OwnedHandle::from_raw_handle(child.hThread) };
++    let _process = unsafe { OwnedHandle::from_raw_handle(child.hProcess) };
++    Ok(())
++}

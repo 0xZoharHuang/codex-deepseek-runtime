@@ -38,7 +38,7 @@ def main():
         row={'method':method,'status':'passed','detail':detail};results.append(row)
         (root/'results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
     artifact={'entry':str(entry),'entry_sha256':digest(entry),'installation':metadata,'target':native['target'],'native_manifest':native,
-              'verifier_sha256':{name:digest(Path(__file__).with_name(name)) for name in ['verify_local_account.py','verify_live.py','install.py']}}
+              'verifier_sha256':{name:digest(Path(__file__).with_name(name)) for name in ['verify_local_account.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','install.py']}}
     (root/'artifact.json').write_text(json.dumps(artifact,indent=2),encoding='utf-8')
     try:
         primary=start('primary');before=primary.call('account/read',{'refreshToken':False})

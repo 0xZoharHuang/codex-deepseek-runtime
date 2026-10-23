@@ -1,6 +1,7 @@
 """Optional provider image resources; no native thread, tool or process ownership."""
 from __future__ import annotations
 import json,os,sqlite3,tempfile
+from contextlib import closing
 from pathlib import Path
 from urllib.parse import urlencode,urlsplit
 from .image_transport import ImageTransport,OpenRouterFilesBackend,TransportPolicy,_strict_json,_private_directory
@@ -74,7 +75,7 @@ class ImageProvider:
         self.root=Path(state_root)/'image-transport';_private_directory(self.root)
         self.native,self.credentials,self.config=native,credentials,config
         self.receipts=self.root/'request-receipts.sqlite'
-        with self._db() as db:db.execute('CREATE TABLE IF NOT EXISTS calls(id TEXT PRIMARY KEY,record TEXT NOT NULL)')
+        with closing(self._db()) as db, db:db.execute('CREATE TABLE IF NOT EXISTS calls(id TEXT PRIMARY KEY,record TEXT NOT NULL)')
     def _db(self):
         if self.receipts.is_symlink() or (self.receipts.exists() and self.receipts.stat().st_nlink!=1):raise ValueError('Image receipt database cannot be linked')
         return sqlite3.connect(self.receipts,timeout=.1)
@@ -82,7 +83,7 @@ class ImageProvider:
         policy=policy or self.config['native_outbound_policy']
         return ImageTransport(self.root/'files',self.credentials,OpenRouterFilesBackend(NativeFilesSession(self.native,policy)),self.config['policy'])
     def record(self,ref,**updates):
-        with self._db() as db:
+        with closing(self._db()) as db, db:
             row=db.execute('SELECT record FROM calls WHERE id=?',(ref,)).fetchone()
             value=_strict_json(row[0]) if row else {'id':ref,'status':'running','response_id':None,'requested_model':MODEL,'requested_upstream_model':MODEL,'requested_provider':None,'adaptations':{'image_transport':{}}}
             image=value['adaptations']['image_transport']
@@ -93,7 +94,7 @@ class ImageProvider:
             db.execute('INSERT OR REPLACE INTO calls VALUES (?,?)',(ref,json.dumps(value,allow_nan=False)))
     @staticmethod
     def read_receipt(path,ref):
-        with sqlite3.connect(Path(path).as_uri()+'?mode=ro',uri=True,timeout=.1) as db:
+        with closing(sqlite3.connect(Path(path).as_uri()+'?mode=ro',uri=True,timeout=.1)) as db, db:
             row=db.execute('SELECT record FROM calls WHERE id=?',(ref,)).fetchone()
         return _strict_json(row[0]) if row else None
     async def generation_reader(self,receipt,credentials,**kwargs):

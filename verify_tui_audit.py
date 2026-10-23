@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from verify_live import prepare_workspace,workspace_path
 import re
 import subprocess
 import time
@@ -89,7 +90,7 @@ def session(entry,root,arguments,target,expected,label,backend,reply,prior=None)
     existing={str(p):p.stat().st_size for p in (root/'home/sessions').rglob('*.jsonl')}
     trace_root=root/'native-rollout-traces'
     trace_before={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in trace_root.rglob('*') if p.is_file()}
-    child=terminal([str(entry),*arguments],env=environment,cwd=root/'work');transcript=bytearray();query_tail=b''
+    child=terminal([str(entry),*arguments],env=environment,cwd=workspace_path(root));transcript=bytearray();query_tail=b''
     def receive():
         nonlocal query_tail
         data=child.read(.2);transcript.extend(data)
@@ -176,16 +177,19 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');args=parser.parse_args()
     root=args.output.resolve()/(uuid.uuid4().hex[:12] if os.name=='nt' else str(uuid.uuid4()));private_directory(root);(root/'home').mkdir();(root/'work').mkdir()
-    (root/'home/config.toml').write_text('model_reasoning_effort="low"\napproval_policy="never"\nsandbox_mode='+json.dumps(args.sandbox_mode)+'\n[tui]\nanimations=false\n[projects.'+json.dumps(str(root/'work'))+']\ntrust_level="trusted"\n',encoding='utf-8')
+    work=prepare_workspace(root)
+    (root/'home/config.toml').write_text('model_reasoning_effort="low"\napproval_policy="never"\nsandbox_mode='+json.dumps(args.sandbox_mode)+'\n[tui]\nanimations=false\n[projects.'+json.dumps(str(work))+']\ntrust_level="trusted"\n',encoding='utf-8')
     entry=args.entry.resolve();results=[];backend=expected_backend()
-    write_qa_receipt(root,entry,['verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py'])
+    from windows_acceptance_setup import prepare_terminal_fixture
+    prepare_terminal_fixture(root,entry)
+    write_qa_receipt(root,entry,['verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'])
     prompt='Do not delegate. Use native tools to write tui-first.txt containing exactly TUI_FIRST_5271 with no trailing newline and read it back. Your final assistant message must be exactly TUI_VERIFIED_INITIAL_5271 with no other text, explanation, formatting or punctuation.'
     try:
-        results.append(session(entry,root,['--no-alt-screen','-C',str(root/'work'),prompt],root/'work/tui-first.txt','TUI_FIRST_5271','initial',backend,'TUI_VERIFIED_INITIAL_5271'))
+        results.append(session(entry,root,['--no-alt-screen','-C',str(work),prompt],root/'work/tui-first.txt','TUI_FIRST_5271','initial',backend,'TUI_VERIFIED_INITIAL_5271'))
         if backend!='shared':
             assert not native_active(root/'home'),'Embedded native TUI survived its clean terminal exit'
         prompt='Continue the saved session. Read tui-first.txt and write tui-resumed.txt containing exactly its stripped content followed by _RESUMED with no trailing newline. Read it back. Your final assistant message must be exactly TUI_VERIFIED_RESUMED_5271 with no other text, explanation, formatting or punctuation. Do not delegate.'
-        results.append(session(entry,root,['--no-alt-screen','-C',str(root/'work'),'resume','--last',prompt],root/'work/tui-resumed.txt','TUI_FIRST_5271_RESUMED','cold-resume',backend,'TUI_VERIFIED_RESUMED_5271',prior=results[0]))
+        results.append(session(entry,root,['--no-alt-screen','-C',str(work),'resume','--last',prompt],root/'work/tui-resumed.txt','TUI_FIRST_5271_RESUMED','cold-resume',backend,'TUI_VERIFIED_RESUMED_5271',prior=results[0]))
     finally:
         stopped=None
         if backend=='shared' and native_active(root/'home'):

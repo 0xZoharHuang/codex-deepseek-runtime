@@ -137,3 +137,26 @@ def test_locked_activation_fails_atomically_and_preserves_current_receipt(tmp_pa
     assert not list(launcher.parent.glob('.codex-deepseek-*.exe'))
     installer.activate_windows(root,following,tmp_path/'bin')
     assert launcher.read_bytes()==b'second entry'
+
+
+@WINDOWS
+@pytest.mark.parametrize('kind',['staging','installed','profile'])
+def test_launcher_temp_outputs_bind_current_user_before_publish(tmp_path,kind,assert_private):
+    import tempfile
+    from codex_deepseek.windows_launchers import make_installed_entry
+    package=package_at(tmp_path/'package')
+    if kind=='staging':
+        # High Python 3.13 tempfile directories begin with BA/OW privacy.
+        directory=Path(tempfile.mkdtemp(dir=tmp_path))
+        make_launchers(directory,launcher_recipe(package_root=package))
+        outputs=[directory,directory/'codex.exe',directory/'codex-deepseek.exe']
+    elif kind=='installed':
+        entry=tmp_path/'codex-deepseek.exe'
+        entry.write_bytes(b'initial pip entry')
+        make_installed_entry(entry)
+        outputs=[entry]
+    else:
+        directory=profile_launchers(tmp_path/'home',package_root=package)
+        outputs=[directory,directory/'codex.exe',directory/'codex-deepseek.exe']
+    for output in outputs:
+        assert_private(output)

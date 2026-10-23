@@ -4,6 +4,7 @@ Only request IDs already pinned in this cache may join this project's schema-3
 receipts. Read-only SQLite does not acquire/reconcile ProtocolState ownership.
 """
 from __future__ import annotations
+from contextlib import closing
 import asyncio
 import hashlib
 import json
@@ -38,7 +39,7 @@ def _regular_path(path: Path, *, existing=False):
 def read_project_receipt(path: Path, request_ref: str):
     """One bounded selected row; never read prompts/history or construct ProtocolState."""
     path=Path(path);_regular_path(path,existing=True)
-    with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=.1) as db:
+    with closing(sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=.1)) as db:
         db.row_factory=sqlite3.Row
         if db.execute('PRAGMA user_version').fetchone()[0] != 3:
             raise CallReconciliationError('Unsupported project receipt schema')

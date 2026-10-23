@@ -1,3 +1,4 @@
+import os
 """Provider attestation tolerates delayed metadata without repeating inference."""
 from contextlib import asynccontextmanager
 import pytest
@@ -155,3 +156,19 @@ async def test_doctor_cannot_claim_official_route_when_local_receipt_selected_an
     doctor_probe.db.execute("UPDATE receipts SET provider='morph/fp8'")
     assert await doctor_probe.run()==1 and doctor_probe.result()['status']=='provider_verification_failed'
     assert doctor_probe.result()['selected_provider']=='morph/fp8' and doctor_probe.result()['provider']=='DeepSeek'
+
+
+async def test_doctor_workspace_uses_same_user_private_permissions(doctor_probe,tmp_path,assert_private):
+    assert await doctor_probe.run()==0
+    work=tmp_path/'home/provider-state/doctor-work'
+    assert_private(work)
+    probe=work/'private-fixture'
+    probe.write_bytes(b'NONFUNCTIONAL_FIXTURE')
+    if os.name == 'nt':
+        assert_private(probe)  # Windows propagates the protected directory DACL.
+    else:
+        # POSIX private directories deny traversal; new file modes still follow
+        # the caller's umask, so an arbitrary write need not produce mode 0600.
+        assert work.stat().st_mode & 0o077 == 0
+        assert probe.stat().st_uid == os.getuid()
+        assert probe.read_bytes() == b'NONFUNCTIONAL_FIXTURE'

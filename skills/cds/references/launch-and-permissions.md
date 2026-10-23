@@ -38,6 +38,24 @@ If the user's restriction literally includes every runtime/state/cache write, `w
 
 Unix socket permission is separate from directory write permission. On the pinned version, selected named profiles use `permissions.<name>.network.unix_sockets` and the applicable native network-policy configuration. Do not reuse obsolete `allow_unix_sockets` keys or open all sockets as a speculative fix. Also do not assume a no-model OS probe proves the full model/tool workflow under that profile.
 
+## Outbound network is separate from workspace-write
+
+For the pinned native baseline's **legacy workspace-write profile**, an already authorized network task can retain the filesystem sandbox and enable networking for that invocation:
+
+```text
+[cds_executable, "-s", "workspace-write",
+ "-c", "sandbox_workspace_write.network_access=true",
+ "exec", "resume", exact_thread_id, "-"]
+```
+
+Use this only for an existing task in its original profile; a fresh task uses the normal `exec` form. Supply the prompt through stdin. This is a supported configuration example, not a promise that every installed version/profile accepts the same syntax or that every destination is allowed. Read back the active configuration and actual tool result. Named permission profiles and managed network rules must use their own documented configuration; do not assume a legacy flag overrides a selected named profile or an administrative restriction.
+
+On Windows, complete the native sandbox setup for the selected backend before relying on command effects. The fixed baseline can return an effective `readOnly` thread policy when the Windows backend is unset, even if configuration text says `workspace-write`. Inspect the native `thread/start` or `thread/resume` policy response as well as `config/read`. Declaring `windows.sandbox="elevated"` alone does not prove setup has completed; use the native setup/readiness flow. The setup elevation prepares restricted execution, not permission for tools to run with unrestricted administrator access.
+
+Keep approval policy and network policy distinct. Headless Never approvals cannot satisfy a later interactive escalation request. If the task does not authorize network access, preserve the denial. If it does, use the supported narrow network configuration rather than `danger-full-access` or a global default change.
+
+On a delegated failure, compare policy and identity before comparing availability: parent-host DNS success plus child `curl` exit 6 is not evidence of an upstream outage. Preserve HTTP 000/zero-byte outcomes as “no HTTP response observed,” and follow [network diagnostics](diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage).
+
 ## Pin the actual toolchain
 
 Use compatible, explicit tool executable paths when PATH may differ between the controller, login shell and child. A configured PATH prefix alone may be replaced by shell startup files. Preserve OS `HOME`; configure tool-supported cache/temp variables or approved writable roots instead of masking failures with a different home.

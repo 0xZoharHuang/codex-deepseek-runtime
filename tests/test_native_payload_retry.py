@@ -37,6 +37,9 @@ def configure(home,port,*,compact=False):
     # Existing native retry limits are deliberately left untouched.
     user='sandbox_mode="read-only"\ncheck_for_update_on_startup=false\n'
     if compact:user+='model_auto_compact_token_limit=1\ncompact_prompt='+json.dumps(COMPACT)+'\n'
+    # This loopback HTTP classification fixture must not start unrelated cloud
+    # catalog synchronization. Plugin startup/owner shutdown has its own native gate.
+    user+='[features]\napps=false\nplugins=false\nmemories=false\n'
     (home/'config.toml').write_text(user,'utf-8')
     return home
 

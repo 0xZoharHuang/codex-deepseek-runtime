@@ -485,6 +485,245 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-runner-junction-root.patch",
+      "sha256": "a95f4d36371923bed0775a4e56b28ec642edcf1871c0e3ca95bda3a48c865eba",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs",
+            "before_sha256": "79305370141a1c90891832ab42dd8fbde5063e4351f289af6fdec0bc978c50ce",
+            "after_sha256": "6905fac956d8b1b5a6e2b3186930e5e378cf3d191329477fcaedca4978fe331b"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/bin/command_runner/win/cwd_junction.rs",
+            "before_sha256": "d2705aa0c2c0fbbef8fda31cd81c8a5eac7331bf703c0279087f4619636762e0",
+            "after_sha256": "b64ed001addaa9b804ab9c171d30bbe98352cd3a0ae790449e5b3d8a562c73f3"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-home-metadata.patch",
+      "sha256": "33acda210a87d114467e16468df6e858274dbe39642985bf41aa05dcf2952569",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "7fc1ea355c9f0fbae15e2c3b4e543a6d8565982f3d31b3f71d7bba6972dc2408",
+            "after_sha256": "355bdbb88893ea0b5288465e3027256f1bcb8041f7cfb40aae216c58ff64d712"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-root-acl-sharing.patch",
+      "sha256": "c9d3aa478fb9103fb4e43519580add49c2dee09f39045e882c546113d50d0e1a",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "24ec4fd59ee093ef73a0b263bac1f8355bf16263757dc5d891b9380bbbb8a708",
+            "after_sha256": "17f4db88ed88044e0574beecd94fe5d2f4517ef237ffcc27a9773e522dafd52f"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl_tests.rs",
+            "before_sha256": "54e525a0a0932ef163af6790b0670eb83559268d2c05eb8c3c5320fd6f6ed993",
+            "after_sha256": "8404e1cea3416d2a1ae5b1a8bd3a9a156650951c040e8300771493bb1b07ba61"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-plugin-git-lifecycle.patch",
+      "sha256": "cc7409c8bb883513ba85979380ec09648f9aa017d80283835e77613810b4e3a1",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/utils/pty/src/win/job.rs",
+            "before_sha256": "df54d9d966509871403c5237412a3c7ff17cbdb9766b9690438f27c3b683bdcf",
+            "after_sha256": "a7691fef8d1c6b8de5db17b3e5cc4b0dfe740423bb6136185af52c29e69b1694"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/startup_sync.rs",
+            "before_sha256": "57b3a9295919060467a976b70ea18dc0ebfd824f0e788c0c491df4038fe37641",
+            "after_sha256": "d947c43f6922ca49642ce96b724292cba5e2998e3bd3f1e2bc3a74c514013741"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/marketplace_upgrade/git.rs",
+            "before_sha256": "0704fbd13f7011fcb54a1942787ac7774c0b3315b0195fe573ddf952990a255e",
+            "after_sha256": "ba40bd2df249025aa6aa0a57014f30739a1d7845db2ef113fbae5845580a6889"
+          },
+          {
+            "path": "codex-rs/core-plugins/Cargo.toml",
+            "before_sha256": "992e28441d3fe0ba864e49ee1c47d1f18700fd0f52701a3a9af815a8c9f4b547",
+            "after_sha256": "3300343091480e76a2fd9a0cce7720ae700ccdca323b75d6cbefad3c7bd84b88"
+          },
+          {
+            "path": "codex-rs/Cargo.lock",
+            "before_sha256": "82f470feb3498c718451bf7e84d5a0528d207723d5068e4b433be1e025b8ba70",
+            "after_sha256": "b3a811329204355bce008cee2348f77ff1d2848915ad58d2f825be0b3624d30c"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/git_lifetime_windows_tests.rs",
+            "before_sha256": null,
+            "after_sha256": "6cb6f7cd18d011a0e3757acb79dcc75a105ef148f2a11f5f2061e3638f8cd197"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/job_std_tests.rs",
+            "before_sha256": null,
+            "after_sha256": "c7b85671b67309b93c28558a93c3e7d973337b9c5024b3eb23343c3c80546bee"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-setup-background-handles.patch",
+      "sha256": "354a0b8790bfea97bc242bf05adaed3a333d8c1e9efd63bf6023435d61439595",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "355bdbb88893ea0b5288465e3027256f1bcb8041f7cfb40aae216c58ff64d712",
+            "after_sha256": "0f7f8e79dfef171d872787a51b5cc257392eb3f892663509eb713a88e1847a31"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_background.rs",
+            "before_sha256": null,
+            "after_sha256": "fb85f0b6d059d94a968626775b0b8cef68fc89365445041477a23271c343dc67"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-ancestor-metadata.patch",
+      "sha256": "8e985e9775e212f240515c617937d87ddcb2ab484e209b7adf07bd001c730df9",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "17f4db88ed88044e0574beecd94fe5d2f4517ef237ffcc27a9773e522dafd52f",
+            "after_sha256": "e804c8dd11b197cef06923f034dc27e9e0299f0c434a11c4b05b80b09be34f6c"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+            "before_sha256": null,
+            "after_sha256": "81ae70fb8784656ed660cd895f030a76c307d040fa437018c028b1a59b317d8a"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/deny_read_state.rs",
+            "before_sha256": "7cb2bde374babc7d9cbfa866b6f89526bb2bfd0782eaae581318ac365d31b906",
+            "after_sha256": "95cef3f39e8be5f31352ba1b4ff2c259adeb139bd0d9cd27d4da4d7c2112d5bf"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/lib.rs",
+            "before_sha256": "2e38d4ad38feaa4a990e578d84a560b40382702522e07b3026de57a27f703cb5",
+            "after_sha256": "82db359f898a15b1d7090797598f9dbb8e02f9abf915de949736383a20e2f0dd"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/namespace.rs",
+            "before_sha256": "dfec7284dbfb9a1e673d3f5d76dd2fa5d6dff1b358fcd788fd59861144f3e2ec",
+            "after_sha256": "0a6a00ef1e4c047a77e58fff8a214923ee50da0ec6687fbc615426c78cfcb935"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_mutex.rs",
+            "before_sha256": "e7bbe754bf77d4a4f878d4e0f08e786ad2e9260706b4d4f87b99d772def39fe5",
+            "after_sha256": "21e02c7e2b934383112ecea41523e4b2889fda3ba1051e37aa3e2209efb66f14"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "0f7f8e79dfef171d872787a51b5cc257392eb3f892663509eb713a88e1847a31",
+            "after_sha256": "adeefbb6f840baa92afc58e71f7d846228875aab076af4adf70bfff088de1d57"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/uninstall_windows.rs",
+            "before_sha256": "1ffc03ab3362aa6849ca698bb2842ad6ec0204bca083cab3e01f028d3f27857f",
+            "after_sha256": "cacefb5b6340c3686959c9a00dba7800c724d36f2cf02d549b45f45573ede721"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-acl-inheritance-lock.patch",
+      "sha256": "09f26a0de06f5d00cad61e326d39f1cf19a9ce19efca4e87a6fef1910d298505",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "e804c8dd11b197cef06923f034dc27e9e0299f0c434a11c4b05b80b09be34f6c",
+            "after_sha256": "b57eacf834c29b7dc912b11034ad5c31779b442769092842ddba36e7963fb054"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl_lock.rs",
+            "before_sha256": null,
+            "after_sha256": "25241bf95dd7ecfea708c0de37102db0c9fcc63041102ffac2d06fbc2b999275"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+            "before_sha256": "81ae70fb8784656ed660cd895f030a76c307d040fa437018c028b1a59b317d8a",
+            "after_sha256": "0057b5c224631f1e005165eb8141c8eb2ad52f6d0b769009b7e2cd4d50bcea9c"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/deny_read_state.rs",
+            "before_sha256": "95cef3f39e8be5f31352ba1b4ff2c259adeb139bd0d9cd27d4da4d7c2112d5bf",
+            "after_sha256": "aad711031239f7ec2a3eb48f725174b3ca08633db3de5dfda5da700e45f2e1c0"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/lib.rs",
+            "before_sha256": "82db359f898a15b1d7090797598f9dbb8e02f9abf915de949736383a20e2f0dd",
+            "after_sha256": "9c1354a1f274b32e74f5e38a7dbcd66645dc2d4e26ac8965dfbe10bd6cfad31e"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/private_acl_lock.rs",
+            "before_sha256": null,
+            "after_sha256": "b83c9c39f03115b98279e35eeb1c5cd422bc4632e087a44e83b2391c5f3d9581"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_mutex.rs",
+            "before_sha256": "21e02c7e2b934383112ecea41523e4b2889fda3ba1051e37aa3e2209efb66f14",
+            "after_sha256": "21e02c7e2b934383112ecea41523e4b2889fda3ba1051e37aa3e2209efb66f14"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "adeefbb6f840baa92afc58e71f7d846228875aab076af4adf70bfff088de1d57",
+            "after_sha256": "05fdef46c59766be0cadf1e03fd9d343bb426356e1946eb586c9be50a7df1a46"
+          }
+        ]
+      }
+    },
+    {
+      "file": "windows-critical-read.patch",
+      "sha256": "cc540b093e537576cdeaa561c38c7b42869c9960273a3de40ca372cebb28c577",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/resolved_permissions.rs",
+            "before_sha256": "644d50573badc36bb782d40ae40d82adf2cecf182525c924446a7ea16d8405eb",
+            "after_sha256": "2a30f8347c1824ca6224aed061b96581cbdd4b87b3a281d310dd9fcfe6c63885"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup.rs",
+            "before_sha256": "5f6e800d7099cbde44f0cde03315029a8260e5c8f056cb48790cce0c8086e363",
+            "after_sha256": "55e6328cf7d0653b322e878ca3d160285c88c23e36982958655196b3da0ae97b"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "05fdef46c59766be0cadf1e03fd9d343bb426356e1946eb586c9be50a7df1a46",
+            "after_sha256": "d141b838d0f948160a2d2069712273a463cf8bf022ee6d2227ea0a89eb0389d0"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/acl_tests.rs",
+            "before_sha256": "47c7541c1c22f68991ad0bd71938b08ecda7b4fffcf4fb6b589fa425c78356f8",
+            "after_sha256": "3bf02bba4a1a4f97476fb8b621aa6982db939337e259dd67f964d688a5982011"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/service.rs",
+            "before_sha256": "76b1e56a08e50c2a121a35c8922591b9d455d53f3d20ff0836cfa277297932fc",
+            "after_sha256": "16ed2889ccd12a57b59c0d89bb0cd6d33539bf1c80747d181d315572964e5d2f"
+          }
+        ]
+      }
     }
   ]
 }

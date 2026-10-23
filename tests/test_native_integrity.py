@@ -77,12 +77,23 @@ def test_legal_text_exemption_cannot_hide_unsafe_manifest_paths(native_package,n
     with pytest.raises(RuntimeError,match='Verified dedicated native runtime is unavailable'):cli.native()
 
 
-def test_empty_timeout_error_is_named(monkeypatch,capsys):
-    async def fail(_arguments):raise TimeoutError()
-    monkeypatch.setattr(cli,'run',fail);monkeypatch.setattr(cli.sys,'argv',['codex-deepseek','exec','fixture'])
-    with pytest.raises(SystemExit) as error:cli.main()
-    assert error.value.code==1
-    assert capsys.readouterr().err=='codex-deepseek: TimeoutError\n'
+def test_empty_timeout_error_is_named():
+    # The CLI owns its process-level event loop. Exercise that boundary in a
+    # child instead of replacing pytest-asyncio's policy loop via asyncio.run.
+    import os
+    import subprocess
+    import sys
+    source = ('from codex_deepseek import cli\n'
+              'async def fail(_arguments): raise TimeoutError()\n'
+              'cli.run=fail\n'
+              'cli.sys.argv=["codex-deepseek","exec","fixture"]\n'
+              'cli.main()\n')
+    environment = {**os.environ, 'PYTHONPATH': str(Path(__file__).resolve().parents[1]/'src')}
+    result = subprocess.run([sys.executable, '-B', '-W', 'error', '-c', source],
+                            env=environment, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 1
+    assert result.stdout == ''
+    assert result.stderr == 'codex-deepseek: TimeoutError\n'
 
 
 @pytest.fixture
@@ -101,7 +112,9 @@ def isolated_run(native_package,monkeypatch):
         def cleanup_native(self):pass
         def close(self):self.closed=True
     class Service:
-        def __init__(self,home,catalog,*,native_binary):consumers.append(native_binary)
+        def __init__(self,home,catalog,*,native_binary,owner):
+            assert stores and owner==stores[-1].owner
+            consumers.append(native_binary)
         async def __aenter__(self):return SimpleNamespace(port=1234,token='fixture-token')
         async def __aexit__(self,*args):pass
     class Process:
