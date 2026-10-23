@@ -170,3 +170,34 @@ def test_runner_home_fix_is_last_and_changes_only_the_native_runner():
     assert changed[0]['path']=='codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs'
     previous=next(row for item in recipe['overlays'][:-1] for row in item['changes_by_target'].get(WIN,[]) if row['path']==changed[0]['path'])
     assert changed[0]['before_sha256']==previous['after_sha256']
+
+
+def test_isolated_native_build_loads_checkout_license_inputs(tmp_path):
+    import sys
+    # A real isolated interpreter must load both build helpers from their exact
+    # checkout paths; a caller-owned module with either name must not execute.
+    for name in ('build_native.py','native_licenses.py'):
+        (tmp_path/name).write_text('raise AssertionError("FOREIGN_BUILD_MODULE")\n')
+    child=r'''import importlib.util,json,pathlib,sys,types
+root=pathlib.Path(sys.argv[1])
+spec=importlib.util.spec_from_file_location("fixed_native_build",root/"build_native.py")
+build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
+collect=build.native_license_collector()
+assert pathlib.Path(collect.__code__.co_filename).resolve()==(root/"native_licenses.py").resolve()
+metadata={"packages":[]}
+assert collect(pathlib.Path("fixture-Cargo.toml"),pathlib.Path("with-metadata"),metadata=metadata,target="x86_64-unknown-linux-gnu")==0
+calls=[]
+def fake_run(command,**kwargs):
+    calls.append(command)
+    assert command[:4]==["cargo","+"+build.runtime_recipe()["build_toolchain"],"metadata","--locked"]
+    return types.SimpleNamespace(stdout=json.dumps(metadata))
+collect.__globals__["subprocess"].run=fake_run
+assert collect(pathlib.Path("fixture-Cargo.toml"),pathlib.Path("without-metadata"),target="x86_64-unknown-linux-gnu")==0
+assert len(calls)==1
+assert sys.flags.isolated==1
+print("ISOLATED_BUILD_LICENSE_INPUTS_OK")
+'''
+    env={k:v for k,v in os.environ.items() if not k.startswith(('PYTHON','CODEX_','CDS_','OPENROUTER_','OPENAI_','GITHUB_','ACTIONS_'))}
+    result=subprocess.run([sys.executable,'-I','-X','utf8','-c',child,str(ROOT)],cwd=tmp_path,env=env,capture_output=True,text=True,encoding='utf-8',timeout=30)
+    assert result.returncode==0,result.stdout+result.stderr
+    assert result.stdout.strip()=='ISOLATED_BUILD_LICENSE_INPUTS_OK'

@@ -9,6 +9,7 @@ import copy
 import difflib
 import uuid
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path,PurePosixPath
@@ -173,10 +174,19 @@ def combined_patch(tree,archive,paths):
     return result
 
 
+def native_license_collector():
+    # Resolve this build input from the verified checkout even under Python -I;
+    # never import a same-named module from the caller's working directory.
+    spec=importlib.util.spec_from_file_location('cds_native_licenses',SOURCE/'native_licenses.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module.collect
+
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--work',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--jobs',type=int,default=2);args=parser.parse_args()
     if not 1<=args.jobs<=16:raise SystemExit('Build jobs must be between 1 and 16')
     target=build_target();assets=build_assets(target);suffix='.exe' if platform.system()=='Windows' else ''
+    collect=native_license_collector()
     work=args.work.expanduser().resolve();output=args.output.expanduser().resolve()
     if output.exists():raise SystemExit('Preserving existing output; choose a fresh path: '+str(output))
     if work==Path.home()/'.codex' or work.is_relative_to(Path.home()/'.codex') or output.is_relative_to(Path.home()/'.codex'):raise SystemExit('Build paths must be separate from Codex App state')
@@ -284,7 +294,6 @@ def main():
             'post_build':['strip','--strip-debug','--strip-unneeded','bwrap'],
         },indent=2),encoding='utf-8')
     for executable in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']:(output/(executable+suffix)).chmod(0o755)
-    from native_licenses import collect
     metadata_command=[*cargo,'metadata','--locked','--format-version','1','--manifest-path',str(tree/'codex-rs/Cargo.toml'),'--filter-platform',target]
     dependency_metadata=json.loads(subprocess.run(metadata_command,env=environment,check=True,capture_output=True,text=True,encoding='utf-8').stdout)
     collect(tree/'codex-rs/Cargo.toml',output/'licenses/rust',metadata=dependency_metadata,target=target)

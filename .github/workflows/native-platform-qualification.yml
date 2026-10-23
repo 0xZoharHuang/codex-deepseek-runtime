@@ -75,6 +75,13 @@ jobs:
           "$RUNNER_TEMP/cds-ci-venv/bin/python" -m pip install --no-deps --no-build-isolation .
           CDS_TOOLCHAIN=$("$RUNNER_TEMP/cds-ci-venv/bin/python" -c 'import json; print(json.load(open("native/runtime-overlays.json"))["build_toolchain"])')
           rustup toolchain install "$CDS_TOOLCHAIN" --profile minimal
+      - name: Check isolated build entry points before compilation
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -m pytest -p pytest_asyncio.plugin tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
       - name: Build the pinned native package
         shell: bash
         run: |

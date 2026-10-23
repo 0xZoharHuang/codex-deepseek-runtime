@@ -1,6 +1,7 @@
 """Retain upstream notices, declared attribution and canonical SPDX license texts."""
 from __future__ import annotations
 import hashlib
+import importlib.util
 import json
 import platform
 from pathlib import Path
@@ -15,8 +16,9 @@ def collect(manifest,output,*,metadata=None,target=None):
     platform_target=target or {('Darwin','arm64'):'aarch64-apple-darwin',('Linux','x86_64'):'x86_64-unknown-linux-gnu',('Windows','AMD64'):'x86_64-pc-windows-msvc'}[(platform.system(),platform.machine())]
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     if metadata is None:
-        from build_native import runtime_recipe
-        toolchain_pin=runtime_recipe()['build_toolchain']
+        spec=importlib.util.spec_from_file_location('cds_license_build_recipe',SOURCE/'build_native.py')
+        build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
+        toolchain_pin=build.runtime_recipe()['build_toolchain']
         result=subprocess.run(['cargo','+'+toolchain_pin,'metadata','--locked','--format-version','1','--filter-platform',platform_target,'--manifest-path',str(manifest)],check=True,capture_output=True,text=True,encoding='utf-8')
         metadata=json.loads(result.stdout)
     license_data=json.loads((SOURCE/'native/license-data.json').read_text(encoding='utf-8'))
