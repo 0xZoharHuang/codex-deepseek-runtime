@@ -110,6 +110,6 @@ MCP 的 turn/interrupt 与 owner exit 分开记录：本基线某些 HTTP 请求
 
 三平台严格组合报告、当前完整离线与真实 runtime 复验均已完成。Windows 最后一次汇总曾因 SSH 观察环境缺少 Git PATH 失败；仅补齐该消费者子进程的 PATH 后，原始模型与业务材料按同一断言重建通过，没有重跑业务来掩盖失败。macOS 旧清理超时导致日志缺结尾标记，仅对固定失败材料按原断言、唯一 nonce 归属及七个原文件 SHA 定位并排除旧根；新的四种 OAuth 仍必须具备完整结尾标记与所有正向证据。
 
-实际公开原生资产路径的托管 CI 已通过。对应产品 release 附件单独记录公开安装读回、检查过的入口与文件清单；发布可用性以 release 为准。组合验收保留原始失败，不宣称一次全绿。Windows 整理放在 CDS 与独立 App 项目全部完成之后。
+实际公开原生资产路径的托管 CI 已通过。[产品 v0.6.0 已发布](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.0)，Windows 的[公开安装读回](../reports/releases/0.6.0/public-install-readback.json)也已通过：95 个产品文件、2991 个原生文件、help/version/status、零模型请求与原入口/共享配置不变。Windows 直连 GitHub clone 曾被网络重置，原失败保留；实际采用公开 tag 源码与归档经 Mac 无落盘流式传输到 Windows 的既有显式归档安装方式，不冒称 Windows 直连成功。托管 CI 原始 ZIP 和独立分区复核另保留在[CI 证据目录](../reports/releases/0.6.0/ci/)，避免仅依赖短期 Actions 附件。组合验收保留原始失败，不宣称一次全绿。Windows 整理放在 CDS 与独立 App 项目全部完成之后。
 
 根据用户后续授权，必要的 macOS 实测在新建的独立安装、home 和测试目录中完成；现有 Mac App、订阅登录、上游凭据及正在使用的 CDS 安装没有被读取或替换。模型凭据从 Windows 经父进程内存与 SSH 标准输入一次性供给测试子进程，不写文件或命令参数。OAuth 仅创建和清理标记明确的本次测试条目。GitHub 发布继续使用已授权的认证中继，Windows 上其他人的固定安装与进程不接管。

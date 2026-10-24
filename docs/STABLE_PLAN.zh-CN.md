@@ -13,7 +13,7 @@ CDS 保留 Codex CLI 的原生任务循环、工具、审批、沙箱、会话�
 
 原生基线本身是上游预发布版本，项目的发布说明必须保留这一事实。固定版本、可回退安装和完整验收提供的是明确组合的使用依据，不能把上游 alpha 改称上游稳定版。
 
-每份报告绑定产品源码、原生包、实际验收脚本和原始输出。三平台最终各收集 1807 项离线测试：Windows 1804 通过/3 项平台不适用，macOS 1775/32，Linux 1776/31。Windows 的 128 项正向 RPC 与 3 项原生配置边界、Mac/Linux 各 129 项正向 RPC 均已从原始请求和实际效果重建。四种 OAuth、网页 open/find/click、协议恢复与原生协作等当前实跑及原始失败分别记录；不从 v0.5.0 继承通过。复杂开发任务在 Windows 执行，Unix 明确复用未变共同组件的 runtime 证据，不冒称本地工程任务成功。[最终托管 CI](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40087081457)也已通过公开原生资产下载、15 项真实传输与完整集合分区校验；公开安装读回以对应 release 附件为准。
+每份报告绑定产品源码、原生包、实际验收脚本和原始输出。三平台最终各收集 1807 项离线测试：Windows 1804 通过/3 项平台不适用，macOS 1775/32，Linux 1776/31。Windows 的 128 项正向 RPC 与 3 项原生配置边界、Mac/Linux 各 129 项正向 RPC 均已从原始请求和实际效果重建。四种 OAuth、网页 open/find/click、协议恢复与原生协作等当前实跑及原始失败分别记录；不从 v0.5.0 继承通过。复杂开发任务在 Windows 执行，Unix 明确复用未变共同组件的 runtime 证据，不冒称本地工程任务成功。[最终托管 CI](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40087081457)也已通过公开原生资产下载、15 项真实传输与完整集合分区校验；Windows 公开版本的[显式归档安装读回](../reports/releases/0.6.0/public-install-readback.json)已通过，原直连 GitHub 网络失败与脚本文件数错误均保留；该方式不改变全机网络或共享入口。
 
 此前版本的结果保留在 [v0.5.0 历史方案](https://github.com/0xZoharHuang/codex-deepseek-runtime/blob/dd832a9fa45ab12ed87cf98942cb2d1c8c34d237/docs/STABLE_PLAN.zh-CN.md)。旧版本的接口数量、平台报告或安装清单不能自动成为 0.6.0 的通过证明。
 

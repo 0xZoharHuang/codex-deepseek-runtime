@@ -62,3 +62,5 @@ The workflow runs manually, or when the dedicated codex/cds-qualification
 branch is pushed. Candidate CI evidence is reviewed before promoting any native
 archive into the supported release manifests. Earlier platform results are not
 silently assigned to a new binary.
+
+After a qualified release is promoted to main, its temporary qualification branch may be deleted. Recreate codex/cds-qualification for a future qualification push, or dispatch the reuse workflow manually from main. Fixed release inputs and retained proof checks remain mandatory.

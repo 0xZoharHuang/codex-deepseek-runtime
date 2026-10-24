@@ -1,0 +1,141 @@
+{
+  "passed": true,
+  "run_id": 40087081457,
+  "head_sha": "b01ce01418170eefae4f1253ff4860fe688a027e",
+  "event": "push",
+  "attempt": 1,
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40087081457",
+  "scope": "Current-source hosted native-transport and complete offline qualification, not real-model inference",
+  "source_id": "2d43ed50050d0a687f55",
+  "product_files": 95,
+  "qa_files": 179,
+  "platforms": {
+    "linux-x64": {
+      "artifact_id": 12557253680,
+      "artifact_digest": "sha256:04e80729c3b851ca8ad835ef0ba35decce184c14ba1fbd5792aac85d4be4178f",
+      "zip_bytes": 315459,
+      "controller_passed": 50,
+      "native_passed": 15,
+      "remainder_cases": 1792,
+      "remainder_passed": 1761,
+      "skipped": 31,
+      "complete_collection": 1807,
+      "total_passed": 1776,
+      "warnings_as_errors": true,
+      "owners": {
+        "native": {
+          "observed": 21,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 12.968711885000005
+        },
+        "collection": {
+          "observed": 1,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 2.7879255909999756
+        },
+        "remainder": {
+          "observed": 81,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 55.744243724
+        }
+      },
+      "archive": {
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/codex-deepseek-native-0.6.0-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "3fe87429998f460406d91ca32aae0134ccc1bf5a95da3110735935c17dcb3cd5",
+        "bytes": 160035706
+      },
+      "original_recipe": {
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/native-build-recipe-9fe80f70.json",
+        "sha256": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+        "bytes": 19422
+      },
+      "original_build_preserved": true,
+      "native_builds": 0,
+      "model_calls": 0,
+      "checkouts_identical_files": 427,
+      "evidence_sha256": {
+        "acquisition/acquisition.json": "b5bf7be38958a1245933ba7ded266fd001d18e13c249f6463f0dbd579a2dae39",
+        "native/qualification.json": "8d91ffa39cbbac0cc156624e522e8d8949a109c4febb3e2a120d6a7819f87867",
+        "native/native.xml": "4ec6b844f3b21496988c4e517947fd38b8108129457c8e6b99dfb907c58ffad3",
+        "offline/qualification.json": "31bb6c03363e4a09bcef2ab5ec6ba8e620afd173139c6983383ab0ff83e5285a",
+        "offline/all-collection.json": "322ddaea0991cde876c635ff0aa55300576eddcb1b108417b89844f36b9220c5",
+        "offline/adapter-collection.json": "4165219bc7101273fc1db840a0a55cacfd2632c999511739720abb7d7d1b50c9",
+        "offline/adapter.xml": "580beb61aa89b298b8a9ceecf914f04114f94c2d217a58f0c5de921d7b209a87",
+        "controller.xml": "047c52de6aa5904dcaf9e3e6d809d4f4a736ff30763b9d5b8ed6e3aa150bacfc",
+        "current-source-commit.txt": "311ea48fdf717cf068433d87dc717960c79e197e1eb3881d031cbb6e6d8b7c51"
+      }
+    },
+    "macos-arm64": {
+      "artifact_id": 12557975297,
+      "artifact_digest": "sha256:acbdfbd60d831b51b274f2b7330711389e955aaa225644c5b846aeda70741726",
+      "zip_bytes": 313239,
+      "controller_passed": 50,
+      "native_passed": 15,
+      "remainder_cases": 1792,
+      "remainder_passed": 1760,
+      "skipped": 32,
+      "complete_collection": 1807,
+      "total_passed": 1775,
+      "warnings_as_errors": true,
+      "owners": {
+        "native": {
+          "observed": 29,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 12.288996582999971
+        },
+        "collection": {
+          "observed": 1,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 1.993163291999963
+        },
+        "remainder": {
+          "observed": 67,
+          "forced": 0,
+          "remaining": 0,
+          "unknown": 0,
+          "seconds": 54.96687233399996
+        }
+      },
+      "archive": {
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "aef450933d716b0c9451d5a487eee59eb346c188c894f8fee1b8155c836052b0",
+        "bytes": 143372239
+      },
+      "original_recipe": {
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/native-build-recipe-9fe80f70.json",
+        "sha256": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+        "bytes": 19422
+      },
+      "original_build_preserved": true,
+      "native_builds": 0,
+      "model_calls": 0,
+      "checkouts_identical_files": 427,
+      "evidence_sha256": {
+        "acquisition/acquisition.json": "3ed49627beb62f0ab253a6878d2ab04539bc19093bba2044dcf8b84f1720993e",
+        "native/qualification.json": "e48abbed74b93f1589bd7f027525116719eef1f433404625178669aadc1b15e9",
+        "native/native.xml": "1104f834c09341f634d2dd78479b24adb853befe9345f60abda7d8d563eea679",
+        "offline/qualification.json": "21e9c75f138239aa6c257f4efaec60a4fddf3b045d093bb64721c68959396ca0",
+        "offline/all-collection.json": "322ddaea0991cde876c635ff0aa55300576eddcb1b108417b89844f36b9220c5",
+        "offline/adapter-collection.json": "4165219bc7101273fc1db840a0a55cacfd2632c999511739720abb7d7d1b50c9",
+        "offline/adapter.xml": "5feb909dc3db50d90b9aa6afa45b91641b7b0c283ac3f1e086d18561dd5b498d",
+        "controller.xml": "680887e1da5c1866525f28999bd573dd0a962feff8f6c22f7a8a791f66baad38",
+        "current-source-commit.txt": "311ea48fdf717cf068433d87dc717960c79e197e1eb3881d031cbb6e6d8b7c51"
+      }
+    }
+  },
+  "metadata_sha256": {
+    "initial-run.json": "a2fe6b5bcf7b4a077f9bfaca84799ed33e553af5b063b22cb9215b09f8831295",
+    "initial-jobs.json": "8f0ffdcfcb28088489823095053a8e807f2767f22b53eeadf3e369825a1fd0df",
+    "initial-artifacts.json": "2569bc0df75e82713d51bc788ef8e13b1f5bbf56e84bab67b03ea33a3e4ab80d"
+  }
+}
