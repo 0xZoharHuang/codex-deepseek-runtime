@@ -1,24 +1,21 @@
 # Codex CLI + DeepSeek 的稳定运行方案
 
-本文的已交付产物、数量和源码谱系均限定于 v0.5.0。当前源码 0.6.0 尚未发布，其图片传输、Windows namespace 和安装 recipe 变化见 [候选说明](release-0.6.0-candidate.zh-CN.md)。不能将这里的旧结论赋给新源码或二进制。
+本方案描述 0.6.0 的固定架构、安装隔离和运维方法。**当前仍在完成最终验收，尚未正式发布。** 可部署状态与逐平台证据以 [0.6.0 验收记录](release-0.6.0-acceptance.zh-CN.md)及对应 GitHub release 为准；本文件的操作说明不代替验收结论。
 
-本项目保留 Codex CLI 的原生运行时，用独立安装、协议转换和平台适配，把模型请求接到 OpenRouter 上固定版本的 DeepSeek。模型质量、OpenAI 账户权益和专属云端服务不属于运行时等价的承诺。
+CDS 保留 Codex CLI 的原生任务循环、工具、审批、沙箱、会话和子智能体，只在安装隔离、模型协议、传输及确有必要的平台边界适配。模型质量、模型未具备的模态能力、OpenAI 账户权益和专属云端服务单独列明。
 
-平台是否验收完成，以发布版本随附的 `reports/platforms/<target>/runtime-qualification.json` 为准。源码里存在某个平台的实现、原生二进制编译成功，或某个测试子集通过，都不能替代整个平台的验收报告。
+## 固定组合与证据
 
-## 已验收的固定版本
+- 适配层产品源码：2d43ed50050d0a687f55，95 个产品文件。
+- 原生 Codex：0.164.0-alpha.7，提交 fe136d4e70ef2b5bbed40a2d22b3aabf267796d3。
+- 模型：deepseek/deepseek-v4.1-flash-1017；模型与提供方均明确固定，不使用可自动变化的 latest。
+- 平台：Windows x64、macOS ARM64、Linux x64 GNU；每个平台分别验证其原生支持范围。Windows 10 不声明 Windows 11 专有能力。
 
-v0.5.0 使用 Codex `0.164.0-alpha.7` 与 DeepSeek `deepseek/deepseek-v4.1-flash-1017`。原生基线仍是上游预发布版，因此 GitHub release 也保留 prerelease 标记。
+原生基线本身是上游预发布版本，项目的发布说明必须保留这一事实。固定版本、可回退安装和完整验收提供的是明确组合的使用依据，不能把上游 alpha 改称上游稳定版。
 
-| 平台 | v0.5.0 本地方法范围 | v0.5.0 完整离线测试 | 结论入口 |
-| --- | --- | --- | --- |
-| Windows x86_64 | 131 项，含实际双模式沙箱 | 666 通过；1 项 Linux 专用 | [Windows 报告](../reports/platforms/x86_64-pc-windows-msvc/runtime-qualification.json) |
-| macOS arm64 | 129 项，通过明确组件谱系关联 | 653 通过；12 项平台不适用 | [macOS 报告](../reports/platforms/aarch64-apple-darwin/runtime-qualification.json) |
-| Linux x86_64 GNU | 129 项，通过明确组件谱系关联 | 654 通过；11 项平台不适用 | [Linux 报告](../reports/platforms/x86_64-unknown-linux-gnu/runtime-qualification.json) |
+每份报告绑定产品源码、原生包、实际验收脚本和原始输出。Windows 当前完整离线检查为 1738 通过、3 项明确平台条件跳过；四种 OAuth 凭据模式已在当前版本实际重验通过。原标准运行 28/30 的两个 OAuth 失败仍保留。只有实际成功且依赖未变化的历史机制证据才可复用，最终明确报告组合验收，不伪造一次全绿。macOS/Linux 还须完成公开发布资产路径的当前完整离线和原生传输执行，并补齐当前源码变更影响的真实 runtime 机制证明；v0.5.0 的 129 项报告不会直接继承为当前通过。
 
-Windows 标准门保留原 29 项通过与独立 Guardian 补测；Linux 保留 memory-v1 的提供方失败和独立成功补测；macOS 的四项凭据机制复用未变组件的原始实测，加上当前 File/Ephemeral 桥接。这些是明确组合的证据，不是一次全绿运行。
-
-[v0.5.0 发布源码谱系](../reports/release-source-lineage.json) 将当时实测 94c、069、3a 的精确 Git 对象与 v0.5.0 最终源码关联。当时的最后产品差异只有 README 内容和 Windows manifest 的 CRLF→LF，JSON 对象、全部 runtime Python、原生归档、catalog 与依赖完全相同。历史精确字节用 `git archive <commit>` 恢复；正常 checkout 会按 `.gitattributes` 统一换行符。
+此前版本的结果保留在 [v0.5.0 历史方案](https://github.com/0xZoharHuang/codex-deepseek-runtime/blob/dd832a9fa45ab12ed87cf98942cb2d1c8c34d237/docs/STABLE_PLAN.zh-CN.md)。旧版本的接口数量、平台报告或安装清单不能自动成为 0.6.0 的通过证明。
 
 ## 实际执行路径
 
@@ -87,11 +84,11 @@ Windows 包含原生沙箱 setup、runner、service 和诊断辅助程序。进�
 
 ## 完成的判据
 
-下列是 v0.5.0 固定基线的验收结构。0.6.0 必须把各结论绑定到新源码与实际包，明确复验或可核查的组件复用依据，并补齐新增行为的证据，不能直接沿用数量：
+0.6.0 按以下机制验收。每项结论必须绑定当前源码与实际包，或给出可核查的未变组件复用依据；新增行为需要实际运行证据：
 
 1. 完整原生源码清单与补丁重放，确认保护范围中的会话、工具处理器、调度和沙箱实现保持上游内容。
 2. 同版本官方二进制与本项目二进制的全部 456 份协议 Schema 比较。
-3. 174 项客户端方法的明确适用范围；macOS/Linux 要求 129 项本地接口，Windows 要求 131 项，其他条目给出原生账户、后端或平台边界的实际证据。
+3. 174 项客户端方法的明确适用范围；Windows 本地范围为 131 项，其中 128 项要求正向状态或副作用；3 项命令控制接口属于同版官方和候选在真实受限命令上的相同平台边界，必须各自有实际请求/响应证明。macOS/Linux 按其各自范围验证，不能用 Windows 的成功代替。账户、后端和平台边界分别保留实际证据。
 4. 标准场景、实际收集到的全部离线测试、逐方法的状态或副作用，以及对应的真实请求/响应配对。
 5. 真终端输入输出、窗口尺寸、取消、正常退出、同一会话冷恢复；普通管道输出不替代终端能力。
 6. 文件、系统钥匙串、自动和加密凭据模式中的实际 OAuth、冷启动、跨 profile 隔离与原生清理。

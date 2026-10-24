@@ -7,27 +7,33 @@ import os
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
-import subprocess
 import sys
 import tarfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "0xZoharHuang/codex-deepseek-runtime"
-RUN = 39899815305
+ORIGINAL_RUN = 39899815305
 HEAD = "9e5f4a5b4312b5036c8b13655273073df5c371aa"
+RELEASE_TAG = "v0.6.0-native.1"
+RELEASE_BASE = "https://github.com/" + REPOSITORY + "/releases/download/" + RELEASE_TAG
+RECIPE_NAME = "native-build-recipe-9fe80f70.json"
+RECIPE_SHA256 = "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c"
+RECIPE_BYTES = 19422
 ARTIFACTS = {
     "x86_64-unknown-linux-gnu": {
         "name": "cds-linux-x64-" + HEAD + "-1", "id": 12479937195,
         "github_digest": "sha256:4ef4dfb97ff8b37b7911bc5b4e8b712b6103cc22ceed9e071166ab93d20efc20",
         "manifest": "runtime-x86_64-unknown-linux-gnu.json",
         "archive_sha256": "3fe87429998f460406d91ca32aae0134ccc1bf5a95da3110735935c17dcb3cd5",
+        "archive_bytes": 160035706,
     },
     "aarch64-apple-darwin": {
         "name": "cds-macos-arm64-" + HEAD + "-1", "id": 12481979141,
         "github_digest": "sha256:b948a68683ca2774a631dc765153dc1731e8b7c0aa41b497d1f37c875d0fc523",
         "manifest": "runtime.json",
         "archive_sha256": "aef450933d716b0c9451d5a487eee59eb346c188c894f8fee1b8155c836052b0",
+        "archive_bytes": 143372239,
     },
 }
 
@@ -110,22 +116,38 @@ def extract_exact(archive, destination, manifest):
     return {p.relative_to(destination).as_posix():sha(p)
             for p in destination.rglob("*") if p.is_file()}
 
-def verify_download_metadata(run, artifacts, target):
-    selection = ARTIFACTS[target]
-    if (run.get("id") != RUN or run.get("head_sha") != HEAD
-            or run.get("status") != "completed" or run.get("conclusion") != "success"
-            or run.get("run_attempt") != 1
-            or run.get("repository", {}).get("full_name") != REPOSITORY
-            or run.get("path") != ".github/workflows/native-platform-qualification.yml"):
-        raise ValueError("Fixed GitHub build run identity/status differs")
-    matches = [a for a in artifacts.get("artifacts", []) if a.get("name") == selection["name"]]
-    if (len(matches) != 1 or matches[0].get("id") != selection["id"]
-            or matches[0].get("expired") is not False
-            or matches[0].get("digest") != selection["github_digest"]
-            or matches[0].get("workflow_run", {}).get("id") != RUN
-            or matches[0].get("workflow_run", {}).get("head_sha") != HEAD):
-        raise ValueError("Fixed native artifact is missing, changed or expired; explicit rebuild required")
-    return matches[0]
+def release_inputs(target, manifest):
+    """Select only the reviewed versioned assets; manifests cannot redirect CI."""
+    selection = ARTIFACTS.get(target)
+    if selection is None:
+        raise ValueError("No pinned release asset for target: " + target)
+    filename = "codex-deepseek-native-0.6.0-" + target + ".tar.gz"
+    if (manifest.get("target") != target or manifest.get("status") != "ready"
+            or manifest.get("archive", {}).get("filename") != filename
+            or manifest["archive"].get("sha256") != selection["archive_sha256"]):
+        raise ValueError("Current manifest no longer selects the pinned native release asset")
+    return {
+        "archive": {"url": RELEASE_BASE + "/" + filename,
+                    "sha256": selection["archive_sha256"], "bytes": selection["archive_bytes"]},
+        "recipe": {"url": RELEASE_BASE + "/" + RECIPE_NAME,
+                   "sha256": RECIPE_SHA256, "bytes": RECIPE_BYTES},
+    }
+
+
+def download_verified(asset, path):
+    """Keep failed downloads, reject changed bytes, and never retry another source."""
+    if path.exists() or path.is_symlink():
+        raise ValueError("Release download destination must be fresh")
+    received = 0
+    with urllib.request.urlopen(asset["url"], timeout=90) as source, path.open("xb") as output:
+        while chunk := source.read(min(1024 * 1024, asset["bytes"] + 1 - received)):
+            received += len(chunk)
+            if received > asset["bytes"]:
+                raise ValueError("Release asset exceeds its pinned byte size")
+            output.write(chunk)
+    if received != asset["bytes"] or sha(path) != asset["sha256"]:
+        raise ValueError("Release asset byte size or checksum differs")
+    return dict(asset)
 
 
 def main():
@@ -151,32 +173,20 @@ def main():
            for i, a in enumerate(roots) for b in roots[i+1:]):
         raise ValueError("Acquisition outputs must be disjoint")
     args.evidence.mkdir(parents=True)
-    record = {"status": "running", "run_id": RUN, "head_sha": HEAD,
+    record = {"status": "running", "acquisition": "pinned_public_release_assets", "release_tag": RELEASE_TAG,
+              "original_build": {"run_id": ORIGINAL_RUN, "head_sha": HEAD,
+                                 "artifact_id": selection["id"], "artifact_name": selection["name"],
+                                 "artifact_digest": selection["github_digest"]},
               "native_builds": 0, "model_calls": 0, "product_release_ready": False}
     try:
         args.download.mkdir(parents=True)
-        def gh_api(endpoint, path):
-            with path.open("wb") as output:
-                subprocess.run(["gh", "api", "repos/" + REPOSITORY + endpoint],
-                               check=True, stdout=output, timeout=90)
-            return json.loads(path.read_bytes())
-        run = gh_api("/actions/runs/" + str(RUN), args.evidence/"github-run.json")
-        artifacts = gh_api("/actions/runs/" + str(RUN) + "/artifacts", args.evidence/"github-artifacts.json")
-        artifact = verify_download_metadata(run, artifacts, target)
-        subprocess.run(["gh", "run", "download", str(RUN), "--repo", REPOSITORY,
-                        "--name", selection["name"], "--dir", str(args.download)],
-                       check=True, timeout=600)
-        if (args.download/"source-commit.txt").read_text().strip() != HEAD:
-            raise ValueError("Downloaded provenance has a different source commit")
         manifest_path = ROOT/"native"/selection["manifest"]
         manifest_hash = sha(manifest_path)
         manifest = json.loads(manifest_path.read_bytes())
-        if (manifest.get("target") != target or manifest.get("status") != "ready"
-                or manifest["archive"]["sha256"] != selection["archive_sha256"]):
-            raise ValueError("Current target manifest no longer selects this pinned artifact")
+        assets = release_inputs(target, manifest)
         archive = args.download/"native-package.tar.gz"
-        if sha(archive) != selection["archive_sha256"]:
-            raise ValueError("Downloaded package archive differs")
+        downloads = {"archive": download_verified(assets["archive"], archive),
+                     "recipe": download_verified(assets["recipe"], args.download/"runtime-overlays.json")}
         files = extract_exact(archive, args.package, manifest)
         if files != manifest["files"]:
             raise ValueError("Extracted inventory differs from current target manifest")
@@ -187,9 +197,7 @@ def main():
             shutil.copyfileobj(source, output)
         if sha(args.source_archive) != digest or sha(manifest_path) != manifest_hash:
             raise ValueError("Pinned source archive or current manifest differs")
-        record.update(status="passed", artifact_id=artifact["id"],
-                      artifact_name=selection["name"],
-                      github_artifact_digest_metadata=artifact["digest"],
+        record.update(status="passed", downloads=downloads,
                       archive_sha256=sha(archive), manifest_sha256=manifest_hash,
                       archive_regular_files=len(files), source_archive_sha256=digest,
                       original_build_receipt_preserved=True, package=identity)

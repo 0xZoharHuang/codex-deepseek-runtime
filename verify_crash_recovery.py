@@ -36,11 +36,11 @@ def crash_stream_evidence(events,thread,turn,active):
            and event.get('params',{}).get('threadId')==thread
            and event.get('params',{}).get('turn',{}).get('id')==turn for event in events):
         return None
-    deltas=[event for event in matching if event.get('method')=='item/agentMessage/delta'
+    deltas=[event for event in matching if event.get('method') in {'item/agentMessage/delta','item/reasoning/textDelta'}
             and isinstance(event['params'].get('delta'),str) and event['params']['delta']]
     if not deltas:return None
     return {'thread':thread,'turn':turn,'active_receipt_ids':list(active),
-            'last_output_delta':deltas[-1],'observed_at':time.time()}
+            'last_output_delta':deltas[-1],'output_channel':deltas[-1]['method'],'observed_at':time.time()}
 
 
 def recovered_receipts_match(active,receipts):

@@ -38,7 +38,8 @@ def main():
         hybrid=peer.new(sandbox=args.sandbox_mode,config={'features.code_mode':True,'features.code_mode_only':False})
         fixture=root/'work/hybrid_fixture.py';fixture.write_text('import sys;sys.stdout.write("HYBRID_MODE_OK")\n',encoding='utf-8')
         command=shell_command([sys.executable,'-I','-u',str(fixture)])
-        items=peer.turn(hybrid,'Do not delegate or search. Use Code Mode to call the native exec_command tool with this exact command:\n```\n'+command+'\n```\nReport the actual result.')
+        code='text(await tools.exec_command('+json.dumps({'cmd':command,'yield_time_ms':10000})+'));'
+        items=peer.turn(hybrid,'Do not delegate or search. Call the top-level tool named exec (Code Mode), not the top-level exec_command tool. In its JavaScript input, execute the exact code below. Emit the entire returned object with text(...), including exit_code and output; do not emit only the output string.\n```javascript\n'+code+'\n```\nReport the actual result.')
         hybrid_payloads=[event['payload'] for path in (root/'home/sessions').rglob('*.jsonl') if hybrid in path.name for line in path.read_text(encoding='utf-8').splitlines() if (event:=json.loads(line)).get('type')=='response_item']
         code_calls={item['call_id'] for item in hybrid_payloads if item.get('type')=='custom_tool_call' and item.get('name')=='exec' and 'exec_command' in item.get('input','')}
         successful_code=[]

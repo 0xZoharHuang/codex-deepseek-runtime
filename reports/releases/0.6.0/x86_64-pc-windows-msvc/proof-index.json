@@ -1,0 +1,52 @@
+{
+  "version": "0.6.0",
+  "source_id": "2d43ed50050d0a687f55",
+  "target": "x86_64-pc-windows-msvc",
+  "scope": "Fixed Windows native runtime qualification only; Unix runtime and hosted CI qualify separately; does not approve CADSG App.",
+  "single_run_all_passed": false,
+  "private_raw_evidence_retained": true,
+  "artifact_files": {
+    "acceptance.json": {
+      "sha256": "24abf38a1745cdcf065726b9795771d92a9294605f73b2bb7c43a72389e4adf4",
+      "bytes": 3319754,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "runtime-qualification.json": {
+      "sha256": "24abf38a1745cdcf065726b9795771d92a9294605f73b2bb7c43a72389e4adf4",
+      "bytes": 3319754,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "qualification-lineage.json": {
+      "sha256": "c60c2aeafabe6c72ee6e76adf1d8a74cf3b621ff5ecaf6a8298906e90546a6d7",
+      "bytes": 267800,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "runtime-method-matrix.json": {
+      "sha256": "9cc66f93ac68fff57de4e1ba92dbba155b65ed0c4d875f6357f4f04615ad2d33",
+      "bytes": 72537,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "remaining-local-methods.json": {
+      "sha256": "c61285bf4aa97429a95c93f6e425950f093d7c4cc1d9ea2446c34dda0c344676",
+      "bytes": 14128,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "native-schema-comparison.json": {
+      "sha256": "363735b24e60cb957bf8babf707854e9f1b8a398d473fbf80591eaa70aaabedf",
+      "bytes": 526680,
+      "source": "Strict Windows R16 assembler output; exact bytes"
+    },
+    "runtime-rpc-observations.json": {
+      "sha256": "7a5f5adf3c837e505b75d0a0aa6796788e7b2f1977d0b395d0e84e0bd83fd670",
+      "bytes": 553462,
+      "source": "Strict Windows R16 RPC collector; exact bytes"
+    }
+  },
+  "typed_skill_supplement": {
+    "private_handoff_sha256": "193984480a7ea8343161dd68c0fbaf47ad5cb065bdb40b1ab1738632301901c0",
+    "current_candidate_body_bytes": 5761,
+    "actual_request_bodies_verified": 7,
+    "completed_model_receipts": 18,
+    "note": "Exact candidate skill content consumption verified separately; private raw model contexts are not published."
+  }
+}

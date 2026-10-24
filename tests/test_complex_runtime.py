@@ -196,3 +196,155 @@ def test_provider_transport_preserves_model_status_and_upstream_checks():
         bad = [('known', 'completed', upstream, provider, 'context', 'official_default'),
                receipts[1]]
         assert provider_transport_evidence(requests, bad, model)['passed'] is False
+
+import os
+from pathlib import Path
+import pytest
+from verify_complex_runtime import (file_effect_evidence, readonly_control_evidence,
+                                    control_owner_evidence, process_observation)
+
+@pytest.fixture
+def edit_case(tmp_path, monkeypatch):
+    root=tmp_path/'case';work=root/'work';work.mkdir(parents=True)
+    (work/'changed.py').write_text('new')
+    patch=b'diff --git a/changed.py b/changed.py\n--- a/changed.py\n+++ b/changed.py\n@@ -1 +1 @@\n-old\n+new\n'
+    import verify_complex_runtime as collector
+    monkeypatch.setattr(collector,'complete_work_patch',lambda p:patch)
+    return root,work,patch
+
+def changes(path):
+    return [{'type':'fileChange','status':'completed','changes':[{'path':str(path)}]}]
+
+def junction(alias,physical):
+    import qa_workspace as layout
+    if os.name=='nt':layout._junction(alias,physical)
+    else:alias.symlink_to(physical,target_is_directory=True)
+
+def test_file_effect_normal_and_extended_alias(edit_case):
+    root,work,patch=edit_case
+    assert file_effect_evidence(root,changes(work/'changed.py'),patch)['passed']
+    if os.name=='nt':
+        assert file_effect_evidence(root,changes(Path('\\\\?\\'+str(work/'changed.py'))),patch)['passed']
+
+def test_file_effect_owned_mapping_checks_both_physical_and_alias_paths(edit_case,tmp_path,monkeypatch):
+    import qa_workspace as layout
+    root,work,patch=edit_case
+    monkeypatch.setattr(layout,'WINDOWS',True)
+    monkeypatch.setenv(layout.ENV,json.dumps({'run_id':'collector-unit','workspace_root':str(tmp_path/'physical'),'case_roots':[str(root)]}))
+    if os.name!='nt':monkeypatch.setattr(layout,'_junction',junction)
+    physical=layout.prepare_workspace(root)
+    for path in [physical/'changed.py',root/'work/changed.py']:
+        proof=file_effect_evidence(root,changes(path),patch)
+        assert proof['passed'] and set(proof['files'])=={'changed.py'}
+        assert proof['workspace_record_sha256']==sha(root/layout.RECORD)
+    record=json.loads((root/layout.RECORD).read_text());record['physical_identity']=[-1,-1]
+    (root/layout.RECORD).write_text(json.dumps(record))
+    assert not file_effect_evidence(root,changes(physical/'changed.py'),patch)['passed']
+
+def test_file_effect_rejects_foreign_mapping_even_with_internal_changed_file(edit_case,tmp_path):
+    root,work,patch=edit_case
+    moved=tmp_path/'outside';work.rename(moved);junction(work,moved)
+    proof=file_effect_evidence(root,changes(moved/'changed.py'),patch)
+    assert proof['passed'] is False
+
+@pytest.mark.parametrize('style',['direct','nested_link','prefix_sibling','relative'])
+def test_file_effect_rejects_escape_even_when_another_change_is_valid(edit_case,tmp_path,style):
+    root,work,patch=edit_case
+    outside=tmp_path/'outside';outside.mkdir();(outside/'changed.py').write_text('outside')
+    if style=='direct':path=outside/'changed.py'
+    elif style=='nested_link':junction(work/'escape',outside);path=work/'escape/changed.py'
+    elif style=='prefix_sibling':
+        sibling=root/'work-other';sibling.mkdir();path=sibling/'changed.py';path.write_text('outside')
+    else:path=Path('changed.py')
+    assert file_effect_evidence(root,changes(work/'changed.py')+changes(path),patch)['passed'] is False
+
+def test_file_effect_rejects_filename_substring_and_stale_patch(edit_case,monkeypatch):
+    import verify_complex_runtime as collector
+    root,work,patch=edit_case
+    stale=patch+b'extra';assert not file_effect_evidence(root,changes(work/'changed.py'),stale)['passed']
+    substring=patch.replace(b'+++ b/changed.py\n',b'+++ b/changed.py.backup\n')
+    monkeypatch.setattr(collector,'complete_work_patch',lambda p:substring)
+    assert not file_effect_evidence(root,changes(work/'changed.py'),substring)['passed']
+
+def controls():
+    requests=[{'id':1,'method':'initialize'},{'method':'initialized'},
+              {'id':2,'method':'config/read','params':{'includeLayers':False}}]
+    events=[{'id':1,'result':{}},{'method':'remoteControl/status/changed','params':{'status':'disabled'},'emittedAtMs':200000},
+            {'id':2,'result':{}}]
+    owner={'owner_id':'owned','pid':1,'birth':'windows:116444737000000000',
+           'supervisor_pid':2,'supervisor_birth':'windows:116444737100000000',
+           'native_pid':3,'native_birth':'windows:116444737200000000','closed':220.0}
+    return requests,events,owner
+
+def gone(pid,birth):
+    return {'pid':pid,'expected_birth':birth,'observed_birth':None,'state':'gone'}
+
+def test_readonly_control_not_task_evidence_and_unknown_exit_stays_unknown():
+    requests,events,owner=controls();proof=control_owner_evidence(events,[owner],gone)
+    assert proof['passed'] and proof['native_exit_code'] is None and proof['natural_eof_verified'] is False
+    control=readonly_control_evidence(requests,events,proof)
+    assert control['passed'] and control['contributes_task_lifecycle_evidence'] is False
+    result=lifecycle([requests],[events],'p',require_resume=False,control_owners={0:proof})
+    assert result['passed'] is False and result['task_connections']==[]
+    sessions,groups=observations();sessions.insert(1,requests);groups.insert(1,events)
+    result=lifecycle(sessions,groups,'p',control_owners={1:proof})
+    assert result['passed'] and result['task_connections']==[0,2]
+
+@pytest.mark.parametrize('mutation',['tool','write','turn','server_tool','terminal','pending','error','duplicate','extra_reply','unknown_event','uninitialized','missing_owner'])
+def test_readonly_control_cannot_hide_activity_or_incomplete_rpc(mutation):
+    requests,events,owner=controls();proof=control_owner_evidence(events,[owner],gone)
+    if mutation in {'tool','write','turn'}:
+        method={'tool':'command/exec','write':'config/value/write','turn':'turn/start'}[mutation]
+        requests.append({'id':3,'method':method});events.append({'id':3,'result':{}})
+    elif mutation=='server_tool':events.append({'id':90,'method':'item/tool/call','params':{}})
+    elif mutation=='terminal':events.append({'method':'turn/completed','params':{}})
+    elif mutation=='pending':events.pop()
+    elif mutation=='error':events[-1]={'id':2,'error':{'code':-1}}
+    elif mutation=='duplicate':events.append(events[-1].copy())
+    elif mutation=='extra_reply':events.append({'id':9,'result':{}})
+    elif mutation=='unknown_event':events.append({'surprise':'untyped'})
+    elif mutation=='uninitialized':requests.pop(1)
+    else:proof=None
+    assert not readonly_control_evidence(requests,events,proof)['passed']
+
+@pytest.mark.parametrize('mutation',['no_clock','outside_interval','unclosed','ambiguous','no_birth','live','unknown','unrelated_live_owner'])
+def test_control_closure_requires_exact_unique_owner_and_no_remaining_process(mutation):
+    requests,events,owner=controls();owners=[owner];probe=gone
+    if mutation=='no_clock':events[1].pop('emittedAtMs')
+    elif mutation=='outside_interval':events[1]['emittedAtMs']=50000
+    elif mutation=='unclosed':owner['closed']=None
+    elif mutation=='ambiguous':owners.append({**owner,'owner_id':'other'})
+    elif mutation=='no_birth':owner['supervisor_birth']=None
+    elif mutation in {'live','unknown'}:probe=lambda pid,birth:{**gone(pid,birth),'state':mutation}
+    else:
+        owners.append({'pid':7,'birth':'windows:116444737100000000'})
+        probe=lambda pid,birth:{**gone(pid,birth),'state':'live'if pid==7 else'gone'}
+    assert not control_owner_evidence(events,owners,probe)['passed']
+
+
+def test_control_owner_proof_stays_equal_across_gone_reused_gone():
+    _,events,owner=controls()
+    observations=[]
+    for state,current in [('gone',None),('reused','windows:999999999999999999'),('gone',None)]:
+        def probe(pid,birth,state=state,current=current):
+            return {'pid':pid,'expected_birth':birth,'observed_birth':current,'state':state}
+        observations.append(control_owner_evidence(events,[owner],probe))
+    assert all(proof['passed'] for proof in observations)
+    assert observations[0]==observations[1]==observations[2]
+    assert all(row['ended'] is True for row in observations[0]['processes'])
+    assert all(set(row)=={'pid','expected_birth','ended'} for row in observations[0]['processes'])
+
+@pytest.mark.parametrize('state',['live','unknown'])
+def test_stable_owner_proof_rechecks_expected_identity_each_time(state):
+    _,events,owner=controls()
+    assert control_owner_evidence(events,[owner],gone)['passed']
+    checked=[]
+    def probe(pid,birth):
+        checked.append((pid,birth))
+        return {'pid':pid,'expected_birth':birth,
+                'observed_birth':birth if state=='live' else None,
+                'state':state if pid==owner['native_pid']else'gone'}
+    rejected=control_owner_evidence(events,[owner],probe)
+    assert rejected['passed'] is False
+    assert (owner['native_pid'],owner['native_birth']) in checked
+    assert next(row for row in rejected['processes'] if row['pid']==owner['native_pid'])['ended'] is False

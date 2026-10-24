@@ -77,3 +77,59 @@ def test_unexpected_success_never_becomes_platform_boundary():
         def call(self,*args):return {}
     with pytest.raises(AssertionError,match='unexpectedly succeeded'):
         exact_rpc_error(Peer(),'command/exec',{},WINDOWS_STREAM_ERROR)
+
+
+@pytest.mark.parametrize('ready_after,already_finished,outcome',[
+    (20.0,False,'passed'),(31.0,False,'missing'),(0.0,True,'finished'),
+])
+def test_restricted_readiness_uses_native_budget_and_requires_pending_rpc(tmp_path,monkeypatch,ready_after,already_finished,outcome):
+    import hashlib,json
+    from types import SimpleNamespace
+    import verify_remaining_local as audit
+    nonce='e'*32;work=tmp_path/'work';work.mkdir();ready=work/('control-ready-'+nonce+'.json')
+    clock=SimpleNamespace(now=0.0);submitted={};controls=[]
+    reference=tmp_path/'reference.json'
+    reference.write_text(json.dumps({'passed':True,'scope':audit.WINDOWS_COMMAND_SCOPE,
+                                    'official_terminate_os_execution':False,'source':{'byte_identical':True}}))
+    monkeypatch.setenv(audit.WINDOWS_COMMAND_REFERENCE,str(reference))
+    monkeypatch.setenv(audit.WINDOWS_COMMAND_REFERENCE_SHA,hashlib.sha256(reference.read_bytes()).hexdigest())
+    monkeypatch.setattr(audit.uuid,'uuid4',lambda:SimpleNamespace(hex=nonce))
+    monkeypatch.setattr(audit.subprocess,'check_output',lambda *a,**k:'owner,S-1-5-21-1-2-3-1001')
+    monkeypatch.setattr(audit.time,'monotonic',lambda:clock.now)
+    monkeypatch.setattr(audit.time,'time',lambda:1700000000+clock.now)
+    def publish_ready():
+        if clock.now>=ready_after and not ready.exists():
+            ready.write_text(json.dumps({'nonce':nonce,'pid':123,'sid':'S-1-5-21-1-2-3-1002','is_admin':False}))
+    def sleep(seconds):
+        clock.now+=seconds;publish_ready()
+    monkeypatch.setattr(audit.time,'sleep',sleep)
+    class Pending:
+        def done(self):return already_finished
+        def result(self,*args):return {'exitCode':0,'stdout':nonce+'\n','stderr':''}
+    class Pool:
+        def __enter__(self):return self
+        def __exit__(self,*args):return False
+        def submit(self,call,method,params):
+            submitted.update(method=method,params=params);publish_ready();return Pending()
+    monkeypatch.setattr(audit,'ThreadPoolExecutor',lambda count:Pool())
+    def exact_error(peer,method,params,expected):
+        if method=='command/exec/terminate':controls.append((method,params,clock.now))
+        return expected
+    monkeypatch.setattr(audit,'exact_rpc_error',exact_error)
+    class Audit:
+        peer=object()
+        def call(self,method,params):
+            assert method=='config/read'
+            return {'config':{'sandbox_mode':'workspace-write','windows':{'sandbox':'elevated'}}}
+    if outcome=='passed':
+        result=audit.windows_command_control_boundary(Audit(),work)
+        assert len(controls)==1 and controls[0][2]>=20
+        assert 20<=result['active_command']['ready_seconds']<30
+        assert result['active_command']['request_timeout_ms']==30000
+        assert result['active_command']['future_pending_before_terminate'] is True
+    else:
+        expected='readiness missing' if outcome=='missing' else 'ended before control boundary check'
+        with pytest.raises(AssertionError,match=expected):audit.windows_command_control_boundary(Audit(),work)
+        assert controls==[]
+        assert clock.now<30.1
+    assert submitted['params']['timeoutMs']==30000

@@ -5,6 +5,8 @@ from qa_workspace import evidence_files
 from collections import Counter
 import hashlib
 import json
+import ntpath
+import os
 from pathlib import Path,PureWindowsPath
 import re
 import shutil
@@ -28,6 +30,9 @@ TARGETS={'aarch64-apple-darwin':('macOS arm64',129),
          'x86_64-pc-windows-msvc':('Windows x86_64 MSVC',131)}
 KEYRING_PROBE_GATES={'auth-stores','oauth-secrets'}
 TERMINAL_GATES={'tui','tui-interrupt'}
+OAUTH_GATES={'oauth-file','oauth-keyring','oauth-auto','oauth-secrets'}
+OAUTH_EXECUTION_SOURCES={'run_acceptance.py','install.py','verify_independent_audit.py','tests/oauth_fixture.py',
+                         'credential_acceptance.py','process_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
 TERMINAL_EXECUTION_SOURCES={'run_acceptance.py','install.py','verify_tui_audit.py','verify_tui_interrupt.py',
                             'terminal_acceptance.py','credential_acceptance.py','process_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
 RECOVERY_KINDS={'undeclared-tool','schema','schema-multiple','schema-tool-final','schema-tool-before-terminal','schema-overflow'}
@@ -147,8 +152,8 @@ def validate_native_faults(root,entry,installation,native,official_sha256):
         require(row.get('passed') is True and row.get('official')==rebuilt[(row['kind'],'official')]
                 and row.get('candidate')==rebuilt[(row['kind'],'candidate')] and row['official']==row['candidate'],
                 'Native fault comparison does not match its raw cases')
-    for path in evidence_files(root):
-        if path.is_file():evidence[path.relative_to(root).as_posix()]=sha(path)
+    for path in evidence_files(evidence_io_root(root)):
+        if path.is_file():evidence[comparison_path(path).relative_to(comparison_path(root)).as_posix()]=sha(path)
     return {'passed':True,'scenarios':sorted(NATIVE_FAULT_KINDS),'actual_cases':14,
             'model_calls':0,'real_credentials':0,'raw_effect_and_receipt_reconstruction':True,
             'evidence_sha256':evidence}
@@ -205,6 +210,14 @@ def validate_protocol_recovery(path,installation,native):
     except (TypeError,ValueError):valid=False
     require(valid,'Protocol recovery final answer is invalid')
     return proof
+
+
+def evidence_io_root(root):
+    """Preserve Win32 extended I/O paths; identity and containment stay canonical."""
+    if os.name!='nt':return root
+    value=ntpath.abspath(str(root))
+    if value.startswith('\\\\?\\'):return value
+    return '\\\\?\\UNC\\'+value[2:] if value.startswith('\\\\') else '\\\\?\\'+value
 
 
 def validate_rpc_witnesses(report,roots,target,methods,*,excluded_roots=()):
@@ -425,7 +438,121 @@ def normalized_hashes(values):
     return result
 
 
-def validate_regression_source(artifact,installation,snapshot=None,*,terminal_revalidated=False):
+
+def validate_windows_command_controls(reference,native,legacy):
+    """Require both native binaries' real restricted commands for all three controls."""
+    from verify_remaining_local import WINDOWS_CONTROL_ERROR
+    names=('command/exec/write','command/exec/resize','command/exec/terminate')
+    if native['target']!='x86_64-pc-windows-msvc':
+        require(reference is None and not legacy,'Windows control proof cannot qualify another platform')
+        return {}
+    require(reference is not None and set(legacy)=={'command/exec/terminate'},'All Windows command controls require direct comparison evidence')
+    reference=Path(reference);root=reference.parent;proof=load(reference);files={str(reference):sha(reference)}
+    scope={'sandbox_mode':'workspace-write','windows_backend':'unelevated','network_access':False}
+    require(proof.get('passed') is True and proof.get('scope')==scope and type(proof.get('model_requests')) is int
+            and proof['model_requests']==0 and set(proof.get('cases',{}))=={'official','candidate'},'Windows control comparison is incomplete or has another scope')
+    def read(path,digest=None,*,json_value=True):
+        path=Path(evidence_io_root(path))
+        require(comparison_path(path).is_relative_to(comparison_path(root)),'Control evidence escaped its owned root')
+        for component in [path,*path.parents]:
+            require(not component.is_symlink() and not getattr(component.lstat(),'st_file_attributes',0)&0x400,'Linked control evidence is not allowed')
+            if comparison_path(component)==comparison_path(root):break
+        actual=sha(path);require(digest is None or actual==digest,'Control evidence bytes changed')
+        files[str(path)]=actual
+        return load(path) if json_value else path.read_text(encoding='utf-8')
+    read(root/'worker.py',proof['worker_sha256'],json_value=False)
+    before=read(root/'resources-before.json');after=read(root/'resources-after.json')
+    require(proof.get('resource_snapshot_unchanged') is True and all(before[k]==after[k] for k in ['namespace','expected_resources','local','wfp','registry']),
+            'Windows control comparison changed shared sandbox resources')
+    source=proof.get('source',{});guard='772a643ee76491d9103698ad64872af85d273529a6da74e48e2af8861b557738'
+    require(native['upstream_commit']==BASELINE_COMMIT and source.get('guard_byte_identical') is True
+            and source.get('sha256')==guard and sha(source['upstream'])==sha(source['candidate'])==guard,'Official/native control guard source changed')
+    for name in ['upstream','candidate']:files[source[name]]=guard
+    require(sha(proof['python']['path'])==proof['python']['sha256'],'Restricted command interpreter changed')
+    files[proof['python']['path']]=proof['python']['sha256'];observed={};identities=set()
+    for label,case in proof['cases'].items():
+        case_root=root/label;work=case_root/'work';marker=read(work/'command-ready.json')
+        expected=('8c24181c61c94ce8982ab6a5a9408a068f1385d1427c6d424edd5cd330fb6994' if label=='official' else native['files']['bin/codex.exe'])
+        require(case.get('binary_sha256')==sha(case['binary'])==expected,'Compared native binary identity differs')
+        files[case['binary']]=expected
+        launches=list(case_root.glob('launch-*.json'));require(len(launches)==1,'Control probe must retain one native launch')
+        launch=read(launches[0]);require(launch.get('command')==[case['binary']] and launch.get('resolved_entry')==case['binary']
+                and launch.get('entry_sha256')==expected and launch.get('server_args')==['-c','mcp_servers={}','app-server','--strict-config']
+                and comparison_path(launch.get('runtime_home',''))==comparison_path(case_root/'home')
+                and comparison_path(launch.get('physical_workspace',''))==comparison_path(work)
+                and launch.get('fixture_sandbox_mode')=='workspace-write','Actual control probe launch differs')
+        require(read(case_root/'case-result.json')==case,'Native control case summary changed')
+        config=read(case_root/'config-readback.json',case['config_sha256'])
+        require(config.get('sandbox_mode')=='workspace-write' and config.get('windows',{}).get('sandbox')=='unelevated'
+                and config.get('approval_policy')=='on-request','Native control permission mode differs')
+        require(case.get('setup_state_absent') is True and not (case_root/'home/.sandbox/setup_marker.json').exists()
+                and not (case_root/'home/.sandbox-secrets').exists(),'Control probe provisioned elevated account state')
+        require(marker==case.get('ready') and marker.get('is_token_restricted') is True and marker.get('is_admin') is False
+                and marker.get('outside_write_denied') is True and re.fullmatch(r'[0-9a-f]{32}',marker.get('nonce',''))
+                and re.fullmatch(r'S-1-5-\d+(?:-\d+)+',marker.get('sid','')),'Restricted command OS identity/effect proof differs')
+        require(read(case_root/'outside-canary.txt',json_value=False)=='UNCHANGED','Restricted command wrote outside its workspace')
+        for kind in ['native_identity','command_identity']:
+            identity=case[kind];key=(identity.get('pid'),identity.get('birth'))
+            require(type(key[0]) is int and key[0]>0 and re.fullmatch(r'windows:\d+',key[1] or '') and key not in identities,
+                    'Native command owner identity is missing or reused')
+            identities.add(key)
+        require(case['command_identity']['pid']==marker['pid'] and all(case.get(k) is True for k in
+                ['command_gone','native_gone','peer_reader_stopped']) and type(case.get('native_exit_code')) is int
+                and case['native_exit_code']==0,'Native command/owner did not finish naturally')
+        trace=Path(case['raw_client_requests']);require(comparison_path(trace)==comparison_path(case_root/'client-requests.jsonl'),'Wrong control request trace')
+        requests=[json.loads(line) for line in read(trace,case['raw_client_requests_sha256'],json_value=False).splitlines()]
+        event_files=case.get('raw_native_event_files',{})
+        require(len(event_files)==1 and {comparison_path(p) for p in event_files}=={comparison_path(p) for p in case_root.glob('events-*.json')},
+                'Control comparison must contain exactly one native session')
+        events=read(*next(iter(event_files.items())));calls=[row for row in requests if 'id' in row]
+        require(all(type(row.get('id')) is int and row['id']>0 for row in calls) and len({row['id'] for row in calls})==len(calls),
+                'Ambiguous native control request IDs')
+        require([row.get('method') for row in requests]==['initialize','initialized','config/read','config/read','command/exec',*names],
+                'Control comparison contains missing/extra/reordered native operations')
+        require(all(type(row.get('id')) is int and row['id'] in {call['id'] for call in calls}
+                    for row in events if 'id' in row and 'method' not in row),'Unmatched native control reply')
+        paired={}
+        for request in calls:
+            replies=[(i,row) for i,row in enumerate(events) if 'method' not in row and type(row.get('id')) is int and row['id']==request['id']]
+            require(len(replies)==1,'Native control request must have one exact reply')
+            if request['method']=='config/read':
+                require(replies[0][1].get('result',{}).get('config')==config,'Native permission readbacks differ')
+            paired[request['method']]=(request,*replies[0])
+        require(paired['config/read'][2].get('result',{}).get('config')==config,'Configuration readback differs from raw native response')
+        request,command_end,response=paired['command/exec'];params=request['params'];command=params.get('command',[]);nonce=marker['nonce']
+        require(params==case['command_request']==read(case_root/'command-request.json') and params.get('processId')==case['process_id']=='control-'+nonce
+                and params.get('cwd')==str(work) and params.get('sandboxPolicy')=={'type':'workspaceWrite','writableRoots':[str(work)],
+                'networkAccess':False,'excludeTmpdirEnvVar':True,'excludeSlashTmp':True} and params.get('timeoutMs')==30000
+                and set(params)=={'command','cwd','processId','sandboxPolicy','timeoutMs'},'Native control command policy differs')
+        require(len(command)==8 and command[:4]==[proof['python']['path'],'-I','-u','-c']
+                and hashlib.sha256(command[4].encode()).hexdigest()=='0230625d6c8ac07e786f511e4e41c957f5e7fd4ea5e5cac53c1fecb864103228'
+                and command[5:]==[str(work/'command-ready.json'),str(case_root/'outside-canary.txt'),nonce],
+                'Native restricted-token/canary probe command differs')
+        final=read(case['command_response'],case['command_response_sha256'])
+        require(response.get('result')==final and 'error' not in response and request['id']==case['command_rpc_id']
+                and type(final.get('exitCode')) is int and final['exitCode']==case.get('command_exit_code')==0
+                and final.get('stdout','').splitlines()==['READY '+nonce,'DONE '+nonce],'Restricted command final response differs')
+        controls=case.get('controls',[]);require([row.get('method') for row in controls]==list(names),'All three actual native controls are required')
+        previous=-1;observed[label]={}
+        for control in controls:
+            name=control['method'];call,index,reply=paired[name];expected_params={'processId':case['process_id']}
+            if name.endswith('/write'):expected_params.update(deltaBase64='Qk9VTkRBUllfV1JJVEUK',closeStdin=False)
+            if name.endswith('/resize'):expected_params['size']={'rows':32,'cols':120}
+            require(call.get('params')==control.get('params')==expected_params and call['id']==control['rpc_id']
+                    and control.get('command_was_active') is True and marker['time']<=control['requested_at']<=proof['finished']
+                    and previous<index<command_end,'Control was not bound to the actual still-running command')
+            require(reply==read(control['response'],control['response_sha256']) and reply.get('error')==WINDOWS_CONTROL_ERROR
+                    and 'result' not in reply,'Actual official/native control outcome differs')
+            previous=index;observed[label][name]={'request_id':call['id'],'response_sha256':control['response_sha256'],'command_request_id':request['id']}
+    require(all(sha(path)==digest for path,digest in files.items()),'Native control evidence changed during reconstruction')
+    return {name:{'boundary_id':'windows_restricted_token_command_exec_control_unsupported','scope':scope,
+                  'positive_execution_claimed':False,'reason':'Both fixed native binaries rejected this control for a real unelevated restricted command; the byte-identical WindowsRestrictedToken guard does not depend on elevated level.',
+                  'cases':{role:rows[name] for role,rows in observed.items()},'evidence_sha256':files,
+                  **({'additional_elevated_terminate_evidence':legacy[name]} if name.endswith('/terminate') else {})} for name in names}
+
+
+def validate_regression_source(artifact,installation,snapshot=None,*,terminal_revalidated=False,oauth_revalidated=False):
+    require(not (terminal_revalidated and oauth_revalidated),'Terminal and OAuth revalidation are mutually exclusive')
     recorded=normalized_hashes(artifact.get('verifier_source_sha256',{}));current=qa_python_hashes(SOURCE)
     if snapshot is None:
         require(recorded==current,'Verifier inventory changed after standard gates; an explicit audited producer snapshot and current offline run are required')
@@ -444,9 +571,14 @@ def validate_regression_source(artifact,installation,snapshot=None,*,terminal_re
     require(all(files.get(name)==value for name,value in installation['source_sha256'].items()),'Regression snapshot changed installed product source')
     require(recorded==qa_python_hashes(snapshot),'Original standard gates do not match this producer snapshot')
     changed=sorted(name for name in set(recorded)|set(current) if recorded.get(name)!=current.get(name))
+    require(oauth_revalidated or 'tests/oauth_fixture.py' not in changed,'OAuth fixture changes require complete explicit OAuth revalidation')
     reporting={'assemble_release_acceptance.py','verify_rpc_observations.py','verify_remaining_methods.py','verify_remaining_local.py',
-               'verify_complex_runtime.py'}
+               'verify_complex_runtime.py','verify_hook_trust.py'}
     if terminal_revalidated:reporting|={'verify_tui_audit.py','verify_tui_interrupt.py'}
+    if oauth_revalidated:
+        reporting|={'verify_independent_audit.py','tests/oauth_fixture.py'}
+        require(all(not name.startswith('tests/') or Path(name).name.startswith('test_') or name=='tests/oauth_fixture.py' for name in changed),
+                'OAuth replacement cannot change runtime fixture/helper sources')
     require(all(name in reporting or name.startswith('tests/') for name in changed),
             'A standard gate verifier/shared helper changed; the producer snapshot cannot replace its revalidation: '+repr(changed))
     return {'producer':'explicit_frozen_snapshot','producer_source':str(snapshot),'producer_snapshot_sha256':digest,
@@ -472,7 +604,9 @@ def scope_source_identity(path):
     return hashlib.sha256(json.dumps(selected,sort_keys=True).encode()).hexdigest()
 
 
-def validate_standard_gates(artifact,verdict,replacement=None):
+def validate_standard_gates(artifact,verdict,replacement=None,*,revalidation_scope='terminal'):
+    require(revalidation_scope in {'terminal','oauth'},'Unknown revalidation scope')
+    replaced=OAUTH_GATES if revalidation_scope=='oauth' else TERMINAL_GATES
     require(verdict.get('entry_unchanged') is True and verdict.get('verifier_source_unchanged') is True
             and verdict.get('native_probes_unchanged') is True,'Original standard run artifact/source/probes changed')
     if artifact.get('external_offline') is not None:
@@ -486,33 +620,62 @@ def validate_standard_gates(artifact,verdict,replacement=None):
     if replacement is None:
         require(not failed,'Standard regression did not fully pass')
         return rows,None
-    require(failed<=TERMINAL_GATES,'Non-terminal standard gate failure cannot be replaced')
+    require(failed<=replaced,'A standard gate outside the explicit revalidation scope failed')
     root=Path(replacement);new=load(root/'artifact.json');after=load(root/'verdict.json')
     for key in ['entry','entry_sha256','release','installation','native_manifest','target','tui_sandbox_mode','required_local_methods','baseline_matrix_sha256']:
         require(key in artifact and new.get(key)==artifact[key],'Terminal replacement installed target/launch identity differs: '+key)
+    if revalidation_scope=='oauth':
+        for key in ['native_probes','qa_default_sandbox_mode','sandbox_scope','controller_environment']:
+            require(key in artifact and new.get(key)==artifact[key],'OAuth replacement execution identity differs: '+key)
+        if artifact['target']=='x86_64-pc-windows-msvc':
+            validate_windows_controller(artifact['controller_environment'],elevated=False)
+        probes=new['native_probes']
+        require(set(probes)=={'revocation','keyring'} and all(probe.get('path') and probe.get('sha256')
+                and sha(probe['path'])==probe['sha256'] for probe in probes.values()),'OAuth native probe bytes changed')
     require(new.get('controller_environment',{}).get('optimize')==0,'Terminal replacement disabled assertions')
     require(after.get('passed') is True and all(after.get(flag) is True for flag in ['entry_unchanged','verifier_source_unchanged','native_probes_unchanged']),
             'Terminal replacement did not pass immutable artifact checks')
     newrows=after.get('gates',[]);newselected=new.get('selected_gates',[])
-    require(len(newrows)==len(newselected)==2 and set(newselected)==TERMINAL_GATES=={row.get('gate') for row in newrows}
-            and all(type(row.get('exit')) is int and row['exit']==0 for row in newrows),'Terminal replacement must contain exactly both passing terminal gates')
+    require(len(newrows)==len(newselected)==len(replaced) and set(newselected)==replaced=={row.get('gate') for row in newrows}
+            and all(type(row.get('exit')) is int and row['exit']==0 for row in newrows),'Replacement must contain exactly all passing gates in its explicit scope')
     recorded=normalized_hashes(new.get('verifier_source_sha256',{}));current=qa_python_hashes(SOURCE)
-    # Unrelated report collectors and their tests do not execute either TUI.
+    # Unrelated report collectors and unit tests do not execute these native gates.
     # Bind the execution dependency closure plus every installed adapter module;
     # current complete offline acceptance remains mandatory at the caller.
-    required=TERMINAL_EXECUTION_SOURCES|set(new['installation'].get('adapter_source_sha256',{}))
+    required=(OAUTH_EXECUTION_SOURCES if revalidation_scope=='oauth' else TERMINAL_EXECUTION_SOURCES)|set(new['installation'].get('adapter_source_sha256',{}))
     require(required<=set(recorded) and all(recorded[name]==current.get(name) for name in required),
             'Terminal replacement execution source is not current')
+    if revalidation_scope=='oauth':
+        original=normalized_hashes(artifact.get('verifier_source_sha256',{}))
+        require(all(original.get(name)==recorded[name] for name in required-{'verify_independent_audit.py','tests/oauth_fixture.py'}),
+                'OAuth revalidation changed a shared execution dependency')
+        require(load(root/'results.json')==newrows and all(row.get('log')==row['gate']+'.log' for row in newrows),
+                'OAuth replacement raw result rows/log identity differs')
+        oauth_evidence_roots(root)
     by_name={row['gate']:row for row in newrows}
     effective=[by_name.get(row['gate'],row) for row in rows]
     lineage={'replacement_root':str(root.resolve()),'original_failed_gates':sorted(failed),
-             'original_terminal_gates':[row for row in rows if row['gate'] in TERMINAL_GATES],
+             'original_'+revalidation_scope+'_gates':[row for row in rows if row['gate'] in replaced],
              'replacement_gates':newrows,'replacement_artifact_sha256':sha(root/'artifact.json'),
              'replacement_verdict_sha256':sha(root/'verdict.json'),'original_results_preserved':True,
              'execution_source_sha256':{name:recorded[name] for name in sorted(required)},
              'other_qa_changes_rechecked_by_current_offline':sorted(name for name in set(recorded)|set(current)
                                                                    if recorded.get(name)!=current.get(name))}
+    if revalidation_scope=='oauth':
+        lineage.update(scope='all_four_oauth_variants',single_run_all_passed=False,
+                       original_passed_gates=len(rows)-len(failed),original_failed_gate_count=len(failed),
+                       replacement_logs_sha256={gate:sha(root/(gate+'.log')) for gate in sorted(OAUTH_GATES)},
+                       replacement_results_sha256=sha(root/'results.json'))
     return effective,lineage
+
+
+def oauth_evidence_roots(root):
+    root=Path(root).resolve();paths={gate_evidence(root,gate) for gate in OAUTH_GATES}
+    require(len(paths)==4 and all(path.is_dir() and comparison_path(path)!=comparison_path(root) for path in paths),
+            'OAuth requires four distinct existing native evidence roots')
+    require(not any(comparison_path(a).is_relative_to(comparison_path(b)) for a in paths for b in paths if a!=b),
+            'OAuth evidence roots overlap')
+    return paths
 
 
 def superseded_terminal_roots(root):
@@ -526,7 +689,7 @@ def superseded_terminal_roots(root):
     return result
 
 
-def validate_method_verifiers(artifact,snapshot=None,method_snapshot=None):
+def validate_method_verifiers(artifact,snapshot=None,method_snapshot=None,*,oauth_revalidated=False):
     hashes=artifact.get('verifier_sha256',{});expected={'verify_remaining_methods.py','verify_remaining_local.py','verify_live.py',
                                                     'assemble_release_acceptance.py','process_acceptance.py','install.py','windows_acceptance_setup.py','qa_workspace.py'}
     require(set(hashes)==expected,'Per-method producer/helper inventory differs')
@@ -537,7 +700,7 @@ def validate_method_verifiers(artifact,snapshot=None,method_snapshot=None):
         require(name=='assemble_release_acceptance.py' and selected is not None
                 and sha(Path(selected)/name)==digest,'Per-method verifier changed: '+name)
         if method_snapshot:
-            validate_regression_source({'verifier_source_sha256':qa_python_hashes(Path(selected))},artifact['installation'],selected,terminal_revalidated=True)
+            validate_regression_source({'verifier_source_sha256':qa_python_hashes(Path(selected))},artifact['installation'],selected,terminal_revalidated=not oauth_revalidated,oauth_revalidated=oauth_revalidated)
             require(scope_source_identity(Path(selected)/name)==scope_source_identity(SOURCE/name),'Method applicability implementation changed')
         legacy={'file':name,'producer_source':str(Path(selected).resolve()),'producer_sha256':digest,'consumer_sha256':sha(SOURCE/name)}
     return {'five_execution_producers_current':True,'scope_helper_from_regression_snapshot':legacy}
@@ -554,13 +717,14 @@ def validate_windows_controller(controller,*,elevated):
             and token.get('elevated') is elevated,'Windows controller token identity/elevation is missing or wrong')
 
 
-def validate_offline_run(root,installation,native,scope,*,current=False,terminal_revalidated=False):
+def validate_offline_run(root,installation,native,scope,*,current=False,terminal_revalidated=False,oauth_revalidated=False,producer_snapshot=None):
+    require(not (terminal_revalidated and oauth_revalidated),'Terminal and OAuth revalidation are mutually exclusive')
     root=Path(root);artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
     external=artifact.get('external_offline')
     if external is not None:
         require(not current,'A standalone offline receipt cannot import another receipt')
         validate_windows_controller(artifact.get('controller_environment',{}),elevated=False)
-        proof=external_offline_receipt(external['root'],installation,native,scope)
+        proof=external_offline_receipt(external['root'],installation,native,scope,producer_snapshot=producer_snapshot,oauth_revalidated=oauth_revalidated)
         require(external==proof,'External offline execution provenance changed')
         require(normalized_hashes(artifact.get('verifier_source_sha256',{}))==proof['verifier_source_sha256'],
                 'Runtime and referenced offline execution used different QA source')
@@ -572,7 +736,8 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
             and artifact.get('target')==scope['target'] and artifact.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,
             'Offline run belongs to another installed target')
     failures={row.get('gate') for row in verdict.get('gates',[]) if row.get('exit')!=0}
-    aggregate_ok=verdict.get('passed') is True or (terminal_revalidated and not current and failures and failures<=TERMINAL_GATES)
+    allowed=OAUTH_GATES if oauth_revalidated else TERMINAL_GATES
+    aggregate_ok=verdict.get('passed') is True or ((terminal_revalidated or oauth_revalidated) and not current and failures and failures<=allowed)
     require(artifact.get('controller_environment',{}).get('optimize')==0 and aggregate_ok
             and verdict.get('entry_unchanged') is True and verdict.get('verifier_source_unchanged') is True,'Offline run integrity failed')
     offline=[row for row in verdict.get('gates',[]) if row.get('gate')=='offline']
@@ -605,7 +770,7 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
     return result
 
 
-def external_offline_receipt(root,installation,native,scope):
+def external_offline_receipt(root,installation,native,scope,*,producer_snapshot=None,oauth_revalidated=False):
     """Windows symlink tests need a capable token; runtime gates keep their own token."""
     root=Path(root).resolve()
     require(scope['target']=='x86_64-pc-windows-msvc','External offline execution is a Windows-only qualification path')
@@ -624,7 +789,16 @@ def external_offline_receipt(root,installation,native,scope):
     require(load(root/'results.json')==verdict.get('gates'),'External offline result rows differ from its terminal verdict')
     require(verdict.get('offline_files_sha256')=={name:before[name] for name in OFFLINE_FILES},
             'External offline raw files were not bound at original execution completion')
-    checked=validate_offline_run(root,installation,native,scope,current=True)
+    if producer_snapshot is None:
+        checked=validate_offline_run(root,installation,native,scope,current=True)
+    else:
+        # Revalidate the original receipt against its exact frozen producer.
+        # Main separately requires complete current offline and current hook proof.
+        validate_regression_source(artifact,installation,producer_snapshot,oauth_revalidated=oauth_revalidated)
+        require(artifact.get('selected_gates')==['offline'] and len(verdict.get('gates',[]))==1
+                and verdict['gates'][0].get('gate')=='offline' and verdict['gates'][0].get('exit')==0,
+                'Original offline snapshot must contain exactly the passing offline gate')
+        checked=validate_offline_run(root,installation,native,scope)
     require(verdict.get('native_probes_unchanged') is True,'External offline probe identity changed')
     gate=verdict['gates'][0]
     require(gate.get('log')=='offline.log' and type(gate.get('exit')) is int
@@ -822,6 +996,7 @@ def main():
     for flag in ['entry','regression','methods','local-account','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','native-source-audit','fixtures','rpc-observations']:
         p.add_argument('--'+flag,type=Path,required=True)
     p.add_argument('--windows-sandbox',type=Path)
+    p.add_argument('--windows-command-controls',type=Path,help='Actual same-version Windows restricted command write/resize/terminate comparison')
     p.add_argument('--fault-boundaries',type=Path,help='Required Windows native network/auth/non-idempotent effect fault comparison')
     p.add_argument('--hook-trust',type=Path,required=True,help='Actual native first trust, skip and changed-hook UI lifecycle evidence')
     p.add_argument('--linux-resources',type=Path)
@@ -829,7 +1004,9 @@ def main():
     p.add_argument('--offline-regression',type=Path,help='Current-source complete offline-only acceptance run')
     p.add_argument('--complex-runtime',type=Path,help='Independent raw runtime proofs; application test failures remain reported separately')
     p.add_argument('--methods-source',type=Path,help='Explicit frozen methods producer snapshot; execution verifiers and scope implementation must match')
-    p.add_argument('--terminal-regression',type=Path,help='Current-source passing tui+tui-interrupt run, replacing only those original gates')
+    revalidation=p.add_mutually_exclusive_group()
+    revalidation.add_argument('--terminal-regression',type=Path,help='Current-source passing tui+tui-interrupt run, replacing only those original gates')
+    revalidation.add_argument('--oauth-regression',type=Path,help='Current-source passing complete four-OAuth run; preserves original failures')
     p.add_argument('--output',type=Path);args=p.parse_args()
     entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=load(release/'installation.json');native=load(release/'native-runtime.json')
     scope=qualification_scope(native)
@@ -860,9 +1037,12 @@ def main():
     regression=load(args.regression/'verdict.json');artifact=load(args.regression/'artifact.json');same_install(artifact,'regression')
     require(artifact.get('controller_environment',{}).get('optimize')==0,'Acceptance controller did not attest active Python assertions')
     require(artifact.get('target')==scope['target'] and artifact.get('required_local_methods')==scope['local_methods'] and artifact.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,'Standard regression uses another native applicability baseline')
-    require(args.terminal_regression is None or (args.regression_source and args.offline_regression),
-            'Terminal replacement requires an explicit original producer snapshot and current offline supplement')
-    effective_gates,terminal_lineage=validate_standard_gates(artifact,regression,args.terminal_regression)
+    replacement=args.terminal_regression or args.oauth_regression
+    require(replacement is None or (args.regression_source and args.offline_regression),
+            'Replacement requires an explicit original producer snapshot and current offline supplement')
+    effective_gates,lineage=validate_standard_gates(artifact,regression,replacement,revalidation_scope='oauth' if args.oauth_regression else 'terminal')
+    terminal_lineage=None if args.oauth_regression else lineage
+    oauth_lineage=lineage if args.oauth_regression else None
     for gate in regression['gates']:
         log=(args.regression/gate['log']).resolve()
         require(comparison_path(log).is_relative_to(comparison_path(args.regression)),'Standard gate log escaped its run')
@@ -874,27 +1054,31 @@ def main():
                 'Native '+name+' probe identity is missing or changed')
     require(regression.get('native_probes_unchanged') is True,'Native acceptance probe changed during regression')
     require(bool(args.regression_source)==bool(args.offline_regression),'Explicit regression producer snapshot and current offline supplement must be supplied together')
-    qa_lineage=validate_regression_source(artifact,metadata,args.regression_source,terminal_revalidated=args.terminal_regression is not None)
-    qa_lineage['terminal_revalidation']=terminal_lineage
+    qa_lineage=validate_regression_source(artifact,metadata,args.regression_source,terminal_revalidated=args.terminal_regression is not None,oauth_revalidated=args.oauth_regression is not None)
+    qa_lineage['terminal_revalidation']=terminal_lineage;qa_lineage['oauth_revalidation']=oauth_lineage
     if args.terminal_regression:
         for name in ['artifact.json','verdict.json','tui.log','tui-interrupt.log']:record('terminal_replacement_'+name,args.terminal_regression/name)
+    if args.oauth_regression:
+        for name in ['artifact.json','verdict.json','results.json',*(gate+'.log' for gate in sorted(OAUTH_GATES))]:
+            record('oauth_replacement_'+name,args.oauth_regression/name)
     record('regression_artifact',args.regression/'artifact.json');record('regression_verdict',args.regression/'verdict.json')
     methods=load(args.methods/'verdict.json');method_artifact=load(args.methods/'artifact.json');same_install(method_artifact,'per-method acceptance')
     require(method_artifact.get('target')==scope['target'] and method_artifact.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,'Per-method platform/baseline identity missing')
-    platform_boundaries=validate_method_platform_boundaries(methods,args.methods,native)
-    require(methods['passed'] and methods['verifier_and_artifact_unchanged'] and methods['positive_local_methods']==60-len(platform_boundaries)
-            and methods['backend_boundaries_verified']==4 and methods.get('platform_boundaries_verified',0)==len(platform_boundaries)
+    method_boundaries=validate_method_platform_boundaries(methods,args.methods,native)
+    platform_boundaries=validate_windows_command_controls(args.windows_command_controls,native,method_boundaries)
+    require(methods['passed'] and methods['verifier_and_artifact_unchanged'] and methods['positive_local_methods']==60-len(method_boundaries)
+            and methods['backend_boundaries_verified']==4 and methods.get('platform_boundaries_verified',0)==len(method_boundaries)
             and not methods['missing'] and not methods['unexpected'] and not methods['invalid'],'Per-method acceptance incomplete')
     expected=set(load(SOURCE/'reports/runtime-v0.3-unexercised-local.json')['methods'])
     require(set(methods['methods'])==expected,'Per-method names differ from the frozen gap inventory')
     require({g['group'] for g in methods['groups']}==set(method_artifact['groups']) and len(methods['groups'])==7 and all(g['exit']==0 for g in methods['groups']),'Per-method group did not complete')
-    qa_lineage['method_producers']=validate_method_verifiers(method_artifact,args.regression_source,args.methods_source)
+    qa_lineage['method_producers']=validate_method_verifiers(method_artifact,args.regression_source,args.methods_source,oauth_revalidated=args.oauth_regression is not None)
     for name,row in methods['methods'].items():
         path=(args.methods/row['evidence']).resolve()
         require(comparison_path(path).is_relative_to(comparison_path(args.methods)),'Method evidence escaped its run')
         original=[r for r in load(path) if r['method']==name]
         require(len(original)==1 and original[0]=={k:v for k,v in row.items() if k!='evidence'},'Per-method postcondition receipt differs: '+name)
-        require(row['status']==('backend_boundary_verified' if name in REMOTE else 'platform_boundary_verified' if name in platform_boundaries else 'passed'),'Per-method status differs: '+name)
+        require(row['status']==('backend_boundary_verified' if name in REMOTE else 'platform_boundary_verified' if name in method_boundaries else 'passed'),'Per-method status differs: '+name)
     require({n for n,r in methods['methods'].items() if r['status']=='backend_boundary_verified'}==REMOTE,'Incorrect backend scope classification')
     record('methods_artifact',args.methods/'artifact.json');record('methods_verdict',args.methods/'verdict.json')
     lifecycle_lineage={}
@@ -1033,7 +1217,11 @@ def main():
                args.local_account:(str(entry),metadata['console_script_sha256'])}
     excluded_rpc_roots=superseded_terminal_roots(args.regression) if args.terminal_regression else ()
     if args.terminal_regression:rpc_roots[args.terminal_regression]=(str(entry),metadata['console_script_sha256'])
+    if args.oauth_regression:
+        excluded_rpc_roots=oauth_evidence_roots(args.regression)
+        rpc_roots.update({root:(str(entry),metadata['console_script_sha256']) for root in oauth_evidence_roots(args.oauth_regression)})
     require(observed.get('terminal_revalidation')==terminal_lineage,'RPC terminal replacement lineage differs')
+    require(observed.get('oauth_revalidation')==oauth_lineage,'RPC OAuth replacement lineage differs')
     if args.windows_sandbox:
         identity=load(args.windows_sandbox/'artifact.json');rpc_roots[args.windows_sandbox]=(identity['entry'],identity['entry_sha256'])
     rpc_reconstruction=validate_rpc_witnesses(observed,rpc_roots,scope['target'],sorted(set(scope['local_methods'])-set(platform_boundaries)),excluded_roots=excluded_rpc_roots)
@@ -1047,6 +1235,9 @@ def main():
             if method in REMOTE:row['upstream_source_note']=result['reason']
             if method in platform_boundaries:
                 row.update(configuration_boundary_verified=True,upstream_source_note=platform_boundaries[method]['reason'])
+        elif method in platform_boundaries:
+            row.update(observed_in_passing_acceptance=False,configuration_boundary_verified=True,execution_status='platform_boundary_verified',
+                       execution_evidence='Actual official/candidate restricted command comparison; see local_configuration_boundaries.',upstream_source_note=platform_boundaries[method]['reason'])
         elif method in LOCAL_ACCOUNT:
             row.update(observed_in_passing_acceptance=True,execution_status='local_variant_passed',execution_evidence='Current native local account lifecycle with nonfunctional fixture credentials; see local_account evidence receipts.')
         elif method in WINDOWS_SANDBOX and scope['target']=='x86_64-pc-windows-msvc':
@@ -1058,7 +1249,7 @@ def main():
         else:row['execution_status']='not_applicable_to_frozen_local_scope'
     local=[r for r in matrix if r['scope']=='local_runtime_surface']
     require({r['method'] for r in local}==set(scope['local_methods']) and all(r['observed_in_passing_acceptance'] or r['method'] in platform_boundaries for r in local),'Local method matrix still has an unverified entry')
-    original_offline=validate_offline_run(args.regression,metadata,native,scope,terminal_revalidated=args.terminal_regression is not None)
+    original_offline=validate_offline_run(args.regression,metadata,native,scope,terminal_revalidated=args.terminal_regression is not None,oauth_revalidated=args.oauth_regression is not None,producer_snapshot=args.regression_source)
     selected_offline=validate_offline_run(args.offline_regression,metadata,native,scope,current=True) if args.offline_regression else original_offline
     qa_lineage['original_offline']=original_offline;qa_lineage['current_offline']=selected_offline
     if original_offline.get('external_execution'):
@@ -1087,7 +1278,7 @@ def main():
              'offline_tests_passed':offline_count,'offline_platform_inapplicable':skips,
              'qa_producer_consumer_lineage':qa_lineage,
              'acceptance_gates':[{'name':r['gate'],'exit':r['exit'],'seconds':r['seconds'],
-                                  'producer':'current_terminal_revalidation' if args.terminal_regression and r['gate'] in TERMINAL_GATES else 'original_frozen_run'} for r in effective_gates],
+                                  'producer':'current_oauth_revalidation' if args.oauth_regression and r['gate'] in OAUTH_GATES else 'current_terminal_revalidation' if args.terminal_regression and r['gate'] in TERMINAL_GATES else 'original_frozen_run'} for r in effective_gates],
              'additional_acceptance':{'method_gap_list':True,'local_account_lifecycle':True,'native_browser':True,'browser_mcp_cancellation':True,
                                      'native_mcp_lifetime_comparison':True,'native_hook_trust_lifecycle':True,'protocol_fault_recovery':True,'os_user_verification_account_boundary':True,'complex_real_tasks':True},
              'real_work':real,
@@ -1101,6 +1292,9 @@ def main():
                        'The prediction endpoint is declared but unimplemented in frozen upstream.'],
              'evidence_sha256':evidence,'qualification_protocol':'One frozen installed target; exact standard gates plus per-method postconditions, local account and applicable sandbox lifecycles, complex saved tasks, actual browsing and protocol fault recovery. Initial failures remain preserved.',
              'stable_solution':'docs/STABLE_PLAN.zh-CN.md','historical_release_reports':'reports/history/v0.3.0/'}
+    if args.oauth_regression:
+        summary.update(single_run_all_passed=False,original_standard_run={'passed':regression['passed'],'gates':regression['gates'],
+                       'passed_count':sum(row['exit']==0 for row in regression['gates']),'failed_count':sum(row['exit']!=0 for row in regression['gates'])})
     if args.complex_runtime:
         summary['qualification_protocol']+=' Third-party application outcomes remain separate from independently reconstructed runtime mechanism proofs.'
         summary['limits'].append('Runtime acceptance does not assert that every model-generated third-party code change passed its business tests; each original application outcome is retained.')

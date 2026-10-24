@@ -36,7 +36,7 @@ def main():
     tools_before=real_work_tools_binding(root,tool_environment(root))
     if not tools_before['same_bytes']:raise ValueError('Selected real-work tools differ from the pinned original')
     attempt=root/'followup-attempts'/str(uuid.uuid4());attempt.mkdir(parents=True,mode=0o700)
-    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json')]:
+    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml')]:
         if path.is_file():shutil.copy2(path,attempt/path.name)
     feedback=args.feedback.read_text(encoding='utf-8');(attempt/'feedback.txt').write_text(feedback, encoding='utf-8')
     verifiers=[Path(__file__),Path(__file__).with_name('verify_real_work.py'),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py'),Path(__file__).with_name('host_execution_acceptance.py'),Path(__file__).with_name('real_work_imports.py'),Path(__file__).with_name('windows_acceptance_setup.py'),Path(__file__).with_name('qa_workspace.py')]

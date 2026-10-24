@@ -7,7 +7,7 @@ from pathlib import Path,PureWindowsPath
 import re
 
 from assemble_release_acceptance import (qualification_scope,installation_lineage,require,sha,load,validate_standard_gates,
-    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,TERMINAL_GATES,validate_method_platform_boundaries)
+    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,oauth_evidence_roots,evidence_io_root,TERMINAL_GATES,OAUTH_GATES,validate_method_platform_boundaries,validate_windows_command_controls)
 from install import console_entry,valid_release,_support
 
 comparison_path=_support.comparison_path
@@ -105,8 +105,12 @@ def regression_roots(root,artifact,verdict):
 def main():
     p=argparse.ArgumentParser()
     for name in ['regression','methods','local-account','entry','output']:p.add_argument('--'+name,type=Path,required=True)
-    for name in ['regression-source','offline-regression','terminal-regression']:p.add_argument('--'+name,type=Path)
-    p.add_argument('--windows-sandbox',type=Path);args=p.parse_args()
+    for name in ['regression-source','offline-regression']:p.add_argument('--'+name,type=Path)
+    revalidation=p.add_mutually_exclusive_group()
+    for name in ['terminal-regression','oauth-regression']:revalidation.add_argument('--'+name,type=Path)
+    p.add_argument('--windows-sandbox',type=Path)
+    p.add_argument('--windows-command-controls',type=Path)
+    args=p.parse_args()
     entry=args.entry.resolve();release=entry.parent.parent.parent
     metadata=load(release/'installation.json');native=load(release/'native-runtime.json');scope=qualification_scope(native)
     require(entry==console_entry(release/'venv') and valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native),'Selected installation failed integrity checks')
@@ -114,12 +118,16 @@ def main():
     verifier_hashes={name:sha(Path(__file__).with_name(name)) for name in VERIFIERS}
     artifact=load(args.regression/'artifact.json');verdict=load(args.regression/'verdict.json')
     require(artifact.get('installation')==metadata and artifact.get('native_manifest')==native,'Regression belongs to another installation')
-    require(args.terminal_regression is None or (args.regression_source and args.offline_regression),
-            'Terminal replacement requires an explicit original producer snapshot and current offline supplement')
-    _,terminal_lineage=validate_standard_gates(artifact,verdict,args.terminal_regression)
-    if args.terminal_regression:
-        validate_regression_source(artifact,metadata,args.regression_source,terminal_revalidated=True)
+    replacement=args.terminal_regression or args.oauth_regression
+    require(replacement is None or (args.regression_source and args.offline_regression),
+            'Replacement requires an explicit original producer snapshot and current offline supplement')
+    _,lineage=validate_standard_gates(artifact,verdict,replacement,revalidation_scope='oauth' if args.oauth_regression else 'terminal')
+    terminal_lineage=None if args.oauth_regression else lineage;oauth_lineage=lineage if args.oauth_regression else None
+    if replacement:
+        validate_regression_source(artifact,metadata,args.regression_source,terminal_revalidated=args.terminal_regression is not None,oauth_revalidated=args.oauth_regression is not None)
+        if args.oauth_regression:validate_offline_run(args.regression,metadata,native,scope,producer_snapshot=args.regression_source,oauth_revalidated=True)
         validate_offline_run(args.offline_regression,metadata,native,scope,current=True)
+    if args.terminal_regression:
         for gate in TERMINAL_GATES:
             validate_terminal_qa(gate_evidence(args.terminal_regression,gate),entry,metadata,native,artifact['tui_sandbox_mode'],interrupt=gate=='tui-interrupt')
     require(artifact.get('target')==scope['target'] and artifact.get('required_local_methods')==scope['local_methods']
@@ -129,12 +137,16 @@ def main():
             and method_artifact.get('target')==scope['target'] and method_artifact.get('baseline_matrix_sha256')==scope['baseline_matrix_sha256']
             and method_verdict.get('passed') is True and method_verdict.get('verifier_and_artifact_unchanged') is True,
             'Per-method frozen-artifact evidence does not match this target')
-    original_gates=[row for row in verdict['gates'] if not args.terminal_regression or row['gate'] not in TERMINAL_GATES]
+    replaced=OAUTH_GATES if args.oauth_regression else TERMINAL_GATES
+    original_gates=[row for row in verdict['gates'] if not replacement or row['gate'] not in replaced]
     roots={root:(str(entry),entry_sha) for root in regression_roots(args.regression,artifact,{**verdict,'gates':original_gates})}
     excluded=superseded_terminal_roots(args.regression) if args.terminal_regression else ()
     if args.terminal_regression:
         after=load(args.terminal_regression/'verdict.json');replacement=load(args.terminal_regression/'artifact.json')
         roots.update({root:(str(entry),entry_sha) for root in regression_roots(args.terminal_regression,replacement,after)})
+    if args.oauth_regression:
+        excluded=oauth_evidence_roots(args.regression)
+        roots.update({root:(str(entry),entry_sha) for root in oauth_evidence_roots(args.oauth_regression)})
     roots[args.methods.resolve()]=(str(entry),entry_sha)
     supplemental={}
     def lifecycle(path,label,relocated=False):
@@ -152,7 +164,7 @@ def main():
     else:require(args.windows_sandbox is None,'Windows sandbox evidence cannot qualify a non-Windows target')
     traces={}
     for root,identity in sorted(roots.items(),key=lambda item:len(item[0].parts)):
-        for path in evidence_files(root,'client-requests.jsonl'):
+        for path in evidence_files(evidence_io_root(root),'client-requests.jsonl'):
             canonical=comparison_path(path)
             require(canonical.is_relative_to(comparison_path(root)),'RPC trace symlink escaped its declared root')
             if any(canonical.is_relative_to(comparison_path(value)) for value in excluded):continue
@@ -163,7 +175,8 @@ def main():
     for _,(path,identity) in sorted(traces.items()):
         found,count,failures=trace_observations(path,*identity,scope['target']);sessions+=count;errors.extend(failures)
         for method,rows in found.items():observations.setdefault(method,[]).extend(rows)
-    boundaries=validate_method_platform_boundaries(method_verdict,args.methods,native)
+    method_boundaries=validate_method_platform_boundaries(method_verdict,args.methods,native)
+    boundaries=validate_windows_command_controls(args.windows_command_controls,native,method_boundaries)
     local=set(scope['local_methods'])-set(boundaries);missing=sorted(local-observations.keys())
     unchanged=(sha(entry)==entry_sha and load(release/'installation.json')==metadata
                and valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],native)
@@ -173,7 +186,7 @@ def main():
             'installation':metadata,'target':scope['target'],'baseline_matrix_sha256':scope['baseline_matrix_sha256'],
             'scope':'Matched successful native RPC responses; scenario and per-method postconditions remain separate required evidence.',
             'non_rpc_producers':NON_RPC_PRODUCERS,
-            'terminal_revalidation':terminal_lineage,
+            'terminal_revalidation':terminal_lineage,'oauth_revalidation':oauth_lineage,
             'supplemental_lifecycle_lineage':supplemental,'local_methods_observed':len(local & observations.keys()),
             'local_methods_expected':len(local),'configuration_boundaries':boundaries,'missing':missing,'trace_errors':errors,'native_client_sessions':sessions,
             'methods':{method:observations[method] for method in sorted(local) if method in observations}}

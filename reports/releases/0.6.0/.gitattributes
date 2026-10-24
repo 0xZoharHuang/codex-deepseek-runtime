@@ -1,0 +1,2 @@
+# Preserve qualification producer bytes and SHA-256 across checkout platforms.
+*.json -text

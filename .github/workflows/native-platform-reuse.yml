@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: cds-native-reuse-${{ github.ref }}
@@ -76,9 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           python -I -B -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-reuse-controller-tests" --junitxml "$RUNNER_TEMP/cds-reuse-evidence/controller.xml"
-      - name: Acquire and verify the fixed original native artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Acquire and verify pinned native release assets
         shell: bash
         run: |
           set -euo pipefail

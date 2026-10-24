@@ -258,19 +258,24 @@ def windows_command_control_boundary(a,work):
     nonce=uuid.uuid4().hex;ready=work/('control-ready-'+nonce+'.json')
     owner_sid=re.search(r'S-1-5-21-\d+-\d+-\d+-\d+',subprocess.check_output(['whoami.exe','/user','/fo','csv','/nh'],text=True)).group()
     script='import ctypes,json,os,re,subprocess,time;from pathlib import Path;sid=re.search(r"S-1-5-21-\\d+-\\d+-\\d+-\\d+",subprocess.check_output(["whoami.exe","/user","/fo","csv","/nh"],text=True)).group();Path('+repr(str(ready))+').write_text(json.dumps({"nonce":'+repr(nonce)+',"pid":os.getpid(),"sid":sid,"is_admin":bool(ctypes.windll.shell32.IsUserAnAdmin())}));time.sleep(4);print('+repr(nonce)+',flush=True)'
+    command_timeout_ms=30000
+    command_requested_at=time.time();command_started=time.monotonic()
     with ThreadPoolExecutor(1) as pool:
-        future=pool.submit(a.call,'command/exec',{'command':python_command(script),'processId':'native-windows-boundary','cwd':str(work),'sandboxPolicy':policy,'timeoutMs':30000})
-        deadline=time.monotonic()+15
+        future=pool.submit(a.call,'command/exec',{'command':python_command(script),'processId':'native-windows-boundary','cwd':str(work),'sandboxPolicy':policy,'timeoutMs':command_timeout_ms})
+        deadline=command_started+command_timeout_ms/1000
         while not ready.exists() and time.monotonic()<deadline:
             if future.done():future.result();raise AssertionError('Native command ended before its readiness receipt')
             time.sleep(.02)
         assert ready.exists(),'Native restricted command readiness missing'
+        ready_seconds=time.monotonic()-command_started
+        assert not future.done(),'Native restricted command ended before control boundary check'
         observed=json.loads(ready.read_text());assert observed['nonce']==nonce and observed['is_admin'] is False
         terminate=exact_rpc_error(a.peer,'command/exec/terminate',{'processId':'native-windows-boundary'},WINDOWS_CONTROL_ERROR)
         result=future.result(20)
     detail={'boundary_id':WINDOWS_COMMAND_BOUNDARY_ID,'target':WINDOWS_COMMAND_TARGET,'scope':WINDOWS_COMMAND_SCOPE,
             'sandbox_policy':policy,'workspace':str(work),'streaming_error':stream,'terminate_error':terminate,'reference':{'path':str(reference),'sha256':reference_sha},
             'active_command':{'process_id':'native-windows-boundary','ready_nonce':nonce,'ready_file_sha256':hashlib.sha256(ready.read_bytes()).hexdigest(),
+                              'request_timeout_ms':command_timeout_ms,'request_started':command_requested_at,'ready_seconds':ready_seconds,'future_pending_before_terminate':True,
                               'exit_code':result['exitCode'],'stdout':result['stdout'],'sid':observed['sid'],'owner_sid':owner_sid,'is_admin':observed['is_admin']}}
     assert windows_command_boundary_detail_valid(detail,WINDOWS_COMMAND_TARGET)
     return detail

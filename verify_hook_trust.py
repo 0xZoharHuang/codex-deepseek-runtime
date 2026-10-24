@@ -173,7 +173,7 @@ def case_contract(name, before_hook, after_hook, before_config, after_config,
 
 def hook_observation(entry, root, case, phase, thread_id=None):
     observation = case / ("native-" + phase)
-    (observation / "work").mkdir(parents=True)
+    observation.mkdir(parents=True)
     peer = Peer(observation, command=[str(entry)], runtime_home=root / "home")
     try:
         response = peer.call("hooks/list", {"cwds": [str(workspace_path(root))]})

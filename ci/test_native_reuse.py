@@ -140,23 +140,51 @@ def test_archive_rejects_unsafe_or_incomplete_members_before_extraction(tmp_path
     assert not (tmp_path/"output").exists()
 
 
-@pytest.mark.parametrize("bad", [None,"attempt","head","status","path","expired","digest","id"])
-def test_fixed_run_and_artifact_metadata_are_bound(bad):
-    target="aarch64-apple-darwin";selection=reuse.ARTIFACTS[target]
-    run={"id":reuse.RUN,"head_sha":reuse.HEAD,"status":"completed","conclusion":"success","run_attempt":1,
-         "repository":{"full_name":reuse.REPOSITORY},"path":".github/workflows/native-platform-qualification.yml"}
-    item={"name":selection["name"],"id":selection["id"],"expired":False,"digest":selection["github_digest"],
-          "workflow_run":{"id":reuse.RUN,"head_sha":reuse.HEAD}}
-    if bad=="attempt":run["run_attempt"]=2
-    elif bad=="head":run["head_sha"]="other"
-    elif bad=="status":run["conclusion"]="failure"
-    elif bad=="path":run["path"]="another.yml"
-    elif bad=="expired":item["expired"]=True
-    elif bad=="digest":item["digest"]="sha256:"+"0"*64
-    elif bad=="id":item["id"]+=1
-    if bad is None:assert reuse.verify_download_metadata(run,{"artifacts":[item]},target)==item
+@pytest.mark.parametrize("target", ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu"])
+@pytest.mark.parametrize("bad", [None, "target", "status", "filename", "digest"])
+def test_versioned_release_assets_are_pinned_to_current_manifest(target, bad):
+    selection=reuse.ARTIFACTS[target]
+    manifest={"target":target,"status":"ready","archive":{
+        "filename":"codex-deepseek-native-0.6.0-"+target+".tar.gz",
+        "sha256":selection["archive_sha256"],"url":"https://untrusted.invalid/latest"}}
+    if bad=="target":manifest["target"]="other"
+    elif bad=="status":manifest["status"]="pending"
+    elif bad=="filename":manifest["archive"]["filename"]="../another.tar.gz"
+    elif bad=="digest":manifest["archive"]["sha256"]="0"*64
+    if bad is not None:
+        with pytest.raises(ValueError):reuse.release_inputs(target,manifest)
     else:
-        with pytest.raises(ValueError):reuse.verify_download_metadata(run,{"artifacts":[item]},target)
+        assets=reuse.release_inputs(target,manifest)
+        assert assets["archive"]["url"]==reuse.RELEASE_BASE+"/"+manifest["archive"]["filename"]
+        assert assets["recipe"]=={"url":reuse.RELEASE_BASE+"/native-build-recipe-9fe80f70.json",
+            "sha256":"9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c","bytes":19422}
+        assert "/v0.6.0-native.1/" in assets["archive"]["url"]
+        assert "latest" not in assets["archive"]["url"]
+
+@pytest.mark.parametrize("bad", [None,"short","oversize","digest","missing","existing"])
+def test_release_download_preserves_failures_without_fallback(tmp_path,monkeypatch,bad):
+    content=b"original native asset"
+    asset={"url":reuse.RELEASE_BASE+"/fixture.tar.gz","bytes":len(content),"sha256":digest(content)}
+    calls=[];path=tmp_path/"download"
+    def open_url(url,timeout):
+        calls.append(url);assert timeout==90
+        if bad=="missing":
+            import urllib.error
+            raise urllib.error.HTTPError(url,404,"missing",{},None)
+        return io.BytesIO(content[:-1] if bad=="short" else content+b"x" if bad=="oversize" else content)
+    monkeypatch.setattr(reuse.urllib.request,"urlopen",open_url)
+    if bad=="digest":asset["sha256"]="0"*64
+    if bad=="existing":path.write_bytes(b"preserve")
+    if bad is None:
+        assert reuse.download_verified(asset,path)==asset and path.read_bytes()==content
+    else:
+        with pytest.raises((ValueError,OSError)):reuse.download_verified(asset,path)
+    assert calls==([] if bad=="existing" else [asset["url"]])
+    if bad=="existing":assert path.read_bytes()==b"preserve"
+    if path.exists():assert path.stat().st_size<=asset["bytes"]
+
+def test_unqualified_target_cannot_choose_another_platform_asset():
+    with pytest.raises(ValueError):reuse.release_inputs("x86_64-pc-windows-msvc",{})
 
 
 def partition_fixture():

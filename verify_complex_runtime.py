@@ -94,9 +94,143 @@ def request_sessions(requests):
     return sessions
 
 
-def lifecycle(sessions, event_groups, parent, *, require_resume=True):
+def file_effect_evidence(root, changed, patch):
+    """Bind native edits to the verified physical workspace, rejecting escapes."""
+    import qa_workspace as layout
+    root = canonical(Path(root))
+    alias = root/'work'
+    record_path = root/layout.RECORD
+    try:
+        layout._ancestry(root)
+        if record_path.exists():
+            if layout._link(record_path) or record_path.stat().st_nlink != 1:
+                raise ValueError('Foreign QA workspace record')
+            record = read(record_path)
+            layout._ancestry(Path(record['config']['workspace_root']))
+            physical = layout._validate(root, record['config'], record)
+            if canonical(Path(record['alias'])) != canonical(alias):
+                raise ValueError('QA workspace alias differs')
+            work = canonical(physical)
+            mapping_sha = sha(record_path)
+        else:
+            layout._ancestry(alias)
+            work = canonical(alias)
+            mapping_sha = None
+        paths = {}
+        for item in changed:
+            for change in item.get('changes', []):
+                requested = Path(change['path'])
+                if not requested.is_absolute():
+                    raise ValueError('Native file effect path is not absolute')
+                path = canonical(requested)
+                if not path.is_relative_to(work):
+                    raise ValueError('Native file effect escapes the physical workspace')
+                if path.is_file():
+                    paths[path.relative_to(work).as_posix()] = sha(path)
+        patch_ok = bool(patch) and complete_work_patch(alias) == patch
+        # Match a complete Git path line; a filename substring is not evidence.
+        names_in_patch = [name for name in paths if
+            b'\n+++ b/'+name.encode()+b'\n' in patch or
+            b'\n+++ "b/'+name.encode()+b'"\n' in patch]
+        return {'passed': bool(patch_ok and paths and names_in_patch),
+                'patch_matches_worktree': patch_ok, 'files': paths,
+                'physical_workspace': str(work), 'workspace_record_sha256': mapping_sha}
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {'passed': False, 'files': {}, 'reason': str(error)}
+
+
+def process_observation(pid, birth):
+    """Never interpret permission failure as proof that an owner exited."""
+    import psutil
+    from codex_deepseek.processes import identity
+    observed = identity(pid)
+    if observed:
+        state = 'live' if observed == birth else 'reused'
+    else:
+        try:
+            state = 'unknown' if psutil.pid_exists(pid) else 'gone'
+        except (OSError, psutil.Error):
+            state = 'unknown'
+    return {'pid': pid, 'expected_birth': birth, 'observed_birth': observed, 'state': state}
+
+
+def control_owner_evidence(events, owners, probe=process_observation):
+    """Join startup time to one closed kernel owner and inspect exact identities."""
+    times = [e['emittedAtMs']/1000 for e in events
+             if e.get('method') == 'remoteControl/status/changed'
+             and isinstance(e.get('emittedAtMs'), int)]
+    candidates = []
+    for owner in owners:
+        birth = owner.get('native_birth')
+        if not isinstance(birth, str) or not birth.startswith('windows:'):
+            continue
+        try:
+            started = (int(birth.removeprefix('windows:')) - 116444736000000000)/10000000
+        except ValueError:
+            continue
+        closed = owner.get('closed')
+        if times and started <= min(times) and (closed is None or max(times) <= closed):
+            candidates.append(owner)
+    if len(candidates) != 1 or not isinstance(candidates[0].get('closed'), (int, float)):
+        return {'passed': False, 'reason': 'Read-only connection has no unique closed kernel owner'}
+    owner = candidates[0]
+    required = [('pid', 'birth'), ('supervisor_pid', 'supervisor_birth'), ('native_pid', 'native_birth')]
+    if not all(isinstance(owner.get(pid), int) and owner[pid] > 0
+               and isinstance(owner.get(birth), str) and owner[birth] for pid, birth in required):
+        return {'passed': False, 'reason': 'Read-only owner has incomplete process identities'}
+    observations = [probe(owner[pid], owner[birth]) for pid, birth in required]
+    # Check every owner recorded in this private home; a stale closed=NULL row
+    # is retained as such and is never sufficient proof of a live process.
+    remaining = [probe(row[pid], row[birth]) for row in owners for pid, birth in required
+                 if row.get(pid) and row.get(birth)]
+    # Re-observe every expected identity on every reconstruction. A different
+    # current owner of a recycled PID is irrelevant to this historical owner.
+    # Keep those volatile details in the independent collection audit, not in
+    # a proof that must reproduce byte-for-byte from the same task evidence.
+    stable = lambda rows: [{'pid': row['pid'], 'expected_birth': row['expected_birth'],
+                            'ended': row['state'] in {'gone', 'reused'}} for row in rows]
+    return {'passed': all(x['state'] in {'gone', 'reused'} for x in observations + remaining),
+            'owner': owner, 'processes': stable(observations),
+            'all_home_owner_processes': stable(remaining),
+            'native_exit_code': None, 'natural_eof_verified': False,
+            'scope': 'Exact native/launcher/supervisor identities have ended; exit code and close reason are not inferred.'}
+
+
+def readonly_control_evidence(requests, events, owner_proof=None):
+    """Classify read-only controls without contributing task-lifecycle evidence."""
+    methods = [r.get('method') for r in requests]
+    defects = []
+    if (methods[:2] != ['initialize', 'initialized']
+            or any(m != 'config/read' for m in methods[2:])
+            or 'id' not in requests[0] or 'id' in requests[1]
+            or any('id' not in r for r in requests[2:])):
+        defects.append('Connection is not an explicit read-only initialize/config sequence')
+    calls = [r for r in requests if 'id' in r]
+    responses = [e for e in events if 'id' in e and 'method' not in e]
+    ids = [r['id'] for r in calls]
+    response_ids = [r['id'] for r in responses]
+    if (len(ids) != len(set(ids)) or len(response_ids) != len(set(response_ids))
+            or set(ids) != set(response_ids)
+            or any('result' not in r or r.get('error') for r in responses)):
+        defects.append('Read-only RPC responses are missing, duplicated, unmatched or failed')
+    if any(not ('id' in e and 'method' not in e) and not (
+            e.get('method') == 'remoteControl/status/changed' and 'id' not in e
+            and e.get('params', {}).get('status') == 'disabled') for e in events):
+        defects.append('Unexpected operation or notification on read-only connection')
+    if not owner_proof or owner_proof.get('passed') is not True:
+        defects.append('Read-only connection owner closure is not verified')
+    return {'passed': not defects, 'classification': 'control_only',
+            'contributes_task_lifecycle_evidence': False, 'methods': methods,
+            'requests_sha256': digest(requests), 'events_sha256': digest(events),
+            'owner_closure': owner_proof, 'defects': defects}
+
+
+
+def lifecycle(sessions, event_groups, parent, *, require_resume=True, control_owners=None):
     """Bind cancellation and cold resume to their actual RPC connection and turn."""
-    interrupts, resumes, defects = [], [], []
+    interrupts, resumes, defects, controls = [], [], [], []
+    control_owners = control_owners or {}
+    task_connections = []
     if len(sessions) != len(event_groups):
         return {'passed': False, 'defects': ['RPC connection count mismatch']}
     previous_turns = set()
@@ -113,7 +247,14 @@ def lifecycle(sessions, event_groups, parent, *, require_resume=True):
                          and request.get('params', {}).get('threadId') == parent
                          for reply in [replies.get(request.get('id'), {})]}
         started_turns.discard(None)
-        if not started_turns or any((parent, turn) not in terminals for turn in started_turns):
+        has_turn = any(r.get('method') == 'turn/start' for r in requests)
+        if has_turn:
+            task_connections.append(index)
+        if not has_turn:
+            control = readonly_control_evidence(requests, events, control_owners.get(index))
+            controls.append({'connection': index, **control})
+            defects.extend('Read-only connection '+str(index)+': '+x for x in control['defects'])
+        elif not started_turns or any((parent, turn) not in terminals for turn in started_turns):
             defects.append('Missing started parent turn or terminal in connection ' + str(index))
         for request in requests:
             if 'id' not in request or 'method' not in request:
@@ -146,8 +287,8 @@ def lifecycle(sessions, event_groups, parent, *, require_resume=True):
             if thread == parent and terminal.get('status') == 'interrupted' and not any(
                     x['thread_id'] == parent and x['turn_id'] == turn and x['passed'] for x in interrupts):
                 defects.append('Unrequested parent interruption ' + turn)
-    return {'passed': not defects and (bool(resumes) or not require_resume) and all(x['passed'] for x in interrupts + resumes),
-            'interrupts': interrupts, 'cold_resumes': resumes, 'defects': defects}
+    return {'passed': bool(task_connections) and not defects and (bool(resumes) or not require_resume) and all(x['passed'] for x in interrupts + resumes),
+            'interrupts': interrupts, 'cold_resumes': resumes, 'task_connections': task_connections, 'read_only_connections': controls, 'defects': defects}
 
 
 def source_imports(root, suite, receipt):
@@ -275,7 +416,16 @@ def reconstruct_case(root, entry):
         and canonical(Path(x.get('runtime_home', ''))) == root/'home'
         and x.get('server_args') == ['app-server', '--strict-config'] for x in launches)
     parent = report['thread']
-    life = lifecycle(sessions, event_groups, parent, require_resume=root.name == 'httpcore')
+    state = root/'home/provider-state/adapter.sqlite'; bind(state)
+    for path in state.parent.glob(state.name+'-wal'): bind(path)
+    with closing(readonly(state)) as db, db:
+        db.row_factory = sqlite3.Row
+        owners = [dict(row) for row in db.execute('SELECT * FROM runtime_owners')]
+    control_owners = {index: control_owner_evidence(group, owners)
+                      for index, (session, group) in enumerate(zip(sessions, event_groups))
+                      if not any(r.get('method') == 'turn/start' for r in session)}
+    life = lifecycle(sessions, event_groups, parent, require_resume=root.name == 'httpcore',
+                     control_owners=control_owners)
     if root.name == 'httpcore' and not life.get('interrupts'):
         life['passed'] = False
     completed = [e['params'] for e in events if e.get('method') == 'item/completed']
@@ -283,12 +433,7 @@ def reconstruct_case(root, entry):
     changed = [p['item'] for p in completed if p.get('threadId') == parent
                and p['item'].get('type') == 'fileChange' and p['item'].get('status') == 'completed']
     patch = bind(root/'agent.patch').read_bytes()
-    patch_ok = bool(patch) and complete_work_patch(root/'work') == patch
-    paths = sorted({str(canonical(Path(c['path']))) for x in changed for c in x.get('changes', [])})
-    effect_paths = {Path(p).relative_to(root/'work').as_posix(): sha(p) for p in paths
-                    if Path(p).is_relative_to(root/'work') and Path(p).is_file()}
-    effect = patch_ok and bool(effect_paths) and any(
-        Path(p).relative_to(root/'work').as_posix().encode() in patch for p in paths if Path(p).is_relative_to(root/'work'))
+    effect_proof = file_effect_evidence(root, changed, patch)
     web = current_browser_evidence(events, parent, turn=report.get('final_turn_id'))
     # Provider input is the actual history delivered to the model; use thread_id,
     # never prompt_cache_key, which is intentionally shared by nested agents.
@@ -384,7 +529,7 @@ def reconstruct_case(root, entry):
     mechanisms = {
         'immutable_artifact': {'passed': immutable, 'source_id': installed['source_id'], 'native_manifest_sha256': sha(release/'native-runtime.json')},
         'verifier_provenance': {'passed': verifier_matches, 'active_producer_sha256': active_artifact.get('verifier_sha256'), 'historical_producers': [a.get('verifier_sha256') for a in artifacts], 'previous_report_link': previous_report_link}, 'isolated_launch': {'passed': launch_ok},
-        'native_lifecycle': life, 'file_effect': {'passed': effect, 'patch_sha256': sha(root/'agent.patch'), 'files': effect_paths},
+        'native_lifecycle': life, 'file_effect': {**effect_proof, 'patch_sha256': sha(root/'agent.patch')},
         'nonzero_tool_output_delivery': {'passed': failure_delivery, 'proofs': failure_proofs,
             'scope': 'Exact native nonzero command output delivered in model input. Numeric exit delivery and explicit model-selected output-only projections are recorded separately; representative failure round trips.'},
         'reviewer_lifecycle': {'passed': any(x['passed'] for x in reviews), 'reviewers': reviews},

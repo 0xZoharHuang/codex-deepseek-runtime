@@ -9,14 +9,27 @@ import sys
 from urllib.parse import urlencode,urlsplit
 
 from aiohttp import web
+from codex_deepseek.platforms import replace_file
+
+
+def publish_json(path,value):
+    """Expose complete fixture snapshots while native MCP startup writes events."""
+    pending=path.with_name(path.name+'.pending')
+    pending.write_text(json.dumps(value,indent=2),encoding='utf-8')
+    replace_file(pending,path)
 
 
 async def main(root):
     root=Path(root);events=[];clients={};codes={};base=None
     token='FIXTURE_ONLY_'+secrets.token_hex(16)
     nonce='MCP_OAUTH_'+secrets.token_hex(12)
+    controller_token='FIXTURE_CONTROLLER_'+secrets.token_hex(32)
     def record(kind,**detail):
-        events.append({'kind':kind,**detail});(root/'fixture-events.json').write_text(json.dumps(events,indent=2))
+        events.append({'kind':kind,**detail});publish_json(root/'fixture-events.json',events)
+    async def event_snapshot(request):
+        if request.headers.get('Authorization')!='Bearer '+controller_token:
+            raise web.HTTPForbidden()
+        return web.json_response(events)
     async def resource(request):
         return web.json_response({'resource':base+'/mcp','authorization_servers':[base],
                                   'scopes_supported':['audit.read'],'bearer_methods_supported':['header']})
@@ -64,13 +77,13 @@ async def main(root):
         elif method=='resources/read':result={'contents':[{'uri':'audit://ledger','mimeType':'text/plain','text':'RESOURCE_'+nonce}]}
         else:return web.json_response({'jsonrpc':'2.0','id':body['id'],'error':{'code':-32601,'message':'Unknown fixture method'}})
         return web.json_response({'jsonrpc':'2.0','id':body['id'],'result':result})
-    app=web.Application();app.router.add_get('/.well-known/oauth-protected-resource',resource)
+    app=web.Application();app.router.add_get('/events',event_snapshot);app.router.add_get('/.well-known/oauth-protected-resource',resource)
     app.router.add_get('/.well-known/oauth-authorization-server',metadata)
     app.router.add_post('/register',register);app.router.add_get('/authorize',authorize);app.router.add_post('/token',exchange)
     app.router.add_route('*','/mcp',mcp)
     runner=web.AppRunner(app);await runner.setup();await web.TCPSite(runner,'127.0.0.1',0).start()
     base=f'http://127.0.0.1:{runner.addresses[0][1]}'
-    (root/'ready.json').write_text(json.dumps({'base':base,'nonce':nonce}))
+    publish_json(root/'ready.json',{'base':base,'nonce':nonce,'events_token':controller_token})
     try:await asyncio.Event().wait()
     finally:await runner.cleanup()
 
