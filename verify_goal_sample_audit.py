@@ -1,4 +1,5 @@
 """Native autonomous goal continuation and cancellable ephemeral sampling."""
+from contextlib import closing
 import argparse
 import json
 from pathlib import Path
@@ -36,7 +37,7 @@ def main():
         terminal=peer.wait(lambda e:e.get('id')==request_id and 'method' not in e,start,20)
         state=None;end=time.monotonic()+15
         while time.monotonic()<end:
-            with sqlite3.connect(root/'home/provider-state/adapter.sqlite') as db:state=db.execute('SELECT status FROM receipts WHERE id=?',(receipt,)).fetchone()
+            with closing(sqlite3.connect(root/'home/provider-state/adapter.sqlite')) as db, db:state=db.execute('SELECT status FROM receipts WHERE id=?',(receipt,)).fetchone()
             if state and state[0]!='running':break
             time.sleep(.05)
         passed('native_sample_cancel_aborts_provider_without_replay','cancel' in str(terminal.get('error',{})).lower() and state==('cancelled',),{'native_response':terminal,'receipt':receipt,'receipt_state':state})

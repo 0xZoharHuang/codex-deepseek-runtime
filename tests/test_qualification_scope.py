@@ -1,4 +1,5 @@
 """Release acceptance cannot widen scope or borrow evidence from another runtime."""
+from contextlib import closing
 from copy import deepcopy
 import importlib.util
 import json
@@ -473,7 +474,7 @@ def recovery_fixture(root):
            'receipts.json':receipt,'observed.json':observed,'events-1.json':events,'launch-1.json':{'entry_sha256':'native'}}
     for name,value in files.items():(root/name).write_text(json.dumps(value),encoding='utf-8')
     (root/'client-requests.jsonl').write_text('{"method":"turn/start","id":1}\n',encoding='utf-8')
-    with sqlite3.connect(root/'state.sqlite') as db:
+    with closing(sqlite3.connect(root/'state.sqlite')) as db, db:
         db.execute('CREATE TABLE receipts(status TEXT, provider TEXT, response_id TEXT, detail TEXT, started INTEGER)')
         db.executemany('INSERT INTO receipts VALUES(?,?,?,?,?)',[row+[index] for index,row in enumerate(receipt)])
     artifact={'kind':'schema','installation':metadata,'target':native['target'],'native_manifest':native,
@@ -515,7 +516,7 @@ def test_protocol_recovery_cannot_publish_without_bound_raw_native_retry_and_fin
         import sqlite3
         edit('receipts.json',lambda rows:rows[-1].__setitem__(2,'resp_controlled_fault'))
         proof['receipts']=json.loads((root/'receipts.json').read_text())
-        with sqlite3.connect(root/'state.sqlite') as db:db.execute('UPDATE receipts SET response_id=? WHERE started=1',('resp_controlled_fault',))
+        with closing(sqlite3.connect(root/'state.sqlite')) as db, db:db.execute('UPDATE receipts SET response_id=? WHERE started=1',('resp_controlled_fault',))
         proof['evidence_sha256']['state.sqlite']=acceptance.sha(root/'state.sqlite')
     elif change=='context':edit('request-bodies.json',lambda rows:rows[-1].__setitem__('input',[]))
     elif change=='retry':edit('events-1.json',lambda rows:rows.pop(0))

@@ -1,4 +1,5 @@
 """Native Windows setup and enforced effects in a guest or an explicitly admitted owned fixture."""
+from contextlib import closing
 import argparse
 import hashlib
 import json
@@ -137,8 +138,8 @@ def main():
                           'inside_write_verified':True,'outside_write_denied':True,'result':result})
             closing,peer=peer,None
             shutdowns.append({'mode':mode,'phase':'after_effects',**close_peer_gracefully(closing)})
-        with sqlite3.connect(root/'unelevated/home/provider-state/adapter.sqlite') as db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
-        with sqlite3.connect(root/'elevated/home/provider-state/adapter.sqlite') as db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
+        with closing(sqlite3.connect(root/'unelevated/home/provider-state/adapter.sqlite')) as db, db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
+        with closing(sqlite3.connect(root/'elevated/home/provider-state/adapter.sqlite')) as db, db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
         methods=[{'method':'windowsSandbox/setupStart','status':'passed','detail':{'modes':modes}},
                  {'method':'windowsSandbox/readiness','status':'passed','detail':{'cold_states':[m['cold_readiness'] for m in modes]}}]
         unchanged=(sha(entry)==artifact['entry_sha256'] and all(sha(Path(__file__).with_name(name))==digest for name,digest in verifiers.items())

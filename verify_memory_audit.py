@@ -1,4 +1,5 @@
 """Native persistent memory extraction, consolidation, cold read and sampling."""
+from contextlib import closing
 import argparse
 import hashlib
 import json
@@ -286,7 +287,7 @@ def main():
         # upstream startup test's aged-candidate fixture; do not alter runtime
         # eligibility rules or wait an hour to test the background pipeline.
         database=next((root/'home').glob('state_*.sqlite'))
-        with sqlite3.connect(database,timeout=10) as db:
+        with closing(sqlite3.connect(database,timeout=10)) as db, db:
             before=db.execute('SELECT updated_at,updated_at_ms FROM threads WHERE id=?',(source,)).fetchone()
             db.execute('UPDATE threads SET updated_at=updated_at-7200,updated_at_ms=updated_at_ms-7200000 WHERE id=?',(source,))
             after=db.execute('SELECT updated_at,updated_at_ms FROM threads WHERE id=?',(source,)).fetchone()
@@ -299,7 +300,7 @@ def main():
         while time.monotonic()<end:
             databases=list((root/'home').glob('memories_v2_*.sqlite' if args.version=='v2' else 'memories_[0-9]*.sqlite'))
             if databases:
-                with sqlite3.connect(databases[0],timeout=10) as db:
+                with closing(sqlite3.connect(databases[0],timeout=10)) as db, db:
                     tables={row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                     if 'stage1_outputs' in tables:
                         db.row_factory=sqlite3.Row

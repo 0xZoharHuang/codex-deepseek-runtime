@@ -1,4 +1,5 @@
 """Publish aggregate facts only after checking every private acceptance receipt."""
+from contextlib import closing
 import argparse
 from collections import Counter
 import hashlib
@@ -173,7 +174,7 @@ def validate_protocol_recovery(path,installation,native):
     launch=load(launch_paths[0]);require(launch.get('entry_sha256')==artifact['native_binary_sha256'],
                                     'Protocol recovery did not launch the pinned native binary')
     requests=load(path/'request-bodies.json');receipts=load(path/'receipts.json');observed=load(path/'observed.json');events=load(events_paths[0])
-    with sqlite3.connect((path/'state.sqlite').resolve().as_uri()+'?mode=ro',uri=True) as db:
+    with closing(sqlite3.connect((path/'state.sqlite').resolve().as_uri()+'?mode=ro',uri=True)) as db, db:
         require([list(row) for row in db.execute('SELECT status,provider,response_id,detail FROM receipts ORDER BY started')]==receipts,
                 'Protocol recovery provider receipts differ from raw state')
     require(type(proof.get('requests')) is int and len(requests)==len(receipts)==proof['requests'] and len(requests)>=2,

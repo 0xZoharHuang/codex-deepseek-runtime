@@ -1,4 +1,5 @@
 """Crash the native process itself and verify actual descendant cleanup."""
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -42,7 +43,7 @@ def main():
         assert all(birth for _,birth in owned),'Descendant identities could not be recorded'
         if args.baseline:native,birth=peer.process.pid,identity(peer.process.pid)
         else:
-            with sqlite3.connect(root/'home/provider-state/adapter.sqlite') as db:
+            with closing(sqlite3.connect(root/'home/provider-state/adapter.sqlite')) as db, db:
                 native,birth=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE native_pid IS NOT NULL AND closed IS NULL').fetchone()
         assert matches(native,birth)
         os.kill(native,signal.SIGKILL);peer.process.wait(timeout=10)

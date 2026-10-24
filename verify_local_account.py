@@ -1,4 +1,5 @@
 """Native local API-key account RPCs, with a nonfunctional key and no model calls."""
+from contextlib import closing
 import argparse
 import hashlib
 import json
@@ -74,7 +75,7 @@ def main():
         for peer in peers:peer.close()
         receipts=[]
         for path in root.glob('*/home/provider-state/adapter.sqlite'):
-            with sqlite3.connect(path) as db:receipts.extend(db.execute('SELECT status FROM receipts').fetchall())
+            with closing(sqlite3.connect(path)) as db, db:receipts.extend(db.execute('SELECT status FROM receipts').fetchall())
         assert not receipts,'Local account operations unexpectedly submitted model traffic'
         unchanged=(digest(entry)==artifact['entry_sha256']
                    and json.loads((release/'installation.json').read_text(encoding='utf-8'))==metadata

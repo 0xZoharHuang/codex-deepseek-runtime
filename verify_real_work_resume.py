@@ -3,6 +3,7 @@
 Preserves the full original report and test output, then verifies the completed
 work independently. Only failed wall-clock-budget attempts may be continued.
 """
+from contextlib import closing
 import argparse
 import hashlib
 import json
@@ -55,7 +56,7 @@ def continue_case(root,entry):
         validation.append(run_test(root,'independent-cancellation',['-q',str(root/'cancellation_regression.py')],pp))
         validation.extend([run_script(root,'real-tcp','network_stress.py'),run_script(root,'tls-socket','tls_socket_regression.py')])
     reviewers=[]
-    with sqlite3.connect(next((root/'home').glob('state_*.sqlite'))) as db:
+    with closing(sqlite3.connect(next((root/'home').glob('state_*.sqlite')))) as db, db:
         for child,source,path,agent in db.execute('SELECT id,source,rollout_path,agent_path FROM threads WHERE agent_path IS NOT NULL'):
             origin=json.loads(source) if source.startswith('{') else {}
             if origin.get('subagent',{}).get('thread_spawn',{}).get('parent_thread_id')!=previous['thread']:continue

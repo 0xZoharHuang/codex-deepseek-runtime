@@ -1,4 +1,5 @@
 """Native profile layering cannot route model traffic past the pinned provider."""
+from contextlib import closing
 from verify_live import qa_sandbox_mode
 import argparse
 import asyncio
@@ -40,7 +41,7 @@ async def main():
     def receipts():
         database=root/'home/provider-state/adapter.sqlite'
         if not database.exists():return []
-        with sqlite3.connect(database) as db:return db.execute('SELECT id,provider,status FROM receipts').fetchall()
+        with closing(sqlite3.connect(database)) as db, db:return db.execute('SELECT id,provider,status FROM receipts').fetchall()
     try:
         for profile in ['poisoned','safe']:
             previous_ids={row[0] for row in receipts()}
