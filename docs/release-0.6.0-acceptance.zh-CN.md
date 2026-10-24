@@ -1,6 +1,6 @@
 # 0.6.0 验收记录
 
-**固定组合的三平台本地 runtime 验收已通过；最终发布资产路径仍须托管 CI 与公开安装读回。** 本报告分别记录运行时机制、模型业务结果和发布资格，并保留原始失败。独立 Codex App 网关另行验收，不属于本报告。
+**固定组合的三平台本地 runtime 与公开原生资产路径的托管 CI 验收已通过。** 产品发布状态及公开安装读回回执以对应 GitHub release 为准。 本报告分别记录运行时机制、模型业务结果和发布资格，并保留原始失败。独立 Codex App 网关另行验收，不属于本报告。
 
 ## 固定组合
 
@@ -72,9 +72,9 @@ macOS/Linux 已对当前产品另做真实 runtime 复验，不从 v0.5.0 的 12
 
 复杂真实工程在 Windows 执行。两份 Unix 报告明确使用跨平台共同组件参考：95 个产品文件、28 个适配模块及 185 个保持上游原字节的保护范围源码相同，59 处目标平台差异逐项保留。`executed_target` 为 Windows，`local_task_execution_claimed=false`；这不是 Mac/Linux 重新执行该工程任务。固定参考的[原验收](../reports/releases/0.6.0/references/windows-complex-runtime/acceptance.json)与[原安装](../reports/releases/0.6.0/references/windows-complex-runtime/installation.json)保留原字节。
 
-固定原生输入已发布为独立的 [v0.6.0-native.1 prerelease](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.0-native.1)，它不是完整 CDS 产品发布。原始归档、recipe 和 SHA 清单均保留；Mac 已实际匿名读取 recipe 并核对大小与 SHA。托管 CI 的完整资产下载与最终源码检查仍需执行。
+固定原生输入已发布为独立的 [v0.6.0-native.1 prerelease](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.0-native.1)，它不是完整 CDS 产品发布。原始归档、recipe 和 SHA 清单均保留；Mac 已实际匿名读取 recipe 并核对大小与 SHA。最终提交 b01ce01418170eefae4f1253ff4860fe688a027e 的[托管运行 40087081457](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40087081457)已通过两个目标的实际公开资产下载、15 项原生传输及完整离线集合分区检查。
 
-CI 获取已迁移为固定版本的原生发布资产，避免依赖会过期的 Actions 文件。完整 tar 成员、字节数、SHA-256、原 recipe、当前目标 recipe、源码和构建回执校验全部保留。Windows 使用新的 recipe，macOS/Linux 保留其原 recipe。实际发布资产下载路径尚须托管运行验证，草稿或资产上传不能代替该结果。
+CI 获取已迁移为固定版本的原生发布资产，避免依赖会过期的 Actions 文件。完整 tar 成员、字节数、SHA-256、原 recipe、当前目标 recipe、源码和构建回执校验全部保留。Windows 使用新的 recipe，macOS/Linux 保留其原 recipe。本次两个托管目标均实际通过该固定 release 资产路径；原生包没有重编译。草稿或资产上传自身仍不构成验收。
 
 macOS 的新版验收清理器调用系统 security 工具，只查询 service=codex、按当前 canonical 测试 home 的 SHA 计算账号名的元数据，再删除该确切条目并确认不存在。它不请求密码值，不修改默认钥匙串或 App/OpenRouter 现有条目；原清理超时及原始 29/1 结果保留。driver 身份、实际前后状态、原生注销冷读、目录与 marker 身份均参与汇总校验。
 
@@ -110,6 +110,6 @@ MCP 的 turn/interrupt 与 owner exit 分开记录：本基线某些 HTTP 请求
 
 三平台严格组合报告、当前完整离线与真实 runtime 复验均已完成。Windows 最后一次汇总曾因 SSH 观察环境缺少 Git PATH 失败；仅补齐该消费者子进程的 PATH 后，原始模型与业务材料按同一断言重建通过，没有重跑业务来掩盖失败。macOS 旧清理超时导致日志缺结尾标记，仅对固定失败材料按原断言、唯一 nonce 归属及七个原文件 SHA 定位并排除旧根；新的四种 OAuth 仍必须具备完整结尾标记与所有正向证据。
 
-最终公开发布仍须完成公开原生资产路径的托管 CI、发布与公开安装读回。组合验收保留原始失败，不宣称一次全绿。Windows 整理放在 CDS 与独立 App 项目全部完成之后。
+实际公开原生资产路径的托管 CI 已通过。对应产品 release 附件单独记录公开安装读回、检查过的入口与文件清单；发布可用性以 release 为准。组合验收保留原始失败，不宣称一次全绿。Windows 整理放在 CDS 与独立 App 项目全部完成之后。
 
 根据用户后续授权，必要的 macOS 实测在新建的独立安装、home 和测试目录中完成；现有 Mac App、订阅登录、上游凭据及正在使用的 CDS 安装没有被读取或替换。模型凭据从 Windows 经父进程内存与 SSH 标准输入一次性供给测试子进程，不写文件或命令参数。OAuth 仅创建和清理标记明确的本次测试条目。GitHub 发布继续使用已授权的认证中继，Windows 上其他人的固定安装与进程不接管。

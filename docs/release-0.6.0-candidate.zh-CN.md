@@ -1,6 +1,6 @@
 # 0.6.0 候选：安装、图片传输与 Windows 隔离
 
-**0.6.0 尚未发布。** 现有 v0.5.0 安装请从对应 tag 取得源码；本分支的安装条件和版本状态见 [README](../README.md)。本页说明隔离安装、图片配置和回退。当前三平台本地 runtime 验收已完成，结果见[本版本验收记录](release-0.6.0-acceptance.zh-CN.md)；完整产品下载仍以对应 v0.6.0 release 实际发布为准。
+**本页保留 0.6.0 的隔离安装与候选验证方法；正式下载以对应 GitHub release 为准。** 现有 v0.5.0 安装请从对应 tag 取得源码；本分支的安装条件和版本状态见 [README](../README.md)。本页说明隔离安装、图片配置和回退。当前三平台本地 runtime 验收已完成，结果见[本版本验收记录](release-0.6.0-acceptance.zh-CN.md)；完整产品下载仍以对应 v0.6.0 release 实际发布为准。
 
 ## 这次改变了什么
 
@@ -115,9 +115,9 @@ codex-deepseek runtime image-reconcile-calls
 
 尚无自动原子迁移旧 home 的命令。未来若要保留同 home 的会话进行升级，需要先确认该 home 的整棵原生进程树退出，保留 home 根目录身份，记录 `.sandbox*` 的受保护备份与恢复步骤；不得改动其他 home 或旧共享账户、规则。详细运维边界见 [并行候选流程](parallel-candidate-upgrade.md) 和 [Windows namespace 说明](windows-sandbox-isolation.md)。
 
-## 当前证据与发布前待完成项
+## 当前验收与发布材料
 
-候选已有部分 Windows native helper、真实图片请求、413/压缩、namespace 与网络实验，以及 Python/文件系统复核。它们分别绑定当时的组件和源码，不能合并成“最终 0.6.0 已通过”。原失败保留；一次真实图片请求只能证明其具体模型、提供方和请求路径。
+固定 0.6.0 已完成三平台本地 runtime、完整离线及公开原生资产路径的实际托管 CI。当前结果、原失败、跨平台共同组件参考与明确边界均见[验收记录](release-0.6.0-acceptance.zh-CN.md)。这里的隔离和回退流程不变，安装清单 ready 字段仍不能单独代替验收。
 
 可公开阅读的解释入口：
 
@@ -125,14 +125,14 @@ codex-deepseek runtime image-reconcile-calls
 - [初始隔离缺陷与修复边界](payload-isolation-audit.md)、[Windows namespace](windows-sandbox-isolation.md)、[四类 artifact 只读目录](windows-artifact-read-roots.md)。
 - [native platform CI](../ci/README.md) 与 [workflow](../.github/workflows/native-platform-qualification.yml)。固定候选源码的[实际 CI 运行](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/39899815305)已完成；macos-15 arm64 使用 1 个构建 job，ubuntu-24.04 x64 使用 2 个。CI 的 synthetic transport 通过不代替真实模型、安装或平台权限验收；后续源码变化按[本版本验收记录](release-0.6.0-acceptance.zh-CN.md)单独核验。
 
-发布前仍须把下列项目绑定到最终提交和产物，补入可公开、去除私人信息的 receipt；本页不预填通过结果或下载 URL：
+交付材料按下列入口核查，始终匹配实际版本、源码和归档；对应产品 release 未公开前不能使用其下载 URL：
 
-| 待补项目 | 要记录的事实 |
+| 材料 | 核查入口 |
 | --- | --- |
 | 最终源码与包身份 | 提交、版本、平台 recipe、工具链、build receipt、archive SHA-256 与完整文件清单。 |
-| Windows 最终候选 | readiness、offline/例外网络、四类 artifact 首次读取与拒绝边界、冷恢复、清理，以及匹配新安装入口的实际结果。 |
+| Windows 最终组合 | [实际平台报告](../reports/releases/0.6.0/x86_64-pc-windows-msvc/acceptance.json)：readiness、文件/网络允许与拒绝、冷恢复及当前安装身份。 |
 | 新安装与代表性工作 | 实际安装、明确入口/home、模型及提供方记录、原生工作流效果、失败与恢复，分别说明 runtime 与业务任务结果。 |
-| macOS/Linux 新产物 | 实际 CI run 与归档身份、目标系统兼容性，以及各平台尚需的安装、权限、恢复和 runtime 验收。源码 patch replay 不替代执行证据。 |
+| macOS/Linux 当前产物 | [最终验收记录](release-0.6.0-acceptance.zh-CN.md)中的各平台原始报告与[实际公开资产 CI](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40087081457)；源码重放与 runtime 运行证据分别保留。 |
 | 发布与回退材料 | 最终公开报告、release/tag 与真实归档地址、稳定入口切换和可核查回退步骤。 |
 
 维护者的私有项目证据保存在 `.evidence/payload-capacity/`。版本冻结、独立复核、Windows build/acceptance 与 CI 准备记录是定位线索；公开发布应整理必要的脱敏摘要，而不是上传原始模型上下文、真实 home、密钥或完整私有日志。
