@@ -5,6 +5,7 @@ from qa_workspace import evidence_files
 from collections import Counter
 import hashlib
 import json
+import math
 import ntpath
 import os
 from pathlib import Path,PureWindowsPath
@@ -61,6 +62,86 @@ def validate_complex_runtime(path,root,entry,installation):
     return actual
 
 
+
+
+COMPLEX_REFERENCE_REPORT_SHA256='24abf38a1745cdcf065726b9795771d92a9294605f73b2bb7c43a72389e4adf4'
+COMPLEX_REFERENCE_INSTALL_SHA256='a74716117255b4023961cfeb36205ba1f8e06b253f459bae8a442ece0a533ee9'
+COMPLEX_REFERENCE_MECHANISMS={'immutable_artifact','verifier_provenance','isolated_launch','native_lifecycle',
+    'file_effect','nonzero_tool_output_delivery','reviewer_lifecycle','linked_browser_navigation','provider_transport',
+    'controlled_inputs','tool_environment','oracle_isolation','suite_execution_evidence','native_host_execution'}
+
+
+def validate_complex_runtime_reference(directory,installation,native,source_audit):
+    """Use an exact accepted Windows workflow without claiming another OS ran it."""
+    from verify_native_source import source_contract,inventory_digest
+    directory=Path(directory);report_path=directory/'acceptance.json';install_path=directory/'installation.json'
+    require(native.get('target') in {'aarch64-apple-darwin','x86_64-unknown-linux-gnu'},
+            'Cross-platform complex reference requires independent Unix target qualification')
+    require(sha(report_path)==COMPLEX_REFERENCE_REPORT_SHA256 and sha(install_path)==COMPLEX_REFERENCE_INSTALL_SHA256,
+            'Complex workflow reference must be the exact independently accepted Windows evidence')
+    report=load(report_path);reference_install=load(install_path)
+    require(report.get('status')=='accepted_for_frozen_target_local_runtime_scope' and report.get('target')=='x86_64-pc-windows-msvc'
+            and report.get('source_id')==reference_install.get('source_id')==installation['source_id']=='2d43ed50050d0a687f55'
+            and report.get('upstream_commit')==native.get('upstream_commit')==BASELINE_COMMIT
+            and report.get('baseline_matrix_sha256')==BASELINE_MATRIX_SHA256,
+            'Complex reference target, source or upstream baseline differs')
+    product=installation.get('source_sha256',{})
+    require(len(product)==95 and reference_install.get('source_sha256')==product
+            and reference_install.get('adapter_source_sha256')==installation.get('adapter_source_sha256')==report.get('adapter_source_sha256')
+            and report.get('model')==installation.get('model')==reference_install.get('model'),
+            'Complex reference does not share every installed product file and model route')
+    windows_native=load(SOURCE/'native/runtime-x86_64-pc-windows-msvc.json')
+    require(report.get('native_archive_sha256')==reference_install.get('native_archive_sha256')==windows_native['archive']['sha256'],
+            'Complex reference native archive differs from its fixed target manifest')
+    # The caller already reconstructed this local source/package audit. The same
+    # checksum-verified upstream archive and current product95 derive both recipes.
+    audit=load(source_audit)
+    local_contract=source_contract(native['target'],audit['upstream_archive'])
+    reference_contract=source_contract('x86_64-pc-windows-msvc',audit['upstream_archive'])
+    reference_audit=report.get('native_source_audit',{})
+    require(reference_audit.get('native_recipe_id')==reference_contract['recipe_id']
+            and reference_audit.get('upstream_source_files')==len(reference_contract['before'])
+            and reference_audit.get('unchanged_protected_runtime_files')==len(reference_contract['unchanged_protected'])
+            and reference_audit.get('declared_protected_source_sha256')==reference_contract['declared_protected']
+            and reference_audit.get('patch_replay_passed') is True
+            and reference_audit.get('external_cargo_packages_unchanged') is True,
+            'Complex reference native source audit does not match the current exact Windows recipe')
+    platforms=('codex-rs/windows-sandbox-rs/','codex-rs/linux-sandbox/','codex-rs/macos-sandbox/')
+    shared={name for name in reference_contract['protected'] if not name.startswith(platforms)}
+    before={name:reference_contract['before'][name] for name in shared}
+    local_shared={name:local_contract['final'][name] for name in shared}
+    reference_shared={name:reference_contract['final'][name] for name in shared}
+    require(shared and local_shared==reference_shared==before,
+            'Shared native agent, task, tool or thread runtime source differs from the pinned baseline')
+    differences={name:{'executed_windows_sha256':reference_contract['final'].get(name),'local_target_sha256':local_contract['final'].get(name)}
+                 for name in sorted(set(reference_contract['final'])|set(local_contract['final']))
+                 if reference_contract['final'].get(name)!=local_contract['final'].get(name)}
+    real=report.get('real_work',{});require(set(real)=={'jinja','httpcore'},'Complex reference task set differs')
+    for name,row in real.items():
+        mechanisms=row.get('runtime_mechanisms',{})
+        require(set(mechanisms)==COMPLEX_REFERENCE_MECHANISMS|{'passed'} and mechanisms['passed'] is True
+                and all(mechanisms[key].get('passed') is True for key in COMPLEX_REFERENCE_MECHANISMS)
+                and row.get('runtime_mechanisms_passed') is True and row.get('final_source_id')==installation['source_id']
+                and isinstance(row.get('application_task_outcome'),dict)
+                and row.get('passed') is row['application_task_outcome'].get('original_report_passed'),
+                'Complex reference mechanisms or original application outcome are incomplete')
+        row.update(executed_target='x86_64-pc-windows-msvc',qualification_target=native['target'],
+                   local_task_execution_claimed=False,reference_report_sha256=COMPLEX_REFERENCE_REPORT_SHA256)
+    require(real['jinja']['passed'] is True and real['httpcore']['passed'] is False,
+            'Preserve the exact successful Jinja and failed HTTPcore application outcomes')
+    return real,{'executed_target':'x86_64-pc-windows-msvc','qualification_target':native['target'],
+        'local_task_execution_claimed':False,'reference_report_sha256':sha(report_path),'reference_installation_sha256':sha(install_path),
+        'shared_product_source_files':len(product),'shared_adapter_modules':len(installation['adapter_source_sha256']),
+        'shared_native_protected_files':len(shared),'shared_native_protected_sha256':inventory_digest(reference_shared),
+        'shared_native_protected_unchanged_from_upstream':True,'target_native_source_differences':differences,
+        'local_source_audit_sha256':sha(source_audit),'local_runtime_qualification_still_required':True,
+        'local_evidence_mapping':{
+            'immutable_artifact_and_verifier_provenance':['installation_integrity','current_complete_offline','native_source_audit'],
+            'native_launch_lifecycle_file_effect_and_tools':['all_30_standard_gates','all_target_local_RPC_methods','native_terminal_lifecycles'],
+            'reviewer_and_subagents':['plan-review','agents-nested','agents-full','agents-none'],
+            'navigation_and_transport':['native_browser_8_scenarios','protocol_fault_recovery_6_kinds','native_mcp_lifetime_comparison'],
+            'permissions_and_platform_sandbox':['guardian','hook_trust_3_scenes','target_native_sandbox_evidence'],
+            'benchmark_oracles_imports_and_suite_results':'Windows workflow reference only; no local benchmark execution claimed'}}
 
 def validate_peer_verifiers(artifact,expected,label):
     hashes=artifact.get('verifier_sha256',{})
@@ -336,6 +417,26 @@ def expected_offline_skips(target):
                      'test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably',
                      'test_locked_activation_fails_atomically_and_preserves_current_receipt']:
             result['test_windows_launchers::'+name]='Exercises Windows PE executable launchers'
+        for value in ['False', 'True']:
+            result['test_install::test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings['+value+']']='Windows native artifact DACL contract'
+        for value in ['staging', 'installed', 'profile']:
+            result['test_windows_launchers::test_launcher_temp_outputs_bind_current_user_before_publish['+value+']']='Exercises Windows PE executable launchers'
+        for name in ['test_wrong_identity_never_arms_preparation[sid-another]',
+                     'test_wrong_identity_never_arms_preparation[session_id-0]',
+                     'test_wrong_identity_never_arms_preparation[elevated-True]',
+                     'test_unrelated_output_refused_before_arming',
+                     'test_unadmitted_verifier_refused',
+                     'test_partial_admission_cannot_fall_back_to_guest',
+                     'test_other_host_still_requires_explicit_admission',
+                     'test_declared_limited_owned_scope',
+                     'test_native_eof_precedes_generic_cleanup',
+                     'test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options0]',
+                     'test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options1]',
+                     'test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options2]',
+                     'test_shutdown_preserves_primary_error_when_cleanup_also_fails',
+                     'test_cleanup_error_cannot_be_a_successful_shutdown',
+                     'test_main_retains_failure_receipt_when_final_cleanup_also_raises']:
+            result['test_windows_sandbox_admission::'+name]='Windows-only lifecycle admission contract'
     return result
 
 
@@ -573,7 +674,11 @@ def validate_regression_source(artifact,installation,snapshot=None,*,terminal_re
     changed=sorted(name for name in set(recorded)|set(current) if recorded.get(name)!=current.get(name))
     require(oauth_revalidated or 'tests/oauth_fixture.py' not in changed,'OAuth fixture changes require complete explicit OAuth revalidation')
     reporting={'assemble_release_acceptance.py','verify_rpc_observations.py','verify_remaining_methods.py','verify_remaining_local.py',
-               'verify_complex_runtime.py','verify_hook_trust.py'}
+               'verify_complex_runtime.py','verify_hook_trust.py','verify_native_source.py'}
+    if MACOS_KEYRING_DRIVER in changed:
+        require(MACOS_KEYRING_DRIVER not in recorded and current[MACOS_KEYRING_DRIVER]==MACOS_KEYRING_DRIVER_SHA256,
+                'Only the reviewed newly added metadata-only macOS QA driver may extend an old snapshot')
+        reporting.add(MACOS_KEYRING_DRIVER)
     if terminal_revalidated:reporting|={'verify_tui_audit.py','verify_tui_interrupt.py'}
     if oauth_revalidated:
         reporting|={'verify_independent_audit.py','tests/oauth_fixture.py'}
@@ -604,6 +709,101 @@ def scope_source_identity(path):
     return hashlib.sha256(json.dumps(selected,sort_keys=True).encode()).hexdigest()
 
 
+
+MACOS_KEYRING_DRIVER='verify_macos_keyring_fixture_cleanup.py'
+MACOS_KEYRING_DRIVER_SHA256='a194b6906651f6f50ba41eeac7b3fd1c12e7189b8d6a593808d80b4f5e251462'
+
+
+def validate_macos_cleanup_receipt(proof,artifact,root,home,driver,identity):
+    """Check metadata-only evidence; this consumer never queries a keychain."""
+    expected={'schema_version':1,'driver_kind':'macos-security-metadata-only','driver_path':str(driver),
+              'driver_sha256':MACOS_KEYRING_DRIVER_SHA256,'security_path':'/usr/bin/security',
+              'security_sha256':sha('/usr/bin/security'),'runtime_root':str(root),'producer_gate':'oauth-secrets',
+              'artifact_path':str(root/'artifact.json'),'artifact_sha256':sha(root/'artifact.json'),
+              'home':str(home),'home_identity':identity,'native_active_before':False,'native_active_after':False,
+              'service':'codex','password_requested':False,'present_after':False,'passed':True,
+              'account':'secrets|'+hashlib.sha256(str(home).encode('utf-8')).hexdigest()[:16],
+              'source_archive_sha256':'3f9d7e83c9f152a438633813daefacee944d29165101c305e8ac08dc00a0e361',
+              'upstream_commit':BASELINE_COMMIT,'native_source_member':'codex-rs/secrets/src/lib.rs',
+              'native_source_sha256':'7e243492527e390d2e7210031ed2afd4a6d97c9866a5b7f1d1f6cc51f9ecd837'}
+    require(all(type(proof.get(k)) is type(v) and proof[k]==v for k,v in expected.items()),
+            'macOS cleanup receipt belongs to another fixture, binary or source')
+    require(all(type(proof.get(k)) in {int,float} and math.isfinite(proof[k]) for k in ['started','finished'])
+            and 0<proof['started']<=proof['finished'],'macOS cleanup timing is invalid')
+    before=proof.get('metadata_before',{});after=proof.get('metadata_after',{})
+    require(type(proof.get('present_before')) is bool and before.get('present') is proof['present_before']
+            and type(before.get('exit')) is int and type(after.get('present')) is bool
+            and type(after.get('exit')) is int and after=={'present':False,'exit':44},'macOS cleanup lacks exact absent metadata readback')
+    if proof['present_before']:
+        keychain=before.get('keychain','')
+        require(before=={'present':True,'exit':0,'account':expected['account'],'service':'codex',
+                         'keychain':keychain,'class_genp':True}
+                and before.get('class_genp') is True and isinstance(keychain,str) and Path(keychain).is_absolute()
+                and Path(keychain).is_relative_to(Path.home()/'Library/Keychains')
+                and proof.get('deleted') is True and type(proof.get('delete_exit')) is int and proof['delete_exit']==0,
+                'macOS cleanup did not delete its exact owned metadata selector')
+    else:
+        require(before=={'present':False,'exit':44} and proof.get('deleted') is False
+                and proof.get('delete_exit') is None,'macOS absent fixture cleanup has contradictory deletion evidence')
+    require('error_type' not in proof,'macOS cleanup retained a failure')
+    return {k:proof[k] for k in ['present_before','deleted','present_after','account','driver_kind']}
+
+
+def validate_macos_keyring_revalidation(original,artifact,root):
+    """One explicit Mac-only QA-probe replacement, with both real cleanup receipts."""
+    import stat
+    import uuid
+    require(original.get('target')==artifact.get('target')=='aarch64-apple-darwin'
+            and artifact['installation'].get('source_id')=='2d43ed50050d0a687f55',
+            'Keyring probe replacement is only qualified for this fixed macOS product')
+    old=original.get('native_probes',{});new=artifact.get('native_probes',{})
+    require(set(old)==set(new)=={'revocation','keyring'} and old['revocation']==new['revocation'],
+            'macOS QA cleanup replacement changed another native probe')
+    driver=SOURCE/MACOS_KEYRING_DRIVER
+    require(driver.resolve()==driver and new['keyring']=={'path':str(driver),'sha256':MACOS_KEYRING_DRIVER_SHA256}
+            and sha(driver)==MACOS_KEYRING_DRIVER_SHA256
+            and artifact.get('verifier_source_sha256',{}).get(MACOS_KEYRING_DRIVER)==MACOS_KEYRING_DRIVER_SHA256,
+            'macOS cleanup must use the exact reviewed current QA driver')
+    require(artifact.get('evidence_roots')==[str(root)],'macOS replacement runtime root is not explicit')
+    evidence=gate_evidence(root,'oauth-secrets')
+    require(evidence.parent==root/'evidence/independent-audit'
+            and str(uuid.UUID(evidence.name))==evidence.name,'macOS OAuth fixture layout differs')
+    cleanup_path=evidence/'fixture-credential-cleanup.json';cleanup=load(cleanup_path)
+    homes=[evidence/name/'home' for name in ['primary','other']]
+    require(len(cleanup)==2 and {row.get('home') for row in cleanup}=={str(home) for home in homes},
+            'macOS cleanup must contain exactly both owned OAuth homes')
+    files={str(cleanup_path):sha(cleanup_path)}
+    receipts=[];marker=b'NONFUNCTIONAL_TEST_CREDENTIALS_ONLY'
+    for home in homes:
+        require(home.resolve(strict=True)==home,'macOS cleanup home is not canonical')
+        for path in [home,*home.parents[:5]]:
+            st=path.lstat()
+            require(stat.S_ISDIR(st.st_mode) and st.st_uid==os.getuid() and not stat.S_IMODE(st.st_mode)&0o022,
+                    'macOS cleanup path is linked, writable by others or belongs to another user')
+        st=home.lstat();mark=home/'.credential-acceptance-fixture';mst=mark.lstat()
+        require(stat.S_IMODE(st.st_mode)==0o700 and stat.S_ISREG(mst.st_mode) and mst.st_nlink==1
+                and mst.st_uid==os.getuid() and mark.read_bytes()==marker,'macOS cleanup fixture marker is not owned')
+        identity={'device':st.st_dev,'inode':st.st_ino,'uid':st.st_uid,'mode':'0700','marker_sha256':sha(mark)}
+        path=home/'macos-keyring-cleanup.json';pst=path.lstat()
+        require(stat.S_ISREG(pst.st_mode) and pst.st_nlink==1 and pst.st_uid==os.getuid()
+                and stat.S_IMODE(pst.st_mode)==0o600,'macOS cleanup receipt is not a private owned file')
+        proof=load(path);result=validate_macos_cleanup_receipt(proof,artifact,root,home,driver,identity)
+        row=next(row for row in cleanup if row['home']==str(home))
+        require(type(row.get('logout_exit')) is int and row['logout_exit']==0
+                and row.get('cold_logout_verified') is True and row.get('native_keyring')==result,
+                'macOS keyring cleanup is not linked to successful native cold logout')
+        transcript=home/'native-keyring-cleanup.txt';lines=transcript.read_text(encoding='utf-8').splitlines()
+        require(len(lines)==1 and lines[0].startswith('KEYRING_FIXTURE_RESULT ')
+                and json.loads(lines[0].removeprefix('KEYRING_FIXTURE_RESULT '))==result,
+                'macOS cleanup stdout does not match the exact metadata receipt')
+        for file in [mark,path,transcript]:files[str(file)]=sha(file)
+        receipts.append({'home':str(home),'receipt_sha256':sha(path),**result})
+    require(any(row['deleted'] for row in receipts),'macOS replacement did not exercise actual fixture deletion')
+    require(all(sha(path)==digest for path,digest in files.items()),'macOS cleanup evidence changed during reconstruction')
+    return {'kind':'macos_metadata_only_qa_cleanup','original_probe':old['keyring'],'replacement_probe':new['keyring'],
+            'shared_execution_helpers_unchanged':True,'cleanup_receipts':receipts,'evidence_sha256':files}
+
+
 def validate_standard_gates(artifact,verdict,replacement=None,*,revalidation_scope='terminal'):
     require(revalidation_scope in {'terminal','oauth'},'Unknown revalidation scope')
     replaced=OAUTH_GATES if revalidation_scope=='oauth' else TERMINAL_GATES
@@ -625,10 +825,12 @@ def validate_standard_gates(artifact,verdict,replacement=None,*,revalidation_sco
     for key in ['entry','entry_sha256','release','installation','native_manifest','target','tui_sandbox_mode','required_local_methods','baseline_matrix_sha256']:
         require(key in artifact and new.get(key)==artifact[key],'Terminal replacement installed target/launch identity differs: '+key)
     if revalidation_scope=='oauth':
-        for key in ['native_probes','qa_default_sandbox_mode','sandbox_scope','controller_environment']:
+        for key in ['qa_default_sandbox_mode','sandbox_scope','controller_environment']:
             require(key in artifact and new.get(key)==artifact[key],'OAuth replacement execution identity differs: '+key)
         if artifact['target']=='x86_64-pc-windows-msvc':
             validate_windows_controller(artifact['controller_environment'],elevated=False)
+        probe_replaced=new.get('native_probes')!=artifact.get('native_probes')
+        if not probe_replaced:require('native_probes' in artifact,'OAuth native probes are missing')
         probes=new['native_probes']
         require(set(probes)=={'revocation','keyring'} and all(probe.get('path') and probe.get('sha256')
                 and sha(probe['path'])==probe['sha256'] for probe in probes.values()),'OAuth native probe bytes changed')
@@ -652,6 +854,7 @@ def validate_standard_gates(artifact,verdict,replacement=None,*,revalidation_sco
         require(load(root/'results.json')==newrows and all(row.get('log')==row['gate']+'.log' for row in newrows),
                 'OAuth replacement raw result rows/log identity differs')
         oauth_evidence_roots(root)
+        probe_lineage=validate_macos_keyring_revalidation(artifact,new,root) if probe_replaced else None
     by_name={row['gate']:row for row in newrows}
     effective=[by_name.get(row['gate'],row) for row in rows]
     lineage={'replacement_root':str(root.resolve()),'original_failed_gates':sorted(failed),
@@ -665,7 +868,7 @@ def validate_standard_gates(artifact,verdict,replacement=None,*,revalidation_sco
         lineage.update(scope='all_four_oauth_variants',single_run_all_passed=False,
                        original_passed_gates=len(rows)-len(failed),original_failed_gate_count=len(failed),
                        replacement_logs_sha256={gate:sha(root/(gate+'.log')) for gate in sorted(OAUTH_GATES)},
-                       replacement_results_sha256=sha(root/'results.json'))
+                       replacement_results_sha256=sha(root/'results.json'),native_probe_revalidation=probe_lineage)
     return effective,lineage
 
 
@@ -676,6 +879,69 @@ def oauth_evidence_roots(root):
     require(not any(comparison_path(a).is_relative_to(comparison_path(b)) for a in paths for b in paths if a!=b),
             'OAuth evidence roots overlap')
     return paths
+
+
+
+MACOS_OLD_OAUTH_CLEANUP_FILES={
+    'artifact.json':'fb369f17ee53b80324decdda87f64fda180c29ad4c9da2dae364ff6599e2d5f6',
+    'verdict.json':'6c1192a5fd6933966c87491af7b2cb653f26bd1b02e29ca9f1e96f35015bace3',
+    'oauth-secrets.log':'ef41028ffe0e8104f2a4fc432bdec716f7f055cda976775ac40ff45afacd4443'}
+MACOS_OLD_OAUTH_CASE_FILES={
+    'results.json':'53a676733090fef87eb0a0c600103030b334a9c15818365b7edef4d57929e589',
+    'model-action-attempts.json':'b37613223d3b35e8a090daf69c47591f0de7dd5591d2adf92994e5dac6db9dc3',
+    'fixture/ready.json':'739fe1ac5608ddda3d63c78883d232d3fdce7c8de64cc539fba5d4e0c7b07cb4',
+    'primary/home/config.toml':'352d4eae6090e16467296989fc5c1fe49e7d573a4e21e2ab16e3d3cca6917576'}
+
+
+def superseded_oauth_evidence_roots(root):
+    """Locate only an exact old failed cleanup for exclusion, never positive evidence."""
+    import stat
+    import uuid
+    root=Path(root).resolve()
+    log=(root/'oauth-secrets.log').read_text(encoding='utf-8')
+    if re.search(r'^EVIDENCE ',log,re.MULTILINE):return oauth_evidence_roots(root)
+    require(all(sha(root/name)==digest for name,digest in MACOS_OLD_OAUTH_CLEANUP_FILES.items()),
+            'Missing old OAuth marker is not the frozen macOS cleanup failure')
+    artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
+    require(artifact.get('target')=='aarch64-apple-darwin' and artifact.get('evidence_roots')==[str(root)]
+            and artifact.get('installation',{}).get('source_id')=='2d43ed50050d0a687f55'
+            and verdict.get('passed') is False
+            and {row['gate'] for row in verdict['gates'] if row['exit']!=0}=={'oauth-secrets'},
+            'Only the original failed macOS cleanup may lack its terminal marker')
+    old={gate_evidence(root,gate) for gate in OAUTH_GATES-{'oauth-secrets'}}
+    rows=[]
+    for line in log.splitlines():
+        if not line.startswith('{'):continue
+        try:row=json.loads(line)
+        except json.JSONDecodeError:continue
+        if isinstance(row,dict) and {'name','passed','detail'}<=row.keys():rows.append(row)
+    require(len(rows)==5 and len({row['name'] for row in rows})==5 and all(row['passed'] is True for row in rows),
+            'Old OAuth failure lacks its exact five original assertion records')
+    answer=next((row['detail'].get('answer') for row in rows if row['name']=='native_http_mcp_authenticated_tool_and_resource'),None)
+    require(isinstance(answer,str),'Old OAuth assertion lacks its native tool/resource answer')
+    parent=root/'evidence/independent-audit';cases=list(parent.iterdir());selectors={};matches=[]
+    require(len(cases)==4,'Old OAuth exclusion requires exactly four original fixture directories')
+    for case in cases:
+        st=case.lstat()
+        require(stat.S_ISDIR(st.st_mode) and st.st_uid==os.getuid() and case.resolve()==case
+                and str(uuid.UUID(case.name))==case.name,'Old OAuth fixture is not an owned canonical UUID directory')
+        config=tomllib.loads((case/'primary/home/config.toml').read_text(encoding='utf-8'))
+        feature=config.get('features',{}).get('secret_auth_storage')
+        require(type(feature) is bool,'Old OAuth fixture secret-store selector is missing')
+        selector=(config.get('mcp_oauth_credentials_store'),feature)
+        require(selector not in selectors,'Old OAuth fixture selectors are ambiguous')
+        selectors[selector]=case
+        nonce=load(case/'fixture/ready.json').get('nonce')
+        require(isinstance(nonce,str) and nonce,'Old OAuth fixture nonce is missing')
+        if nonce in answer and 'RESOURCE_'+nonce in answer:matches.append(case)
+    require(set(selectors)=={('file',False),('auto',False),('keyring',False),('keyring',True)}
+            and len(matches)==1 and matches[0]==selectors[('keyring',True)]
+            and set(cases)==old|set(matches) and len(old)==3,
+            'Old failed OAuth root is not uniquely bound to the original assertion and selectors')
+    failed=matches[0]
+    require(all(sha(failed/name)==digest for name,digest in MACOS_OLD_OAUTH_CASE_FILES.items())
+            and load(failed/'results.json')==rows,'Old failed OAuth raw identity or assertion rows differ')
+    return old|{failed}
 
 
 def superseded_terminal_roots(root):
@@ -972,7 +1238,39 @@ def validate_hook_trust_cases(root, rows):
     return {'passed':True,'cases':list(CASE_NAMES),'raw_reconstructed':True,'evidence_sha256':all_files}
 
 
-def validate_hook_trust(root,installation,native):
+
+def validate_hook_producer(verifiers,native,producer_snapshot=None):
+    from verify_hook_trust import VERIFIERS
+    require(set(verifiers)==set(VERIFIERS),'Hook trust verifier dependency inventory differs')
+    changed=[name for name,digest in verifiers.items() if sha(SOURCE/name)!=digest]
+    if not changed:return None
+    require(native.get('target')=='x86_64-pc-windows-msvc' and changed==['verify_hook_trust.py']
+            and producer_snapshot is not None,'Hook producer changed without exact Windows UI-only lineage')
+    old='2d1380218228a854521746a91faac043c368ad5ae0947f60bbd3edd6539f9c96'
+    current='731d404704b5a18da2954758682ed7738fa47bc1ffd629719167cb2e01216a7d'
+    require(verifiers['verify_hook_trust.py']==old and sha(SOURCE/'verify_hook_trust.py')==current,
+            'Hook producer change is not the reviewed whitespace-only UI correction')
+    snapshot=Path(producer_snapshot).resolve();manifest=snapshot.with_name(snapshot.name+'.manifest.json')
+    require(sha(manifest)=='97de55c33b689e18e5841d1b3f5ee6264820593baba14ae55ec61a9635b2950a',
+            'Hook source must be the exact retained R14 producer snapshot')
+    receipt=load(manifest);files=receipt.get('files',{});actual={}
+    require(receipt.get('source_id')=='2d43ed50050d0a687f55' and files.get('verify_hook_trust.py')==old,
+            'Hook source snapshot installation or producer differs')
+    for path in snapshot.rglob('*'):
+        if any(part in {'__pycache__','.pytest_cache'} for part in path.relative_to(snapshot).parts):continue
+        require(not path.is_symlink() and comparison_path(path).is_relative_to(comparison_path(snapshot)),
+                'Hook producer snapshot contains an escaped path')
+        if path.is_file():actual[path.relative_to(snapshot).as_posix()]=sha(path)
+    require(actual==files and receipt.get('qa_sha256')==hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest(),
+            'Hook producer snapshot inventory/hash differs')
+    require(all(files.get(name)==digest for name,digest in verifiers.items()),
+            'Hook producer snapshot does not match every recorded execution dependency')
+    return {'kind':'reviewed_windows_hook_ui_whitespace_only','producer_snapshot_sha256':sha(manifest),
+            'original_producer_sha256':old,'current_contract_sha256':current,
+            'other_execution_dependencies_current':True,'original_raw_reconstructed_by_current_contract':True}
+
+
+def validate_hook_trust(root,installation,native,producer_snapshot=None):
     from verify_hook_trust import CASE_NAMES, VERIFIERS
     root=Path(root)
     identity=load(root/'artifact.json');proof=load(root/'verdict.json')
@@ -985,29 +1283,35 @@ def validate_hook_trust(root,installation,native):
     require(identity.get('controller_optimize')==0 and identity.get('cases')==list(CASE_NAMES),
             'Hook trust controller contract differs')
     verifiers=identity.get('verifier_sha256',{})
-    require(set(verifiers)==set(VERIFIERS) and all(sha(SOURCE/name)==digest for name,digest in verifiers.items()),
-            'Hook trust verifier dependency inventory differs')
+    producer_lineage=validate_hook_producer(verifiers,native,producer_snapshot)
     require(load(root/'results.json')==proof.get('cases'),'Hook trust result rows differ from verdict')
-    return validate_hook_trust_cases(root,proof['cases'])
+    result=validate_hook_trust_cases(root,proof['cases'])
+    if producer_lineage is not None:result['producer_lineage']=producer_lineage
+    return result
 
 
 def main():
     p=argparse.ArgumentParser()
-    for flag in ['entry','regression','methods','local-account','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','native-source-audit','fixtures','rpc-observations']:
+    for flag in ['entry','regression','methods','local-account','browser','browser-protocol','protocol-recovery','native-lifetime','user-verification','schema','native-source-audit','rpc-observations']:
         p.add_argument('--'+flag,type=Path,required=True)
     p.add_argument('--windows-sandbox',type=Path)
     p.add_argument('--windows-command-controls',type=Path,help='Actual same-version Windows restricted command write/resize/terminate comparison')
     p.add_argument('--fault-boundaries',type=Path,help='Required Windows native network/auth/non-idempotent effect fault comparison')
     p.add_argument('--hook-trust',type=Path,required=True,help='Actual native first trust, skip and changed-hook UI lifecycle evidence')
+    p.add_argument('--hook-source',type=Path,help='Exact reviewed Windows R14 hook producer snapshot; current contract reconstructs original raw evidence')
     p.add_argument('--linux-resources',type=Path)
     p.add_argument('--regression-source',type=Path,help='Explicit frozen producer QA directory with a same-name .manifest.json sidecar')
     p.add_argument('--offline-regression',type=Path,help='Current-source complete offline-only acceptance run')
+    work=p.add_mutually_exclusive_group(required=True)
+    work.add_argument('--fixtures',type=Path,help='Native complex tasks actually executed on this installed target')
+    work.add_argument('--complex-runtime-reference',type=Path,help='Exact accepted Windows complex report plus installation; no local task execution is claimed')
     p.add_argument('--complex-runtime',type=Path,help='Independent raw runtime proofs; application test failures remain reported separately')
     p.add_argument('--methods-source',type=Path,help='Explicit frozen methods producer snapshot; execution verifiers and scope implementation must match')
     revalidation=p.add_mutually_exclusive_group()
     revalidation.add_argument('--terminal-regression',type=Path,help='Current-source passing tui+tui-interrupt run, replacing only those original gates')
     revalidation.add_argument('--oauth-regression',type=Path,help='Current-source passing complete four-OAuth run; preserves original failures')
     p.add_argument('--output',type=Path);args=p.parse_args()
+    require(not (args.complex_runtime_reference and args.complex_runtime),'A nonlocal reference cannot be passed as local raw complex evidence')
     entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=load(release/'installation.json');native=load(release/'native-runtime.json')
     scope=qualification_scope(native)
     require(entry==console_entry(release/'venv'),'Expected immutable installed entry')
@@ -1019,7 +1323,7 @@ def main():
     evidence={}
     def record(label,path):evidence[label]=sha(path)
     def same_install(a,label):require(a['installation']==metadata,'Mixed runtime installations in '+label)
-    hook_trust=validate_hook_trust(args.hook_trust,metadata,native)
+    hook_trust=validate_hook_trust(args.hook_trust,metadata,native,args.hook_source)
     for name in ['artifact.json','verdict.json','results.json']:
         record('hook_trust_'+name,args.hook_trust/name)
     for name,expected in hook_trust.pop('evidence_sha256').items():
@@ -1161,49 +1465,54 @@ def main():
         native_faults=validate_native_faults(args.fault_boundaries,entry,metadata,native,schema['official_binary_sha256'])
         for name,digest in native_faults.pop('evidence_sha256').items():evidence['native_fault_'+name]=digest
     else:require(args.fault_boundaries is None,'Windows native fault evidence cannot qualify another platform')
-    real={}
-    for name in ['jinja','httpcore']:
-        root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
-        expected={'verify_real_work.py','acceptance_assertions.py','host_execution_acceptance.py','real_work_imports.py'}
-        if 'verify_real_work_followup.py' in real_artifact.get('verifier_sha256',{}):expected.add('verify_real_work_followup.py')
-        validate_peer_verifiers(real_artifact,expected,name+' real task')
-        complex_proof=None
-        if args.complex_runtime:
-            complex_path=args.complex_runtime/(name+'.json')
-            complex_proof=validate_complex_runtime(complex_path,root,entry,metadata)
-            record(name+'_complex_runtime',complex_path)
-        else:require(row['passed'] and real_work_passed(row),name+' real task incomplete')
-        sandbox_mode=row.get('sandbox_mode')
-        require(sandbox_mode=='workspace-write' or
-                (scope['target']=='x86_64-pc-windows-msvc' and sandbox_mode=='danger-full-access' and 'windows_sandbox' in lifecycle_lineage),
-                name+' real-task sandbox mode is missing or lacks its matching native sandbox lifecycle proof')
-        if complex_proof is None:require(all(v['exit']==0 for v in row['validation']),name+' external regression failed')
-        package='jinja2' if name=='jinja' else 'httpcore';tested_root=root/'work/src' if name=='jinja' else root/'work'
-        for suite in row['validation']:
-            imports=root/('final-'+suite['suite']+'-imports.json');proof=load(imports)
-            require(proof==suite.get('source_imports') and proof.get('passed') is True and proof.get('package')==package
-                    and comparison_path(proof.get('expected_root',''))==comparison_path(tested_root) and not proof.get('invalid_modules'),
-                    name+' independent suite import receipt differs')
-            modules=proof.get('modules',{});require(package in modules,name+' suite did not load the tested package')
-            for module,identity in modules.items():
-                require((module==package or module.startswith(package+'.')) and comparison_path(identity['file']).is_relative_to(comparison_path(tested_root))
-                        and sha(identity['file'])==identity['sha256'],name+' suite loaded foreign or subsequently changed production code')
-            record(name+'_imports_'+suite['suite'],imports)
-        require({'open','find','click'}<=set(row['web_research']['native_completed_actions']) and row['web_research']['distinct_actual_urls']>=2,name+' actual multi-page browsing incomplete')
-        events=[]
-        for index,path in enumerate(sorted(root.glob('events-*.json'))):events.extend(load(path));record(name+'_native_events_'+str(index),path)
-        current=current_browser_evidence(events,row['thread'],turn=row.get('final_turn_id'))
-        require(current['passed'],name+' final real-task turn lacks matched current native browsing evidence')
-        if complex_proof is None:require(current==row['web_research']['current_turn'],name+' browser summary differs from native evidence')
-        require((row.get('followup') or row)['source_id']==metadata['source_id'],name+' final real task used another source version')
-        if name=='httpcore':require(row['restarted'] and {'real-tcp-0','real-tcp-1','real-tcp-2','tls-socket','independent-cancellation'}<={v['suite'] for v in row['validation']},'HTTPcore cold recovery or stress missing')
-        record(name+'_final_results',root/'results.json');record(name+'_final_artifact',stage/'artifact.json');record(name+'_final_patch',root/'agent.patch')
-        real[name]={'passed':True,'sandbox_mode':sandbox_mode,'native_sandbox_lifecycle_verified_separately':sandbox_mode=='danger-full-access','cold_resume_after_source_edit':row.get('restarted',False),'fresh_independent_native_review':True,'unchanged_oracle':True,'validation':[{'suite':v['suite'],'exit':v['exit'],'tail':v.get('tail','')[-350:].replace(str(root),'<fixture>')} for v in row['validation']],'web_research':{'actions':row['web_research']['native_completed_actions'],'distinct_urls':row['web_research']['distinct_actual_urls'],'pages':row['web_research']['pages']},'task_patch_sha256':sha(root/'agent.patch'),'initial_failures_preserved':True,'final_source_id':metadata['source_id']}
-        if complex_proof is not None:
-            real[name].update(passed=row.get('passed') is True,
-                              runtime_mechanisms_passed=True,
-                              application_task_outcome=complex_proof['application_task_outcome'],
-                              runtime_mechanisms=complex_proof['runtime_mechanisms'])
+    complex_reference=None
+    if args.complex_runtime_reference:
+        real,complex_reference=validate_complex_runtime_reference(args.complex_runtime_reference,metadata,native,args.native_source_audit)
+        for name in ['acceptance.json','installation.json']:record('complex_workflow_reference_'+name,args.complex_runtime_reference/name)
+    else:
+        real={}
+        for name in ['jinja','httpcore']:
+            root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
+            expected={'verify_real_work.py','acceptance_assertions.py','host_execution_acceptance.py','real_work_imports.py'}
+            if 'verify_real_work_followup.py' in real_artifact.get('verifier_sha256',{}):expected.add('verify_real_work_followup.py')
+            validate_peer_verifiers(real_artifact,expected,name+' real task')
+            complex_proof=None
+            if args.complex_runtime:
+                complex_path=args.complex_runtime/(name+'.json')
+                complex_proof=validate_complex_runtime(complex_path,root,entry,metadata)
+                record(name+'_complex_runtime',complex_path)
+            else:require(row['passed'] and real_work_passed(row),name+' real task incomplete')
+            sandbox_mode=row.get('sandbox_mode')
+            require(sandbox_mode=='workspace-write' or
+                    (scope['target']=='x86_64-pc-windows-msvc' and sandbox_mode=='danger-full-access' and 'windows_sandbox' in lifecycle_lineage),
+                    name+' real-task sandbox mode is missing or lacks its matching native sandbox lifecycle proof')
+            if complex_proof is None:require(all(v['exit']==0 for v in row['validation']),name+' external regression failed')
+            package='jinja2' if name=='jinja' else 'httpcore';tested_root=root/'work/src' if name=='jinja' else root/'work'
+            for suite in row['validation']:
+                imports=root/('final-'+suite['suite']+'-imports.json');proof=load(imports)
+                require(proof==suite.get('source_imports') and proof.get('passed') is True and proof.get('package')==package
+                        and comparison_path(proof.get('expected_root',''))==comparison_path(tested_root) and not proof.get('invalid_modules'),
+                        name+' independent suite import receipt differs')
+                modules=proof.get('modules',{});require(package in modules,name+' suite did not load the tested package')
+                for module,identity in modules.items():
+                    require((module==package or module.startswith(package+'.')) and comparison_path(identity['file']).is_relative_to(comparison_path(tested_root))
+                            and sha(identity['file'])==identity['sha256'],name+' suite loaded foreign or subsequently changed production code')
+                record(name+'_imports_'+suite['suite'],imports)
+            require({'open','find','click'}<=set(row['web_research']['native_completed_actions']) and row['web_research']['distinct_actual_urls']>=2,name+' actual multi-page browsing incomplete')
+            events=[]
+            for index,path in enumerate(sorted(root.glob('events-*.json'))):events.extend(load(path));record(name+'_native_events_'+str(index),path)
+            current=current_browser_evidence(events,row['thread'],turn=row.get('final_turn_id'))
+            require(current['passed'],name+' final real-task turn lacks matched current native browsing evidence')
+            if complex_proof is None:require(current==row['web_research']['current_turn'],name+' browser summary differs from native evidence')
+            require((row.get('followup') or row)['source_id']==metadata['source_id'],name+' final real task used another source version')
+            if name=='httpcore':require(row['restarted'] and {'real-tcp-0','real-tcp-1','real-tcp-2','tls-socket','independent-cancellation'}<={v['suite'] for v in row['validation']},'HTTPcore cold recovery or stress missing')
+            record(name+'_final_results',root/'results.json');record(name+'_final_artifact',stage/'artifact.json');record(name+'_final_patch',root/'agent.patch')
+            real[name]={'passed':True,'sandbox_mode':sandbox_mode,'native_sandbox_lifecycle_verified_separately':sandbox_mode=='danger-full-access','cold_resume_after_source_edit':row.get('restarted',False),'fresh_independent_native_review':True,'unchanged_oracle':True,'validation':[{'suite':v['suite'],'exit':v['exit'],'tail':v.get('tail','')[-350:].replace(str(root),'<fixture>')} for v in row['validation']],'web_research':{'actions':row['web_research']['native_completed_actions'],'distinct_urls':row['web_research']['distinct_actual_urls'],'pages':row['web_research']['pages']},'task_patch_sha256':sha(root/'agent.patch'),'initial_failures_preserved':True,'final_source_id':metadata['source_id']}
+            if complex_proof is not None:
+                real[name].update(passed=row.get('passed') is True,
+                                  runtime_mechanisms_passed=True,
+                                  application_task_outcome=complex_proof['application_task_outcome'],
+                                  runtime_mechanisms=complex_proof['runtime_mechanisms'])
     observed=load(args.rpc_observations)
     from verify_rpc_observations import NON_RPC_PRODUCERS
     require(observed.get('non_rpc_producers')==NON_RPC_PRODUCERS,'RPC producer classification differs')
@@ -1218,7 +1527,7 @@ def main():
     excluded_rpc_roots=superseded_terminal_roots(args.regression) if args.terminal_regression else ()
     if args.terminal_regression:rpc_roots[args.terminal_regression]=(str(entry),metadata['console_script_sha256'])
     if args.oauth_regression:
-        excluded_rpc_roots=oauth_evidence_roots(args.regression)
+        excluded_rpc_roots=superseded_oauth_evidence_roots(args.regression)
         rpc_roots.update({root:(str(entry),metadata['console_script_sha256']) for root in oauth_evidence_roots(args.oauth_regression)})
     require(observed.get('terminal_revalidation')==terminal_lineage,'RPC terminal replacement lineage differs')
     require(observed.get('oauth_revalidation')==oauth_lineage,'RPC OAuth replacement lineage differs')
@@ -1295,6 +1604,11 @@ def main():
     if args.oauth_regression:
         summary.update(single_run_all_passed=False,original_standard_run={'passed':regression['passed'],'gates':regression['gates'],
                        'passed_count':sum(row['exit']==0 for row in regression['gates']),'failed_count':sum(row['exit']!=0 for row in regression['gates'])})
+    if complex_reference is not None:
+        summary['complex_runtime_reference']=complex_reference
+        summary['additional_acceptance']['complex_real_tasks_executed_on_target']=False
+        summary['qualification_protocol']+=' Complex workflows executed on the exact Windows reference; this target is qualified by its own complete native runtime evidence.'
+        summary['limits'].append('Jinja and HTTPcore are shared-source Windows workflow references. Their outcomes and OS attribution are preserved; no macOS/Linux third-party task execution is claimed.')
     if args.complex_runtime:
         summary['qualification_protocol']+=' Third-party application outcomes remain separate from independently reconstructed runtime mechanism proofs.'
         summary['limits'].append('Runtime acceptance does not assert that every model-generated third-party code change passed its business tests; each original application outcome is retained.')

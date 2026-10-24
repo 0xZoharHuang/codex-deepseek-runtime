@@ -1,0 +1,452 @@
+{
+  "schema_version": 1,
+  "status": "same_native_upstream_background_git_boundary_observed",
+  "observed_at": 1792838510.9945655,
+  "product_source_id": "2d43ed50050d0a687f55",
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "version": "0.164.0-alpha.7",
+  "official_cli_sha256": "5053a44a8810d66341fa7eb3ba266e0f68930e4fb95e202331723c8c569df901",
+  "official_package_archive_sha256": "ded07d7843a745410c2c3f29507057f69afb27cec7ea6ce70f26eafd6fd37941",
+  "comparison": {
+    "candidate": {
+      "root": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2",
+      "raw_sha256": "a643d92d750f3d96a27a4e89cbdd289e3d2cc73b9a86cd98746072dde10b9732",
+      "native_tui_review_observed": true,
+      "native_tui_exit": 0,
+      "native_daemon_stop_confirmed": true,
+      "metadata_eof_completed": true,
+      "model_receipts": 0,
+      "native_task_started": 0,
+      "http_helper_triggered": false,
+      "observation_seconds_after_eof": 155.0972819328308,
+      "natural_all_ended": false,
+      "remaining_git_processes": [
+        {
+          "pid": 178,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212486",
+          "ppid": 72,
+          "exe": "/usr/bin/git",
+          "argv": [
+            "/usr/bin/git",
+            "-c",
+            "safe.bareRepository=explicit",
+            "-C",
+            "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home/.tmp/plugins-clone-XD1IZS",
+            "fetch",
+            "--depth",
+            "1",
+            "--no-tags",
+            "https://github.com/openai/plugins.git",
+            "+0722921d5542fc593105c27bd52630babd8b8c2a:refs/codex/curated-sync"
+          ],
+          "tgid": "178",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792837346.9758067
+        },
+        {
+          "pid": 179,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212487",
+          "ppid": 178,
+          "exe": "/usr/lib/git-core/git",
+          "argv": [
+            "/usr/lib/git-core/git",
+            "remote-https",
+            "https://github.com/openai/plugins.git",
+            "https://github.com/openai/plugins.git"
+          ],
+          "tgid": "179",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792837346.9759464
+        },
+        {
+          "pid": 180,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212487",
+          "ppid": 179,
+          "exe": "/usr/lib/git-core/git-remote-http",
+          "argv": [
+            "/usr/lib/git-core/git-remote-https",
+            "https://github.com/openai/plugins.git",
+            "https://github.com/openai/plugins.git"
+          ],
+          "tgid": "180",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792837346.976096
+        },
+        {
+          "pid": 185,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212608",
+          "ppid": 178,
+          "exe": "/usr/lib/git-core/git",
+          "argv": [
+            "/usr/lib/git-core/git",
+            "--shallow-file",
+            "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home/.tmp/plugins-clone-XD1IZS/.git/shallow.lock",
+            "index-pack",
+            "--stdin",
+            "--fix-thin",
+            "--keep=fetch-pack 178 on DESKTOP-1JHN85B",
+            "--pack_header=2,7305"
+          ],
+          "tgid": "185",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-tui-lifecycle-r17-2045cb-r2/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792837348.1835153
+        }
+      ],
+      "forced_exact_identity_calls": 2,
+      "all_recorded_original_identities_ended": true,
+      "identity_readback": [
+        {
+          "pid": 14,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18211888",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 16,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18211965",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 18,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18211973",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 19,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18211994",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 20,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212000",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 41,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212001",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 72,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212323",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 73,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212323",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 129,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212345",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 133,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212346",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 134,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212346",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 151,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212427",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 156,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212428",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 178,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212486",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 179,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212487",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 180,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212487",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 185,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212608",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 187,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212785",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 188,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18212831",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 221,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18213844",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 224,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18213894",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 225,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18213901",
+          "original_identity_ended": true
+        }
+      ]
+    },
+    "official": {
+      "root": "/home/codex/cds060-linux-official-tui-r17-208ac1",
+      "raw_sha256": "aa6b1158d76df56c4db9614f99b4775f24602942f792140ed6dbda26fe9b4ee1",
+      "native_tui_review_observed": true,
+      "native_tui_exit": 0,
+      "native_daemon_stop_confirmed": true,
+      "metadata_eof_completed": true,
+      "model_receipts": 0,
+      "native_task_started": 0,
+      "http_helper_triggered": false,
+      "observation_seconds_after_eof": 155.19230675697327,
+      "natural_all_ended": false,
+      "remaining_git_processes": [
+        {
+          "pid": 175,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "ppid": 66,
+          "exe": "/usr/bin/git",
+          "argv": [
+            "/usr/bin/git",
+            "-c",
+            "safe.bareRepository=explicit",
+            "-C",
+            "/home/codex/cds060-linux-official-tui-r17-208ac1/home/.tmp/plugins-clone-cfTRQz",
+            "fetch",
+            "--depth",
+            "1",
+            "--no-tags",
+            "https://github.com/openai/plugins.git",
+            "+0722921d5542fc593105c27bd52630babd8b8c2a:refs/codex/curated-sync"
+          ],
+          "tgid": "175",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792838179.0297494
+        },
+        {
+          "pid": 176,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "ppid": 175,
+          "exe": "/usr/lib/git-core/git",
+          "argv": [
+            "/usr/lib/git-core/git",
+            "remote-https",
+            "https://github.com/openai/plugins.git",
+            "https://github.com/openai/plugins.git"
+          ],
+          "tgid": "176",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792838179.0299776
+        },
+        {
+          "pid": 177,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "ppid": 176,
+          "exe": "/usr/lib/git-core/git-remote-http",
+          "argv": [
+            "/usr/lib/git-core/git-remote-https",
+            "https://github.com/openai/plugins.git",
+            "https://github.com/openai/plugins.git"
+          ],
+          "tgid": "177",
+          "profile_env": {
+            "CODEX_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_HOME": "/home/codex/cds060-linux-official-tui-r17-208ac1/home",
+            "CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS": null
+          },
+          "first_seen": 1792838179.0301569
+        }
+      ],
+      "forced_exact_identity_calls": 2,
+      "all_recorded_original_identities_ended": true,
+      "identity_readback": [
+        {
+          "pid": 14,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295185",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 35,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295186",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 66,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295414",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 67,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295414",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 107,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295462",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 125,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295462",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 126,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295463",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 142,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295501",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 151,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295502",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 174,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295682",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 175,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 176,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 177,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295693",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 179,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295808",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 198,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295824",
+          "original_identity_ended": true
+        },
+        {
+          "pid": 212,
+          "birth": "linux:97db1e2b-5339-46ab-ad22-77dd4bc69107:18295857",
+          "original_identity_ended": true
+        }
+      ]
+    }
+  },
+  "source": {
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "file": "codex-rs/core-plugins/src/startup_sync.rs",
+    "source_sha256": "57b3a9295919060467a976b70ea18dc0ebfd824f0e788c0c491df4038fe37641",
+    "byte_identical_to_pinned_upstream": true,
+    "mechanism_locations": [
+      {
+        "line": 36,
+        "text": "const CURATED_PLUGINS_GIT_TIMEOUT: Duration = Duration::from_secs(30);"
+      },
+      {
+        "line": 276,
+        "text": "let output = run_git_command_with_timeout(&mut command, context, CURATED_PLUGINS_GIT_TIMEOUT)?;"
+      },
+      {
+        "line": 295,
+        "text": "fn run_git_in_repo("
+      },
+      {
+        "line": 303,
+        "text": "let output = run_git_command_with_timeout(&mut command, context, CURATED_PLUGINS_GIT_TIMEOUT)?;"
+      },
+      {
+        "line": 621,
+        "text": "CURATED_PLUGINS_GIT_TIMEOUT,"
+      },
+      {
+        "line": 683,
+        "text": "fn run_git_command_with_timeout("
+      },
+      {
+        "line": 697,
+        "text": "match child.try_wait() {"
+      },
+      {
+        "line": 708,
+        "text": "match child.try_wait() {"
+      },
+      {
+        "line": 718,
+        "text": "let _ = child.kill();"
+      },
+      {
+        "line": 733,
+        "text": "std::thread::sleep(Duration::from_millis(100));"
+      }
+    ],
+    "lexical_drop_kill_present": false,
+    "inference": "The timeout/kill loop runs in the native parent. This source path contains no child drop-kill setting; runtime official comparison remains separate proof."
+  },
+  "inference": "The same fixed-version official CLI also left its curated plugin Git fetch descendants alive after native daemon stop. No candidate-specific lifecycle regression was established by this comparison. This does not turn either natural-cleanup failure into a pass.",
+  "historical_hook_outer_forced": 15,
+  "historical_hook_unknown_exe_classification": 12,
+  "historical_raw_reclassified": false,
+  "model_calls_in_comparison": 0,
+  "new_product_patches": 0,
+  "raw_sha256": {
+    "candidate-tui-lifecycle.raw.json": "a643d92d750f3d96a27a4e89cbdd289e3d2cc73b9a86cd98746072dde10b9732",
+    "official-tui-lifecycle.raw.json": "aa6b1158d76df56c4db9614f99b4775f24602942f792140ed6dbda26fe9b4ee1"
+  },
+  "linux_runtime_libraries_sha256": "c4b1fba7a2fab7626a0acdaeacea4b215f564a5919e222a400d7288fff49e51d",
+  "runtime_minimum_glibc_by_symbols": "2.39",
+  "all_diagnostic_owned_identities_now_ended": true
+}

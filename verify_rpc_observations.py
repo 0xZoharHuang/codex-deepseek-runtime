@@ -7,7 +7,7 @@ from pathlib import Path,PureWindowsPath
 import re
 
 from assemble_release_acceptance import (qualification_scope,installation_lineage,require,sha,load,validate_standard_gates,
-    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,oauth_evidence_roots,evidence_io_root,TERMINAL_GATES,OAUTH_GATES,validate_method_platform_boundaries,validate_windows_command_controls)
+    validate_regression_source,validate_offline_run,validate_terminal_qa,gate_evidence,superseded_terminal_roots,oauth_evidence_roots,superseded_oauth_evidence_roots,evidence_io_root,TERMINAL_GATES,OAUTH_GATES,validate_method_platform_boundaries,validate_windows_command_controls)
 from install import console_entry,valid_release,_support
 
 comparison_path=_support.comparison_path
@@ -145,7 +145,7 @@ def main():
         after=load(args.terminal_regression/'verdict.json');replacement=load(args.terminal_regression/'artifact.json')
         roots.update({root:(str(entry),entry_sha) for root in regression_roots(args.terminal_regression,replacement,after)})
     if args.oauth_regression:
-        excluded=oauth_evidence_roots(args.regression)
+        excluded=superseded_oauth_evidence_roots(args.regression)
         roots.update({root:(str(entry),entry_sha) for root in oauth_evidence_roots(args.oauth_regression)})
     roots[args.methods.resolve()]=(str(entry),entry_sha)
     supplemental={}

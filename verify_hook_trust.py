@@ -84,14 +84,20 @@ def one_fixture_hook(response):
     return hook
 
 
+def review_screen(transcript):
+    # Ratatui may place words with cursor CSI instead of literal spaces.
+    # Match every fixed label after terminal cleanup and whitespace removal.
+    plain = "".join(plain_terminal(transcript).decode("utf-8", errors="replace").split())
+    return all("".join(label.split()) in plain for label in REVIEW_LABELS)
+
+
 def case_contract(name, before_hook, after_hook, before_config, after_config,
                   calls_before, calls_after, hook_nonce, shell_effect,
                   expected_effect, transcript, inputs, completed, native_thread):
     """Check independent effects and native trust, never a saved passed boolean."""
     if name not in CASE_NAMES:
         raise AssertionError("Unknown hook trust case")
-    plain = " ".join(plain_terminal(transcript).decode("utf-8", errors="replace").split())
-    if not all(label in plain for label in REVIEW_LABELS):
+    if not review_screen(transcript):
         raise AssertionError("Native hook review screen was not observed")
     choices = [row["action"] for row in inputs if row["action"] != "terminal_query_reply"]
     expected_choices = (
@@ -117,8 +123,7 @@ def case_contract(name, before_hook, after_hook, before_config, after_config,
                 or type(stamp) not in (int, float) or not math.isfinite(stamp) or stamp < last_time):
             raise AssertionError("Native terminal input bytes/order differ")
         if row["action"] in {"select_trust", "continue_without_trust"}:
-            prefix = " ".join(plain_terminal(transcript[:offset]).decode("utf-8", errors="replace").split())
-            if not all(label in prefix for label in REVIEW_LABELS):
+            if not review_screen(transcript[:offset]):
                 raise AssertionError("Hook choice preceded the observed native review screen")
         last_offset, last_time = offset, stamp
     if not completed or completed.get("reply") != expected_effect["reply"]:
@@ -224,8 +229,7 @@ def run_terminal(entry, root, case, name, prompt, effect, expected_effect, backe
             receive()
             if child.poll() is not None:
                 raise AssertionError("Native TUI exited before hook review")
-            plain = " ".join(plain_terminal(transcript).decode("utf-8", errors="replace").split())
-            if all(label in plain for label in REVIEW_LABELS):
+            if review_screen(transcript):
                 break
         else:
             raise TimeoutError("Native first-time hook review did not appear")

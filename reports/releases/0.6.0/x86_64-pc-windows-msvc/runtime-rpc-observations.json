@@ -4,8 +4,8 @@
   "entry_sha256": "c2ee98a21f718c5b99f4f4b8541bc94b2046316ea395d02a18a7c9fccd1a5e44",
   "source_id": "2d43ed50050d0a687f55",
   "verifier_sha256": {
-    "verify_rpc_observations.py": "3a3f0407fb17880a3e06d19faa6d71855e183dad2bafc1d5514950ffce708e00",
-    "assemble_release_acceptance.py": "fc7de98ca13175af28fef7e04343340a4201053936fd0530d8a431c34cd05940",
+    "verify_rpc_observations.py": "18f609caaf195caf1e89968375a5dffc07e9e89190b45f34129c104c058dc942",
+    "assemble_release_acceptance.py": "4ee888001324f604f6691237cc0526d2ea7315c98212be09e5d2edca1ed74a22",
     "install.py": "84ee3d8eb38bccccad815c7c1e80ec985aafa47932374c558d38bdb9fa513938",
     "qa_workspace.py": "60166ac92604728a9f3aca7d6a0c1e4c79144b5e2de1a6c3f567d265a127cc73"
   },
@@ -268,7 +268,15 @@
     },
     "other_qa_changes_rechecked_by_current_offline": [
       "assemble_release_acceptance.py",
+      "tests/test_complex_runtime_reference.py",
+      "tests/test_macos_cleanup_revalidation.py",
+      "tests/test_qualification_scope.py",
+      "tests/test_source_hook_recipe.py",
+      "tests/test_superseded_oauth_exclusion.py",
       "tests/test_windows_command_controls.py",
+      "verify_hook_trust.py",
+      "verify_macos_keyring_fixture_cleanup.py",
+      "verify_native_source.py",
       "verify_rpc_observations.py"
     ],
     "scope": "all_four_oauth_variants",
@@ -281,7 +289,8 @@
       "oauth-keyring": "fadb65a66b8713e92f494a16001e709c93017866c004c6afdc09a290d9858d3f",
       "oauth-secrets": "59f9ca3ece6978a6779e26ce9f39337d0a7fc1425e29939135cfecd3d2f1770c"
     },
-    "replacement_results_sha256": "c83df96267407e3a05d7110707411f19a95573e0fa9fb513e6a687f12c0f69cf"
+    "replacement_results_sha256": "c83df96267407e3a05d7110707411f19a95573e0fa9fb513e6a687f12c0f69cf",
+    "native_probe_revalidation": null
   },
   "supplemental_lifecycle_lineage": {
     "local_account": {

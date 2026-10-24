@@ -1,0 +1,20 @@
+{
+  "target": "x86_64-unknown-linux-gnu",
+  "source_id": "2d43ed50050d0a687f55",
+  "final_qa_freeze_sha256": "7f7f6a603958c5b1b9c89423fe260c50cf6722dc74cb170fe1c7a0aaa7c9c653",
+  "files": {
+    "acceptance.json": "a56d21b41fa1edf05f8cb670f72bd343919b5aaa40c0b29e317ede37ccf4e1ba",
+    "runtime-qualification.json": "a56d21b41fa1edf05f8cb670f72bd343919b5aaa40c0b29e317ede37ccf4e1ba",
+    "runtime-method-matrix.json": "dfe0e410d102979a20558a16d44f008e7521151089e7c1571c55d96c2faf7737",
+    "remaining-local-methods.json": "8987135fd2fb0aa027c514ed94af4fab7d0a0d1d65180614900d120d780acba4",
+    "qualification-lineage.json": "056689a8a9146092ddcbc4877ece597da6e53baa80d2455ed0bc205f2aafc85d",
+    "native-schema-comparison.json": "50b9eceb3572623ae478d787112a09b52e2c9689b3709842482bfd2a481d2b6b",
+    "runtime-rpc-observations.json": "93d93239c4615d0bdce0f4a58d26d618153bc66a6956c51ed64953604bf18ad7"
+  },
+  "scope": "accepted_for_frozen_target_local_runtime_scope",
+  "original_producer_bytes_preserved": true,
+  "additional_observations": {
+    "native-lifecycle-boundary-comparison.json": "7ec8ca5614eed00d10bcde42792ec97847e5c22f3ba4d37ad07cfa27aba33095",
+    "linux-runtime-libraries-final.json": "c4b1fba7a2fab7626a0acdaeacea4b215f564a5919e222a400d7288fff49e51d"
+  }
+}

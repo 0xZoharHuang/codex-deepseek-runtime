@@ -1,0 +1,16 @@
+{
+  "target": "aarch64-apple-darwin",
+  "source_id": "2d43ed50050d0a687f55",
+  "final_qa_freeze_sha256": "7f7f6a603958c5b1b9c89423fe260c50cf6722dc74cb170fe1c7a0aaa7c9c653",
+  "files": {
+    "acceptance.json": "1e441ca9a80a08cd43a6187d386bc106220bf02e09880ebae055e87703b32f6f",
+    "runtime-qualification.json": "1e441ca9a80a08cd43a6187d386bc106220bf02e09880ebae055e87703b32f6f",
+    "runtime-method-matrix.json": "d2e6cff1477ee643ebdbfb5adbf88bd1c4a9ebbd0cf1b6f4e57c61b1eb9178a9",
+    "remaining-local-methods.json": "7a38453512f983c4b682a66a837f0fd23edb007ee95a7dd3c86b4a2ddb4ce463",
+    "qualification-lineage.json": "01ef26f8ecc53dace822e66d9ca57073b3d11191408fc176c4202b28da5a0c22",
+    "native-schema-comparison.json": "741db7ae7b248a9e3b754b5ab7721e902d0877b52b61dabd997e7eeb30b46357",
+    "runtime-rpc-observations.json": "9f33e6bbe0c6f049860df1eb5587d7f124fda0baddc56ffc68c9f97b0f17c99c"
+  },
+  "scope": "accepted_for_frozen_target_local_runtime_scope",
+  "original_producer_bytes_preserved": true
+}

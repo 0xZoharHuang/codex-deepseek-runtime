@@ -139,7 +139,7 @@ def checked_source_inventory(tree, contract):
     return actual, auxiliary
 
 
-def package_identity(package, native, contract, combined_sha):
+def package_identity(package, native, contract, combined_sha, archived_recipe=None):
     package = Path(package).resolve()
     require(native.get('status') == 'ready' and native.get('upstream_commit') == build.COMMIT
             and native.get('upstream_version') == build.VERSION
@@ -166,6 +166,14 @@ def package_identity(package, native, contract, combined_sha):
     require(binaries <= actual.keys(), 'Native package is missing required target binaries')
     metadata = load(package / 'codex-package.json')
     receipt = load(package / 'build-receipt.json')
+    recipe_proof = None
+    if archived_recipe is not None:
+        # Reuse the exact closure already used for fixed public Unix archives.
+        from ci import qualify_native
+        require(qualify_native.ROOT.resolve() == SOURCE.resolve(),
+                'Archived recipe helper belongs to another source checkout')
+        recipe_proof = qualify_native.recipe_scope_identity(
+            receipt, contract['recipe'], native['target'], Path(archived_recipe))
     require(metadata.get('target') == native['target'] and metadata.get('upstreamCommit') == build.COMMIT
             and metadata.get('version') == build.VERSION and metadata.get('recipeId') == contract['recipe_id']
             and metadata.get('patchSha256') == combined_sha
@@ -178,16 +186,19 @@ def package_identity(package, native, contract, combined_sha):
             and receipt.get('build_toolchain_pin') == contract['recipe']['build_toolchain']
             and receipt.get('upstream_toolchain_pin') == contract['recipe']['upstream_toolchain']
             and str(receipt.get('rustc', '')).startswith('rustc ' + contract['recipe']['build_toolchain'] + ' ')
-            and receipt.get('overlay_recipe_sha256') == build.sha(SOURCE / 'native/runtime-overlays.json')
+            and (recipe_proof is not None or receipt.get('overlay_recipe_sha256') == build.sha(SOURCE / 'native/runtime-overlays.json'))
             and receipt.get('archives') == {name: {'url': url, 'sha256': digest}
                 for name, (url, digest) in build.build_assets(native['target']).items()}
             and receipt.get('files') == {name: digest for name, digest in actual.items() if name != 'build-receipt.json'},
             'Native build receipt does not bind the audited source and package')
-    return {'package': str(package), 'native_manifest': native, 'files_sha256': actual,
-            'binary_sha256': {name: actual[name] for name in sorted(binaries)}}
+    proof = {'package': str(package), 'native_manifest': native, 'files_sha256': actual,
+             'binary_sha256': {name: actual[name] for name in sorted(binaries)}}
+    if recipe_proof is not None:
+        proof['recipe_validation'] = recipe_proof
+    return proof
 
 
-def audit(archive, tree, target, package, native, output):
+def audit(archive, tree, target, package, native, output, archived_recipe=None):
     archive, tree, output = Path(archive).resolve(), Path(tree).resolve(), Path(output).resolve()
     require(native.get('target') == target, 'Native manifest target mismatch')
     contract = source_contract(target, archive)
@@ -215,7 +226,7 @@ def audit(archive, tree, target, package, native, output):
     external = lambda value: sorted(json.dumps(row, sort_keys=True) for row in value['package'] if row.get('source'))
     require(external(before_lock) == external(after_lock), 'External native dependency versions changed')
     combined = hashlib.sha256(build.combined_patch(tree, archive, contract['declared']).encode()).hexdigest()
-    package_proof = package_identity(package, native, contract, combined)
+    package_proof = package_identity(package, native, contract, combined, archived_recipe)
     require(checked_source_inventory(tree, contract)[0] == actual, 'Native source changed during audit')
     proof = {'schema_version': 2, 'passed': True, 'target': target, 'upstream_commit': build.COMMIT,
              'upstream_archive_sha256': build.SOURCE_ASSET[1], 'upstream_archive': str(archive),
@@ -233,6 +244,8 @@ def audit(archive, tree, target, package, native, output):
              'native_package': package_proof, 'external_cargo_packages_unchanged': True,
              'full_source_hashes_verified': True, 'patch_replay_passed': True,
              'verifier_sha256': {name: build.sha(SOURCE / name) for name in ['verify_native_source.py', 'build_native.py']}}
+    if archived_recipe is not None:
+        proof['verifier_sha256']['ci/qualify_native.py'] = build.sha(SOURCE / 'ci/qualify_native.py')
     (output / 'verdict.json').write_text(json.dumps(proof, indent=2) + '\n', encoding='utf-8')
     return proof
 
@@ -241,6 +254,14 @@ def validate_audit(proof, native):
     require(proof.get('schema_version') == 2 and proof.get('passed') is True
             and proof.get('target') == native.get('target') and proof.get('upstream_commit') == build.COMMIT
             and proof.get('upstream_archive_sha256') == build.SOURCE_ASSET[1], 'Source audit target/upstream mismatch')
+    recipe_proof = proof.get('native_package', {}).get('recipe_validation')
+    archived_recipe = None
+    if recipe_proof is not None:
+        require(isinstance(recipe_proof, dict)
+                and recipe_proof.get('mode') == 'original_archive_target_equivalence'
+                and isinstance(recipe_proof.get('archived_recipe'), str)
+                and recipe_proof['archived_recipe'], 'Invalid explicit archived recipe proof')
+        archived_recipe = Path(recipe_proof['archived_recipe'])
     contract = source_contract(native['target'], proof['upstream_archive'])
     actual, auxiliary = checked_source_inventory(proof['source_tree'], contract)
     expected = {'source_files': len(contract['before']),
@@ -256,10 +277,12 @@ def validate_audit(proof, native):
                 'native_recipe_id': contract['recipe_id'], 'external_cargo_packages_unchanged': True,
                 'full_source_hashes_verified': True, 'patch_replay_passed': True,
                 'verifier_sha256': {name: build.sha(SOURCE / name) for name in ['verify_native_source.py', 'build_native.py']}}
+    if archived_recipe is not None:
+        expected['verifier_sha256']['ci/qualify_native.py'] = build.sha(SOURCE / 'ci/qualify_native.py')
     require(all(proof.get(key) == value for key, value in expected.items()), 'Source audit inventory or verifier proof differs')
     combined = hashlib.sha256(build.combined_patch(proof['source_tree'], proof['upstream_archive'], contract['declared']).encode()).hexdigest()
     require(proof.get('combined_patch_sha256') == combined, 'Audited source diff identity changed')
-    require(proof.get('native_package') == package_identity(proof['native_package']['package'], native, contract, combined), 'Audited native package identity changed')
+    require(proof.get('native_package') == package_identity(proof['native_package']['package'], native, contract, combined, archived_recipe), 'Audited native package identity changed')
     return {'upstream_source_files': len(contract['before']),
             'unchanged_protected_runtime_files': len(contract['unchanged_protected']),
             'declared_protected_source_sha256': contract['declared_protected'],
@@ -274,8 +297,9 @@ def main():
     for name in ['archive', 'source-tree', 'native-package', 'native-manifest', 'output']:
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--target', required=True)
+    parser.add_argument('--archived-recipe', type=Path)
     args = parser.parse_args()
-    result = audit(args.archive, args.source_tree, args.target, args.native_package, load(args.native_manifest), args.output)
+    result = audit(args.archive, args.source_tree, args.target, args.native_package, load(args.native_manifest), args.output, args.archived_recipe)
     print(json.dumps({'passed': result['passed'], 'target': args.target, 'native_recipe_id': result['native_recipe_id'], 'output': str(args.output)}))
 
 
