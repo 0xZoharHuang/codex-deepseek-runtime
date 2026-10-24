@@ -80,6 +80,12 @@ def cold_evidence(upstream,root,peer,*,returned):
     assert len(effects(root))==1 and effects(root)[0]["marker"]==call
     return {"call":calls,"outputs":outputs,"mcp_events":tool_events,"ledger":effects(root),"persisted":persisted_items(root/"home",call)}
 
+def native_partial_delta(event,thread,turn):
+    params=event.get("params",{})
+    return (event.get("method")=="item/agentMessage/delta" and params.get("threadId")==thread
+            and params.get("turnId")==turn and params.get("delta")=="PARTIAL")
+
+
 def terminal(peer,thread,turn,start):
     return peer.wait(lambda e:e.get("method")=="turn/completed" and e.get("params",{}).get("threadId")==thread and e.get("params",{}).get("turn",{}).get("id")==turn,start,timeout=90)
 def close_peer(peer,*,crashed=False):
@@ -92,7 +98,7 @@ class Upstream:
     def __init__(self,root,kind):
         self.root=root;self.kind=kind;self.requests=[];self.tunnels=[];self.handlers=set()
         self.call_id="call_effect_"+uuid.uuid4().hex;self.phase="initial";self.fault_sent=False
-        self.tool_result_seen=asyncio.Event();self.hold_release=asyncio.Event();self.disconnected=asyncio.Event()
+        self.tool_result_seen=asyncio.Event();self.hold_release=asyncio.Event();self.disconnected=asyncio.Event();self.native_partial_seen=asyncio.Event()
     async def handle(self,request):
         body=await request.json()
         authorization=request.headers.get("Authorization")
@@ -110,6 +116,9 @@ class Upstream:
             await response.write(b'data: {"type":"response.output_text.delta","item_id":"message_fault","output_index":0,"content_index":0,"delta":"PARTIAL"}\n\n')
             row["fault"]=self.kind
             if self.kind=="tcp-reset":
+                await asyncio.wait_for(self.native_partial_seen.wait(),30)
+                row["reset_after_native_partial"]=True
+                save(self.root/"upstream-requests.json",self.requests)
                 request.transport.abort()
                 return response
             await response.write_eof();return response
@@ -232,6 +241,10 @@ async def scenario(root,binary,candidate,catalog,python,kind):
         peer=await asyncio.to_thread(new_peer,root,binary,catalog,service,python,kind.startswith("effect"))
         tid=await asyncio.to_thread(peer.new);turn,start=await asyncio.to_thread(peer.start,tid,"Run the owned append tool once." if kind.startswith("effect") else "Return the fixture marker. Do not call tools.")
         report.update(thread=tid,turn=turn,call_id=upstream.call_id)
+        if kind=="tcp-reset":
+            report["native_partial_before_reset"]=await asyncio.to_thread(peer.wait,
+                lambda event:native_partial_delta(event,tid,turn),start,20)
+            upstream.native_partial_seen.set()
         if kind in {"auth401","auth403"}:
             event=await asyncio.to_thread(terminal,peer,tid,turn,start)
             report["first_terminal"]=event
