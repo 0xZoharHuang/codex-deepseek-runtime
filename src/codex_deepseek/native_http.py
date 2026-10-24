@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -83,10 +84,14 @@ class NativeTransport:
     @asynccontextmanager
     async def request(self,method,url,*,api_key,payload=None,policy='default'):
         await self.start()
-        async with self.client.post(f'http://127.0.0.1:{self.port}/forward',json={
-            'api_key':api_key,'url':url,'method':method,'payload':payload,'policy':policy},
-            headers={'Authorization':'Bearer '+self.token},allow_redirects=False) as response:
-            yield response
+        envelope={'api_key':api_key,'url':url,'method':method,'payload':payload,'policy':policy}
+        # Match aiohttp's default JsonPayload encoding without a large BytesPayload.
+        body=await asyncio.to_thread(lambda:json.dumps(envelope).encode('utf-8'))
+        with BytesIO(body) as stream:
+            async with self.client.post(f'http://127.0.0.1:{self.port}/forward',data=stream,
+                    headers={'Authorization':'Bearer '+self.token,'Content-Type':'application/json'},
+                    allow_redirects=False) as response:
+                yield response
 
     async def require_raw(self):
         try:await self.start()
@@ -107,10 +112,12 @@ class NativeTransport:
         if len(metadata.encode('ascii'))>8192:
             raise ValueError('Raw native HTTP metadata exceeds its IPC budget')
         await self.require_raw()
-        async with self.client.post(f'http://127.0.0.1:{self.port}/forward-raw',data=body,
-                headers={'Authorization':'Bearer '+self.token,'X-CDS-Transport-Metadata':metadata,
-                         'Content-Type':'application/octet-stream'},allow_redirects=False) as response:
-            yield response
+        # Keep ownership through response exit, including cancellation and errors.
+        with BytesIO(body) as stream:
+            async with self.client.post(f'http://127.0.0.1:{self.port}/forward-raw',data=stream,
+                    headers={'Authorization':'Bearer '+self.token,'X-CDS-Transport-Metadata':metadata,
+                             'Content-Type':'application/octet-stream'},allow_redirects=False) as response:
+                yield response
 
     def post(self,url,*,json,headers,policy='default',**unused):
         authorization=headers.get('Authorization','')
