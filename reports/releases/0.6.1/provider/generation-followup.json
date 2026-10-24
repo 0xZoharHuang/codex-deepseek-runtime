@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "scope": "metadata-only followup to exactly two completed synthetic provider calls; not App/runtime proof",
+  "pid": 1640,
+  "birth": 1792848978.0450015,
+  "started": 1792848978.4465513,
+  "model_requests": 0,
+  "retries": 0,
+  "original_qualification_sha256": "1111ca9a1c54a61104bdd16a5cb0528e9aa29f3a63958abfec73aaff255f7a8f",
+  "cases": [
+    {
+      "name": "developer_typed_image_files",
+      "response_id": "gen-1792848758-lqaHaOzMw2RvGdzUySjE",
+      "generation": {
+        "receipt_id": "ae17ace7-296d-4371-bdfc-ee1cd186ccd9",
+        "response_id": "gen-1792848758-lqaHaOzMw2RvGdzUySjE",
+        "requested": {
+          "upstream_model": "deepseek/deepseek-v4.1-flash-1017",
+          "provider": "deepseek"
+        },
+        "inference_requests": 0,
+        "lookup_status": "found",
+        "generation_lookup": {
+          "attempts": [
+            {
+              "http_status": 200
+            }
+          ]
+        },
+        "model_identity": {
+          "matches_requested": true,
+          "status": "verified_canonical_alias",
+          "proof": {
+            "http_status": 200,
+            "metadata": {
+              "id": "deepseek/deepseek-v4.1-flash-1017",
+              "canonical_slug": "deepseek/deepseek-v4.1-flash-20261017"
+            },
+            "raw_sha256": "940f332f1c00d35e340b3692409851ad08a32587c27d735a5a33fbc3d587893f"
+          }
+        },
+        "observed": {
+          "id": "gen-1792848758-lqaHaOzMw2RvGdzUySjE",
+          "model": "deepseek/deepseek-v4.1-flash-20261017",
+          "provider_name": "DeepSeek",
+          "cancelled": false,
+          "finish_reason": "stop",
+          "native_finish_reason": "stop"
+        }
+      },
+      "accepted": true
+    },
+    {
+      "name": "samebytes_user_low_tool_high",
+      "response_id": "gen-1792848764-fUN4nXdgA1HCu8h5lZLq",
+      "generation": {
+        "receipt_id": "abbc6579-9953-4973-8bfd-47a8fcf23503",
+        "response_id": "gen-1792848764-fUN4nXdgA1HCu8h5lZLq",
+        "requested": {
+          "upstream_model": "deepseek/deepseek-v4.1-flash-1017",
+          "provider": "deepseek"
+        },
+        "inference_requests": 0,
+        "lookup_status": "found",
+        "generation_lookup": {
+          "attempts": [
+            {
+              "http_status": 200
+            }
+          ]
+        },
+        "model_identity": {
+          "matches_requested": true,
+          "status": "verified_canonical_alias",
+          "proof": {
+            "http_status": 200,
+            "metadata": {
+              "id": "deepseek/deepseek-v4.1-flash-1017",
+              "canonical_slug": "deepseek/deepseek-v4.1-flash-20261017"
+            },
+            "raw_sha256": "940f332f1c00d35e340b3692409851ad08a32587c27d735a5a33fbc3d587893f"
+          }
+        },
+        "observed": {
+          "id": "gen-1792848764-fUN4nXdgA1HCu8h5lZLq",
+          "model": "deepseek/deepseek-v4.1-flash-20261017",
+          "provider_name": "DeepSeek",
+          "cancelled": false,
+          "finish_reason": "stop",
+          "native_finish_reason": "stop"
+        }
+      },
+      "accepted": true
+    }
+  ],
+  "metadata_http": [
+    {
+      "endpoint": "generation",
+      "http_status": 200
+    },
+    {
+      "endpoint": "fixed_model",
+      "http_status": 200
+    },
+    {
+      "endpoint": "generation",
+      "http_status": 200
+    },
+    {
+      "endpoint": "fixed_model",
+      "http_status": 200
+    }
+  ],
+  "accepted": true,
+  "verified_adapter_count": 28,
+  "source_id": "c9870a1014d6af890b10",
+  "original_bytes_unchanged": true,
+  "source_unchanged_after": true,
+  "finished": 1792848985.0587187,
+  "phase": "metadata_qualified"
+}

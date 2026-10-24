@@ -1,0 +1,2 @@
+# Preserve qualification producer bytes and their SHA-256 across platforms.
+*.json -text whitespace=cr-at-eol

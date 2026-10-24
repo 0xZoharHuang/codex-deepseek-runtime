@@ -1,0 +1,43 @@
+{
+  "phase": "offline",
+  "complete": true,
+  "started": 1792848589.076868,
+  "model_use_permitted": false,
+  "plan_sha256": "eabff805939bbba7309c001286940d7289341a1d957c547dce5bd59fb1f86062",
+  "identity": {
+    "sid": "S-1-5-21-754560609-792365222-3758953957-1001",
+    "session": 1,
+    "high": true,
+    "pid": 16452,
+    "birth": 1792848588.9986334
+  },
+  "argv": [
+    "D:\\CDS061R21-c9870a10\\releases\\c9870a1014d6af890b10\\venv\\Scripts\\python.exe",
+    "D:\\Projects\\codex-deepseek-runtime\\run_acceptance.py",
+    "--entry",
+    "D:\\CDS061R21-c9870a10\\releases\\c9870a1014d6af890b10\\venv\\Scripts\\codex-deepseek.exe",
+    "--output",
+    "D:\\CDSQA061R22\\offline",
+    "--fixtures",
+    "D:\\CDSQA061R22W",
+    "--native-probe",
+    "D:\\CDS060ProbeBuild\\network-plugin-owner\\deepseek_policy_revocation.exe",
+    "--keyring-probe",
+    "D:\\CDS060ProbeBuild\\secret-key-plugin-owner\\deepseek_fixture_secret_key.exe",
+    "--jobs",
+    "1",
+    "--sandbox-mode",
+    "workspace-write",
+    "--native-source-archive",
+    "D:\\CDSPayloadBuild\\source.tar.gz",
+    "--only",
+    "offline"
+  ],
+  "exit": 0,
+  "seconds": 180.05605709998053,
+  "log_sha256": "39e4a112efd2ebee1849dda11f0949ef8c27a40d0979be71c8d23a6a8588224e",
+  "root": "D:\\CDSQA061R22\\offline\\6e5ea6b2970a",
+  "verdict_sha256": "20d41699f81ddbfe8122b8616f7a16acd201f890c6b8be7718920f0ea83f42be",
+  "passed": true,
+  "finished": 1792848769.2811046
+}

@@ -1,0 +1,795 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "reviewed_at": 1792851458.8721335,
+  "run_id": 40099278406,
+  "head_sha": "ab482879192772fafab903a25692076c690a49a5",
+  "attempt": 1,
+  "event": "push",
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40099278406",
+  "scope": "Independent raw artifact review: hosted current-source complete offline and native transport qualification; not new paid tasks, App GUI or a business HTTP 400 cause.",
+  "source_id": "c9870a1014d6af890b10",
+  "version": "0.6.1",
+  "product_files": 95,
+  "qa_files": 180,
+  "freeze_sha256": "79f2ff4bf1099f244956373b1473e34e234d6e24c44d87b7f2798434b1537eb1",
+  "source_binding": {
+    "fixed_git_commit": "ab482879192772fafab903a25692076c690a49a5",
+    "fixed_commit_regular_files": 436,
+    "product95_exact": true,
+    "qa180_exact": true
+  },
+  "platforms": {
+    "linux-x64": {
+      "artifact_id": 12561898625,
+      "artifact_sha256": "2ac0a39bc0b32fdfe0ecbf53ab4bb053d9cdcf06c0a313b21de1b653c2bf5a69",
+      "zip_bytes": 317531,
+      "zip_files": 27,
+      "uncompressed_bytes": 2152550,
+      "controller_passed": 50,
+      "controller_excluded_from_1815": true,
+      "complete_collection": 1815,
+      "native_passed": 15,
+      "remainder_cases": 1800,
+      "remainder_passed": 1769,
+      "total_passed": 1784,
+      "skipped": [
+        {
+          "classname": "tests.test_install",
+          "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[False]",
+          "message": "Windows native artifact DACL contract"
+        },
+        {
+          "classname": "tests.test_install",
+          "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[True]",
+          "message": "Windows native artifact DACL contract"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_extended_paths_cannot_alias_codex_app_state",
+          "message": "Win32 extended-length directory aliases"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]",
+          "message": "Native Windows daemon creation FILETIME record"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]",
+          "message": "Native Windows daemon creation FILETIME record"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]",
+          "message": "Windows console control events; requires a Windows native package"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]",
+          "message": "Windows console control events; requires a Windows native package"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_locked_activation_fails_atomically_and_preserves_current_receipt",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[staging]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[installed]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[profile]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[sid-another]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[session_id-0]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[elevated-True]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_unrelated_output_refused_before_arming",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_unadmitted_verifier_refused",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_partial_admission_cannot_fall_back_to_guest",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_other_host_still_requires_explicit_admission",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_declared_limited_owned_scope",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_native_eof_precedes_generic_cleanup",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options0]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options1]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options2]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_preserves_primary_error_when_cleanup_also_fails",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_cleanup_error_cannot_be_a_successful_shutdown",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_main_retains_failure_receipt_when_final_cleanup_also_raises",
+          "message": "Windows-only lifecycle admission contract"
+        }
+      ],
+      "no_duplicate_omitted_or_deselected_cases": true,
+      "windows_collection_comparison": {
+        "identical_count": 1815,
+        "only_expected_platform_parameters": {
+          "windows": [
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[cds.exe]"
+            ],
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[codex.exe]"
+            ]
+          ],
+          "host": [
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[cds]"
+            ],
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[codex]"
+            ]
+          ]
+        },
+        "fixed_source_binding": "tests/test_cds_skill_inspect.py platform conditional cds/codex executable basenames"
+      },
+      "new_semantic_guards_passed": [
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[function]",
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[custom]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[user]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[developer]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[system]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[assistant]",
+        "test_provider_assistant_input_image_is_explicit_protocol_failure",
+        "test_wire_budget_invariant_covers_both_sides_of_activation_boundary"
+      ],
+      "warnings_as_errors": {
+        "native_actual_argv": [
+          "/home/runner/work/_temp/cds-reuse-venv/bin/python",
+          "-I",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "pytest_asyncio.plugin",
+          "-W",
+          "error",
+          "-o",
+          "asyncio_default_fixture_loop_scope=function",
+          "tests/test_native_raw_http.py",
+          "tests/test_native_payload_retry.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp",
+          "/home/runner/work/_temp/cds-reuse-native-work/pytest",
+          "--junitxml",
+          "/home/runner/work/_temp/cds-reuse-evidence/native/native.xml"
+        ],
+        "remainder_actual_argv": [
+          "/home/runner/work/_temp/cds-reuse-venv/bin/python",
+          "-I",
+          "-B",
+          "-c",
+          "import pathlib,sys;sys.path.insert(0,str(pathlib.Path.cwd()));import pytest;raise SystemExit(pytest.main(sys.argv[1:]))",
+          "-p",
+          "run_acceptance",
+          "-p",
+          "pytest_asyncio.plugin",
+          "-p",
+          "no:cacheprovider",
+          "-q",
+          "-W",
+          "error",
+          "-o",
+          "asyncio_default_fixture_loop_scope=function",
+          "tests",
+          "--ignore=tests/test_native_raw_http.py",
+          "--ignore=tests/test_native_payload_retry.py",
+          "--basetemp",
+          "/home/runner/work/_temp/cds-reuse-offline-work/pytest",
+          "--junitxml",
+          "/home/runner/work/_temp/cds-reuse-evidence/offline/adapter.xml"
+        ],
+        "collection_argv_verified_in_exact_source": true,
+        "controller_argv_verified_in_exact_workflow": true
+      },
+      "owners": {
+        "native": {
+          "observed": 23,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 12.00129178100002
+        },
+        "collection": {
+          "observed": 1,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 3.5238164689999962
+        },
+        "remainder": {
+          "observed": 84,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 61.45755962200002
+        }
+      },
+      "owner_scope": "Recorded native, complete-collection and remainder subprocess trees. Controller50 is independently reported, not an additional observed-owner receipt.",
+      "adapter": {
+        "version": "0.6.1",
+        "directory": "/home/runner/work/_temp/cds-reuse-venv/lib/python3.13/site-packages/codex_deepseek",
+        "py_files": 28,
+        "exact_current_source": true
+      },
+      "native_package": {
+        "target": "x86_64-unknown-linux-gnu",
+        "cli_sha256": "d38b1207646a8df613a9898c7514fb2ca80b0de82ca4be96de8854557c464501",
+        "helper_sha256": "5d62deeac5422af404d1e2292ea9867b00b916579b76e0346dc9e93c6c57e7c9",
+        "recipe_id": "f56e1e361569a57c505f4a82882162907b79922ab2ff7da8fad01311d968f0f3",
+        "original_build_receipt_preserved": true,
+        "build_receipt_sha256": "aba825660b1373685fe19b22232a1516a4be3beba9f6ea61865ca67f73f4efa9",
+        "archive": {
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/codex-deepseek-native-0.6.0-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "3fe87429998f460406d91ca32aae0134ccc1bf5a95da3110735935c17dcb3cd5",
+          "bytes": 160035706
+        },
+        "manifest_archive": {
+          "filename": "codex-deepseek-native-0.6.0-x86_64-unknown-linux-gnu.tar.gz",
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0/codex-deepseek-native-0.6.0-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "3fe87429998f460406d91ca32aae0134ccc1bf5a95da3110735935c17dcb3cd5"
+        },
+        "actual_ci_and_manifest_urls_differ_same_pinned_bytes": true,
+        "original_recipe": {
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/native-build-recipe-9fe80f70.json",
+          "sha256": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+          "bytes": 19422
+        },
+        "package_files_plus_receipt": 3041
+      },
+      "native_builds": 0,
+      "real_model_requests": 0,
+      "provider_credentials_read": false,
+      "raw_synthetic_failure_receipts_preserved": [
+        "native/retry/compact-advice.json",
+        "native/retry/compact-none.json",
+        "native/retry/local-operator-budget.json",
+        "native/retry/ordinary-413-advice.json",
+        "native/retry/ordinary-413-none.json",
+        "native/retry/ordinary-429-advice.json",
+        "native/retry/ordinary-503-none.json"
+      ],
+      "payload_and_secret_review": {
+        "allowed_artifact_inventory_only": true,
+        "all_members_utf8_text": true,
+        "credential_pattern_hits": 0,
+        "inline_image_payload_hits": 0,
+        "synthetic_retry_outputs_only": true,
+        "business_request_bodies_in_zip": false,
+        "limits": "Bounded credential-pattern and full inventory/schema inspection; no claim of a universal secret detector."
+      },
+      "evidence_sha256": {
+        "acquisition.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "acquisition/acquisition.json": "b5bf7be38958a1245933ba7ded266fd001d18e13c249f6463f0dbd579a2dae39",
+        "controller.xml": "6b696bca7edaeb3b576e08ac1d59e84097f7e33ec6e0bfb69a135e43e58ede5e",
+        "current-runtime-overlays.json": "5aa19bf373ee700b012e7d6cd4758dece742ba23d3e9ab082dc1b0362c8aca6f",
+        "current-source-commit.txt": "557a6ff1bfb5266da9002a0655302881d0c92dadb425b0504f9c0f13e78d2460",
+        "linux-runtime-libraries.txt": "584734917048b21a2eca0b8c5990721c227a1687c51faec28f7fe94cf75209a1",
+        "native/collected.log": "dd795c22c8e262ade7e9f56ad6a10c59e2208026328c9ca92362d526c2b39246",
+        "native/native.xml": "a68ab93d3029c7e5e4c4b1a8866b95e0130e9a48c2f407e1749afedc0a169dc8",
+        "native/pytest.log": "7bbc72570dd5f2c7217fce2dadc6635457e1e7779263f5033d1ed48d6cf94a37",
+        "native/qualification.json": "2df4a07b2dcd75992dfc96b5b330c34390f90c704f8bc38fac34514a3ed4761b",
+        "native/retry/compact-advice.json": "1c275403548a2d18b7aad424b24af1a66382a30ac68eb8c8382ebe3a9753e56f",
+        "native/retry/compact-none.json": "858ac500290f1ce54e8509176abf7175c49f9d227d6ea7073ddd2c09e5f7b3d5",
+        "native/retry/local-operator-budget.json": "5987dc35aa83ae9ba616a0bcfe7396c210d6d911a2626c24eb53cf06deb71f99",
+        "native/retry/ordinary-413-advice.json": "1c06b8225c736772c510df8ba49ae501820d242576497abf9c3ad473ab425769",
+        "native/retry/ordinary-413-none.json": "9d5342b07c3e7a60de849eaeb570cac93a43934d71302d3ce043613d0f704075",
+        "native/retry/ordinary-429-advice.json": "bd7a061d5ccd83635879a811ee6335454eab04220578f9ab83878611aa41aee6",
+        "native/retry/ordinary-503-none.json": "cf25303346f3ce709048a38b7e97ff63264139a96611f9bc89b17a0d15c797a7",
+        "offline/adapter-collection.json": "388da10f1efb92812b146d94c6680d1328f3f9c1789fa315e8904744c05770e9",
+        "offline/adapter.xml": "9855c6b491f1e07ae607584edfc62146af97fec104149e3d32199fd9345a4322",
+        "offline/all-collection.json": "5cad73b97c4ea337384a3c3be2efc6014b2da93a1344286079b621db9ab3bc29",
+        "offline/collection.log": "8455c76be5fee71b90c7c76b2d60c1210796ed52656aaacaff933dbc592a3e9f",
+        "offline/pytest.log": "ff8adf64855fc6866278e8cb1054e1723dbbcf09299c216548dec15f0ca3428d",
+        "offline/qualification.json": "9525d7b3aa4e7d3b3e0cfccc31d70082658812208990ea87abdb070696bbbedb",
+        "original-build-receipt.json": "aba825660b1373685fe19b22232a1516a4be3beba9f6ea61865ca67f73f4efa9",
+        "original-runtime-overlays.json": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+        "requirements-test.lock": "98bcecdc92cd03ee1d3eced44d5da7ba7dfe9c9442f86e24713d7246401245e7",
+        "runner-capacity.json": "e8ec4cc74e071f1637be47509c4bbe7749eba7c9f605d27c7d3ae2862f99fbe3"
+      }
+    },
+    "macos-arm64": {
+      "artifact_id": 12562267286,
+      "artifact_sha256": "04bec7e9219cf2e02b914730c0c968bbcf158c7e9aa81597405271bea1ee359e",
+      "zip_bytes": 315583,
+      "zip_files": 26,
+      "uncompressed_bytes": 2136604,
+      "controller_passed": 50,
+      "controller_excluded_from_1815": true,
+      "complete_collection": 1815,
+      "native_passed": 15,
+      "remainder_cases": 1800,
+      "remainder_passed": 1768,
+      "total_passed": 1783,
+      "skipped": [
+        {
+          "classname": "tests.test_install",
+          "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[False]",
+          "message": "Windows native artifact DACL contract"
+        },
+        {
+          "classname": "tests.test_install",
+          "name": "test_native_reuse_repairs_only_artifact_rx_without_exposing_private_siblings[True]",
+          "message": "Windows native artifact DACL contract"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+          "message": "Native Linux daemon process identity contract"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_extended_paths_cannot_alias_codex_app_state",
+          "message": "Win32 extended-length directory aliases"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[daemon.pid]",
+          "message": "Native Windows daemon creation FILETIME record"
+        },
+        {
+          "classname": "tests.test_platforms",
+          "name": "test_live_windows_daemon_retains_service_and_rejects_stale_creation_time[app-server.pid]",
+          "message": "Native Windows daemon creation FILETIME record"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[None-TimeoutError]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply1-RuntimeError]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_slow_socket_worker_handshake_keeps_identity_check[reply2-None]",
+          "message": "Windows socket ownership handshake"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]",
+          "message": "Windows console control events; requires a Windows native package"
+        },
+        {
+          "classname": "tests.test_windows_console",
+          "name": "test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]",
+          "message": "Windows console control events; requires a Windows native package"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_exe_preserves_special_paths_long_environment_arguments_and_import_isolation",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_profile_recipe_does_not_replace_running_exe_and_repairs_immutably",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_locked_activation_fails_atomically_and_preserves_current_receipt",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[staging]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[installed]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_launchers",
+          "name": "test_launcher_temp_outputs_bind_current_user_before_publish[profile]",
+          "message": "Exercises Windows PE executable launchers"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[sid-another]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[session_id-0]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_wrong_identity_never_arms_preparation[elevated-True]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_unrelated_output_refused_before_arming",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_unadmitted_verifier_refused",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_partial_admission_cannot_fall_back_to_guest",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_other_host_still_requires_explicit_admission",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_declared_limited_owned_scope",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_native_eof_precedes_generic_cleanup",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options0]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options1]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_failure_cannot_be_repaired_into_pass_by_cleanup[options2]",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_shutdown_preserves_primary_error_when_cleanup_also_fails",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_cleanup_error_cannot_be_a_successful_shutdown",
+          "message": "Windows-only lifecycle admission contract"
+        },
+        {
+          "classname": "tests.test_windows_sandbox_admission",
+          "name": "test_main_retains_failure_receipt_when_final_cleanup_also_raises",
+          "message": "Windows-only lifecycle admission contract"
+        }
+      ],
+      "no_duplicate_omitted_or_deselected_cases": true,
+      "windows_collection_comparison": {
+        "identical_count": 1815,
+        "only_expected_platform_parameters": {
+          "windows": [
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[cds.exe]"
+            ],
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[codex.exe]"
+            ]
+          ],
+          "host": [
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[cds]"
+            ],
+            [
+              "tests.test_cds_skill_inspect",
+              "test_foreign_cds_and_vanilla_codex_are_not_executed[codex]"
+            ]
+          ]
+        },
+        "fixed_source_binding": "tests/test_cds_skill_inspect.py platform conditional cds/codex executable basenames"
+      },
+      "new_semantic_guards_passed": [
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[function]",
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[custom]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[user]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[developer]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[system]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[assistant]",
+        "test_provider_assistant_input_image_is_explicit_protocol_failure",
+        "test_wire_budget_invariant_covers_both_sides_of_activation_boundary"
+      ],
+      "warnings_as_errors": {
+        "native_actual_argv": [
+          "/Users/runner/work/_temp/cds-reuse-venv/bin/python",
+          "-I",
+          "-B",
+          "-m",
+          "pytest",
+          "-p",
+          "pytest_asyncio.plugin",
+          "-W",
+          "error",
+          "-o",
+          "asyncio_default_fixture_loop_scope=function",
+          "tests/test_native_raw_http.py",
+          "tests/test_native_payload_retry.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp",
+          "/Users/runner/work/_temp/cds-reuse-native-work/pytest",
+          "--junitxml",
+          "/Users/runner/work/_temp/cds-reuse-evidence/native/native.xml"
+        ],
+        "remainder_actual_argv": [
+          "/Users/runner/work/_temp/cds-reuse-venv/bin/python",
+          "-I",
+          "-B",
+          "-c",
+          "import pathlib,sys;sys.path.insert(0,str(pathlib.Path.cwd()));import pytest;raise SystemExit(pytest.main(sys.argv[1:]))",
+          "-p",
+          "run_acceptance",
+          "-p",
+          "pytest_asyncio.plugin",
+          "-p",
+          "no:cacheprovider",
+          "-q",
+          "-W",
+          "error",
+          "-o",
+          "asyncio_default_fixture_loop_scope=function",
+          "tests",
+          "--ignore=tests/test_native_raw_http.py",
+          "--ignore=tests/test_native_payload_retry.py",
+          "--basetemp",
+          "/Users/runner/work/_temp/cds-reuse-offline-work/pytest",
+          "--junitxml",
+          "/Users/runner/work/_temp/cds-reuse-evidence/offline/adapter.xml"
+        ],
+        "collection_argv_verified_in_exact_source": true,
+        "controller_argv_verified_in_exact_workflow": true
+      },
+      "owners": {
+        "native": {
+          "observed": 27,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 12.723554083999943
+        },
+        "collection": {
+          "observed": 1,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 2.488697000000002
+        },
+        "remainder": {
+          "observed": 70,
+          "forced": 0,
+          "remaining_before": 0,
+          "remaining_after": 0,
+          "unknown": 0,
+          "natural_exit_code": 0,
+          "seconds": 60.92951945800007
+        }
+      },
+      "owner_scope": "Recorded native, complete-collection and remainder subprocess trees. Controller50 is independently reported, not an additional observed-owner receipt.",
+      "adapter": {
+        "version": "0.6.1",
+        "directory": "/Users/runner/work/_temp/cds-reuse-venv/lib/python3.13/site-packages/codex_deepseek",
+        "py_files": 28,
+        "exact_current_source": true
+      },
+      "native_package": {
+        "target": "aarch64-apple-darwin",
+        "cli_sha256": "8b16ba68b0d234bd0addfb4cbb327d7e2e7087fd96d97271dec52fa897be7ce7",
+        "helper_sha256": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
+        "recipe_id": "073fb5d503a4a0a192fa29e996ab7b0706ffda6ef0853fcd150c607ccf39dee3",
+        "original_build_receipt_preserved": true,
+        "build_receipt_sha256": "d2b5dbd20190b6770a4c59bdebe2287e54efe1b4b3e182f9095499448772122a",
+        "archive": {
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
+          "sha256": "aef450933d716b0c9451d5a487eee59eb346c188c894f8fee1b8155c836052b0",
+          "bytes": 143372239
+        },
+        "manifest_archive": {
+          "filename": "codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0/codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
+          "sha256": "aef450933d716b0c9451d5a487eee59eb346c188c894f8fee1b8155c836052b0"
+        },
+        "actual_ci_and_manifest_urls_differ_same_pinned_bytes": true,
+        "original_recipe": {
+          "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0-native.1/native-build-recipe-9fe80f70.json",
+          "sha256": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+          "bytes": 19422
+        },
+        "package_files_plus_receipt": 2947
+      },
+      "native_builds": 0,
+      "real_model_requests": 0,
+      "provider_credentials_read": false,
+      "raw_synthetic_failure_receipts_preserved": [
+        "native/retry/compact-advice.json",
+        "native/retry/compact-none.json",
+        "native/retry/local-operator-budget.json",
+        "native/retry/ordinary-413-advice.json",
+        "native/retry/ordinary-413-none.json",
+        "native/retry/ordinary-429-advice.json",
+        "native/retry/ordinary-503-none.json"
+      ],
+      "payload_and_secret_review": {
+        "allowed_artifact_inventory_only": true,
+        "all_members_utf8_text": true,
+        "credential_pattern_hits": 0,
+        "inline_image_payload_hits": 0,
+        "synthetic_retry_outputs_only": true,
+        "business_request_bodies_in_zip": false,
+        "limits": "Bounded credential-pattern and full inventory/schema inspection; no claim of a universal secret detector."
+      },
+      "evidence_sha256": {
+        "acquisition.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "acquisition/acquisition.json": "3ed49627beb62f0ab253a6878d2ab04539bc19093bba2044dcf8b84f1720993e",
+        "controller.xml": "af8d58c977271404609d07152d1b5e64a9c305c6e3a709d2f819b142e56d0ab5",
+        "current-runtime-overlays.json": "5aa19bf373ee700b012e7d6cd4758dece742ba23d3e9ab082dc1b0362c8aca6f",
+        "current-source-commit.txt": "557a6ff1bfb5266da9002a0655302881d0c92dadb425b0504f9c0f13e78d2460",
+        "native/collected.log": "ba931f4ff210bf6d6243465eb4f2231e4c817df2bd1f33cb530fd3afb1b23ba4",
+        "native/native.xml": "a9bb94484a716842696923e6621c4e82c9923ec627f835b50d872fbd3e4fcf08",
+        "native/pytest.log": "c9e05ca6df5c4caa7b5e788258a730f2380fd452a7ff628398b5435bf05eba7e",
+        "native/qualification.json": "5e0895ca0b3c53d901d55fb1835af83e87d679c8ebce7c0c3f293d17e8e98126",
+        "native/retry/compact-advice.json": "71ec28c5a64a0b8aa285741bde610f04ab2c6090ca136e957d866ff066641325",
+        "native/retry/compact-none.json": "5ec2502e01d441a1f193b8b0ba0f445a5a71111182f06f7dd02dca7af4906bad",
+        "native/retry/local-operator-budget.json": "91b0c5c2b21b2e5c21f0f84189ae7d20a7ee94274f5227b6febe9437b38c04e0",
+        "native/retry/ordinary-413-advice.json": "6af61899d7118aace92e22ae8f8b10a83678fa083285bc17835451ab40b78f24",
+        "native/retry/ordinary-413-none.json": "04bd8b9fedcae046f6d8e8063e497cdc1420db84c5c85deb52fa6bb19ee852af",
+        "native/retry/ordinary-429-advice.json": "28f142416099fcc780c82aed08f687879eed33d285b5bea248f291563e62b4a8",
+        "native/retry/ordinary-503-none.json": "fa9665a52e1d2be50e722c2b50f4ec5b1a442c11ef2de2f84f2b9529ec9112a4",
+        "offline/adapter-collection.json": "388da10f1efb92812b146d94c6680d1328f3f9c1789fa315e8904744c05770e9",
+        "offline/adapter.xml": "d1d8a1f9c1c4ca276fcc59fff542939f9ba7570508f2232fc1e82ea0829be996",
+        "offline/all-collection.json": "5cad73b97c4ea337384a3c3be2efc6014b2da93a1344286079b621db9ab3bc29",
+        "offline/collection.log": "f039da8ba195eec8a4b43a05d0190d4be13c0849420c98e699a21626ae03b2e1",
+        "offline/pytest.log": "40812b67085577df6d2aaff42ba871b2fecf39de1c80b1dfda5b04519fc89a88",
+        "offline/qualification.json": "3a87ea64871ace7c499c4c198c58bd7bd729673866b109f3ee657d0f20e318e2",
+        "original-build-receipt.json": "d2b5dbd20190b6770a4c59bdebe2287e54efe1b4b3e182f9095499448772122a",
+        "original-runtime-overlays.json": "9fe80f70bc477dc061992096c2cba8c1b4cbb16145e1646a0ddc111a81966c6c",
+        "requirements-test.lock": "98bcecdc92cd03ee1d3eced44d5da7ba7dfe9c9442f86e24713d7246401245e7",
+        "runner-capacity.json": "2a5cd539e538782b72d27789af2647e31ae45c6f685b98ff568240201008157f"
+      }
+    }
+  },
+  "preserved_original_failures": {
+    "baseline_counterexamples": {
+      "sha256": "ae72e1c60e2d513250d067b36c43545cb13caa2d60d1650b4aefff1a0dfabf2e",
+      "retained_privately": true
+    },
+    "first_full_werror_zero_collection": {
+      "sha256": "04aac7cf9a5a2a34fcb4de459c6554939551236eefeeb5975da45bde39f26508",
+      "retained_privately": true
+    }
+  },
+  "metadata": {
+    "run.json": {
+      "sha256": "037ce8baf665b96b804b68d77c09d589d8b455af53a0266aa6064edc1086a4a7",
+      "bytes": 14597
+    },
+    "acquisition.json": {
+      "sha256": "da35f300c55b016e315e1e43ef94e3c8f961c2340f441b877c85dc2d0724bf7c",
+      "bytes": 490
+    }
+  },
+  "limitations": [
+    "Hosted synthetic loopback native transport plus complete current offline tests; not a re-run of paid 30-task platform workflows or CADSG GUI.",
+    "Synthetic retry fixtures deliberately retain native error/failed-turn output; Code Mode metadata warnings in their local synthetic catalog are preserved, not hidden.",
+    "Prior Windows baseline product counterexamples and zero-case QA configuration failure remain retained separately.",
+    "The 49-image business upstream HTTP 400 remains causally unassigned.",
+    "Native asset contents are cross-bound to CI producer SHA verification, current release manifests and preserved original full inventories; this independent review did not download or rebuild the native archives again."
+  ]
+}

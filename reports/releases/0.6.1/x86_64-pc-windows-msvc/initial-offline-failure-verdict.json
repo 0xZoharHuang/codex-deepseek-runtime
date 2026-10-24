@@ -1,0 +1,19 @@
+{
+  "passed": false,
+  "target": "x86_64-pc-windows-msvc",
+  "verifier_source_unchanged": true,
+  "native_probes_unchanged": true,
+  "offline_collection_sha256": null,
+  "offline_files_sha256": null,
+  "all_gates_selected": false,
+  "entry_unchanged": true,
+  "gates": [
+    {
+      "gate": "offline",
+      "exit": 3,
+      "seconds": 0.46,
+      "log": "offline.log",
+      "qa_default_sandbox_mode": "workspace-write"
+    }
+  ]
+}

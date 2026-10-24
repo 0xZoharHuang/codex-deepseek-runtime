@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "created": 1792849032.2207773,
+  "scope": "Exactly two synthetic provider qualifications using real immutable CDS installation; not App or complete runtime proof",
+  "source_id": "c9870a1014d6af890b10",
+  "installed_version": "0.6.1",
+  "product_file_count": 95,
+  "installed_adapter_files_verified": 28,
+  "requested_model": "deepseek/deepseek-v4.1-flash-1017",
+  "observed_canonical_model": "deepseek/deepseek-v4.1-flash-20261017",
+  "observed_provider": "DeepSeek",
+  "real_model_requests": 2,
+  "model_retries": 0,
+  "metadata_followup_model_requests": 0,
+  "fallbacks": false,
+  "business_read_or_modified": false,
+  "cases": [
+    {
+      "name": "developer_typed_image_files",
+      "response_id": "gen-1792848758-lqaHaOzMw2RvGdzUySjE",
+      "http_status": 200,
+      "response_status": "completed",
+      "wire_sha256": "e16aa3636c6fd91a0972ea9aa40cdee88cf280b4e49da2da043bd705d69c348b",
+      "wire_shape_sha256": "53bab85ffcac5d50b94eb5f54700ded42bf32865ccfce828f52dec2981cd0af3",
+      "original_png_sha256": "9f8c9ea28e334e839b315c5ed618c68736f4d1387eabcf4d8c0aadf064f62070",
+      "original_png_bytes": 3776,
+      "restored_bytes_and_parts_exact": true,
+      "call_id_order_preserved": true,
+      "generation_accepted": true
+    },
+    {
+      "name": "samebytes_user_low_tool_high",
+      "response_id": "gen-1792848764-fUN4nXdgA1HCu8h5lZLq",
+      "http_status": 200,
+      "response_status": "completed",
+      "wire_sha256": "acd2f8f3b0a172a6ae8d6d35593225f3b304472c8931eb55734b8fc37dbf46aa",
+      "wire_shape_sha256": "f065a2ed9bb0c6319eead2d7e7cb040aa92be851e5b8a9b1bbb70a392b05478d",
+      "original_png_sha256": "9f8c9ea28e334e839b315c5ed618c68736f4d1387eabcf4d8c0aadf064f62070",
+      "original_png_bytes": 3776,
+      "restored_bytes_and_parts_exact": true,
+      "call_id_order_preserved": true,
+      "generation_accepted": true
+    }
+  ],
+  "original_immediate_generation_404_retained": true,
+  "original_qualification_accepted": false,
+  "later_read_only_metadata_accepted": true,
+  "all_owned_files_deleted": true,
+  "delete_http": 200,
+  "verify_absent_http": 404,
+  "unknown_upstream_calls": 0,
+  "unknown_uploads": 0,
+  "remaining_assets": 0,
+  "source_unchanged_after": true,
+  "owners": [
+    {
+      "pid": 31220,
+      "birth": 1792848750.136377,
+      "same_identity_alive": false
+    },
+    {
+      "pid": 1640,
+      "birth": 1792848978.0450015,
+      "same_identity_alive": false
+    }
+  ],
+  "brokers": [
+    {
+      "path": "D:\\Projects\\codex-app-deepseek-gateway\\.evidence\\credentials-f2ffcbd23c854249a4cbbd390d825c95\\result.json",
+      "sha256": "78b88cd6859ec0023a016c3690a770271a6883038615ca7e1b11bb8eaa9bdc33",
+      "run_id": "f2ffcbd23c854249a4cbbd390d825c95",
+      "completion": "exited",
+      "exit_code": 0,
+      "owned_task_deleted": true
+    },
+    {
+      "path": "D:\\Projects\\codex-app-deepseek-gateway\\.evidence\\credentials-a2121659c856459991ea15f7c1791ada\\result.json",
+      "sha256": "79fbc0bf03cdfd31c797470b0fd03efedef347c967b728a4472206bb0667422b",
+      "run_id": "a2121659c856459991ea15f7c1791ada",
+      "completion": "exited",
+      "exit_code": 0,
+      "owned_task_deleted": true
+    }
+  ],
+  "files": {
+    "qualify.py": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\qualify.py",
+      "bytes": 13651,
+      "sha256": "007f083637f670e1c8fdb7de0994c8ef23a0fff34b90ab26cc73713e37facec8"
+    },
+    "qualification.json": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\qualification.json",
+      "bytes": 13787,
+      "sha256": "1111ca9a1c54a61104bdd16a5cb0528e9aa29f3a63958abfec73aaff255f7a8f"
+    },
+    "admission.json": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\admission.json",
+      "bytes": 652,
+      "sha256": "70ba72332d4d0cf06db330830d8260b78f32ec2c78346a420b081298c97d79f1"
+    },
+    "generation-followup.py": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\generation-followup.py",
+      "bytes": 4926,
+      "sha256": "50e31be709fcbc348b246944b91bacb2b3119f1ae607840978cf7df310adea99"
+    },
+    "generation-followup.json": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\generation-followup.json",
+      "bytes": 3777,
+      "sha256": "39569a21c6684dc828eb921f3549a84ab6de5f4759e4e129bd19f3491ced58af"
+    },
+    "generation-followup-admission.json": {
+      "path": "D:\\CDSProviderR21-c987-d046c240\\generation-followup-admission.json",
+      "bytes": 652,
+      "sha256": "8a9646fecc21f821dcdd7d1794de979ff5aa01922b6f9c0330f0ecfe52c16500"
+    }
+  },
+  "synthetic_provider_qualification_accepted": true
+}

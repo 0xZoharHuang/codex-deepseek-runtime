@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "at": 1792848828.3132014,
+  "status": "Windows_061_candidate_qualified_scope",
+  "base_commit": "e5b8f2c82e68398686ec5fa92cede288697cc81c",
+  "branch": "codex/cds-qualification",
+  "commit_created": false,
+  "push_performed": false,
+  "version": "0.6.1",
+  "source_id": "c9870a1014d6af890b10",
+  "product_files": 95,
+  "qa_files": 180,
+  "freeze": {
+    "path": "D:\\Projects\\codex-deepseek-runtime\\.evidence\\payload-capacity\\semantic-guards-061-r22\\frozen-inputs.json",
+    "sha256": "79f2ff4bf1099f244956373b1473e34e234d6e24c44d87b7f2798434b1537eb1"
+  },
+  "changes": {
+    "product": [
+      "pyproject.toml",
+      "README.md",
+      "src/codex_deepseek/__init__.py",
+      "src/codex_deepseek/image_transport.py",
+      "src/codex_deepseek/protocol.py"
+    ],
+    "qa": [
+      "run_acceptance.py",
+      "tests/test_image_transport.py",
+      "tests/test_image_semantic_guards.py"
+    ],
+    "new_untracked": {
+      "docs/image-content-boundaries.md": "01056d4a5d111830ed8ee3a974dcee7533d7222bd80fc4455d7e75a3310ff8de",
+      "docs/native-history-recovery.md": "19ca1a660119f893988262b665b6aea9672e958658f7200bc42bf7770e4b2e97",
+      "reports/releases/0.6.0/native-history-recovery.json": "8c4858e701f2a73b6afc0f8c47e10d12ee2485e2aaaeaa245d586d80fece9ade",
+      "tests/test_image_semantic_guards.py": "0bd6fcd304d01c1ebebcb4ba6dcc069bca7f83b3fa68c0abec3d0118cca66572"
+    },
+    "review_patch": {
+      "path": "D:\\Projects\\codex-deepseek-runtime\\.evidence\\payload-capacity\\semantic-guards-061-r22\\review-working-tree.patch",
+      "sha256": "1faf5d73a2a618656759ef21ea4d43e8d90277844f12cde9562247964d1ab8ff"
+    },
+    "git_status": " M README.md\n M pyproject.toml\n M run_acceptance.py\n M src/codex_deepseek/__init__.py\n M src/codex_deepseek/image_transport.py\n M src/codex_deepseek/protocol.py\n M tests/test_image_transport.py\n?? docs/image-content-boundaries.md\n?? docs/native-history-recovery.md\n?? reports/releases/0.6.0/native-history-recovery.json\n?? tests/test_image_semantic_guards.py\n",
+    "diff_check_exit": 0
+  },
+  "installation": {
+    "metadata": "D:\\CDS061R21-c9870a10\\releases\\c9870a1014d6af890b10\\installation.json",
+    "sha256": "94e9fe7e8f14fb2a5e40308c931683275dda818979b24d5eaed86ff47b1f9828",
+    "entry": "D:\\CDS061R21-c9870a10\\releases\\c9870a1014d6af890b10\\venv\\Scripts\\codex-deepseek.exe",
+    "entry_sha256": "fe0605747100eaf0e959ebb73c0469b107dcdbf08c0b8e7ad71a242e25a04351",
+    "native": "D:\\CDS061R21-c9870a10\\native\\64c323e8a08337c8cebba77b",
+    "cli_sha256": "739617253b01787c644cb72c704fee290e53b49ba32d6e7ae6d86691744c0e64",
+    "no_activate": true,
+    "native_builds": 0
+  },
+  "offline": {
+    "root": "D:\\CDSQA061R22\\offline\\6e5ea6b2970a",
+    "controller": "D:\\Projects\\codex-deepseek-runtime\\.evidence\\payload-capacity\\semantic-guards-061-r22\\offline-controller-result.json",
+    "controller_sha256": "1b725bbf3e71317e541fff04f1a2c4eb104f47812741cb822a076d3ab1b6281b",
+    "verdict_sha256": "20d41699f81ddbfe8122b8616f7a16acd201f890c6b8be7718920f0ea83f42be",
+    "junit_sha256": "1765efc09bfef4f961be46d5b43e9fa6c5ed162f467eba984c827164b38c2c68",
+    "collection_sha256": "7c0099799e086967b0278d40af0f26a474467a385ffdce70c03b551ae023f192",
+    "collected": 1815,
+    "passed": 1812,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [
+      {
+        "name": "test_posix_actual_space_path_and_exact_version_argument",
+        "classname": "tests.test_cds_skill_inspect",
+        "reason": "POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check"
+      },
+      {
+        "name": "test_posix_actual_offline_timeout_is_bounded",
+        "classname": "tests.test_cds_skill_inspect",
+        "reason": "POSIX shell/shebang timeout fixture; not Windows process execution evidence"
+      },
+      {
+        "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+        "classname": "tests.test_platforms",
+        "reason": "Native Linux daemon process identity contract"
+      }
+    ],
+    "deselected": 0,
+    "warnings_are_errors": true,
+    "pytest_asyncio_fixture_scope": "function",
+    "mechanisms": {
+      "tests.test_image_semantic_guards": [
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[function]",
+        "test_low_is_not_a_file_reference_even_when_same_bytes_are_uploaded_for_tool_high[custom]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[user]",
+        "test_supported_image_message_keeps_native_role_and_content_order_through_wire[developer]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[system]",
+        "test_forbidden_image_role_fails_before_files_or_credential_callback[assistant]",
+        "test_provider_assistant_input_image_is_explicit_protocol_failure",
+        "test_wire_budget_invariant_covers_both_sides_of_activation_boundary"
+      ],
+      "tests.test_native_dispatch": [
+        "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[invalid_arguments_done]",
+        "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[missing_arguments_done]",
+        "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[terminal_snapshot_only]",
+        "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[failed_snapshot_only]",
+        "test_native_custom_dispatch_respects_validation_and_missing_event_recovery[incomplete_snapshot_only]"
+      ],
+      "tests.test_native_raw_http": [
+        "test_native_raw_large_multipart_files_delete_exact_wire_and_warm_reuse",
+        "test_native_raw_errors_preserve_status_headers_body_without_replay[413]",
+        "test_native_raw_errors_preserve_status_headers_body_without_replay[429]",
+        "test_native_raw_errors_preserve_status_headers_body_without_replay[500]",
+        "test_native_raw_gate_denies_auth_origin_metadata_and_non_files_delete",
+        "test_native_raw_tls_rejection_and_no_proxy",
+        "test_native_raw_cancel_model_before_upstream_headers",
+        "test_native_upload_cancel_before_headers_preserves_unknown_without_replay"
+      ],
+      "tests.test_native_payload_retry": [
+        "test_real_cli_retry_classification[413-None-1]",
+        "test_real_cli_retry_classification[413-1-2]",
+        "test_real_cli_retry_classification[503-None-2]",
+        "test_real_cli_retry_classification[429-1-2]",
+        "test_real_cli_compaction_413_uses_same_native_retry_semantics[None]",
+        "test_real_cli_compaction_413_uses_same_native_retry_semantics[1]",
+        "test_real_cli_local_operator_budget_413_is_not_replayed"
+      ],
+      "native_console_interrupt": [
+        "test_native_console_interrupt_keeps_original_signal_and_exit_status[0-1-SIGINT]",
+        "test_native_console_interrupt_keeps_original_signal_and_exit_status[1-3221225786-SIGBREAK]"
+      ]
+    }
+  },
+  "native15": {
+    "qualification": "D:\\Projects\\codex-deepseek-runtime\\.evidence\\payload-capacity\\semantic-guards-061-r22\\native-ci\\qualification.json",
+    "sha256": "52b1def781016c727fef6e886ea74d91ba42e9919a9ceceb624296f7fcfe7a92",
+    "cases": 15,
+    "failed": 0,
+    "skipped": 0,
+    "source_unchanged": true,
+    "forced_cleanup": [],
+    "remaining": [],
+    "real_model_requests": 0,
+    "new_rust_builds": 0
+  },
+  "source_product_and_qa_unchanged": true,
+  "brokers": {
+    "native": {
+      "path": "D:\\Projects\\codex-app-deepseek-gateway\\.evidence\\credentials-d643b14837564e018ce5de1d8401d5e2\\result.json",
+      "sha256": "0b8b3820eb8c4575e6467ad7bb5c8041c9e218e3a7087e082f2738b7483da7a3",
+      "result": {
+        "schema_version": 1,
+        "run_id": "d643b14837564e018ce5de1d8401d5e2",
+        "task_name": "CodexAppDeepSeek-d643b14837564e018ce5de1d8401d5e2",
+        "runner_pid": 36880,
+        "sid": "S-1-5-21-754560609-792365222-3758953957-1001",
+        "session_id": 1,
+        "started_at": "2026-10-24T13:29:41.5272250Z",
+        "completion": "exited",
+        "exit_code": 0,
+        "timed_out": false,
+        "secret_values_in_output": false,
+        "cleanup": {
+          "owned_task_deleted": true
+        },
+        "child_pid": 26644,
+        "child_started_at": "2026-10-24T13:29:41.5927582Z",
+        "child_session_id": 1,
+        "finished_at": "2026-10-24T13:30:59.6316477Z"
+      }
+    },
+    "offline": {
+      "path": "D:\\Projects\\codex-deepseek-runtime\\.evidence\\payload-capacity\\credentials-513fc58192924dcfbb1b58b8283f79be\\result.json",
+      "sha256": "c470c04867efc94111cb0c64c1f97d3f5f1c1cce89bb8255a5798ecad98e75f5",
+      "result": {
+        "schema_version": 1,
+        "run_id": "513fc58192924dcfbb1b58b8283f79be",
+        "task_name": "CodexDeepSeekCandidateProvision-513fc58192924dcfbb1b58b8283f79be",
+        "runner_pid": 35476,
+        "sid": "S-1-5-21-754560609-792365222-3758953957-1001",
+        "session_id": 1,
+        "started_at": "2026-10-24T13:29:48.9080369Z",
+        "completion": "exited",
+        "exit_code": 0,
+        "timed_out": false,
+        "secret_values_in_output": false,
+        "cleanup": {
+          "owned_task_deleted": true
+        },
+        "child_pid": 31932,
+        "child_started_at": "2026-10-24T13:29:48.9749281Z",
+        "child_session_id": 1,
+        "finished_at": "2026-10-24T13:32:49.3492069Z"
+      }
+    },
+    "install": {
+      "path": "D:\\Projects\\codex-app-deepseek-gateway\\.evidence\\credentials-ac3d77913b4e4f80afb920a367621c0b\\result.json",
+      "sha256": "9d3798b821e7c9b3e503aa26639940e65ca437d15c49c68885d0c929a0f6d881",
+      "result": {
+        "schema_version": 1,
+        "run_id": "ac3d77913b4e4f80afb920a367621c0b",
+        "task_name": "CodexAppDeepSeek-ac3d77913b4e4f80afb920a367621c0b",
+        "runner_pid": 23112,
+        "sid": "S-1-5-21-754560609-792365222-3758953957-1001",
+        "session_id": 1,
+        "started_at": "2026-10-24T13:22:30.0826403Z",
+        "completion": "exited",
+        "exit_code": 0,
+        "timed_out": false,
+        "secret_values_in_output": false,
+        "cleanup": {
+          "owned_task_deleted": true
+        },
+        "child_pid": 14344,
+        "child_started_at": "2026-10-24T13:22:30.2140708Z",
+        "child_session_id": 1,
+        "finished_at": "2026-10-24T13:23:27.4492915Z"
+      }
+    }
+  },
+  "preserved_failures": {
+    "first_full_werror": "D:\\CDSQA061R21\\offline\\5836225d51b4",
+    "reason": "pytest-asyncio default fixture loop scope not explicitly set; configuration failed before collection (0 cases). All warnings remain errors after explicit supported function scope."
+  },
+  "limitations": [
+    "No new full-platform or App GUI qualification inferred.",
+    "Prior 49-image business HTTP 400 remains causally unassigned.",
+    "No paid 30-task rerun; consumer owns two separately recorded official provider checks.",
+    "Prior 0.6.0 frozen reports/assets remain unchanged."
+  ]
+}
