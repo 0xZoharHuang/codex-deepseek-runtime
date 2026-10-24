@@ -13,6 +13,21 @@ WINDOWS = os.name == 'nt'
 RECORD = '.qa-workspace.json'
 
 
+def evidence_files(root, pattern="*"):
+    """Walk a physical QA evidence tree without entering runtime-created links."""
+    root=Path(root).absolute();_plain(root);physical=root.resolve(strict=True)
+    def fail(error):raise error
+    for directory,dirs,files in os.walk(root,followlinks=False,onerror=fail):
+        parent=Path(directory);_plain(parent)
+        if parent.resolve(strict=True)!=physical/parent.relative_to(root):
+            raise ValueError('QA evidence directory escaped its physical root')
+        dirs[:]=[name for name in dirs if not _link(parent/name)]
+        for name in files:
+            path=parent/name
+            if not _link(path) and path.is_file() and path.match(pattern):
+                yield path
+
+
 def _identity(path):
     value = Path(path).lstat()
     return [value.st_dev, value.st_ino]

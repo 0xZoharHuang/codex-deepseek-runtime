@@ -1,5 +1,6 @@
 """Build release evidence from installed-artifact gates; refuse incomplete acceptance."""
 import argparse
+from qa_workspace import evidence_files
 import hashlib
 import json
 from pathlib import Path
@@ -38,7 +39,7 @@ def main():
                 if path.is_dir():roots.add(path)
     observed=set()
     for root in roots:
-        for path in root.rglob('client-requests.jsonl'):
+        for path in evidence_files(root,'client-requests.jsonl'):
             for line in path.read_text().splitlines():
                 try:request=json.loads(line)
                 except ValueError:continue

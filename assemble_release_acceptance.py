@@ -1,6 +1,7 @@
 """Publish aggregate facts only after checking every private acceptance receipt."""
 from contextlib import closing
 import argparse
+from qa_workspace import evidence_files
 from collections import Counter
 import hashlib
 import json
@@ -146,7 +147,7 @@ def validate_native_faults(root,entry,installation,native,official_sha256):
         require(row.get('passed') is True and row.get('official')==rebuilt[(row['kind'],'official')]
                 and row.get('candidate')==rebuilt[(row['kind'],'candidate')] and row['official']==row['candidate'],
                 'Native fault comparison does not match its raw cases')
-    for path in root.rglob('*'):
+    for path in evidence_files(root):
         if path.is_file():evidence[path.relative_to(root).as_posix()]=sha(path)
     return {'passed':True,'scenarios':sorted(NATIVE_FAULT_KINDS),'actual_cases':14,
             'model_calls':0,'real_credentials':0,'raw_effect_and_receipt_reconstruction':True,
@@ -210,7 +211,7 @@ def validate_rpc_witnesses(report,roots,target,methods,*,excluded_roots=()):
     """A saved coverage boolean cannot replace current paired native receipts."""
     from verify_rpc_observations import trace_observations
     require(report.get('verifier_and_artifact_unchanged') is True,'RPC collector artifact/verifier integrity missing')
-    require(set(report.get('verifier_sha256',{}))=={'verify_rpc_observations.py','assemble_release_acceptance.py','install.py'},
+    require(set(report.get('verifier_sha256',{}))=={'verify_rpc_observations.py','assemble_release_acceptance.py','install.py','qa_workspace.py'},
             'RPC collector verifier inventory differs')
     for name,digest in report['verifier_sha256'].items():require(sha(SOURCE/name)==digest,'RPC collector verifier changed: '+name)
     require(set(report.get('methods',{}))==set(methods),'RPC witness method inventory differs')

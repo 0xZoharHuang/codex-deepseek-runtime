@@ -17,6 +17,32 @@ from process_acceptance import shell_command
 from host_execution_acceptance import host_execution_evidence
 
 
+def memory_output_files(home, version):
+    """Only the version's native memory outputs can witness consolidation."""
+    from qa_workspace import _link, _plain
+    home=Path(home);_plain(home);physical=home.resolve(strict=True)
+    if version not in {'v1','v2'}:raise ValueError('Unknown memory output version')
+    memory=home/('memories_v2' if version=='v2' else 'memories')
+    def owned(path, directory=False):
+        current=home
+        try:
+            for part in path.relative_to(home).parts:
+                current=current/part
+                if _link(current):raise ValueError('Linked native memory output: '+str(current))
+            if path.resolve(strict=True)!=physical/path.relative_to(home):
+                raise ValueError('Native memory output escaped its physical home')
+            return path.is_dir() if directory else path.is_file()
+        except FileNotFoundError:return False
+    if not owned(memory,True):return [],[]
+    if version=='v2':
+        directory=memory/'rollout_summaries'
+        artifacts=[p for p in directory.glob('*.md') if owned(p)] if owned(directory,True) else []
+    else:
+        path=memory/'MEMORY.md';artifacts=[path] if owned(path) else []
+    summary=memory/'memory_summary.md'
+    return artifacts,([summary] if owned(summary) else [])
+
+
 def model_quality_observation(answer,nonce):
     """Record wording/recall without making either a native-runtime gate."""
     return {'user_identifier_retained':nonce in answer,
@@ -306,9 +332,7 @@ def main():
                         db.row_factory=sqlite3.Row
                         selected=[dict(row) for row in db.execute('SELECT * FROM stage1_outputs') if row['thread_id']==source]
                     if 'jobs' in tables:jobs=[list(row) for row in db.execute('SELECT * FROM jobs')]
-            memory_root=root/'home'/('memories_v2' if args.version=='v2' else 'memories')
-            artifacts=list((memory_root/'rollout_summaries').glob('*.md')) if args.version=='v2' else list(memory_root.glob('MEMORY.md'))
-            summaries=[path for path in (root/'home').rglob('memory_summary.md') if '.git' not in path.parts]
+            artifacts,summaries=memory_output_files(root/'home',args.version)
             if selected and any(row.get('selected_for_phase2') for row in selected) and artifacts and summaries:break
             time.sleep(.25)
         (root/'memory-db-evidence.json').write_text(json.dumps({'source':source,'selected':selected,'jobs':jobs},indent=2), encoding='utf-8')

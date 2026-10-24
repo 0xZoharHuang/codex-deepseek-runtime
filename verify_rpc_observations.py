@@ -1,5 +1,6 @@
 """Reconstruct exact-target RPC coverage from paired current-artifact evidence."""
 import argparse
+from qa_workspace import evidence_files
 import hashlib
 import json
 from pathlib import Path,PureWindowsPath
@@ -10,7 +11,7 @@ from assemble_release_acceptance import (qualification_scope,installation_lineag
 from install import console_entry,valid_release,_support
 
 comparison_path=_support.comparison_path
-VERIFIERS=('verify_rpc_observations.py','assemble_release_acceptance.py','install.py')
+VERIFIERS=('verify_rpc_observations.py','assemble_release_acceptance.py','install.py','qa_workspace.py')
 NON_RPC_PRODUCERS={'search':'Direct Gateway/NativeTransport search, HTTP and citation checks; no native Peer or JSON-RPC producer. Its standard gate remains required.'}
 
 
@@ -151,7 +152,7 @@ def main():
     else:require(args.windows_sandbox is None,'Windows sandbox evidence cannot qualify a non-Windows target')
     traces={}
     for root,identity in sorted(roots.items(),key=lambda item:len(item[0].parts)):
-        for path in root.rglob('client-requests.jsonl'):
+        for path in evidence_files(root,'client-requests.jsonl'):
             canonical=comparison_path(path)
             require(canonical.is_relative_to(comparison_path(root)),'RPC trace symlink escaped its declared root')
             if any(canonical.is_relative_to(comparison_path(value)) for value in excluded):continue

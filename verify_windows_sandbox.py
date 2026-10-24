@@ -120,8 +120,8 @@ def main():
             assert started=={'started':True}
             event=peer.wait(lambda e:e.get('method')=='windowsSandbox/setupCompleted',start,600)
             assert event['params']=={'mode':mode,'success':True,'error':None},event
-            closing,peer=peer,None
-            shutdowns.append({'mode':mode,'phase':'before_cold_reopen',**close_peer_gracefully(closing)})
+            closing_peer,peer=peer,None
+            shutdowns.append({'mode':mode,'phase':'before_cold_reopen',**close_peer_gracefully(closing_peer)})
             peer=Peer(case,command=[str(entry)],environment=environment)
             ready=peer.call('windowsSandbox/readiness',{});assert ready=={'status':'ready'},ready
             config=peer.call('config/read',{'includeLayers':False})['config']
@@ -136,8 +136,8 @@ def main():
             assert target.read_text(encoding='utf-8')=='SANDBOX_ALLOWED' and external.read_text(encoding='utf-8')=='PRESERVE'
             modes.append({'mode':mode,'before':before,'setup':event['params'],'cold_readiness':ready,'native_preparation':provision,
                           'inside_write_verified':True,'outside_write_denied':True,'result':result})
-            closing,peer=peer,None
-            shutdowns.append({'mode':mode,'phase':'after_effects',**close_peer_gracefully(closing)})
+            closing_peer,peer=peer,None
+            shutdowns.append({'mode':mode,'phase':'after_effects',**close_peer_gracefully(closing_peer)})
         with closing(sqlite3.connect(root/'unelevated/home/provider-state/adapter.sqlite')) as db, db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
         with closing(sqlite3.connect(root/'elevated/home/provider-state/adapter.sqlite')) as db, db:assert db.execute('SELECT count(*) FROM receipts').fetchone()[0]==0
         methods=[{'method':'windowsSandbox/setupStart','status':'passed','detail':{'modes':modes}},
