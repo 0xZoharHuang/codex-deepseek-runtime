@@ -160,7 +160,7 @@ class Registry:
             if item.get('encrypted_content') or item.get('encrypted_function_args'):
                 raise ProtocolError('Cross-model opaque encrypted history cannot be represented by DeepSeek')
             if kind == 'message':
-                validate_content(item.get('content'), message=True)
+                validate_content(item.get('content'), message=True, role=item.get('role'))
             elif kind in {'function_call_output', 'custom_tool_call_output'}:
                 validate_content(item.get('output'))
             if kind in {"custom_tool_call", "function_call"}:
@@ -235,9 +235,12 @@ class Registry:
             elif kind not in {'message','function_call_output'}:
                 raise ProtocolError(f'Unsupported native history item type {kind!r}; refusing to silently omit it')
             if item.get('role') == 'developer' and item.get('type', 'message') == 'message':
-                # DeepSeek documents developer as user. Its supported policy role
-                # is system; retaining developer would demote native tool policy.
-                item['role'] = 'system'
+                # Text-only developer policy keeps the existing system mapping.
+                # DeepSeek supports developer images but forbids system images:
+                # keep the entire typed image message's role, parts and order.
+                content = item.get('content')
+                if not (isinstance(content, list) and any(part.get('type') == 'input_image' for part in content)):
+                    item['role'] = 'system'
             result.append(item)
         trailing=[]
         while result and (result[-1].get('type')=='reasoning' or (result[-1].get('type','message')=='message' and result[-1].get('role')=='assistant')):
@@ -267,7 +270,7 @@ class Registry:
             raise ProtocolError('Provider output messages must be assistant messages')
         if item.get('type')=='message':
             if not isinstance(item.get('content'),list):raise ProtocolError('Provider message content must be a native content array')
-            validate_content(item['content'])
+            validate_content(item['content'], message=True, role=item['role'])
         if item.get("type") == "function_call":
             tool = self.resolve(item.get("name", ""))
             if tool is None:
@@ -310,7 +313,7 @@ class Registry:
         return item
 
 
-def validate_content(content, *, message=False):
+def validate_content(content, *, message=False, role=None):
     if isinstance(content,str):
         return
     if not isinstance(content,list):
@@ -320,6 +323,8 @@ def validate_content(content, *, message=False):
             raise ProtocolError('Unsupported native content modality; an explicit conversion tool is required')
         if part['type'] in {'input_text','output_text'} and not isinstance(part.get('text'),str):
             raise ProtocolError('Native text content requires a text string')
+        if part['type']=='input_image' and message and role not in {'user','developer'}:
+            raise ProtocolError('Image content requires a user/developer message or a typed tool output')
         if part['type']=='input_image' and part.get('file_id'):
             raise ProtocolError('Provider-specific image file IDs cannot be replayed across backends')
         if part['type']=='input_image' and not isinstance(part.get('image_url'),str):

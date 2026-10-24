@@ -401,6 +401,9 @@ def select_image_references(payload: dict, positions: list, slots: int) -> list:
     for encounter, (position, digest) in enumerate(positions):
         i, key, j = position
         part = payload['input'][i][key][j]
+        # Files ignore detail; converting low would change its downsample semantics.
+        if part.get('detail') == 'low':
+            continue
         reference = dict(part)
         del reference['image_url']
         # Current official ID shape is 32 characters. The actual body is checked

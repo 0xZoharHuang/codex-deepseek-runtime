@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "scope": "Supplemental Windows native synthetic history-recovery observation; does not alter or extend the fixed v0.6.0 platform qualification",
+  "status": "native_indexed_home_recovery_verified_cross_home_paginated_boundary_retained",
+  "platform": {
+    "target": "x86_64-pc-windows-msvc",
+    "windows_build": 19045
+  },
+  "tested_identity": {
+    "distribution": "codex-deepseek-runtime",
+    "distribution_version": "0.6.0",
+    "public_readback_source_id": "2d43ed50050d0a687f55",
+    "public_source_commit": "92b87ed3cac45bec6c10d883677a9edb07cbed41",
+    "installation_receipt_sha256": "2cb6ff2c9a34be2ab0e3caad73d27d7f2c75edb8b859b8e2c1605372dc3e5fdf",
+    "native_version": "0.164.0-alpha.7",
+    "native_archive_sha256": "64c323e8a08337c8cebba77bc16405c5cf4aa3ad251e490df9cf79b9c8e821b7",
+    "native_recipe_id": "3c964f6dce8f17379558d25d3d794cc33ca86486a41a89829d8557f93d7a2d25",
+    "native_cli_sha256": "739617253b01787c644cb72c704fee290e53b49ba32d6e7ae6d86691744c0e64",
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "upstream_source_archive_sha256": "3f9d7e83c9f152a438633813daefacee944d29165101c305e8ac08dc00a0e361"
+  },
+  "execution": {
+    "method": "Direct invocation of qualified public-readback native app-server using disposable synthetic CODEX_HOME profiles; no gateway or shared installation activation",
+    "experimental_api": true,
+    "real_model_inference_calls": 0,
+    "local_synthetic_response_posts": 6,
+    "local_fixture_gets": 0,
+    "recovery_phase_turn_start_requests": 0,
+    "credential_reads": false,
+    "business_history_read": false,
+    "manual_database_or_rollout_edits": false,
+    "native_builds": 0,
+    "fixture_approval_policy": "never",
+    "fixture_sandbox": "workspace-write",
+    "fixture_unrelated_features": {
+      "plugins": false,
+      "code_mode": false,
+      "code_mode_only": false,
+      "memories": false
+    },
+    "note": "Feature settings belong only to synthetic transcript creation; this is not full runtime parity qualification."
+  },
+  "source_references": [
+    {
+      "path": "codex-rs/app-server/src/request_processors/thread_processor.rs",
+      "sha256": "25ab444cc5bf084d47ab6c94b4d009d4b150f8ca4fb5d921ce450b068762d0a1",
+      "exact_upstream": true
+    },
+    {
+      "path": "codex-rs/app-server-protocol/src/protocol/v2/thread.rs",
+      "sha256": "8fe95c7e0d8d6d26ac9e8f5af3256a755c57c5c6c4a217310b0dd51fc7de05fc",
+      "exact_upstream": true
+    },
+    {
+      "path": "codex-rs/thread-store/src/local/read_thread.rs",
+      "sha256": "a20101d62bedb87d63640a8723d84034bdf7dce9387c1daeb2387b14781dc335",
+      "exact_upstream": true
+    },
+    {
+      "path": "codex-rs/core/src/thread_rollout_truncation.rs",
+      "sha256": "77f6847c9cd1e8980de4fac2f798a92d85d9d263162a11902e216fb860db6edf",
+      "exact_upstream": true
+    }
+  ],
+  "source_branches": {
+    "path_read_and_current_store_check": "app-server/src/request_processors/thread_processor.rs:4886-4949",
+    "paginated_fork_preparation": "app-server/src/request_processors/thread_processor.rs:5306-5337",
+    "legacy_fork_truncation": "app-server/src/request_processors/thread_processor.rs:5495-5512",
+    "thread_revert_contract": "app-server-protocol/src/protocol/v2/thread.rs:1288-1317"
+  },
+  "synthetic_source_threads": {
+    "legacy": {
+      "thread_id": "01a16de6-8b3a-7eb2-8fe8-73224a351d10",
+      "history_mode": "legacy",
+      "canonical_turn_ids": [
+        "01a16de6-8b6e-7581-a925-a00e26a77338",
+        "01a16de6-8be7-7690-95a4-16dc2f135ff9",
+        "01a16de6-8c27-7141-8d5d-ac702f4e1078"
+      ],
+      "initial_rollout_sha256": "1f6b420cef42517b7b88063a65b17c6aa696c9b6910bf4178440f7b2252b9f24"
+    },
+    "paginated": {
+      "thread_id": "01a16de6-8c84-7ac2-b692-95c6d75ce8a9",
+      "history_mode": "paginated",
+      "canonical_turn_ids": [
+        "01a16de6-8cae-7033-af2f-ef9c5f29f181",
+        "01a16de6-8d2d-78d3-80db-f56b9bf96d07",
+        "01a16de6-8d82-7d10-89ba-0ea75fb70b61"
+      ],
+      "initial_rollout_sha256": "3349952cb6cb391dffa85cf9161a273193e60af0c73060185302b964bc9be009"
+    }
+  },
+  "observations": [
+    {
+      "history_mode": "legacy",
+      "operation": "path_before_turn",
+      "method": "thread/fork",
+      "result": "success",
+      "error_code": null,
+      "error_message": null,
+      "new_thread_id": "01a16de6-8ea9-7b02-a16b-6b9dd515d5c5",
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "legacy",
+      "operation": "path_latest",
+      "method": "thread/fork",
+      "result": "success",
+      "error_code": null,
+      "error_message": null,
+      "new_thread_id": "01a16de6-8ef1-79c2-bf01-6d21fa72eea8",
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "legacy",
+      "operation": "fork_then_native_rollback2",
+      "method": "thread/rollback",
+      "result": "error",
+      "error_code": -32600,
+      "error_message": "Invalid request: unknown variant thread/rollback; full native error retained privately",
+      "new_thread_id": null,
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "paginated",
+      "operation": "path_before_turn",
+      "method": "thread/fork",
+      "result": "error",
+      "error_code": -32600,
+      "error_message": "no rollout found for thread id 01a16de6-8c84-7ac2-b692-95c6d75ce8a9",
+      "new_thread_id": null,
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "paginated",
+      "operation": "path_latest",
+      "method": "thread/fork",
+      "result": "error",
+      "error_code": -32600,
+      "error_message": "no rollout found for thread id 01a16de6-8c84-7ac2-b692-95c6d75ce8a9",
+      "new_thread_id": null,
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "legacy",
+      "operation": "native_path_resume",
+      "method": "thread/resume",
+      "result": "success",
+      "error_code": null,
+      "error_message": null,
+      "new_thread_id": "01a16de6-8b3a-7eb2-8fe8-73224a351d10",
+      "source_rollout_unchanged_during_operation": false
+    },
+    {
+      "history_mode": "legacy",
+      "operation": "fork_by_id_after_resume",
+      "method": "thread/fork",
+      "result": "success",
+      "error_code": null,
+      "error_message": null,
+      "new_thread_id": "01a16de6-8fbf-70a0-94bc-5e30ebaf1444",
+      "source_rollout_unchanged_during_operation": true
+    },
+    {
+      "history_mode": "paginated",
+      "operation": "native_path_resume",
+      "method": "thread/resume",
+      "result": "error",
+      "error_code": -32600,
+      "error_message": "no rollout found for thread id 01a16de6-8c84-7ac2-b692-95c6d75ce8a9",
+      "new_thread_id": null,
+      "source_rollout_unchanged_during_operation": true
+    }
+  ],
+  "verified_recovery": {
+    "source_parent_id": "01a16de6-8c84-7ac2-b692-95c6d75ce8a9",
+    "source_history_mode": "paginated",
+    "before_turn_id": "01a16de6-8d2d-78d3-80db-f56b9bf96d07",
+    "retained_turn_ids": [
+      "01a16de6-8cae-7033-af2f-ef9c5f29f181"
+    ],
+    "direct_cutoff_child_id": "01a16dea-6032-75d0-b1f5-a8ab4ddfad59",
+    "latest_fork_then_revert_child_id": "01a16dea-60a2-7dd0-a239-74b816247936",
+    "revert_result_same_thread_id": true,
+    "parent_lineage_verified_in_api_and_own_session_meta": true,
+    "path_ignores_request_thread_id_when_current_store_contains_source": true,
+    "source_rollout_sha256": "3349952cb6cb391dffa85cf9161a273193e60af0c73060185302b964bc9be009",
+    "source_unchanged_through_process_exit": true,
+    "deferGoalContinuation": true,
+    "continue_only_new_child": true,
+    "whole_original_home_read_only": false,
+    "original_store_database_files_changed_by_native_child_creation": [
+      "goals_1.sqlite-shm",
+      "logs_2.sqlite-shm",
+      "memories_1.sqlite-shm",
+      "queue_1.sqlite-shm",
+      "state_5.sqlite-shm",
+      "state_5.sqlite-wal",
+      "thread_history_1.sqlite-shm",
+      "thread_history_1.sqlite-wal"
+    ],
+    "native_child_state_writes_expected": true
+  },
+  "retained_negative_results": {
+    "cross_home_paginated_path_before_turn_failed": true,
+    "cross_home_paginated_path_latest_failed": true,
+    "cross_home_paginated_resume_failed": true,
+    "cross_home_phase_original_database_hashes_unchanged": true,
+    "legacy_resume_is_not_read_only": true,
+    "legacy_source_sha256_after_resume": "ab515744dd02861785982c1172f7a440cd703f59749c8b2fb5cdbd92918859e5",
+    "rollback_method_does_not_exist_in_fixed_native_api": true
+  },
+  "owned_processes": [
+    {
+      "pid": 13304,
+      "created": 1792845187.668543,
+      "exit": 0,
+      "forced": false
+    },
+    {
+      "pid": 24608,
+      "created": 1792845188.6187963,
+      "exit": 0,
+      "forced": false
+    },
+    {
+      "pid": 26424,
+      "created": 1792845438.7552412,
+      "exit": 0,
+      "forced": false
+    }
+  ],
+  "all_owned_appservers_naturally_exited_zero": true,
+  "private_evidence": [
+    {
+      "logical_name": "cross-home-native-r19/report.json",
+      "sha256": "97f5af88f4a9648f3f5f2b9a6dd0f648a3ceb8dd503c5d86ce37d2d66fdb7f1a",
+      "retained_private": true
+    },
+    {
+      "logical_name": "cross-home-native-r19/native-index-recovery/report.json",
+      "sha256": "9d2fcb5a0c1d38f365f0fbf3e248a67a54d46ad56450d845c67bd79a12300965",
+      "retained_private": true
+    }
+  ],
+  "private_protocol_trace_sha256": {
+    "A/client-requests.jsonl": "e003f1cda08b8ba8ec2c7f282be3ed69f2155a4a4886bd9491af07828e8d2998",
+    "A/server-events.jsonl": "639810e94ce37140b108154553fb35caf4e79902163fd0e53623c156d6465b5a",
+    "B/client-requests.jsonl": "f762c8b9bfc848f7d92fc375ef47c02bf75b55cdaec86b224bf99683c899e51b",
+    "B/server-events.jsonl": "09d0da15348128904ff782d44a71bfbbce416481f723ec642cd349e60b8cf13e",
+    "native-index-recovery/client-requests.jsonl": "0654130d10dd1fdcaa6cb4420a876b6fa98901066de863c0e9a0ad9a5f1143b1",
+    "native-index-recovery/server-events.jsonl": "6ba74fc6f906a19a60375fbb9afe8f40c630290169c8be32d2867b36589e70b4"
+  },
+  "not_claimed": [
+    "Real user session recovery",
+    "Cross-home paginated migration",
+    "Source rollout immutability after legacy resume",
+    "Whole original home or SQLite databases remaining read-only during indexed forks",
+    "macOS or Linux execution of these new cases",
+    "Changing default history mode to legacy",
+    "Additional v0.6.0 runtime qualification"
+  ]
+}

@@ -145,7 +145,7 @@ def main():
         'tui-interrupt':[sys.executable,str(SOURCE/'verify_tui_interrupt.py'),'--entry',str(entry),'--output',output('tui-interrupt'),'--sandbox-mode',args.sandbox_mode],
         'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),'--sandbox-mode',args.sandbox_mode,*(['--require-web-research'] if args.require_web_research else [])],
         'native-revocation':[sys.executable,str(SOURCE/'verify_native_revocation.py'),'--probe',str(args.native_probe.resolve()),'--http-binary',environment['CODEX_DEEPSEEK_TEST_HTTP_BINARY'],'--output',output('native-revocation')],
-        'offline':[sys.executable,'-m','pytest','-p','run_acceptance','-p','pytest_asyncio.plugin','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
+        'offline':[sys.executable,'-m','pytest','-p','run_acceptance','-p','pytest_asyncio.plugin','-o','asyncio_default_fixture_loop_scope=function','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
         'live':[sys.executable,str(SOURCE/'verify_live.py'),'--agents','--output',output('live')],
         'plugin':[sys.executable,str(SOURCE/'verify_plugin_audit.py'),'--output',output('plugin')],
         'features':[sys.executable,str(SOURCE/'verify_features.py'),'--output',output('features')],

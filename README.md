@@ -8,7 +8,7 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **本源码版本：0.6.0。** 是否已正式发布，以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 为准；当前实测状态、失败修复及平台范围见 [0.6.0 验收记录](docs/release-0.6.0-acceptance.zh-CN.md)。源码分支、安装清单的 `ready` 字段和旧版本报告都不能代替完整验收。正式 release 发布前，使用[隔离候选流程](docs/release-0.6.0-candidate.zh-CN.md)，保留现有稳定入口。
+> **本源码版本：0.6.1 候选。** 本轮修复显式 low 图片的编码语义，以及 developer / system / assistant 图片角色边界，见[图片内容说明](docs/image-content-boundaries.md)。新 source 的全平台、完整任务和 App GUI 资格尚不能由本轮离线检查推定。下方 v0.6.0 安装命令、[0.6.0 验收记录](docs/release-0.6.0-acceptance.zh-CN.md)及冻结资产仍保留原版本范围；是否已发布，以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 为准，候选期间保留现有稳定入口。
 
 ## 它怎样工作
 
@@ -40,7 +40,7 @@
 
 ## 支持范围与验收状态
 
-当前 0.6.0 的资格与各平台证据见[本版本验收记录](docs/release-0.6.0-acceptance.zh-CN.md)。下面保留 v0.5.0 的历史支持范围，不能据此推定新版本通过。
+已冻结 0.6.0 的资格与各平台证据见[本版本验收记录](docs/release-0.6.0-acceptance.zh-CN.md)。下面保留 v0.5.0 的历史支持范围，不能据此推定新版本通过。
 
 | 平台 | v0.5.0 历史结论 | 运行条件与证据 |
 | --- | --- | --- |
@@ -181,6 +181,8 @@ codex-deepseek --search "查阅官方文档，打开原文、查找相关段落�
 codex-deepseek mcp list
 codex-deepseek app-server
 ```
+
+需要从某个 turn 前分出恢复线程时，见[固定原生历史恢复流程](docs/native-history-recovery.md)：分页历史需要原 home 的索引，只继续新 fork 子线程；可读 rollout 路径不等于全新 home 的分页迁移。
 
 安装时的默认权限是 `workspace-write` 和 `on-request`。沙箱、人工审批、Guardian 自动审查、Hooks 信任等仍使用原生实现与配置；不要为让某个命令通过而把全局权限改成无限制。子智能体由任务中的原生协作机制创建和管理，`agents` 用来浏览共享本地 daemon 的会话。
 
