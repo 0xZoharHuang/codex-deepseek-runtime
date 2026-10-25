@@ -201,6 +201,14 @@ def package_identity(package: Path, archived_recipe: Path | None = None) -> dict
 
 
 
+def pytest_command(*arguments: str) -> list[str]:
+    # -I ignores cwd/PYTHONPATH. Admit only this trusted repository's QA helpers;
+    # never add ROOT/src, which would replace the identity-checked installed adapter.
+    bootstrap = ("import sys;sys.path.insert(0," + repr(str(ROOT)) + ");"
+                 "import pytest;raise SystemExit(pytest.main(sys.argv[1:]))")
+    return [sys.executable, "-I", "-B", "-c", bootstrap, *arguments]
+
+
 def validate_collected_nodes(stdout: str) -> list[str]:
     """A same-count deletion/substitution must not qualify a different native suite."""
     node_ids = [line.strip() for line in stdout.splitlines()
@@ -534,19 +542,18 @@ def main() -> int:
             "CODEX_DEEPSEEK_TEST_HTTP_BINARY": identity["helper"],
             "CDS_RETRY_EVIDENCE_DIR": str(evidence / "retry"),
         })
-        command = [
-            sys.executable, "-I", "-B", "-m", "pytest",
+        command = pytest_command(
             "-p", "pytest_asyncio.plugin", "-W", "error",
             "-o", "asyncio_default_fixture_loop_scope=function",
             *SUITES, "-q", "-p", "no:cacheprovider",
             "--basetemp", str(work / "pytest"),
             "--junitxml", str(evidence / "native.xml"),
-        ]
-        collection_command = [
-            sys.executable, "-I", "-B", "-m", "pytest", "-p", "pytest_asyncio.plugin",
+        )
+        collection_command = pytest_command(
+            "-p", "pytest_asyncio.plugin",
             "-W", "error", "-o", "asyncio_default_fixture_loop_scope=function",
             *SUITES, "-q", "--collect-only", "-p", "no:cacheprovider",
-        ]
+        )
         collected = subprocess.run(
             collection_command, cwd=ROOT, env=env, capture_output=True,
             text=True, encoding="utf-8", timeout=120,
