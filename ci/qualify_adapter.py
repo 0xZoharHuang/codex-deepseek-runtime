@@ -1,4 +1,4 @@
-"""Qualify the complete current offline collection, including prior native 15."""
+"""Qualify the complete current offline collection, including the separately qualified declared native partition."""
 from __future__ import annotations
 import argparse
 from collections import Counter
@@ -53,7 +53,8 @@ def validate_partition(all_items, native, cases, own_items, allowed):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--package", type=Path, required=True)
-    parser.add_argument("--archived-recipe", type=Path, required=True)
+    parser.add_argument("--archived-recipe", type=Path,
+                        help="Exact original recipe for validated reuse; omit only for a fresh current-recipe package")
     parser.add_argument("--source-archive", type=Path, required=True)
     parser.add_argument("--native-evidence", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
@@ -75,7 +76,7 @@ def main():
     args.evidence.mkdir(parents=True)
     args.work.mkdir(parents=True)
     record = {"status": "running", "started_at": time.time(),
-              "scope": "Complete current offline collection; native 15 separately executed",
+              "scope": "Complete current offline collection; declared native partition separately executed",
               "real_model_requests": 0, "provider_credentials_read": False,
               "native_builds": 0, "product_release_ready": False}
     try:

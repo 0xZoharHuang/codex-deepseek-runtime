@@ -12,6 +12,8 @@
 >
 > 0.6.1 继续复用固定的 Codex 0.164.0-alpha.7 原生包和 0.6.0 原生资产；alpha 是所固定上游 runtime 的版本标识。主模型仍由独立 provider 配置路由。[0.6.0 验收记录](docs/release-0.6.0-acceptance.zh-CN.md)保留其原版本范围。正式发布状态以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 为准。
 
+> **开发分支状态：** 请求字节容量恢复、旧大图会话压缩和工具历史冷恢复正在验收，尚未稳定发布。下方安装命令仍固定到已发布的 `v0.6.1` 源码标签。新能力须使用绑定了精确原生包、manifest 和运行证据的独立候选；历史验收不自动覆盖本工作树。 机制、压缩完成判定与当前证据见[请求容量与旧会话恢复](docs/request-capacity-recovery.zh-CN.md)。
+
 ## 它怎样工作
 
 ```text
@@ -36,7 +38,7 @@
              +--> 原生 MCP --> codex_web --> 实际网页 / PDF
 ```
 
-适配层处理请求和事件格式、提供方选择、系统凭据与进程通信。它不另建 agent loop，不替原生 runtime 调度工具、审批命令或管理子智能体，也不因网络错误重新执行工具操作。联网搜索使用 OpenRouter Exa；打开网页、页内查找和跟随链接通过随包提供的 MCP 文档读取器完成。
+适配层处理请求和事件格式、提供方选择、系统凭据与进程通信。它不另建 agent loop，不替原生 runtime 调度工具、审批命令或管理子智能体；协议失败、重试及已执行工具结果的保留仍走原生机制。联网搜索使用 OpenRouter Exa；打开网页、页内查找和跟随链接通过随包提供的 MCP 文档读取器完成。
 
 这里的“等价”指**固定版本 Codex CLI 的本地 runtime 机制**。DeepSeek 的代码质量、推理水平和模态能力由模型决定；OpenAI 的云服务及账户权益需要相应服务，换模型不会获得这些权益。
 
@@ -263,6 +265,7 @@ codex-deepseek doctor
 | 原生产物或缓存摘要不符 | 保留异常文件，重新取得匹配版本的源码和归档，交给安装器验证；不要关闭摘要检查。 |
 | Linux 缺少动态库或 venv | 安装与系统匹配的 glibc/OpenSSL 3/libcap 运行库及 Python venv 支持；当前验证目标是 Ubuntu 24.04 GNU。 |
 | 模型未宣告 Code Mode 元数据的提醒 | 当前 catalog 不强制工具模式，提醒来自原生检查；模式使用情况见报告，不通过隐藏提醒制造通过。 |
+| `Reconnecting... undeclared tool` | 核对本次实际声明的工具集合与调用路径；目录、历史或 Code Mode 内的工具名不代表顶层已开放。保持工具白名单，参见[受控原生重试记录](reports/protocol/undeclared-tool-retry-20261025.json)。该记录覆盖一次未知调用前后已执行工具的保留，不承诺模型再次发出新操作时的业务幂等。 |
 | 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
 | 子任务 DNS 失败 / `curl` 退出 6 / HTTP 000 | 先核对实际子任务网络策略；宿主能解析不等于沙箱能联网，也不能据此断言远端宕机。见[诊断指引](skills/cds/references/diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage)。 |
 

@@ -28,7 +28,15 @@ def load_image_config(state_root: Path):
     path=Path(state_root)/'image-transport.json'
     if not path.exists():return None
     if path.is_symlink() or path.stat().st_nlink!=1 or path.stat().st_size>16384:raise ValueError('Invalid image transport configuration path')
-    value=_strict_json(path.read_bytes())
+    with path.open('rb') as stream:
+        raw = stream.read(16385)
+    if len(raw) > 16384:
+        raise ValueError('Image transport configuration exceeds its read limit')
+    return parse_image_config(_strict_json(raw))
+
+
+def parse_image_config(value):
+    """Validate the same non-secret policy for live and explicit offline use."""
     allowed={'schema_version','enabled','native_outbound_policy','activate_above_bytes','wire_budget_bytes','idle_ttl_seconds','verify_after_seconds','max_file_references'}
     if not isinstance(value,dict) or not set(value)<=allowed or type(value.get('schema_version')) is not int or value['schema_version']!=1 or type(value.get('enabled')) is not bool:
         raise ValueError('Invalid image transport configuration schema')
@@ -89,7 +97,7 @@ class ImageProvider:
             image=value['adaptations']['image_transport']
             for key,item in updates.items():
                 if key in {'status','response_id','requested_provider'}:value[key]=item
-                elif key in {'preparation','consumption_status','provider_terminal','provider_response_id','release_error_type','native_outbound_policy'}:image[key]=item
+                elif key in {'preparation','consumption_status','provider_terminal','provider_response_id','release_error_type','native_outbound_policy','budget_failure'}:image[key]=item
                 else:raise ValueError('Unknown image receipt field')
             db.execute('INSERT OR REPLACE INTO calls VALUES (?,?)',(ref,json.dumps(value,allow_nan=False)))
     @staticmethod

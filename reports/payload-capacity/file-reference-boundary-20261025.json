@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-24T20:54:33.773148+00:00",
+  "scope": "Controlled synthetic OpenRouter Responses duplicate-file-reference boundary; not native agent-loop or model visual-accuracy qualification",
+  "endpoint": "https://openrouter.ai/api/v1/responses",
+  "requested_model": "deepseek/deepseek-v4.1-flash-1017",
+  "requested_provider": "deepseek",
+  "allow_fallbacks": false,
+  "image": {
+    "bytes": 179,
+    "sha256": "5a863cc8c1c91cc4f6d1cd0521bcb1291f0fb9b84e3eacc26d98841efe949ece",
+    "dimensions": [
+      96,
+      64
+    ],
+    "generated_crc_valid": true
+  },
+  "uploaded_unique_images": 1,
+  "cases": [
+    {
+      "reference_occurrences": 16,
+      "unique_file_ids": 1,
+      "request_bytes": 1602,
+      "inference_sent": true,
+      "http_status": 200,
+      "response_bytes": 1421,
+      "response_id": "gen-1792875277-slmDrd5nGnIByvNhwUBx",
+      "response_status": "completed",
+      "observed_model": "deepseek/deepseek-v4.1-flash-1017"
+    },
+    {
+      "reference_occurrences": 17,
+      "unique_file_ids": 1,
+      "request_bytes": 1686,
+      "inference_sent": true,
+      "http_status": 400,
+      "response_bytes": 106,
+      "response_id": null,
+      "response_status": null,
+      "observed_model": null,
+      "error_preview": "{\"error\":{\"message\":\"Too many file references: 17 exceed the 16-reference limit per request.\",\"code\":400}}"
+    }
+  ],
+  "positive_generation_identity": {
+    "requested": {
+      "upstream_model": "deepseek/deepseek-v4.1-flash-1017",
+      "provider": "deepseek"
+    },
+    "model_identity": {
+      "matches_requested": true,
+      "status": "verified_canonical_alias",
+      "proof": {
+        "http_status": 200,
+        "metadata": {
+          "id": "deepseek/deepseek-v4.1-flash-1017",
+          "canonical_slug": "deepseek/deepseek-v4.1-flash-20261017"
+        },
+        "raw_sha256": "940f332f1c00d35e340b3692409851ad08a32587c27d735a5a33fbc3d587893f"
+      }
+    },
+    "observed": {
+      "id": "gen-1792875277-slmDrd5nGnIByvNhwUBx",
+      "model": "deepseek/deepseek-v4.1-flash-20261017",
+      "provider_name": "DeepSeek",
+      "cancelled": false,
+      "finish_reason": "stop",
+      "native_finish_reason": "stop"
+    }
+  },
+  "transport": {
+    "kind": "existing native HTTP helper on Windows interactive Limited token",
+    "helper_sha256": "f6d12de3595866a9afc69fbe5866ca3c5088bfea0f63d787cb02646e4c35e1e9",
+    "new_agent_runtime_processes": 0
+  },
+  "cleanup": {
+    "delete_acknowledged": true,
+    "get_returns_missing": true,
+    "native_http_helper_retired": true,
+    "no_other_files_listed_or_touched": true
+  },
+  "limits": {
+    "conclusion": "This observed endpoint counts reference occurrences, including repeated occurrences of one file ID;16 accepted and17 rejected. It is not a perpetual or documented provider contract.",
+    "does_not_establish": "Image understanding quality, a maximum number of inline images, or whole CDS runtime acceptance."
+  },
+  "private_evidence_digests": {
+    "controlled_result_sha256": "92d85a02b408ef6a911135002b201caf66c6eb9bfa3c8d84f368c5263e6e7d29",
+    "generation_readback_sha256": "8ccf09d6e95b53f552a2de33ae866794a326c5cd54f6719d50758e10a2a8d976"
+  }
+}

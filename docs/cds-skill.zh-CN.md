@@ -19,9 +19,11 @@
 
 在 CDS 内调用 `$cds` 时，它使用当前会话，不再递归启动另一层 CDS。外层 agent 启动的独立 CDS worker 有自己的进程和会话；它不会自动成为父 Codex 的 `spawn_agent` 子智能体。CDS 内的原生子智能体仍使用原生协作机制。技能说明这两种生命周期，并不实现新的控制器、调度器或 agent loop。
 
-## 一个技能，按需读六份参考
+## 一个技能，按需选择参考
 
 主入口保持简短，通过任务选择启动与权限、会话控制、原生工具、安装与平台、排障验收、版本与来源。它参考了固定 native 源码内置的 `skill-creator` 格式，以及官方 [Build skills](https://learn.chatgpt.com/docs/build-skills) 和 [App Server](https://learn.chatgpt.com/docs/app-server#api-overview) 文档。
+
+用户明确限定读取目录／文件时，另按需读取[读取范围说明](read-scope.zh-CN.md)；它使用原生 permissions profile 和虚构正负自验，不把 workspace-write 或搜索 glob 当作读取白名单，也不改变普通 coding 的默认范围。
 
 技能包含一个可选的只读 `inspect_cds.py`：核对本地安装元数据与入口哈希，拒绝不明的同名程序。显式要求时才运行已关联入口的 `--help` 或 `--version`。它不读取凭据、不调用模型，也不把元数据一致性称为发布签名或连接测试。
 

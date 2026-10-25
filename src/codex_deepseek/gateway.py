@@ -299,7 +299,15 @@ class Gateway:
                 detail = "No usable provider credential"
             else:
                 detail = str(exc).replace(captured_key, "[REDACTED]") if captured_key else str(exc)
-            self.store.finish(receipt, "adapter_error", status, events, detail)
+            receipt_detail = detail
+            budget = getattr(exc, 'diagnostics', None) if isinstance(exc, ImageTransportError) else None
+            if isinstance(budget, dict):
+                # Only the pure planner's aggregate: no URLs, image data or file IDs.
+                receipt_detail = json.dumps({'message': detail, 'image_budget': budget}, separators=(',', ':'))
+                if self.images is not None:
+                    self.images.record(receipt, status='adapter_error', consumption_status='not_sent',
+                                       budget_failure=budget)
+            self.store.finish(receipt, "adapter_error", status, events, receipt_detail)
             if response is not None and response.prepared:
                 try:
                     await response.write(encode_sse({"type": "response.failed", "response": {

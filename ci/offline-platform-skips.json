@@ -154,6 +154,46 @@
       "classname": "tests.test_windows_sandbox_admission",
       "name": "test_main_retains_failure_receipt_when_final_cleanup_also_raises",
       "message": "Windows-only lifecycle admission contract"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_materializes_exact_bytes_without_symlink",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_wrong_link_target[/outside-license]",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_wrong_link_target[../outside-license]",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_wrong_link_target[OTHER]",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_missing_regular_target",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_link_chain_instead_of_regular_target",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_rejects_unqualified_link_name",
+      "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_windows_refuses_overwrite_on_materialization",
+      "message": "Requires Windows physical extended-path extraction"
     }
   ],
   "linux": [],

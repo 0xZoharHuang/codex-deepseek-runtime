@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "passed_bounded_owned_legacy143_cold_recovery",
+  "date": "2026-10-25",
+  "scope": {
+    "native_runtime": "0.164.0-alpha.7 / fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "platform": "Windows x64, limited interactive admin token, isolated synthetic CODEX_HOME",
+    "cli_sha256": "30f94746f29353d11ba998363eaaa5599a80fbc2e1c89e57a228a5b33dea71c4",
+    "cli_profile": "test-only: codex-core opt0; remaining CLI release opt3. Production five-binary and cross-platform qualification remain separate gates.",
+    "paid_model_or_business_task": false,
+    "real_OpenRouter_limit_claim": false
+  },
+  "legacy_red": {
+    "completed_turns": 142,
+    "pending_image": 143,
+    "ordinary_status": 413,
+    "manual_compaction_status": 413,
+    "native_exit": 0,
+    "seed_receipt_sha256": "07118ed91a89d2c18033ccbcebda7c49bb5274c3da6af66b84d57808b9cf8198"
+  },
+  "new_cold_replay": {
+    "requests": [
+      {
+        "phase": "compact",
+        "status": 413,
+        "body_bytes": 40666903,
+        "image_count": 143,
+        "body_sha256": "4db446bcbbdd2dc77c073932370bfd446b5a8d6548be68a321e93188c14bc95d"
+      },
+      {
+        "phase": "compact",
+        "status": 200,
+        "body_bytes": 19925028,
+        "image_count": 70,
+        "body_sha256": "f88078098ead6ba53a2e54b4db5f1e84a303fd1154b1cc28b8757ea5573a9eaa"
+      },
+      {
+        "phase": "ordinary",
+        "status": 200,
+        "body_bytes": 20812127,
+        "image_count": 73,
+        "body_sha256": "6163dadf200710dc87857df0347b22dcc8df5f9d592857d5aacb9cfdbe2da3bb"
+      }
+    ],
+    "wire_budget_bytes": 31457280,
+    "native_coverage": {
+      "selected": 144,
+      "captured": 289,
+      "remaining": 145,
+      "warning_is_actual_native_notification": true
+    },
+    "fresh_summary_image_prefix_count": 70,
+    "unchanged_suffix_image_count": 73,
+    "all_143_image_hashes_detail_order_preserved": true,
+    "pending_143rd_image_in_next_completed_turn": true,
+    "native_raw_rollout_original_prefix_byte_identical": true,
+    "original_pngs_byte_identical": true,
+    "manual_checkpoint": {
+      "origin": "manual_prefix_genesis",
+      "completed_epoch": 0,
+      "fresh_summary_response_id": true
+    },
+    "ordinary_checkpoint": {
+      "origin": "ordinary_completed",
+      "completed_epoch": 1,
+      "new_response_id": true,
+      "recovery_fence": null
+    },
+    "native_exit": 0,
+    "forced_peer_cleanup": false,
+    "native_helper_retired": true,
+    "owned_task_deleted": true
+  },
+  "evidence": {
+    "receipt_sha256": "5045d09a506c2bc25e0ec7bce897226871cbd0b867ae344f3b6e0ae3e7b7290b",
+    "replay_source_sha256": "f37ff67f3045979d83c66bbc6239584068567bcef0229718b4e10fff585d6662",
+    "requests_metadata_sha256": "bc817b49680f31640774790a8698e928bff1039cef15ec9e15f08d2116caa84e",
+    "independent_root_readback": true,
+    "combined_uncompressed_capture_bytes": 142293329,
+    "capture_ceiling_bytes": 157286400
+  },
+  "not_proven_by_this_report": [
+    "production optimized package qualification",
+    "Linux/macOS execution",
+    "real DeepSeek task quality",
+    "global runtime equivalence"
+  ]
+}

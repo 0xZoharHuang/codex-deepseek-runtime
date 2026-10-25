@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "scope": "Historical Windows R36 native code-dispatch behavior with current protocol adapter and a synthetic loopback provider; does not qualify later capacity-recovery native builds",
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "native_sha256": "7021d275cea7dfa6ac2c2af8b7d433e589a5e70eccd7a20603c8c8e574aa0541",
+  "code_mode_host_sha256": "671d0ac396098bd56c346a43282faca151affd5455c4a1dc5d875f21e2784cf1",
+  "prevalid": {
+    "native_exit": 0,
+    "provider_requests": 2,
+    "same_retry_body": true,
+    "tool_effects": 0,
+    "unknown_forwarded": false
+  },
+  "postvalid": {
+    "native_exit": 0,
+    "provider_requests": 2,
+    "actual_advertised_tool": "exec",
+    "native_opt_in": "tools.update_plan.enabled=true in own profile; CodeMode unchanged",
+    "actual_nested_tool": "tools.update_plan",
+    "effect_before_unknown": true,
+    "plan_updates": 1,
+    "retry_call_count": 1,
+    "retry_output_count": 1,
+    "unknown_forwarded": false
+  },
+  "visible_reconnect_count_per_case": 1,
+  "visible_reconnect_channel": "native stdout JSON error event",
+  "real_provider_inferences": 0,
+  "credential_store_reads": 0,
+  "tool_whitelist_changed": false,
+  "interpretation": [
+    "The undeclared call is rejected before native dispatch.",
+    "Native retries retain an already-executed valid call and its output in the next request.",
+    "The controlled retry returned only a final answer and did not automatically re-execute the historical tool.",
+    "This does not establish idempotence if a provider emits another tool call or reuses a call ID; no such replay was injected."
+  ],
+  "scope_limits": [
+    "not current R48+/new hash native qualification; small final native retest pending",
+    "not all-platform coverage",
+    "not proof that top-level undeclared native handlers are safe to expose"
+  ],
+  "resource_closeout": {
+    "registered_children": 4,
+    "remaining": 0,
+    "external_force_cleanup": false,
+    "broker_task_deleted": true
+  },
+  "evidence_digests": {
+    "handoff": "07720479f7872c07eab26cddaa8859ae4311a505a8112702ce5ad6200ba1c9b4",
+    "prevalid": "6e951245bffb30c884b88f952a6e6fc8185c62843987d5b3575f73c3990095ed",
+    "postvalid": "d820571de808483ea55b5b7536f162645afa549635497630438564c639cb795e",
+    "stdout_events": "1c43ab2dcbd8a4632ff2e747ac53521faea19e7b50c7ed1b156f12172624e05d"
+  }
+}

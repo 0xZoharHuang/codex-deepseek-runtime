@@ -6,6 +6,7 @@ fixtures. It does not certify live-model quality or whole-product readiness.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 import os
@@ -20,7 +21,30 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = ("tests/test_native_raw_http.py", "tests/test_native_payload_retry.py")
-EXPECTED_CASES = 15
+EXPECTED_NODE_IDS = (
+    'tests/test_native_raw_http.py::test_native_raw_large_multipart_files_delete_exact_wire_and_warm_reuse',
+    'tests/test_native_raw_http.py::test_native_raw_errors_preserve_status_headers_body_without_replay[413]',
+    'tests/test_native_raw_http.py::test_native_raw_errors_preserve_status_headers_body_without_replay[429]',
+    'tests/test_native_raw_http.py::test_native_raw_errors_preserve_status_headers_body_without_replay[500]',
+    'tests/test_native_raw_http.py::test_native_raw_gate_denies_auth_origin_metadata_and_non_files_delete',
+    'tests/test_native_raw_http.py::test_native_raw_tls_rejection_and_no_proxy',
+    'tests/test_native_raw_http.py::test_native_raw_cancel_model_before_upstream_headers',
+    'tests/test_native_raw_http.py::test_native_upload_cancel_before_headers_preserves_unknown_without_replay',
+    'tests/test_native_payload_retry.py::test_real_cli_retry_classification[413-None-1]',
+    'tests/test_native_payload_retry.py::test_real_cli_retry_classification[413-1-2]',
+    'tests/test_native_payload_retry.py::test_real_cli_retry_classification[503-None-2]',
+    'tests/test_native_payload_retry.py::test_real_cli_retry_classification[429-1-2]',
+    'tests/test_native_payload_retry.py::test_real_cli_compaction_413_uses_same_native_retry_semantics[None]',
+    'tests/test_native_payload_retry.py::test_real_cli_compaction_413_uses_same_native_retry_semantics[1]',
+    'tests/test_native_payload_retry.py::test_real_cli_local_operator_budget_413_is_not_replayed',
+    'tests/test_native_payload_retry.py::test_real_cli_ordinary_capacity_prefix_preserves_unconsumed_tool_pair[summary]',
+    'tests/test_native_payload_retry.py::test_real_cli_ordinary_capacity_prefix_preserves_unconsumed_tool_pair[token-budget-local-reset]',
+    'tests/test_native_payload_retry.py::test_real_cli_cold_capacity_checkpoint_qualifies_rebuilt_envelopes[summary]',
+    'tests/test_native_payload_retry.py::test_real_cli_cold_capacity_checkpoint_qualifies_rebuilt_envelopes[token-budget-local-reset]',
+    'tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[summary]',
+    'tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[token-budget-local-reset]',
+)
+EXPECTED_CASES = len(EXPECTED_NODE_IDS)  # Eight raw HTTP cases and thirteen payload/recovery cases.
 
 
 def sha(path: Path) -> str:
@@ -176,6 +200,16 @@ def package_identity(package: Path, archived_recipe: Path | None = None) -> dict
     }
 
 
+
+def validate_collected_nodes(stdout: str) -> list[str]:
+    """A same-count deletion/substitution must not qualify a different native suite."""
+    node_ids = [line.strip() for line in stdout.splitlines()
+                if re.match(r"^[^ ]+[.]py::", line.strip())]
+    if Counter(node_ids) != Counter(EXPECTED_NODE_IDS):
+        raise ValueError("Native collection differs from the declared node identities")
+    return node_ids
+
+
 def junit_result(path: Path, expected_names: list[str] | None = None) -> dict:
     root = ET.fromstring(path.read_bytes())
     cases = list(root.iter("testcase"))
@@ -190,6 +224,11 @@ def junit_result(path: Path, expected_names: list[str] | None = None) -> dict:
             "observed_cases": len(cases),
             "rejected": rejected,
         }))
+    declared_keys = Counter((suite.removesuffix(".py").replace("/", "."), name)
+                            for suite, name in (node.split("::", 1) for node in EXPECTED_NODE_IDS))
+    observed_keys = Counter((case.get("classname", ""), case.get("name", "")) for case in cases)
+    if observed_keys != declared_keys:
+        raise ValueError("Executed native case identities differ from the declared node identities")
     names = [case.get("name", "") for case in cases]
     if len(names) != len(set(names)):
         raise ValueError("Duplicate native test case identities")
@@ -386,13 +425,11 @@ def main() -> int:
         (evidence / "collected.log").write_text(
             collected.stdout + collected.stderr, encoding="utf-8",
         )
-        collected_names = [
-            line.split("::", 1)[1].strip() for line in collected.stdout.splitlines()
-            if any(line.startswith(suite + "::") for suite in SUITES)
-        ]
-        if (collected.returncode or len(collected_names) != EXPECTED_CASES
-                or len(set(collected_names)) != EXPECTED_CASES):
-            raise RuntimeError("Native case collection is incomplete or ambiguous")
+        if collected.returncode:
+            raise RuntimeError("Native case collection failed")
+        collected_ids = validate_collected_nodes(collected.stdout)
+        collected_names = [node.split("::", 1)[1] for node in collected_ids]
+        record["collected_node_ids"] = collected_ids
         record["collected_case_names"] = collected_names
         record["command"] = command
         save()

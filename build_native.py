@@ -82,6 +82,53 @@ def validate_native_layout(tree,package,target):
                    env={**os.environ,'CODEX_REPO_ROOT':str(tree)},check=True)
 
 
+
+def extract_source_archive(archive, tree, *, windows):
+    """Preserve the pinned source archive; materialize its license link on Windows."""
+    tree = Path(tree)
+    prefix = 'codex-' + COMMIT + '/'
+    members = []
+    materialized = []
+    for original in archive.getmembers():
+        if original.name.rstrip('/') == prefix.rstrip('/'):
+            continue
+        if not original.name.startswith(prefix):
+            raise RuntimeError('Unexpected source archive root')
+        member = copy.copy(original)
+        member.name = member.name.removeprefix(prefix)
+        if member.islnk():
+            member.linkname = member.linkname.removeprefix(prefix)
+        if windows and (member.issym() or member.islnk()):
+            # This fixed upstream has one relative source link. Resolve against
+            # original TarInfo names, before prefix stripping, without os.symlink.
+            expected = 'codex-rs/vendor/bubblewrap/LICENSE'
+            target = 'codex-rs/vendor/bubblewrap/COPYING'
+            if member.name != expected or not original.issym() or original.linkname != 'COPYING':
+                raise RuntimeError('Unexpected Windows source archive link')
+            target_member = archive.getmember(prefix + target)
+            if not target_member.isfile():
+                raise RuntimeError('Windows source archive link target must be a regular file')
+            stream = archive.extractfile(target_member)
+            if stream is None:
+                raise RuntimeError('Windows source archive link target has no data')
+            with stream:
+                content = stream.read()
+            if len(content) != target_member.size:
+                raise RuntimeError('Windows source archive link target is truncated')
+            materialized.append((member.name, content))
+            continue
+        members.append(member)
+    destination = ('\\\\?\\' + str(tree)) if windows else str(tree)
+    archive.extractall(destination, members=members, filter='data')
+    for name, content in materialized:
+        path = Path(destination).joinpath(*PurePosixPath(name).parts)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('xb') as output:
+            output.write(content)
+        if path.is_symlink() or path.read_bytes() != content:
+            raise RuntimeError('Windows source archive link materialization mismatch')
+
+
 def runtime_recipe():
     """Read the explicit patch stack; target qualification remains a separate gate."""
     def pairs(values):
@@ -96,7 +143,7 @@ def runtime_recipe():
     if any(not isinstance(recipe[key],str) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',recipe[key]) for key in ['upstream_toolchain','build_toolchain']):
         raise ValueError('Native toolchains must be explicit release pins')
     if set(recipe['required_base_inputs'])!=set(PLATFORM_ASSETS):raise ValueError('Native recipe target set mismatch')
-    order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch','windows-runner-junction-root.patch','windows-home-metadata.patch','windows-root-acl-sharing.patch','windows-plugin-git-lifecycle.patch','windows-setup-background-handles.patch','windows-ancestor-metadata.patch','windows-acl-inheritance-lock.patch','windows-critical-read.patch']
+    order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch','windows-runner-junction-root.patch','windows-home-metadata.patch','windows-root-acl-sharing.patch','windows-plugin-git-lifecycle.patch','windows-setup-background-handles.patch','windows-ancestor-metadata.patch','windows-acl-inheritance-lock.patch','windows-critical-read.patch','windows-acl-lifecycle.patch','payload-request-capacity.patch']
     if not isinstance(recipe['overlays'],list) or [item.get('file') for item in recipe['overlays']]!=order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():
@@ -193,17 +240,8 @@ def main():
     cache=work/'downloads';cache.mkdir(parents=True,exist_ok=True)
     archives={name:download(cache,name,*asset) for name,asset in assets.items()}
     build=work/('b-'+uuid.uuid4().hex[:8]);build.mkdir();tree=build/'src';tree.mkdir()
-    prefix='codex-'+COMMIT+'/'
     with tarfile.open(archives['source']) as archive:
-        members=[]
-        for original in archive.getmembers():
-            if original.name.rstrip('/')==prefix.rstrip('/'):continue
-            if not original.name.startswith(prefix):raise RuntimeError('Unexpected source archive root')
-            member=copy.copy(original);member.name=member.name.removeprefix(prefix)
-            if member.islnk():member.linkname=member.linkname.removeprefix(prefix)
-            members.append(member)
-        destination=('\\\\?\\'+str(tree)) if suffix else str(tree)
-        archive.extractall(destination,members=members,filter='data')
+        extract_source_archive(archive, tree, windows=bool(suffix))
     patch=SOURCE/'native/codex-runtime.patch'
     subprocess.run(['git','init','-q',str(tree)],check=True)
     subprocess.run(['git','-c','core.longpaths=true','-c','core.autocrlf=false','-c','core.eol=lf','apply',str(patch)],cwd=tree,check=True)
@@ -219,7 +257,7 @@ def main():
         subprocess.run(['git','-c','core.autocrlf=false','-c','core.eol=lf','apply',str(overlay)],cwd=tree,check=True)
         for row in extra['files']:
             if sha(tree/row['path'])!=row['fork_sha256']:raise RuntimeError('Windows patched source identity mismatch: '+row['path'])
-        originals={}
+        originals={};prefix='codex-'+COMMIT+'/'
         wanted={row['path'] for row in expected['files']}
         with tarfile.open(archives['source']) as bundle:
             for member in bundle:

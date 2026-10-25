@@ -252,13 +252,17 @@ async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
 
 
 async def run(arguments: list[str]) -> int:
+    if arguments[:2] == ['runtime', 'image-budget']:
+        # Pure offline diagnostic: before home IPC, Store, native or provider startup.
+        from .image_budget import image_budget_command
+        return image_budget_command(arguments[2:])
     if arguments==['status']:arguments=['runtime','status']
     image_operations={'image-status':'status','image-cleanup':'cleanup','image-reconcile-uploads':'reconcile-uploads','image-reconcile-calls':'reconcile-calls'}
     is_image_command=len(arguments)>=2 and arguments[0]=='runtime' and arguments[1] in image_operations
     if is_image_command and arguments[2:] not in ([],['--all-unpinned']):raise RuntimeError('Unknown image maintenance arguments')
     if is_image_command and arguments[2:] and arguments[1]!='image-cleanup':raise RuntimeError('--all-unpinned is only for image-cleanup')
     if arguments[:1]==['runtime'] and not is_image_command and arguments[1:] not in (['status'],['doctor']):
-        raise RuntimeError('Runtime management commands: runtime status, runtime doctor, runtime setup-key. Native doctor remains available as doctor.')
+        raise RuntimeError('Runtime management commands: runtime status, runtime doctor, runtime setup-key, runtime image-budget. Native doctor remains available as doctor.')
     root = data_root()
     runtime_home = isolated_path(Path(os.environ.get("CODEX_DEEPSEEK_HOME", str(root / "codex-home"))))
     if is_image_command:

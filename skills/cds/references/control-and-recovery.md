@@ -23,6 +23,10 @@ Exec's stdin/stdout are not a JSON-RPC control channel. On the pinned baseline, 
 
 The original controller should verify its process identity, send Ctrl-C/SIGINT, and wait for exit. Exec JSONL is not the raw app-server event stream; do not wait for an object it does not emit. Intentional interruption may return a nonzero code. If the controller sent a signal to an entire process group, that scope must be recorded rather than conflated with a single-PID signal.
 
+A controller-owned exec is not a detached service. Keep the outer tool handle and the controller/native PID plus creation identity, and persist events incrementally with the real process exit status. A terminal tool reporting an unknown handle, an EOF, or the disappearance of both controller and CLI without a native terminal event is an **unknown outcome**, not proof of native completion or a CDS crash. Freeze the partial events and stderr, then reconcile the original thread and owned effects before exact-ID resume. Never replay the whole prompt simply because the outer handle was lost.
+
+POSIX start_new_session changes session/process-group ownership; it does not by itself establish a surviving controller, continuously drained pipes, durable output, or freedom from an outer broker's cleanup policy. Windows process/job ownership is a separate boundary. Do not silently detach every task or replace native cancellation to mask an unobserved controller exit. For sustained work with live control, use the original supported app-server/daemon lifecycle and verify its actual owner/connection and transport; merely starting a second server against the same home cannot recover an in-memory turn.
+
 A yielded tool may outlive turn interruption. Check its exact owned process/session before resuming or launching the same operation again. Do not kill by executable name or assume that a stopped model proves a stopped child tool.
 
 Resume using the original CDS home and exact UUID:

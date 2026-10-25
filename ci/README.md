@@ -45,7 +45,11 @@ python -m pip install --no-deps --no-build-isolation .
 python -I ci/qualify_native.py --package /path/to/package --evidence /new/evidence --work /new/private-test-work
 ```
 
-The controller requires fresh, separate evidence and fixture paths. CI also runs\nthe remaining Python adapter suite and native dispatch fixtures against the same\nverified package. Only explicit Windows-only cases (and the Linux identity case\non macOS) may skip; missing source archives, unsupported fixture operations and\nother skipped checks fail this gate. The receipt records the actual skip list. The uploaded
+The controller requires fresh, separate evidence and fixture paths. CI also runs
+the remaining Python adapter suite and native dispatch fixtures against the same
+verified package. Only explicit Windows-only cases (and the Linux identity case
+on macOS) may skip; missing source archives, unsupported fixture operations and
+other skipped checks fail this gate. The receipt records the actual skip list. The uploaded
 artifact contains the package archive, build log, test results, source commit
 and receipts. It excludes temporary TLS keys and native test homes. Artifacts
 expire after seven days unless retained separately for an approved release.
@@ -58,9 +62,14 @@ gates. The receipt deliberately keeps product_release_ready false. This
 workflow does not create a release, publish a package, or update a readiness
 manifest automatically.
 
-The workflow runs manually, or when the dedicated codex/cds-qualification
-branch is pushed. Candidate CI evidence is reviewed before promoting any native
-archive into the supported release manifests. Earlier platform results are not
-silently assigned to a new binary.
+The fresh-build workflow, `native-platform-qualification.yml`, runs only by
+manual `workflow_dispatch`. Select the exact candidate ref when dispatching it;
+pushing a branch does not start this workflow. Review its evidence before
+promoting a native archive into the supported release manifests. Earlier
+platform results do not qualify a new binary.
 
-After a qualified release is promoted to main, its temporary qualification branch may be deleted. Recreate codex/cds-qualification for a future qualification push, or dispatch the reuse workflow manually from main. Fixed release inputs and retained proof checks remain mandatory.
+After a qualified release is promoted to main, its temporary qualification
+branch may be deleted. For a future changed recipe, dispatch the fresh-build
+workflow on the new candidate ref. The separate reuse workflow applies only to
+its exact pinned native assets and recipe-equivalence rules; it cannot qualify
+changed common native code by reusing an older binary.

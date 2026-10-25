@@ -13,6 +13,8 @@ Operate the user's selected CDS installation. CDS preserves native Codex executi
 
 Identify the requested host, actual executable, work directory, new or existing session, and authorized scope. Reuse known answers from the current task. A parent's permissions do not automatically configure a child CLI, and the ability to launch full access is not itself authorization to do so.
 
+If the user explicitly limits which files or directories may be read, do not treat workspace-write or prompt exclusions as a read allowlist. Use [Read scope](references/read-scope.md) to configure and verify the supported native profile before launching a new worker; this conditional guidance does not narrow ordinary coding tasks.
+
 When installation identity is uncertain, use `scripts/inspect_cds.py --entry <actual executable>` or native help/version from a previously verified entry. The helper is offline and does not prove model connectivity. Do not resolve an unrelated `cds` program or vanilla `codex` as the DeepSeek runtime merely because the name/version looks plausible.
 
 If already executing inside CDS, use the current native tools and session; do not recursively launch another CDS merely because this skill is loaded. A separate worker or session requires a task reason and the user's intended scope.

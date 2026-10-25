@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Native patch files are hash-pinned data, including unified-diff context spaces.
+native/*.patch -text whitespace=-blank-at-eol

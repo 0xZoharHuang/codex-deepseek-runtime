@@ -38,6 +38,8 @@ If the user's restriction literally includes every runtime/state/cache write, `w
 
 Unix socket permission is separate from directory write permission. On the pinned version, selected named profiles use `permissions.<name>.network.unix_sockets` and the applicable native network-policy configuration. Do not reuse obsolete `allow_unix_sockets` keys or open all sockets as a speculative fix. Also do not assume a no-model OS probe proves the full model/tool workflow under that profile.
 
+For an explicit user restriction on reading specific files or evidence, use [Read scope](read-scope.md). The generic sandbox examples above are not a read allowlist and should not override a selected named read-scope profile.
+
 ## Outbound network is separate from workspace-write
 
 For the pinned native baseline's **legacy workspace-write profile**, an already authorized network task can retain the filesystem sandbox and enable networking for that invocation:

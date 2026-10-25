@@ -80,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           python -I -B ci/reuse_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
-      - name: Run all 15 actual native transport cases
+      - name: Run the complete declared native transport cases
         shell: bash
         run: |
           set -euo pipefail

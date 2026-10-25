@@ -46,11 +46,51 @@ class CleanupPending(ImageTransportError):
 
 
 class PayloadBudgetExceeded(ImageTransportError):
-    pass
+    def __init__(self, message: str, *, diagnostics: dict | None = None):
+        super().__init__(message)
+        self.diagnostics = _safe_budget_diagnostics(diagnostics)
 
 
 class FileReferenceLimitExceeded(ImageTransportError):
-    pass
+    def __init__(self, message: str, *, diagnostics: dict | None = None):
+        super().__init__(message)
+        self.diagnostics = _safe_budget_diagnostics(diagnostics)
+
+
+def _safe_budget_diagnostics(value: dict | None) -> dict | None:
+    if value is None:
+        return None
+    strings = {
+        'status': {'activation_bypass', 'file_reference_limit_exceeded', 'wire_budget_exceeded',
+                   'no_wire_budget_configured', 'estimated_within_budget', 'actual_wire_budget_exceeded'},
+        'phase': {'pre_upload', 'post_upload'},
+        'policy_kind': {'operator_prevention_threshold'},
+        'reference_limit_basis': {'observed_occurrence_policy_not_official_contract'},
+    }
+    integers = {'schema_version', 'activate_above_bytes', 'max_file_references', 'before_bytes',
+                'selected_image_occurrences', 'planned_unique_images', 'estimated_file_id_characters'}
+    optional_integers = {'wire_budget_bytes', 'inline_image_occurrences',
+                        'existing_file_reference_occurrences', 'remaining_inline_image_occurrences',
+                        'low_detail_inline_occurrences', 'estimated_min_bytes', 'estimated_gap_bytes',
+                        'actual_wire_bytes', 'new_uploads', 'cache_reuses'}
+    booleans = {'image_scan_performed', 'upstream_inference_sent', 'native_history_modified'}
+    expected = set(strings) | integers | optional_integers | booleans | {'estimated_within_wire_budget'}
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError('Invalid image-budget diagnostic aggregate')
+    for name, allowed in strings.items():
+        if not isinstance(value[name], str) or value[name] not in allowed:
+            raise ValueError('Invalid image-budget diagnostic aggregate')
+    for name in integers | optional_integers:
+        item = value[name]
+        if name in optional_integers and item is None:
+            continue
+        if type(item) is not int or item < 0:
+            raise ValueError('Invalid image-budget diagnostic aggregate')
+    if any(type(value[name]) is not bool for name in booleans):
+        raise ValueError('Invalid image-budget diagnostic aggregate')
+    if value['estimated_within_wire_budget'] is not None and type(value['estimated_within_wire_budget']) is not bool:
+        raise ValueError('Invalid image-budget diagnostic aggregate')
+    return dict(value)
 
 
 class FileOperationError(ImageTransportError):
@@ -416,6 +456,85 @@ def select_image_references(payload: dict, positions: list, slots: int) -> list:
     return [(position, digest) for _, _, position, digest in sorted(picked, key=lambda item: item[1])]
 
 
+@dataclass(frozen=True)
+class ImageBudgetPlan:
+    """One pure pre-upload plan shared by transport and offline diagnostics."""
+    payload: dict = field(repr=False)
+    original: bytes = field(repr=False)
+    positions: list = field(repr=False)
+    selected: list = field(repr=False)
+    blobs: dict = field(repr=False)
+    diagnostics: dict
+
+    def require_feasible(self) -> None:
+        status = self.diagnostics['status']
+        if status == 'file_reference_limit_exceeded':
+            raise FileReferenceLimitExceeded(
+                'Request already exceeds the observed private-file reference limit',
+                diagnostics=dict(self.diagnostics))
+        if status == 'wire_budget_exceeded':
+            raise PayloadBudgetExceeded(
+                'Lossless mixed image encoding exceeds the configured wire budget; '
+                'inspect image-budget diagnostics before choosing a recovery action',
+                diagnostics=dict(self.diagnostics))
+
+
+def plan_image_budget(payload: dict, policy: TransportPolicy) -> ImageBudgetPlan:
+    """No credentials, cache, uploads, native process, or mutation of the input.
+
+    The minimum is the existing selector's estimate under this occurrence policy,
+    using its 32-character ID placeholder. It is not an uploaded-wire measurement.
+    Activation bypass deliberately retains prepare()'s existing no-image-scan path.
+    """
+    original = encode_body(payload)
+    copied = json.loads(original)
+    bypass = len(original) <= policy.activate_above_bytes
+    positions, blobs = ([], {}) if bypass else image_plan(copied)
+    existing = None if bypass else count_file_references(copied)
+    over_references = not bypass and existing > policy.max_file_references
+    selected = [] if bypass or over_references else select_image_references(
+        copied, positions, policy.max_file_references - existing)
+    selected_hashes = {digest for _, digest in selected}
+    selected_blobs = {digest: blob for digest, blob in blobs.items() if digest in selected_hashes}
+    estimated_bytes = None if over_references else len(original)
+    if selected:
+        estimate = json.loads(original)
+        for (item_index, field_name, content_index), _ in selected:
+            part = estimate['input'][item_index][field_name][content_index]
+            del part['image_url']
+            part['file_id'] = 'or_file_' + 'x' * 24
+        estimated_bytes = len(encode_body(estimate))
+    status = ('activation_bypass' if bypass else 'file_reference_limit_exceeded' if over_references
+              else 'wire_budget_exceeded' if policy.wire_budget_bytes is not None
+              and estimated_bytes > policy.wire_budget_bytes else 'no_wire_budget_configured' if policy.wire_budget_bytes is None else 'estimated_within_budget')
+    diagnostics = {
+        'schema_version': 1, 'status': status, 'phase': 'pre_upload',
+        'policy_kind': 'operator_prevention_threshold',
+        'reference_limit_basis': 'observed_occurrence_policy_not_official_contract',
+        'activate_above_bytes': policy.activate_above_bytes,
+        'wire_budget_bytes': policy.wire_budget_bytes,
+        'max_file_references': policy.max_file_references,
+        'before_bytes': len(original), 'image_scan_performed': not bypass,
+        'inline_image_occurrences': None if bypass else len(positions),
+        'existing_file_reference_occurrences': existing,
+        'selected_image_occurrences': len(selected),
+        'planned_unique_images': len(selected_blobs),
+        'remaining_inline_image_occurrences': None if bypass else len(positions) - len(selected),
+        'low_detail_inline_occurrences': None if bypass else sum(
+            part.get('detail') == 'low' and isinstance(part.get('image_url'), str)
+            and part['image_url'].startswith('data:') for _, part in _image_parts(copied)),
+        'estimated_min_bytes': estimated_bytes,
+        'estimated_gap_bytes': None if estimated_bytes is None or policy.wire_budget_bytes is None
+                               else max(0, estimated_bytes - policy.wire_budget_bytes),
+        'estimated_file_id_characters': 32,
+        'estimated_within_wire_budget': None if policy.wire_budget_bytes is None or estimated_bytes is None
+                                      else estimated_bytes <= policy.wire_budget_bytes,
+        'actual_wire_bytes': None, 'new_uploads': None, 'cache_reuses': None,
+        'upstream_inference_sent': False, 'native_history_modified': False,
+    }
+    return ImageBudgetPlan(copied, original, positions, selected, selected_blobs, _safe_budget_diagnostics(diagnostics))
+
+
 
 def _linked_path(path: Path) -> bool:
     try:metadata=path.lstat()
@@ -749,27 +868,15 @@ class ImageTransport:
 
     @asynccontextmanager
     async def prepare(self, payload: dict, *, credential: str | None = None):
-        original = encode_body(payload)
-        # JSON roundtrip copies all JSON values without changing the caller's native history.
-        copied = json.loads(original)
-        if len(original) <= self.policy.activate_above_bytes:
-            yield PreparedImages(copied, original, len(original), 0, 0, 0, None, (), wire_budget_bytes=self.policy.wire_budget_bytes)
+        plan = plan_image_budget(payload, self.policy)
+        plan.require_feasible()
+        copied, original = plan.payload, plan.original
+        positions, selected, blobs = plan.positions, plan.selected, plan.blobs
+        existing = plan.diagnostics['existing_file_reference_occurrences']
+        if plan.diagnostics['status'] == 'activation_bypass':
+            yield PreparedImages(copied, original, len(original), 0, 0, 0, None, (),
+                                 wire_budget_bytes=self.policy.wire_budget_bytes)
             return
-        positions, blobs = image_plan(copied)
-        existing = count_file_references(copied)
-        if existing > self.policy.max_file_references:
-            raise FileReferenceLimitExceeded('Request already exceeds the observed private-file reference limit')
-        selected = select_image_references(copied, positions, self.policy.max_file_references - existing)
-        selected_hashes = {digest for _, digest in selected}
-        # Preserve original encounter order for uploads; only selection ranking is
-        # by net body savings. Repeated occurrences consume separate reference slots.
-        blobs = {digest: blob for digest, blob in blobs.items() if digest in selected_hashes}
-        estimate = json.loads(original)
-        for (item_index, field_name, content_index), _ in selected:
-            part = estimate['input'][item_index][field_name][content_index]
-            del part['image_url']; part['file_id'] = 'or_file_' + 'x' * 24
-        if self.policy.wire_budget_bytes is not None and len(encode_body(estimate)) > self.policy.wire_budget_bytes:
-            raise PayloadBudgetExceeded('Lossless mixed image encoding cannot satisfy the configured wire budget; native compaction is required')
         if not selected:
             yield PreparedImages(copied, original, len(original), len(positions), 0, 0, None, (),
                                  existing_file_references=existing, wire_budget_bytes=self.policy.wire_budget_bytes)
@@ -790,7 +897,11 @@ class ImageTransport:
                 part['file_id'] = mappings[digest]
             body = encode_body(copied)
             if self.policy.wire_budget_bytes is not None and len(body) > self.policy.wire_budget_bytes:
-                raise PayloadBudgetExceeded('Actual private file IDs leave the body above the configured wire budget; no inference was sent')
+                raise PayloadBudgetExceeded(
+                    'Actual private file IDs leave the body above the configured wire budget; no inference was sent',
+                    diagnostics={**plan.diagnostics, 'status': 'actual_wire_budget_exceeded',
+                                 'phase': 'post_upload', 'actual_wire_bytes': len(body),
+                                 'new_uploads': uploads, 'cache_reuses': reused})
             yield PreparedImages(copied, body, len(original), len(positions), uploads, reused, scope, tuple(refs),
                                  _CallLease(self, directory, lease), converted_occurrences=len(selected),
                                  existing_file_references=existing, wire_budget_bytes=self.policy.wire_budget_bytes)

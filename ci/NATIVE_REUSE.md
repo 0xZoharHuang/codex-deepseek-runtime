@@ -22,7 +22,7 @@ No API key or GitHub token is sent to these public asset downloads. The workflow
 - The original build receipt remains unchanged. Its original global recipe SHA256 must match the downloaded original recipe.
 - Removing only Windows-specific recipe entries leaves an exact match with the current recipe. The selected target recipe, patch inputs, source hashes, upstream archives, compiler, metadata and complete package inventory must also match.
 - The separately downloaded upstream source archive retains its fixed commit URL and checksum.
-- Installed Python files equal the current checkout. The 15 actual native transport cases and the remaining offline tests must exactly partition the complete current collection. No deselection, unexpected skip, stale report or changed source can qualify.
+- Installed Python files equal the current checkout. The explicitly declared native transport cases and the remaining offline tests must exactly partition the complete current collection. No deselection, unexpected skip, stale report or changed source can qualify.
 - Test processes are bounded and identified by PID plus kernel identity. A timeout, unresolved identity, leaked process or forced cleanup is a failure.
 
 The exact platform-only skip inventory remains in `ci/offline-platform-skips.json`. Both test phases treat warnings as errors and retain raw logs on failure. Current qualification reruns the Python tests and native transport cases; it does not rebuild unchanged native binaries.

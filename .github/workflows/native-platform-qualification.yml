@@ -72,13 +72,13 @@ jobs:
           "$RUNNER_TEMP/cds-ci-venv/bin/python" -m pip install --no-deps --no-build-isolation .
           CDS_TOOLCHAIN=$("$RUNNER_TEMP/cds-ci-venv/bin/python" -c 'import json; print(json.load(open("native/runtime-overlays.json"))["build_toolchain"])')
           rustup toolchain install "$CDS_TOOLCHAIN" --profile minimal
-      - name: Check isolated build entry points before compilation
+      - name: Check isolated build entry points and qualification controllers
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         shell: bash
         run: |
           set -euo pipefail
-          python -I -m pytest -p pytest_asyncio.plugin tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
+          python -I -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
       - name: Build the pinned native package
         shell: bash
         run: |
@@ -93,56 +93,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I - <<'PY'
-          import importlib.util, json, os, pathlib, shutil, subprocess, sys, xml.etree.ElementTree as ET
-          root = pathlib.Path.cwd()
-          spec = importlib.util.spec_from_file_location("qualification", root / "ci/qualify_native.py")
-          qualification = importlib.util.module_from_spec(spec); spec.loader.exec_module(qualification)
-          package = pathlib.Path(os.environ["RUNNER_TEMP"]) / "cds-native-package"
-          evidence = pathlib.Path(os.environ["RUNNER_TEMP"]) / "cds-ci-artifact/adapter-qualification"
-          work = pathlib.Path(os.environ["RUNNER_TEMP"]) / "cds-adapter-test-work"
-          evidence.mkdir(); assert not work.exists()
-          identity = qualification.package_identity(package)
-          source_before = qualification.source_identity()
-          adapter_before = qualification.adapter_identity()
-          archives = list((pathlib.Path(os.environ["RUNNER_TEMP"]) / "cds-build/downloads").glob("source-*"))
-          assert len(archives) == 1
-          env = {k:v for k,v in os.environ.items() if not k.startswith(("CODEX_", "CDS_", "OPENAI_", "OPENROUTER_", "OTEL_", "PYTEST_", "ACTIONS_", "GITHUB_", "PYTHON")) and k not in {"GH_TOKEN", "GITHUB_TOKEN"}}
-          env.update(PYTHONDONTWRITEBYTECODE="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1", CODEX_DEEPSEEK_TEST_HTTP_BINARY=identity["helper"], CODEX_DEEPSEEK_TEST_SOURCE_ARCHIVE=str(archives[0]))
-          cmd = [sys.executable, "-I", "-m", "pytest", "-p", "pytest_asyncio.plugin", "tests", "-o", "pythonpath=.", "-q", "-p", "no:cacheprovider", "--ignore=tests/test_native_raw_http.py", "--ignore=tests/test_native_payload_retry.py", "--basetemp", str(work), "--junitxml", str(evidence / "adapter.xml")]
-          summary = {"scope":"adapter and platform regressions with synthetic providers", "real_model_requests":0, "provider_credentials_read":False, "product_release_ready":False, "command":cmd, "status":"running"}
-          summary.update(package=identity, adapter=adapter_before, source_sha256=source_before)
-          try:
-              with (evidence / "pytest.log").open("wb") as log:
-                  result = subprocess.run(cmd, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=1200)
-              summary["pytest_exit_code"] = result.returncode
-              assert result.returncode == 0, "Adapter regression failed; inspect pytest.log"
-              cases = list(ET.parse(evidence / "adapter.xml").iter("testcase"))
-              assert cases and not any(c.find("failure") is not None or c.find("error") is not None for c in cases)
-              skipped = [{"class":c.get("classname"), "case":c.get("name"), "reason":c.find("skipped").get("message")} for c in cases if c.find("skipped") is not None]
-              allowed = {
-                  "tests.test_windows_launchers":{"Exercises Windows PE executable launchers"},
-                  "tests.test_windows_sandbox_admission":{"Windows-only lifecycle admission contract"},
-                  "tests.test_windows_console":{"Windows socket ownership handshake", "Windows console control events; requires a Windows native package"},
-                  "tests.test_platforms":{"Win32 extended-length directory aliases", "Native Windows daemon creation FILETIME record"},
-              }
-              if sys.platform == "darwin":
-                  allowed["tests.test_platforms"].add("Native Linux daemon process identity contract")
-              unexpected = [x for x in skipped if x["reason"] not in allowed.get(x["class"], set())]
-              summary.update(cases=len(cases), skipped=skipped, unexpected_skips=unexpected)
-              assert not unexpected, "Unexpected skipped adapter regressions"
-              assert qualification.package_identity(package) == identity
-              assert qualification.source_identity() == source_before
-              assert qualification.adapter_identity() == adapter_before
-              summary["status"] = "passed_adapter_regression_scope"
-          except BaseException as error:
-              summary.update(status="failed", error_type=type(error).__name__, error=str(error))
-              raise
-          finally:
-              if work.exists(): shutil.rmtree(work)
-              summary["owned_fixture_directory_removed"] = not work.exists()
-              (evidence / "qualification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-          PY
+          SOURCE_ARCHIVE=$(python -c 'import os,pathlib; a=list((pathlib.Path(os.environ["RUNNER_TEMP"])/"cds-build/downloads").glob("source-*")); assert len(a)==1, "Expected one pinned source archive"; print(a[0])')
+          python -I ci/qualify_adapter.py --package "$RUNNER_TEMP/cds-native-package" --source-archive "$SOURCE_ARCHIVE" --native-evidence "$RUNNER_TEMP/cds-ci-artifact/native-qualification" --evidence "$RUNNER_TEMP/cds-ci-artifact/adapter-qualification" --work "$RUNNER_TEMP/cds-adapter-test-work"
       - name: Retain package provenance and original failures
         if: always()
         shell: bash

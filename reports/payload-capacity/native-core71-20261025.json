@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "status": "passed_selected_native_core71_scope",
+  "date": "2026-10-25",
+  "candidate_version": "0.6.2",
+  "runtime": {
+    "version": "0.164.0-alpha.7",
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "source_manifest_sha256": "f412200904dada73a334412dba39ca7354e982496a5487eced54ee9c6cdf92a2",
+    "source_files": 9375,
+    "unit_executable_sha256": "8c946dacd393d01a91756fe6899b985f98276027196ec3c809f60903cc0cb485",
+    "unit_profile": "core unit test executable opt0; this is not the production CLI",
+    "common_capacity_patch_sha256": "011fbfe849736f44cdb5d95bfc9326e99377469239f5c9fe35c38cbba9ef1beb"
+  },
+  "qualification": {
+    "selected_unique_names": 71,
+    "every_selected_name_executed_exactly_once": true,
+    "ignored": 0,
+    "registered_total": 2735,
+    "registered_unique": 2731,
+    "claims_full_registered_suite": false,
+    "targeted_new6_preflight_passed_separately": 6,
+    "groups": [
+      {
+        "label": "checkpoint-metadata",
+        "passed": 22,
+        "ignored": 0,
+        "names": [
+          "session::request_capacity::tests::admitted_late_checkpoint_writer_cannot_recreate_after_delete",
+          "session::request_capacity::tests::atomic_replace_failure_keeps_the_prior_checkpoint_bytes",
+          "session::request_capacity::tests::checkpoint_never_contains_body_images_or_credentials",
+          "session::request_capacity::tests::competing_publishers_cannot_regress_the_confirmed_epoch",
+          "session::request_capacity::tests::completed_writer_before_delete_and_repeated_delete_remain_deleted",
+          "session::request_capacity::tests::deleted_marker_never_qualifies_residual_checkpoint_or_lineage",
+          "session::request_capacity::tests::deletion_before_any_capacity_directory_rejects_late_first_publish",
+          "session::request_capacity::tests::deletion_marker_is_bound_to_physical_home_and_thread_uuid",
+          "session::request_capacity::tests::durable_fence_is_cas_provenance_independent_and_cannot_be_cleared",
+          "session::request_capacity::tests::exact_binding_round_trip_and_epoch_translation_are_bounded",
+          "session::request_capacity::tests::exact_prefix_hash_preserves_unseen_suffix_and_detects_metadata_mutations",
+          "session::request_capacity::tests::failed_metadata_validation_cannot_replace_a_previous_checkpoint",
+          "session::request_capacity::tests::lineage_lookup_is_not_a_stale_window_or_hash_eligibility_shortcut",
+          "session::request_capacity::tests::malformed_or_oversized_lock_state_fails_closed",
+          "session::request_capacity::tests::malformed_oversized_linked_and_unknown_metadata_fail_closed",
+          "session::request_capacity::tests::manual_prefix_genesis_has_real_summary_anchor_but_no_ordinary_progress",
+          "session::request_capacity::tests::native_rollout_replay_hash_preserves_direct_code_mode_and_mixed_input",
+          "session::request_capacity::tests::replay_hash_normalizes_only_native_empty_passthrough_representation",
+          "session::request_capacity::tests::same_owner_home_replacement_is_rejected_before_cache_creation",
+          "session::request_capacity::tests::stale_window_can_advance_epoch_but_never_proves_a_current_prefix",
+          "session::request_capacity::tests::successful_delete_only_removes_this_owned_reserved_uuid_and_retains_lock_domain",
+          "session::request_capacity::tests::wrong_physical_home_or_model_or_window_never_loads"
+        ],
+        "log_sha256": "4518d724948550cd06e944940ca2872bced8f1a223b8806b2098f63792f7604e"
+      },
+      {
+        "label": "manual-prefix-oracle",
+        "passed": 4,
+        "ignored": 0,
+        "names": [
+          "compact::tests::manual_413_partitions_complete_prefix_preserves_tail_and_lineage::existing_ordinary_lineage_and_fence_http413",
+          "compact::tests::manual_413_partitions_complete_prefix_preserves_tail_and_lineage::existing_ordinary_lineage_plus_unknown_media_tool_tail_true_cwe",
+          "compact::tests::manual_413_partitions_complete_prefix_preserves_tail_and_lineage::legacy_without_cursor_http413",
+          "compact::tests::manual_413_partitions_complete_prefix_preserves_tail_and_lineage::legacy_without_cursor_true_cwe"
+        ],
+        "log_sha256": "4ae1b0ed38d8effb41bde5c86c9fec0785a2396037662164f36a22e5f24bfc56"
+      },
+      {
+        "label": "native-compaction",
+        "passed": 37,
+        "ignored": 0,
+        "names": [
+          "compact::tests::assemble_compaction_history_keeps_compaction_last",
+          "compact::tests::assemble_compaction_history_keeps_prefix_first_and_summary_last",
+          "compact::tests::build_compacted_history_preserves_user_message_passthrough_metadata::attributed_text_with_discarded_media",
+          "compact::tests::build_compacted_history_preserves_user_message_passthrough_metadata::legacy",
+          "compact::tests::build_token_limited_compacted_history_appends_summary_message",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::extra_entry",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::legacy",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::missing_entry",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::mixed_sources",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::multiple_user_parts",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::unknown",
+          "compact::tests::build_token_limited_compacted_history_truncates_overlong_user_messages::user",
+          "compact::tests::byte_capacity_compaction_preserves_unconsumed_suffix_and_fences_epoch",
+          "compact::tests::capacity_token_budget_reset_preserves_pending_and_concurrent_suffix_without_model",
+          "compact::tests::capacity_token_budget_stale_prefix_returns_original_http413",
+          "compact::tests::capacity_token_budget_without_confirmed_cursor_preserves_input",
+          "compact::tests::collect_annotated_user_messages_extracts_user_text_only::omitted_media",
+          "compact::tests::collect_annotated_user_messages_extracts_user_text_only::text_boundaries",
+          "compact::tests::collect_annotated_user_messages_extracts_user_text_only::unchanged_text",
+          "compact::tests::collect_user_messages_extracts_user_text_only",
+          "compact::tests::collect_user_messages_filters_legacy_warnings",
+          "compact::tests::collect_user_messages_filters_session_prefix_entries",
+          "compact::tests::completed_without_fresh_summary_cannot_reuse_old_assistant::automatic",
+          "compact::tests::completed_without_fresh_summary_cannot_reuse_old_assistant::manual",
+          "compact::tests::content_items_to_text_ignores_image_only_content",
+          "compact::tests::content_items_to_text_joins_non_empty_segments",
+          "compact::tests::full_manual_genesis_uses_send_snapshot_and_preserves_late_media_suffix",
+          "compact::tests::irreducible_capacity_failure_keeps_history_and_failed_attempt_fence",
+          "compact::tests::local_compaction_retries_preserve_instructions_and_tool_metadata::metadata_disabled_after_capture",
+          "compact::tests::local_compaction_retries_preserve_instructions_and_tool_metadata::metadata_enabled",
+          "compact::tests::manual_partition_does_not_treat_other_http_errors_as_byte_capacity::rate_limited",
+          "compact::tests::manual_partition_does_not_treat_other_http_errors_as_byte_capacity::unauthorized",
+          "compact::tests::manual_partition_does_not_treat_other_http_errors_as_byte_capacity::unavailable",
+          "compact::tests::manual_partition_does_not_trim_http200_half_stream_with_413_text",
+          "compact::tests::manual_partition_frontier_is_pair_safe_and_cannot_resummarize_only_old_context",
+          "compact::tests::manual_partition_irreducible_item_keeps_original_413_and_history",
+          "compact::tests::unconfirmed_full_manual_genesis_cannot_trim_context_window_error"
+        ],
+        "log_sha256": "fc46550833857ee153f21e4e079369bccfea8712fe77dbec55e98613b41896b4"
+      },
+      {
+        "label": "pair-safe-prefix",
+        "passed": 6,
+        "ignored": 0,
+        "names": [
+          "context_manager::history::tests::request_capacity_prefix_keeps_native_standalone_server_tool_search_output",
+          "context_manager::history::tests::request_capacity_prefix_protects_crossing_and_unfinished_native_pairs::client_tool_search_pair",
+          "context_manager::history::tests::request_capacity_prefix_protects_crossing_and_unfinished_native_pairs::custom_pair",
+          "context_manager::history::tests::request_capacity_prefix_protects_crossing_and_unfinished_native_pairs::function_pair",
+          "context_manager::history::tests::request_capacity_prefix_protects_crossing_and_unfinished_native_pairs::local_shell_function_output_pair",
+          "context_manager::history::tests::request_capacity_prefix_rechecks_pairs_after_moving_boundary_back"
+        ],
+        "log_sha256": "d46bfe37159fb8a9458c5ccd00759b5cf83bfdb3995cf45cb5edf15c5942b625"
+      },
+      {
+        "label": "original-code-mode-shutdown",
+        "passed": 1,
+        "ignored": 0,
+        "names": [
+          "session::retained_context::tests::shutdown_retains_an_admitted_delivery_until_persistence_finishes"
+        ],
+        "log_sha256": "d8844f8cb7f487e3fcb88f415b3728453813171590f55d0258278ea681f5a408"
+      },
+      {
+        "label": "blocking-native-persistence-shutdown",
+        "passed": 1,
+        "ignored": 0,
+        "names": [
+          "session::retained_context::tests::shutdown_joins_blocking_native_persistence_after_its_awaiter_is_cancelled"
+        ],
+        "log_sha256": "d9f0a19d61a51ddfb3c1b41524653f5131c41374ba367f4238ed07006937d8e5"
+      }
+    ],
+    "all_owned_phase_processes_natural_exit0": true,
+    "forced_cleanup": 0,
+    "unresolved_owned_processes": 0,
+    "owned_broker_task_deleted": true
+  },
+  "deletion_boundary": {
+    "original_native_bounded_shutdown_and_business_delete_unchanged": true,
+    "fixed_marker_bytes": 26,
+    "same_existing_per_thread_OS_lock": true,
+    "late_admitted_blocking_writer_after_outer_awaiter_cancellation_tested": true,
+    "delete_before_first_cache_creation_tested": true,
+    "residual_checkpoint_cannot_qualify_cold_read": true,
+    "repeated_delete_idempotent": true,
+    "owner_physical_home_and_thread_uuid_isolation_tested": true,
+    "cross_file_power_failure_transaction_claim": false
+  },
+  "original_failures_retained": true,
+  "evidence": {
+    "independent_closeout_sha256": "8317a4be0d80a155495f98436d4d62e3cb1780bb39bc6ed50feecc18963d9b54",
+    "execution_progress_sha256": "0a7eecd7aa36425440fe1cb6eb3246c15bad23d01868cf27f6bcc1918b55f641",
+    "compile_progress_sha256": "19e4c8507e13204e2e9e6f897ac5c5bef4e0ec990cc83e08799a012c9b1c8279",
+    "expected_tests_sha256": "e359d565f14d2735b808e3ef887ae286727d6f3697d7f74c9622df75f3ec087c"
+  },
+  "excluded_from_this_claim": [
+    "production optimized package execution",
+    "all 2735 registered tests",
+    "Linux/macOS runtime execution",
+    "real DeepSeek complex task quality",
+    "complete native CLI/App runtime qualification"
+  ]
+}

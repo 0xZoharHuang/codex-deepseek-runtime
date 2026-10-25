@@ -68,7 +68,7 @@ def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,m
     names=[row['file'] for row in inputs]+[row['file'] for row in recipe['overlays'] if target in row['changes_by_target']]
     paths={'codex-rs/rust-toolchain.toml'}
     for name in names:
-        for line in (ROOT/'native'/name).read_text().splitlines():
+        for line in (ROOT/'native'/name).read_text(encoding='utf-8').splitlines():
             if line.startswith(('--- a/','+++ b/')):paths.add(line[6:].split('\t')[0])
     tree=tmp_path/'modified-source-fixture';tree.mkdir()
     with tarfile.open(archive) as bundle:
@@ -122,7 +122,7 @@ def test_license_metadata_uses_same_recipe_pin_or_supplied_result(tmp_path,monke
 
 def test_recipe_identity_is_target_scoped():
     recipe=build.runtime_recipe();before={target:build.native_recipe_identity(target,recipe) for target in TARGETS}
-    changed=copy.deepcopy(recipe);changed['overlays'][-1]['sha256']='0'*64
+    changed=copy.deepcopy(recipe);next(item for item in changed['overlays'] if item['file']=='windows-acl-lifecycle.patch')['sha256']='0'*64
     after={target:build.native_recipe_identity(target,changed) for target in TARGETS}
     assert before[WIN]!=after[WIN]
     assert all(before[target]==after[target] for target in TARGETS if target!=WIN)
@@ -294,3 +294,97 @@ def test_background_helper_handle_overlay_preserves_nonwindows_recipes():
     for target in ['aarch64-apple-darwin','x86_64-unknown-linux-gnu']:
         before={**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
         assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,before)
+
+def test_capacity_overlay_is_complete_common_source_and_changes_all_target_identities():
+    recipe=build.runtime_recipe()
+    common=recipe['overlays'][-1]
+    assert common['file']=='payload-request-capacity.patch'
+    expected={
+        'codex-rs/Cargo.lock','codex-rs/core/Cargo.toml',
+        'codex-rs/app-server/src/request_processors/thread_delete.rs',
+        'codex-rs/core/src/compact.rs','codex-rs/core/src/compact_remote_v2_installation.rs',
+        'codex-rs/core/src/compact_tests.rs','codex-rs/core/src/compact_token_budget.rs',
+        'codex-rs/core/src/context_manager/history.rs',
+        'codex-rs/core/src/context_manager/history_tests.rs',
+        'codex-rs/core/src/context_manager/normalize.rs','codex-rs/core/src/lib.rs',
+        'codex-rs/core/src/session/mod.rs','codex-rs/core/src/session/request_capacity.rs',
+        'codex-rs/core/src/session/retained_context.rs',
+        'codex-rs/core/src/session/retained_context_tests.rs',
+        'codex-rs/core/src/session/turn.rs','codex-rs/core/src/state/session.rs',
+        'codex-rs/core/tests/common/responses.rs',
+    }
+    assert set(common['changes_by_target'])==set(TARGETS)
+    previous={**recipe,'overlays':recipe['overlays'][:-1]}
+    mutated=copy.deepcopy(recipe);mutated['overlays'][-1]['sha256']='0'*64
+    for target,rows in common['changes_by_target'].items():
+        assert len(rows)==18 and {row['path'] for row in rows}==expected
+        assert {row['path'] for row in rows if row['before_sha256'] is None}=={
+            'codex-rs/core/src/session/request_capacity.rs'}
+        assert build.native_recipe_identity(target,recipe)!=build.native_recipe_identity(target,previous)
+        assert build.native_recipe_identity(target,recipe)!=build.native_recipe_identity(target,mutated)
+    by_target={target:{row['path']:row for row in rows}
+               for target,rows in common['changes_by_target'].items()}
+    # The same common hunk follows different qualified target stacks. The
+    # whole Cargo.lock identities must not borrow Windows hashes on Unix.
+    for target in TARGETS:
+        if target==WIN:continue
+        assert by_target[target]['codex-rs/Cargo.lock']['before_sha256']!=by_target[WIN]['codex-rs/Cargo.lock']['before_sha256']
+        assert by_target[target]['codex-rs/Cargo.lock']['after_sha256']!=by_target[WIN]['codex-rs/Cargo.lock']['after_sha256']
+
+
+@pytest.mark.parametrize('target',TARGETS)
+def test_capacity_overlay_cannot_omit_a_platform(tmp_path,monkeypatch,target):
+    recipe_copy(tmp_path,monkeypatch,
+        lambda value:value['overlays'][-1]['changes_by_target'].pop(target))
+    with pytest.raises(ValueError,match='target coverage'):
+        build.runtime_recipe()
+
+
+def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_path, monkeypatch):
+    """Exercise main's actual Windows baseline extraction/diff, stop before Cargo."""
+    import io,sys
+    source = tmp_path/"checkout";(source/"native").mkdir(parents=True)
+    common = b"SYNTHETIC BASE PATCH\n"; windows = b"SYNTHETIC WINDOWS PATCH\n"
+    (source/"native/codex-runtime.patch").write_bytes(common)
+    (source/"native/windows-transport.patch").write_bytes(windows)
+    name = "codex-rs/synthetic-source.txt"; content = b"UNCHANGED FIXTURE SOURCE\n"
+    digest = lambda value:hashlib.sha256(value).hexdigest()
+    (source/"native/source-changes.json").write_text(json.dumps({"files":[{"path":name,"fork_sha256":digest(content)}]}))
+    (source/"native/windows-source-changes.json").write_text(json.dumps({
+        "base_patch_sha256":digest(common),"files":[],"combined_patch_sha256":digest(b"")}))
+    archive = tmp_path/"source.tar"
+    with tarfile.open(archive, "w") as stream:
+        member = tarfile.TarInfo("codex-"+build.COMMIT+"/"+name)
+        member.size = len(content);stream.addfile(member, io.BytesIO(content))
+    monkeypatch.setattr(build,"SOURCE",source)
+    monkeypatch.setattr(build,"build_target",lambda:"x86_64-pc-windows-msvc")
+    monkeypatch.setattr(build.platform,"system",lambda:"Windows")
+    monkeypatch.setattr(build,"build_assets",lambda target:{"source":("https://invalid.test/not-used",digest(archive.read_bytes()))})
+    monkeypatch.setattr(build,"download",lambda *args:archive)
+    monkeypatch.setattr(build,"native_license_collector",lambda:None)
+    original_extract = build.extract_source_archive
+    def extract_without_host_path_change(stream, tree, *, windows):
+        assert windows is True
+        original_extract(stream,tree,windows=False)
+    monkeypatch.setattr(build,"extract_source_archive",extract_without_host_path_change)
+    commands=[]
+    def no_process(command,**kwargs):
+        assert command[0] == "git", "compiler/native process is forbidden"
+        commands.append(command)
+    monkeypatch.setattr(build.subprocess,"run",no_process)
+    recipe = {"fixture":"NO MODEL OR PRODUCTION RECIPE"}
+    monkeypatch.setattr(build,"runtime_recipe",lambda:recipe)
+    monkeypatch.setattr(build,"native_recipe_identity",lambda target,recipe:"fixture-recipe")
+    class ReachedOverlay(Exception):pass
+    def stop_at_overlay(tree,target,patch_inputs,received):
+        assert target == "x86_64-pc-windows-msvc" and received is recipe
+        assert (tree/name).read_bytes() == content
+        assert patch_inputs == [
+            {"file":"codex-runtime.patch","sha256":digest(common)},
+            {"file":"windows-transport.patch","sha256":digest(windows)}]
+        raise ReachedOverlay
+    monkeypatch.setattr(build,"apply_runtime_overlays",stop_at_overlay)
+    monkeypatch.setattr(sys,"argv",["build_native.py","--work",str(tmp_path/"work"),"--output",str(tmp_path/"output")])
+    with pytest.raises(ReachedOverlay):
+        build.main()
+    assert len(commands) == 3

@@ -188,7 +188,7 @@ def test_unqualified_target_cannot_choose_another_platform_asset():
 
 
 def partition_fixture():
-    native_items=[{"nodeid":native.SUITES[0]+"::case"+str(i),"classname":"native","name":"case"+str(i)} for i in range(15)]
+    native_items=[{"nodeid":native.SUITES[0]+"::case"+str(i),"classname":"native","name":"case"+str(i)} for i in range(native.EXPECTED_CASES)]
     rest=[{"nodeid":"tests/test_example.py::test_a","classname":"example","name":"test_a"},
           {"nodeid":"tests/test_example.py::test_b","classname":"example","name":"test_b"}]
     cases=[ET.Element("testcase",classname=x["classname"],name=x["name"]) for x in rest]
@@ -197,7 +197,7 @@ def partition_fixture():
     return native_items+rest,{"names":[x["name"] for x in native_items]},cases,rest,allowed
 
 
-@pytest.mark.parametrize("bad", [None,"missing","duplicate","native-name","wrong-collection","extra-skip","failure"])
+@pytest.mark.parametrize("bad", [None,"missing","duplicate","native-name","wrong-collection","extra-skip","failure","skip-declaration-class","skip-declaration-name","missing-skip","duplicate-declaration"])
 def test_complete_collection_partition_and_exact_skips(bad):
     all_items,prior,cases,own,allowed=partition_fixture()
     if bad=="missing":cases.pop()
@@ -206,6 +206,10 @@ def test_complete_collection_partition_and_exact_skips(bad):
     elif bad=="wrong-collection":own=own[:-1]
     elif bad=="extra-skip":ET.SubElement(cases[0],"skipped",message="unplanned")
     elif bad=="failure":ET.SubElement(cases[0],"failure",message="failed")
+    elif bad=="skip-declaration-class":allowed[0]["classname"]="another-class"
+    elif bad=="skip-declaration-name":allowed[0]["name"]="another-case-with-same-reason"
+    elif bad=="missing-skip":cases[1].remove(cases[1].find("skipped"))
+    elif bad=="duplicate-declaration":allowed.append(deepcopy(allowed[0]))
     if bad is None:
         assert adapter.validate_partition(all_items,prior,cases,own,allowed)["every_collected_case_executed_once"]
     else:
@@ -262,3 +266,86 @@ def test_pinned_macos_layout_may_contain_its_empty_resource_directory(tmp_path):
     manifest["target"]="x86_64-unknown-linux-gnu"
     with pytest.raises(ValueError,match="Unrecorded archive directory"):
         reuse.checked_members(archive,manifest)
+
+
+@pytest.mark.parametrize("bad", [None, "renamed-same-count", "duplicate-same-count", "missing", "extra"])
+def test_native_collection_requires_the_declared_complete_node_ids(bad):
+    nodes = list(native.EXPECTED_NODE_IDS)
+    assert native.EXPECTED_CASES == 21 == len(nodes)
+    assert {
+        "tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[summary]",
+        "tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[token-budget-local-reset]",
+    }.issubset(nodes)
+    if bad == "renamed-same-count":
+        nodes[0] = native.SUITES[0] + "::unreviewed_replacement"
+    elif bad == "duplicate-same-count":
+        nodes[0] = nodes[1]
+    elif bad == "missing":
+        nodes.pop()
+    elif bad == "extra":
+        nodes.append("tests/test_foreign.py::unreviewed_case")
+    stdout = "\n".join(nodes) + "\n21 tests collected\n"
+    if bad is None:
+        assert native.validate_collected_nodes(stdout) == nodes
+    else:
+        with pytest.raises(ValueError, match="declared node identities"):
+            native.validate_collected_nodes(stdout)
+
+
+@pytest.mark.parametrize("bad", [None, "classname", "name", "duplicate", "skipped", "independent-collection"])
+def test_native_junit_requires_declared_case_keys_and_independent_collection(tmp_path, bad):
+    root = ET.Element("testsuite")
+    for node in native.EXPECTED_NODE_IDS:
+        suite, name = node.split("::", 1)
+        ET.SubElement(root, "testcase", classname=suite.removesuffix(".py").replace("/", "."), name=name)
+    names = [case.get("name") for case in root]
+    if bad == "classname":
+        root[0].set("classname", "tests.same_name_in_a_different_suite")
+    elif bad == "name":
+        root[0].set("name", "unreviewed_replacement")
+    elif bad == "duplicate":
+        root.remove(root[0])
+        root.append(deepcopy(root[0]))
+    elif bad == "skipped":
+        ET.SubElement(root[0], "skipped", message="unplanned native skip")
+    elif bad == "independent-collection":
+        names[0] = "not_the_independently_collected_case"
+    path = tmp_path / "native.xml"
+    ET.ElementTree(root).write(path, encoding="utf-8")
+    if bad is None:
+        assert native.junit_result(path, names)["cases"] == native.EXPECTED_CASES
+    else:
+        with pytest.raises(ValueError):
+            native.junit_result(path, names)
+
+
+@pytest.mark.parametrize("manifest_state", ["absent", "stale", "malformed"])
+def test_fresh_qualification_does_not_require_published_manifest(tmp_path, monkeypatch, manifest_state):
+    package, recipe, receipt = package_fixture(tmp_path, monkeypatch)
+    published = tmp_path/"native/runtime.json"
+    if manifest_state == "absent":
+        published.unlink()
+    elif manifest_state == "stale":
+        published.write_text('{"status":"ready","native_recipe_id":"previous-release"}', encoding="utf-8")
+    else:
+        published.write_text("{invalid old manifest", encoding="utf-8")
+    proof = native.package_identity(package)
+    assert proof["recipe_validation"]["mode"] == "exact_full_recipe"
+    assert "native_manifest_sha256" not in proof["recipe_validation"]
+    assert proof["files"] == 3
+    # The same package cannot enter the reuse path with a missing/stale manifest.
+    with pytest.raises((ValueError, FileNotFoundError)):
+        native.package_identity(package, recipe)
+
+@pytest.mark.parametrize("mutation", ["binary", "recipe"])
+def test_fresh_qualification_still_rejects_input_drift(tmp_path, monkeypatch, mutation):
+    package, recipe, receipt = package_fixture(tmp_path, monkeypatch)
+    (tmp_path/"native/runtime.json").unlink()
+    if mutation == "binary":
+        (package/"bin/codex").write_bytes(b"changed, not rebuilt")
+        match = "byte mismatch"
+    else:
+        recipe.write_text(recipe.read_text() + "\n", encoding="utf-8")
+        match = "Full recipe"
+    with pytest.raises(ValueError, match=match):
+        native.package_identity(package)
