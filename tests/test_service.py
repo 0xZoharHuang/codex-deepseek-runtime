@@ -6,6 +6,7 @@ from pathlib import Path
 import signal
 import time
 
+from codex_deepseek.platforms import private_runtime_home
 from codex_deepseek.processes import matches,terminate
 from codex_deepseek.service import ensure,healthy,native_active,read_descriptor
 
@@ -54,7 +55,7 @@ def test_startup_timeout_still_terminates_only_its_owned_process(tmp_path,monkey
 
 def test_profile_service_reuses_identity_and_recovers_worker_without_port_change(tmp_path,monkeypatch,assert_private):
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
-    home=tmp_path/'private-home';home.mkdir(mode=0o700)
+    home=tmp_path/'private-home';private_runtime_home(home)
     catalog=Path(__file__).resolve().parents[1]/'catalog.json'
     monkeypatch.setenv('CODEX_DEEPSEEK_TRACE_DIR',str(tmp_path/'traces'))
     value=ensure(home,catalog)
@@ -85,7 +86,7 @@ def test_profile_service_reuses_identity_and_recovers_worker_without_port_change
 
 def test_idle_service_exits_without_leaving_a_worker(tmp_path,monkeypatch):
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','1')
-    home=tmp_path/'private-home';home.mkdir(mode=0o700)
+    home=tmp_path/'private-home';private_runtime_home(home)
     value=ensure(home,Path(__file__).resolve().parents[1]/'catalog.json')
     end=time.monotonic()+5
     while matches(value['pid'],value['birth']) and time.monotonic()<end:time.sleep(.05)
@@ -98,7 +99,7 @@ def test_idle_service_exits_without_leaving_a_worker(tmp_path,monkeypatch):
 
 def test_corrupt_descriptor_recovers_backup_without_second_watchdog(tmp_path,monkeypatch):
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
-    home=tmp_path/'private-home';home.mkdir(mode=0o700)
+    home=tmp_path/'private-home';private_runtime_home(home)
     catalog=Path(__file__).resolve().parents[1]/'catalog.json'
     value=ensure(home,catalog)
     try:
@@ -139,7 +140,8 @@ def test_real_supervisor_survives_worker_schema_publication_delay(tmp_path,monke
     from concurrent.futures import ThreadPoolExecutor
     import sqlite3
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','15')
-    home=tmp_path/'profile';state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
+    home=tmp_path/'profile';private_runtime_home(home)
+    state=home/'provider-state/adapter.sqlite';state.parent.mkdir(parents=True)
     blocker=sqlite3.connect(state);blocker.execute('PRAGMA journal_mode=WAL');blocker.execute('BEGIN IMMEDIATE')
     value=None
     try:

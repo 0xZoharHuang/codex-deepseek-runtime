@@ -4,6 +4,7 @@ import json,sqlite3,subprocess,sys,time
 import pytest
 from codex_deepseek.state import Store,SERVICE_CLIENT_PREFIX
 from codex_deepseek.service import native_active,idle_retirement,ensure,healthy,read_descriptor
+from codex_deepseek.platforms import private_runtime_home
 from codex_deepseek.processes import matches,terminate
 
 @pytest.fixture
@@ -83,7 +84,8 @@ def test_late_client_prevents_retirement_after_startup_lock_released(state):
 def test_existing_healthy_service_reuse_retains_unbound_client(tmp_path,monkeypatch):
     monkeypatch.setenv('OPENROUTER_API_KEY','NONFUNCTIONAL-SERVICE-LEASE-TEST')
     monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','1')
-    home=tmp_path/'profile';store=Store(home/'provider-state/adapter.sqlite');value=None;closed=False
+    home=tmp_path/'profile';private_runtime_home(home)
+    store=Store(home/'provider-state/adapter.sqlite');value=None;closed=False
     catalog=tmp_path/'catalog.json';catalog.write_text(json.dumps({'data':[]}))
     try:
         value=ensure(home,catalog)

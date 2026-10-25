@@ -25,7 +25,7 @@ _support_spec=importlib.util.spec_from_file_location('dedicated_platform_support
 _support=importlib.util.module_from_spec(_support_spec);_support_spec.loader.exec_module(_support)
 WINDOWS=_support.WINDOWS;EXE=_support.EXE
 python_entry=_support.python_entry;console_entry=_support.console_entry
-file_lock=_support.file_lock;private_directory=_support.private_directory;replace_file=_support.replace_file
+file_lock=_support.file_lock;private_directory=_support.private_directory;private_runtime_home=_support.private_runtime_home;replace_file=_support.replace_file
 
 
 def required_binaries():
@@ -346,7 +346,7 @@ def install(root,*,native_archive=None,native_manifest_path=None,wheelhouse=None
         (release/'installation.json').write_text(json.dumps(manifest,indent=2), encoding='utf-8')
     if not valid_release(release,source_hashes,catalog_hash,native_manifest):raise SystemExit('Installed release failed verification; preserving the current entrypoint')
     if any(sha(SOURCE/name)!=digest for name,digest in all_hashes.items()):raise SystemExit('Source changed during installation; retry from a stable checkout')
-    runtime_home=root/'codex-home';private_directory(runtime_home)
+    runtime_home=root/'codex-home';private_runtime_home(runtime_home)
     config=runtime_home/'config.toml'
     if not config.exists():config.write_text('model_reasoning_effort="high"\napproval_policy="on-request"\nsandbox_mode="workspace-write"\n', encoding='utf-8')
     if not activate:return release

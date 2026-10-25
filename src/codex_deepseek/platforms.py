@@ -72,6 +72,179 @@ def install_signals(loop,handlers):
     return restore
 
 
+class _WindowsPrivate:
+    """Owner/DACL construction for caller-authorized private state objects."""
+    def __init__(self):
+        from ctypes import wintypes as w
+        self.w=w;self.a=ctypes.WinDLL('advapi32',use_last_error=True);self.k=ctypes.WinDLL('kernel32',use_last_error=True)
+        P=ctypes.c_void_p;D=w.DWORD;H=w.HANDLE;B=w.BOOL
+        self.nt=ctypes.WinDLL('ntdll',use_last_error=True)
+        def function(lib,name,args,result):
+            f=getattr(lib,name);f.argtypes=args;f.restype=result
+        for name,args,result in [
+            ('GetCurrentProcess',[],H),('CloseHandle',[H],B),('LocalFree',[P],P),
+            ('GetFileType',[H],D),('GetFileInformationByHandle',[H,P],B),
+            ('CreateFileW',[w.LPCWSTR,D,D,P,D,D,H],H),
+            ('CreateDirectoryW',[w.LPCWSTR,P],B)]:
+            function(self.k,name,args,result)
+        for name,args,result in [
+            ('GetKernelObjectSecurity',[H,D,P,D,ctypes.POINTER(D)],B),
+            ('OpenProcessToken',[H,D,ctypes.POINTER(H)],B),
+            ('GetTokenInformation',[H,ctypes.c_int,P,D,ctypes.POINTER(D)],B),
+            ('ConvertSidToStringSidW',[P,ctypes.POINTER(w.LPWSTR)],B),
+            ('ConvertStringSecurityDescriptorToSecurityDescriptorW',[w.LPCWSTR,D,ctypes.POINTER(P),ctypes.POINTER(D)],B),
+            ('GetSecurityDescriptorOwner',[P,ctypes.POINTER(P),ctypes.POINTER(B)],B),
+            ('GetSecurityDescriptorDacl',[P,ctypes.POINTER(B),ctypes.POINTER(P),ctypes.POINTER(B)],B),
+            ('GetSecurityDescriptorControl',[P,ctypes.POINTER(w.WORD),ctypes.POINTER(D)],B),
+            ('IsValidAcl',[P],B),('GetAce',[P,D,ctypes.POINTER(P)],B),
+            ('IsValidSid',[P],B),('GetLengthSid',[P],D),
+            ('SetSecurityInfo',[H,ctypes.c_int,D,P,P,P,P],D)]:
+            function(self.a,name,args,result)
+        function(self.nt,'NtCreateFile',[ctypes.POINTER(H),D,P,P,P,D,D,D,D,P,D],ctypes.c_long)
+        function(self.nt,'RtlNtStatusToDosError',[ctypes.c_long],D)
+        token=H();size=D()
+        if not self.a.OpenProcessToken(self.k.GetCurrentProcess(),8,ctypes.byref(token)):raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            self.a.GetTokenInformation(token,1,None,0,ctypes.byref(size))
+            if not 0<size.value<=65536:raise OSError('Invalid private-state TokenUser size')
+            value=ctypes.create_string_buffer(size.value)
+            if not self.a.GetTokenInformation(token,1,value,size,ctypes.byref(size)):raise ctypes.WinError(ctypes.get_last_error())
+            self.sid=self.sid_text(ctypes.cast(value,ctypes.POINTER(P))[0])
+        finally:self.k.CloseHandle(token)
+    def sid_text(self,pointer):
+        text=self.w.LPWSTR()
+        if not pointer or not self.a.IsValidSid(pointer):raise OSError('Invalid private-state SID')
+        if not self.a.ConvertSidToStringSidW(pointer,ctypes.byref(text)):raise ctypes.WinError(ctypes.get_last_error())
+        try:return text.value
+        finally:self.k.LocalFree(text)
+    def descriptor(self,directory):
+        value=ctypes.c_void_p();flags='OICI' if directory else ''
+        text='O:'+self.sid+'D:P(A;'+flags+';FA;;;'+self.sid+')(A;'+flags+';FA;;;SY)'
+        if not self.a.ConvertStringSecurityDescriptorToSecurityDescriptorW(text,1,ctypes.byref(value),None):raise ctypes.WinError(ctypes.get_last_error())
+        return value
+    def information(self,handle,directory):
+        class INFO(ctypes.Structure):
+            _fields_=[('attributes',self.w.DWORD),('created',self.w.FILETIME),('accessed',self.w.FILETIME),
+                      ('written',self.w.FILETIME),('volume',self.w.DWORD),('size_high',self.w.DWORD),
+                      ('size_low',self.w.DWORD),('links',self.w.DWORD),('index_high',self.w.DWORD),('index_low',self.w.DWORD)]
+        value=INFO()
+        if self.k.GetFileType(handle)!=1 or not self.k.GetFileInformationByHandle(handle,ctypes.byref(value)):raise OSError('Private object must be a disk file/directory')
+        if value.attributes&0x400 or bool(value.attributes&0x10)!=directory or (not directory and value.links!=1):
+            raise PermissionError('Refusing linked, reparse or wrong-type private object')
+        return value.volume,value.index_high,value.index_low
+    def security(self,handle):
+        n=self.w.DWORD();self.a.GetKernelObjectSecurity(handle,5,None,0,ctypes.byref(n))
+        if not 0<n.value<=65536:raise OSError('Invalid private-state descriptor size')
+        raw=ctypes.create_string_buffer(n.value)
+        if not self.a.GetKernelObjectSecurity(handle,5,raw,n,ctypes.byref(n)):raise ctypes.WinError(ctypes.get_last_error())
+        owner=ctypes.c_void_p();default=self.w.BOOL()
+        if not self.a.GetSecurityDescriptorOwner(raw,ctypes.byref(owner),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
+        return raw,self.sid_text(owner)
+    def private_acl(self,raw):
+        present=self.w.BOOL();default=self.w.BOOL();acl=ctypes.c_void_p()
+        if not self.a.GetSecurityDescriptorDacl(raw,ctypes.byref(present),ctypes.byref(acl),ctypes.byref(default)):return False
+        start=ctypes.addressof(raw);end=start+len(raw)
+        if not present.value or not acl.value or not start<=acl.value<=end-8 or not self.a.IsValidAcl(acl):return False
+        size=ctypes.c_ushort.from_address(acl.value+2).value;count=ctypes.c_ushort.from_address(acl.value+4).value
+        if count!=2 or acl.value+size>end:return False
+        principals=[]
+        for i in range(count):
+            ace=ctypes.c_void_p()
+            if not self.a.GetAce(acl,i,ctypes.byref(ace)) or not acl.value<=ace.value<=acl.value+size-16:return False
+            kind=ctypes.c_ubyte.from_address(ace.value).value;flags=ctypes.c_ubyte.from_address(ace.value+1).value
+            length=ctypes.c_ushort.from_address(ace.value+2).value
+            if kind!=0 or flags&~0x17 or flags&8 or length<16 or ace.value+length>acl.value+size:return False
+            if ctypes.c_ulong.from_address(ace.value+4).value!=0x1f01ff:return False
+            sid=ace.value+8
+            if not self.a.IsValidSid(sid) or self.a.GetLengthSid(sid)>length-8:return False
+            principals.append(self.sid_text(sid))
+        return set(principals)=={self.sid,'S-1-5-18'} and len(set(principals))==2
+    def apply(self,handle,directory,*,preserve_acl=False):
+        self.information(handle,directory);raw,owner=self.security(handle)
+        # Existing BA ownership is recognized only for the old exact per-user
+        # private ACL, not for arbitrary administrator-owned/shared directories.
+        control=self.w.WORD();revision=self.w.DWORD()
+        protected=bool(self.a.GetSecurityDescriptorControl(raw,ctypes.byref(control),ctypes.byref(revision)) and control.value&0x1000)
+        if owner!=self.sid and not (owner=='S-1-5-32-544' and protected and self.private_acl(raw)):
+            raise PermissionError('Refusing foreign or unproven shared private-state owner')
+        if preserve_acl and owner==self.sid:return
+        descriptor=self.descriptor(directory)
+        try:
+            target=ctypes.c_void_p();acl=ctypes.c_void_p();default=self.w.BOOL();present=self.w.BOOL()
+            if not self.a.GetSecurityDescriptorOwner(descriptor,ctypes.byref(target),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
+            if not self.a.GetSecurityDescriptorDacl(descriptor,ctypes.byref(present),ctypes.byref(acl),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
+            flags=1 if preserve_acl else 0x80000005
+            error=self.a.SetSecurityInfo(handle,1,flags,target,None,None if preserve_acl else acl,None)
+            if error:raise ctypes.WinError(error)
+        finally:self.k.LocalFree(descriptor)
+        after,owner=self.security(handle)
+        if owner!=self.sid:raise PermissionError('Private-state owner readback differs from TokenUser')
+        if not preserve_acl:
+            control=self.w.WORD();revision=self.w.DWORD()
+            if not self.a.GetSecurityDescriptorControl(after,ctypes.byref(control),ctypes.byref(revision)) or not control.value&0x1000 or not self.private_acl(after):
+                raise PermissionError('Private-state DACL readback failed')
+    def relative(self,parent,component,descriptor,*,final,access=None):
+        if not component or component in ('.','..') or any(c in component for c in ('/','\\','\0',':')) or component.endswith((' ','.')):
+            raise PermissionError('Unsafe native profile component')
+        base=component.split('.',1)[0].upper()
+        if base in {'CON','PRN','AUX','NUL','CONIN$','CONOUT$',*[p+n for p in ('COM','LPT') for n in '123456789\u00b9\u00b2\u00b3']}:
+            raise PermissionError('Reserved native profile component')
+        encoded=component.encode('utf-16-le','surrogatepass')
+        if len(encoded)>65532:raise ValueError('Native profile component too long')
+        class NAME(ctypes.Structure):
+            _fields_=[('length',self.w.USHORT),('maximum',self.w.USHORT),('buffer',ctypes.c_void_p)]
+        class ATTR(ctypes.Structure):
+            _fields_=[('length',self.w.DWORD),('root',self.w.HANDLE),('name',ctypes.POINTER(NAME)),
+                      ('flags',self.w.DWORD),('security',ctypes.c_void_p),('quality',ctypes.c_void_p)]
+        class IO(ctypes.Structure):
+            _fields_=[('status',ctypes.c_void_p),('information',ctypes.c_size_t)]
+        value=ctypes.create_string_buffer(encoded+b'\0\0')
+        name=NAME(len(encoded),len(encoded)+2,ctypes.addressof(value))
+        attributes=ATTR(ctypes.sizeof(ATTR),parent,ctypes.pointer(name),0x1040,descriptor,None)
+        output=self.w.HANDLE();io=IO()
+        if access is None:access=0x1000a0|(0xe0000 if final else 0)
+        status=self.nt.NtCreateFile(ctypes.byref(output),access,ctypes.byref(attributes),ctypes.byref(io),None,
+                                    0x10,3,3,0x00200021,None,0)
+        if status<0:raise ctypes.WinError(self.nt.RtlNtStatusToDosError(status))
+        try:self.information(output,True)
+        except BaseException:self.k.CloseHandle(output);raise
+        return output
+    def directory(self,path,*,preserve_existing_acl=False):
+        path=Path(path).absolute()
+        if '..' in path.parts or not path.anchor or len(path.parts)<2:
+            raise PermissionError('Unsafe native profile root')
+        descriptor=self.descriptor(True);parents=[]
+        try:
+            # Anchor once, then resolve only single relative components. Traverse
+            # access and no DELETE sharing pin each directory until readback.
+            anchor=self.k.CreateFileW(path.anchor,0x1000a0,3,None,3,0x02200000,None)
+            if anchor in (None,ctypes.c_void_p(-1).value):raise ctypes.WinError(ctypes.get_last_error())
+            parents.append(anchor);self.information(anchor,True)
+            components=path.parts[1:]
+            for index,component in enumerate(components):
+                final=index+1==len(components)
+                access=0x1200a0 if final and preserve_existing_acl else None
+                handle=self.relative(parents[-1],component,descriptor,final=final,access=access)
+                parents.append(handle)
+            if preserve_existing_acl:
+                raw,owner=self.security(parents[-1])
+                if owner==self.sid:return
+                # Inspect first without demanding write-owner on an already-owned
+                # readonly shared cache. Migration alone opens an owner-write handle.
+                control=self.w.WORD();revision=self.w.DWORD()
+                protected=bool(self.a.GetSecurityDescriptorControl(raw,ctypes.byref(control),ctypes.byref(revision)) and control.value&0x1000)
+                if owner!='S-1-5-32-544' or not protected or not self.private_acl(raw):
+                    raise PermissionError('Refusing foreign or unproven shared cache owner')
+                writable=self.relative(parents[-2],components[-1],descriptor,final=True,access=0x1a00a0)
+                parents.append(writable)
+                if self.information(parents[-1],True)!=self.information(parents[-2],True):
+                    raise PermissionError('Native cache identity changed')
+            self.apply(parents[-1],True,preserve_acl=preserve_existing_acl)
+        finally:
+            for handle in reversed(parents):self.k.CloseHandle(handle)
+            self.k.LocalFree(descriptor)
+
+
 def private_directory(path):
     path=Path(path);path.mkdir(parents=True,exist_ok=True,mode=0o700)
     if not WINDOWS:path.chmod(0o700);return
@@ -104,6 +277,19 @@ def private_directory(path):
     try:
         if not api.SetFileSecurityW(str(path),0x80000004,descriptor):raise ctypes.WinError(ctypes.get_last_error())
     finally:kernel.LocalFree(descriptor)
+
+
+def private_runtime_home(path):
+    """Construct an authorized native profile with explicit current-user ownership."""
+    path=Path(path)
+    if not WINDOWS:
+        private_directory(path);cache=path/'cache'
+        if cache.is_symlink():raise PermissionError('Redirected native profile cache')
+        cache.mkdir(mode=0o700,exist_ok=True);return
+    security=_WindowsPrivate()
+    security.directory(path)
+    # Native uses this shared cache with private=false: preserve existing grants.
+    security.directory(path/'cache',preserve_existing_acl=True)
 
 
 def replace_file(source,destination):

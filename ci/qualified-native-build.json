@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "source": "actions-artifact",
+  "repository": "0xZoharHuang/codex-deepseek-runtime",
+  "repository_id": 1427487253,
+  "run_id": 40156375058,
+  "run_attempt": 1,
+  "producer_commit": "bb5943353491550a48926747f1905d9a83b81c43",
+  "workflow_path": ".github/workflows/native-platform-qualification.yml",
+  "recipe_sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+  "recipe_bytes": 52848,
+  "targets": {
+    "x86_64-unknown-linux-gnu": {
+      "artifact_id": 12586095100,
+      "artifact_name": "cds-linux-x64-bb5943353491550a48926747f1905d9a83b81c43-1",
+      "zip_sha256": "24e67a23409640d599e8401294933309dc9c44ecb3d232f3455af50f99477668",
+      "zip_bytes": 162936916,
+      "archive_sha256": "94758a863ffe644bb3b8477b611014c43c657fdda00ac668d87fecb540fb8651",
+      "archive_bytes": 160457262,
+      "receipt_sha256": "4ccc5fcb0f9bfee2f4765b046e69590b04e044d6be5c671ca1347c259e8e9247",
+      "manifest": "runtime-x86_64-unknown-linux-gnu.json",
+      "manifest_sha256": "74ec1dd14d8394317cec4edd29aaadbaea7629bb29f0f04671d4b3355cb0b630",
+      "file_count": 3041
+    },
+    "aarch64-apple-darwin": {
+      "artifact_id": 12587348396,
+      "artifact_name": "cds-macos-arm64-bb5943353491550a48926747f1905d9a83b81c43-1",
+      "zip_sha256": "b054ed7f97e49d561c23b082fd09dcbe2f83b0301c8424cff9d0d5bd6d0e5da2",
+      "zip_bytes": 146199405,
+      "archive_sha256": "38f748b4398d65810184d226879d51d5246e81c15ff9d24cb1fd6f94d0a415d9",
+      "archive_bytes": 143722302,
+      "receipt_sha256": "935fb3fdbecd587aa494333b79433940f7ad0fafceba2490addcbd45b5ce70dc",
+      "manifest": "runtime.json",
+      "manifest_sha256": "d95936bfe6a55b51a86af94167cbde1e0b3c0c29ddf6ba9b7d84285090eb2301",
+      "file_count": 2947
+    }
+  }
+}

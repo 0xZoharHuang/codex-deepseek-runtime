@@ -1,4 +1,4 @@
-name: Current source with verified native packages
+name: Current source with qualified 0.6.2 native build
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cds-native-reuse-${{ github.ref }}
@@ -74,12 +75,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I -B -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-reuse-controller-tests" --junitxml "$RUNNER_TEMP/cds-reuse-evidence/controller.xml"
-      - name: Acquire and verify pinned native release assets
+          python -I -B -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py ci/test_qualified_native_reuse.py -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-reuse-controller-tests" --junitxml "$RUNNER_TEMP/cds-reuse-evidence/controller.xml"
+      - name: Acquire the pinned native package from its declared source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          python -I -B ci/reuse_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
+          python -I -B ci/reuse_qualified_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
       - name: Run the complete declared native transport cases
         shell: bash
         run: |

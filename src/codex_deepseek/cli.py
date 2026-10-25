@@ -26,7 +26,7 @@ from .service import ProviderService
 from .arguments import command_index, app_server_command
 from .native_http import NativeTransport
 from .isolation import check_attachment, check_daemon_package, bind_remote, check_home_ipc
-from .platforms import WINDOWS, EXE, executable, console_entry, private_fd, private_directory, install_signals, replace_file
+from .platforms import WINDOWS, EXE, executable, console_entry, private_fd, private_directory, private_runtime_home, install_signals, replace_file
 from .credentials import SERVICE, credential, setup_key
 from .processes import identity
 
@@ -283,8 +283,9 @@ async def run(arguments: list[str]) -> int:
         process=await asyncio.create_subprocess_exec(str(binary),*arguments,env=native_environment(runtime_home,'',binary,install_shims=False))
         return await process.wait()
     # Match the installer's inheriting Windows container; private data is below runtime_home.
+    if root.resolve().is_relative_to(runtime_home):private_runtime_home(runtime_home)
     root.mkdir(parents=True, exist_ok=True, mode=0o777 if WINDOWS else 0o700)
-    private_directory(runtime_home)
+    private_runtime_home(runtime_home)
     from .web_config import ensure_browser
     ensure_browser(runtime_home)
     arguments=bind_remote(arguments,check_attachment(arguments,runtime_home))

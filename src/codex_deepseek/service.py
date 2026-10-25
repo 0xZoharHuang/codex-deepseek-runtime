@@ -5,7 +5,7 @@ Idle services exit; native daemon and active client leases retain the service.
 """
 import asyncio
 from contextlib import ExitStack, closing
-from .platforms import WINDOWS, executable, file_lock, private_directory, install_signals, replace_file
+from .platforms import WINDOWS, executable, file_lock, private_directory, private_runtime_home, install_signals, replace_file
 import hashlib
 import json
 import os
@@ -148,7 +148,7 @@ def _stop_created_process(process,birth):
 
 def ensure(home,catalog,native_binary=None,owner=None):
     from .policy import isolated_path
-    home=isolated_path(Path(home));private_directory(home);state=home/'provider-state';private_directory(state)
+    home=isolated_path(Path(home));private_runtime_home(home);state=home/'provider-state';private_directory(state)
     expected=code_id(catalog,native_binary,home)
     def retained(value):
         if owner is not None:

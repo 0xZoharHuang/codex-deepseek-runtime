@@ -31,7 +31,8 @@ def binary():
 
 
 def configure(home,port,*,compact=False,capacity=False,token_budget=None):
-    home.mkdir(exist_ok=True);(home/'runtime-policy').mkdir(exist_ok=True);(home/'temp').mkdir(exist_ok=True)
+    from codex_deepseek.platforms import private_runtime_home
+    private_runtime_home(home);(home/'runtime-policy').mkdir(exist_ok=True);(home/'temp').mkdir(exist_ok=True)
     catalog=Path(__file__).resolve().parents[1]/'catalog.json'
     pairs={'model':MODEL,'model_provider':'deepseek_runtime','model_catalog_json':str(catalog),'memories.extract_model':MODEL,'memories.consolidation_model':MODEL,'sqlite_home':str(home),'log_dir':str(home/'log')}
     text=''.join(key+'='+json.dumps(value)+'\n' for key,value in pairs.items())

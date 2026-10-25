@@ -2,24 +2,23 @@
   "schema": 1,
   "status": "ready",
   "distribution": "codex-deepseek-runtime",
-  "distribution_version": "0.6.0",
+  "distribution_version": "0.6.2",
   "upstream_version": "0.164.0-alpha.7",
   "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
-  "patch_sha256": "5e5a30df923b276d21dbfc14733ccd4376604ae661fbd27bf4122978c83ef1c1",
+  "patch_sha256": "9d66e5e3f1283b9497483dfccf1feeaa2d9a4aac59091a7bfe02f6e330bf3f16",
   "target": "aarch64-apple-darwin",
-  "native_recipe_id": "073fb5d503a4a0a192fa29e996ab7b0706ffda6ef0853fcd150c607ccf39dee3",
+  "native_recipe_id": "02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1",
   "build_toolchain_pin": "1.99.1",
   "archive": {
-    "filename": "codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
-    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.0/codex-deepseek-native-0.6.0-aarch64-apple-darwin.tar.gz",
-    "sha256": "aef450933d716b0c9451d5a487eee59eb346c188c894f8fee1b8155c836052b0"
+    "filename": "codex-deepseek-native-0.6.2-aarch64-apple-darwin.tar.gz",
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/codex-deepseek-native-0.6.2-aarch64-apple-darwin.tar.gz",
+    "sha256": "38f748b4398d65810184d226879d51d5246e81c15ff9d24cb1fd6f94d0a415d9"
   },
   "files": {
-    "bin/codex": "8b16ba68b0d234bd0addfb4cbb327d7e2e7087fd96d97271dec52fa897be7ce7",
+    "bin/codex": "47ee2e13e9af5dc5f8cc646f77997b7fbbd3c2da55dd8af3b0b0737a671166ee",
     "bin/codex-code-mode-host": "f11df64d7979b71a726910a26543781c2a3ef45c25c1687bef11f27c32933e56",
     "bin/codex-http-transport": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
-    "build-receipt.json": "d2b5dbd20190b6770a4c59bdebe2287e54efe1b4b3e182f9095499448772122a",
-    "codex-package.json": "c918b4ea1ed2e17d0b91366c6078ca86a4d1663ab1bab93394e75b089e3ecc29",
+    "codex-package.json": "9e0146728d4d51dbd7b676355dfa95059ef2c3229df30a05b0d2aa5ac22c71cd",
     "codex-path/rg": "a326a1fb48074202e9ad41e4cd1e389eeea372c8c6f7d7e80da81176d5d9430e",
     "licenses/codex-LICENSE": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
     "licenses/codex-NOTICE": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
@@ -2961,6 +2960,7 @@
     "licenses/rust/spdx/Unlicense.txt": "0bdebfeda07d45dada625ae1317c6f833186e798b171d0db640bcf32e92a8240",
     "licenses/rust/spdx/WTFPL.txt": "13d8825a59e5e546d41e8711405d0f335a9934362a47c04a3b4280fa7932dc4a",
     "licenses/rust/spdx/Zlib.txt": "bfb1112d49db5b1daecdfef24bd7e2f3ea0bafb33aa67aa0ab51e2bf8407c03d",
-    "licenses/rust/spdx/bzip2-1.0.6.txt": "0a56dbabe7d2ff65dea26e8b795fe42c6204a192b974d8e9304fe356ccda9fd1"
+    "licenses/rust/spdx/bzip2-1.0.6.txt": "0a56dbabe7d2ff65dea26e8b795fe42c6204a192b974d8e9304fe356ccda9fd1",
+    "build-receipt.json": "935fb3fdbecd587aa494333b79433940f7ad0fafceba2490addcbd45b5ce70dc"
   }
 }
