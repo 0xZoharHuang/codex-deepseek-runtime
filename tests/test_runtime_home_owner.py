@@ -55,9 +55,9 @@ def test_file_or_hardlink_cannot_be_a_native_runtime_home(tmp_path):
     assert security(path)==before and path.read_bytes()==b'unchanged' and (tmp_path/'alias').read_bytes()==b'unchanged'
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('layout',['same','ancestor','normal'])
-def test_cli_constructs_home_before_an_overlapping_data_container(tmp_path,monkeypatch,layout,assert_private):
-    import asyncio
+async def test_cli_constructs_home_before_an_overlapping_data_container(tmp_path,monkeypatch,layout,assert_private):
     import codex_deepseek.cli as cli
     import codex_deepseek.web_config as web_config
     base=tmp_path/'selected'
@@ -72,7 +72,7 @@ def test_cli_constructs_home_before_an_overlapping_data_container(tmp_path,monke
         raise Initialized()
     # Stop at the first post-construction consumer: no native/model/service run.
     monkeypatch.setattr(web_config,'ensure_browser',initialized)
-    with pytest.raises(Initialized):asyncio.run(cli.run(['runtime','status']))
+    with pytest.raises(Initialized):await cli.run(['runtime','status'])
     assert root.is_dir()
     for path in (home,home/'cache'):
         assert owner(path)==user()

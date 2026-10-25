@@ -81,7 +81,7 @@ def test_all_four_passing_gates_required_before_probe_revalidation(oauth_run,mon
     assert called==[]
 
 def test_exact_skip_map_keeps_windows_scope_and_rejects_unlisted_skip():
-    assert len(acceptance.expected_offline_skips('x86_64-unknown-linux-gnu'))==31
-    assert len(acceptance.expected_offline_skips('aarch64-apple-darwin'))==32
-    assert len(acceptance.expected_offline_skips('x86_64-pc-windows-msvc'))==3
+    assert len(acceptance.expected_offline_skips('x86_64-unknown-linux-gnu'))==40
+    assert len(acceptance.expected_offline_skips('aarch64-apple-darwin'))==41
+    assert len(acceptance.expected_offline_skips('x86_64-pc-windows-msvc'))==4
     assert 'test_windows_sandbox_admission::invented' not in acceptance.expected_offline_skips('aarch64-apple-darwin')

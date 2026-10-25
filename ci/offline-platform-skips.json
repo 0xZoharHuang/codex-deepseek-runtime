@@ -194,6 +194,11 @@
       "classname": "tests.test_native_source_extraction",
       "name": "test_windows_refuses_overwrite_on_materialization",
       "message": "Requires Windows physical extended-path extraction"
+    },
+    {
+      "classname": "tests.test_runtime_home_owner",
+      "name": "test_native_runtime_home_pins_parent_during_a_real_rename_attack",
+      "message": "Windows native parent-handle sharing contract"
     }
   ],
   "linux": [],
@@ -202,6 +207,28 @@
       "classname": "tests.test_platforms",
       "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
       "message": "Native Linux daemon process identity contract"
+    }
+  ],
+  "win32": [
+    {
+      "classname": "tests.test_platforms",
+      "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+      "message": "Native Linux daemon process identity contract"
+    },
+    {
+      "classname": "tests.test_cds_skill_inspect",
+      "name": "test_posix_actual_space_path_and_exact_version_argument",
+      "message": "POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check"
+    },
+    {
+      "classname": "tests.test_cds_skill_inspect",
+      "name": "test_posix_actual_offline_timeout_is_bounded",
+      "message": "POSIX shell/shebang timeout fixture; not Windows process execution evidence"
+    },
+    {
+      "classname": "tests.test_native_source_extraction",
+      "name": "test_unix_extracts_real_symlink_target_and_bytes",
+      "message": "Requires native Unix symlink extraction"
     }
   ]
 }

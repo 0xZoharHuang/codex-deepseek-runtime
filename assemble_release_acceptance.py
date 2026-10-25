@@ -405,7 +405,18 @@ def expected_offline_skips(target):
     if target=='x86_64-pc-windows-msvc':
         result['test_cds_skill_inspect::test_posix_actual_space_path_and_exact_version_argument']='POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check'
         result['test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded']='POSIX shell/shebang timeout fixture; not Windows process execution evidence'
+        result['test_native_source_extraction::test_unix_extracts_real_symlink_target_and_bytes']='Requires native Unix symlink extraction'
     if target!='x86_64-pc-windows-msvc':
+        result['test_runtime_home_owner::test_native_runtime_home_pins_parent_during_a_real_rename_attack']='Windows native parent-handle sharing contract'
+        for name in ['test_windows_materializes_exact_bytes_without_symlink',
+                     'test_windows_rejects_wrong_link_target[/outside-license]',
+                     'test_windows_rejects_wrong_link_target[../outside-license]',
+                     'test_windows_rejects_wrong_link_target[OTHER]',
+                     'test_windows_rejects_missing_regular_target',
+                     'test_windows_rejects_link_chain_instead_of_regular_target',
+                     'test_windows_rejects_unqualified_link_name',
+                     'test_windows_refuses_overwrite_on_materialization']:
+            result['test_native_source_extraction::'+name]='Requires Windows physical extended-path extraction'
         result['test_platforms::test_extended_paths_cannot_alias_codex_app_state']='Win32 extended-length directory aliases'
         for name in ['daemon.pid','app-server.pid']:
             result['test_platforms::test_live_windows_daemon_retains_service_and_rejects_stale_creation_time['+name+']']='Native Windows daemon creation FILETIME record'
