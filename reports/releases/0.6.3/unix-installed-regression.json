@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "at": 1792969176.8093948,
+  "status": "passed_independent_artifact_readback",
+  "commit": "521a62a0fd7d37f1d3868f920e478552f99f2097",
+  "run_id": 40242229086,
+  "run_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40242229086",
+  "platforms": {
+    "aarch64-apple-darwin": {
+      "artifact": {
+        "id": 12617211758,
+        "name": "cds-reused-macos-arm64-521a62a0fd7d37f1d3868f920e478552f99f2097-1",
+        "bytes": 502332,
+        "sha256": "8383bc044bc5c9b2dff80830fce9c6c4369e69e0904d0e7216e1e0db8dbd4a92"
+      },
+      "installed_adapter": {
+        "directory": "/Users/runner/work/_temp/cds-reuse-venv/lib/python3.13/site-packages/codex_deepseek",
+        "version": "0.6.3",
+        "source_sha256": {
+          "bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+          "web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+          "isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+          "service.py": "0518bad766b98501ee32c9e358b81838caf039177fdb67421dab289ddb123b6b",
+          "gateway.py": "73c37dab578e5b514afa0b450f2df7220c5897e15e3e39242a64940efd59bb19",
+          "protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+          "platforms.py": "b04557ab046d974981ef28a32333f202d0df4b158fb8eab0b989dd03d41c0c44",
+          "credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+          "image_call_reconciliation.py": "14e7b9645bc25e022196f085cff3ff72fbcbe956384ca0db29c5169f2aeaddea",
+          "web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+          "supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+          "arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+          "protocol.py": "65ff72d7dbc07383ede0d33e3a1417c9395da040dd80f2018abcb97045d31833",
+          "image_transport.py": "0a0322b432c55bd0f011d0640c8c74a133e70d2a69f8c4f6edda73c971f3a9eb",
+          "policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+          "image_provider.py": "5e58460e45faff149eb210aac68612de7b75b5623ffaa5bf5574655ebdc1c586",
+          "__init__.py": "419008ec6c362294762f3ba5789d3c29cdf83f268518940735e3ae8f50de07f4",
+          "windows_launchers.py": "99c5f6692c74b3a58e78f99984a288514a538fe159d9c0021b6917876e78d80f",
+          "image_budget.py": "996bf4493cc06e77ad855bcedc64fb7d6710722f012758d8de06993a69b384b5",
+          "browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+          "processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+          "cli.py": "9c8d659c2544a6b9bcf7d30a2cfde7b6c1658f6698cd86716fb563369aa6ea6f",
+          "formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+          "structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+          "search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030",
+          "image_maintenance.py": "e21c4e4a8a1904104906ad85dbd7cca286bf17c7171e307806f957d874a1c0f9",
+          "state.py": "bb1f4e398495ae3bbafe4848165e8e3c129bcc7ae8393abd15ee46cb1d99f1db",
+          "windows_sockets.py": "7667ba065d3152fc026acf71a8a1118304ab2e1530adf26ecc910561ef82caf8",
+          "native_http.py": "490b1499937c852841677e8d0760d16d6d0a9405aefe5dca9a4b81b874dcfaba"
+        }
+      },
+      "suites": {
+        "controller.xml": {
+          "tests": 171,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 171
+        },
+        "native/native.xml": {
+          "tests": 21,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 21
+        },
+        "offline/adapter.xml": {
+          "tests": 2264,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 41,
+          "passed": 2223
+        }
+      },
+      "collection": 2285,
+      "every_collected_case_executed_once": true,
+      "new_identity_cases_passed": 52,
+      "processes": {
+        "native": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [
+            {
+              "pid": 2720,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 2254,
+              "parent_birth": "1792968833:608478"
+            },
+            {
+              "pid": 2938,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 2933,
+              "parent_birth": "1792968852:642881"
+            }
+          ],
+          "observation_errors": []
+        },
+        "adapter": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [
+            {
+              "pid": 3688,
+              "birth": "1792968881:13896",
+              "ppid": 3287,
+              "creation_time": 1792968881.013896,
+              "birth_after": null,
+              "stable": true,
+              "diagnostic_birth_before": "1792968881:13896",
+              "reason": "identity_changed_during_owned_diagnostics",
+              "parent_pid": 3287,
+              "parent_birth": "1792968864:174709"
+            },
+            {
+              "pid": 4290,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4188,
+              "parent_birth": "1792968886:757131"
+            },
+            {
+              "pid": 4465,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4337,
+              "parent_birth": "1792968887:194846"
+            },
+            {
+              "pid": 4780,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4779,
+              "parent_birth": "1792968901:152926"
+            },
+            {
+              "pid": 4797,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4796,
+              "parent_birth": "1792968905:429988"
+            },
+            {
+              "pid": 4810,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4808,
+              "parent_birth": "1792968906:864684"
+            },
+            {
+              "pid": 4904,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4808,
+              "parent_birth": "1792968906:864684"
+            },
+            {
+              "pid": 4915,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4808,
+              "parent_birth": "1792968906:864684"
+            },
+            {
+              "pid": 5031,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 5030,
+              "parent_birth": "1792968915:905533"
+            }
+          ],
+          "observation_errors": []
+        },
+        "collection": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [],
+          "observation_errors": []
+        }
+      },
+      "native_package": {
+        "target": "aarch64-apple-darwin",
+        "recipe_validation": {
+          "mode": "original_archive_target_equivalence",
+          "original_sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+          "current_sha256": "ea0465074bb31edced83fcccbc9e548ad8c59dad46d6bbba015663cadccf8458",
+          "archived_recipe": "/Users/runner/work/_temp/cds-reuse-download/runtime-overlays.json",
+          "only_windows_recipe_changes": true,
+          "target_recipe_id": "02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1",
+          "native_manifest_sha256": "d95936bfe6a55b51a86af94167cbde1e0b3c0c29ddf6ba9b7d84285090eb2301"
+        },
+        "recipe_id": "02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1",
+        "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+        "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "cli": "/Users/runner/work/_temp/cds-reused-package/bin/codex",
+        "cli_sha256": "47ee2e13e9af5dc5f8cc646f77997b7fbbd3c2da55dd8af3b0b0737a671166ee",
+        "helper": "/Users/runner/work/_temp/cds-reused-package/bin/codex-http-transport",
+        "helper_sha256": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
+        "build_receipt_sha256": "935fb3fdbecd587aa494333b79433940f7ad0fafceba2490addcbd45b5ce70dc",
+        "files": 2946
+      },
+      "native_builds": 0,
+      "real_model_requests": 0
+    },
+    "x86_64-unknown-linux-gnu": {
+      "artifact": {
+        "id": 12616099807,
+        "name": "cds-reused-linux-x64-521a62a0fd7d37f1d3868f920e478552f99f2097-1",
+        "bytes": 495136,
+        "sha256": "c27fa53ec79a92c5ce58e341e551a13c587117c0d0bbf77fcd35b386e942f370"
+      },
+      "installed_adapter": {
+        "directory": "/home/runner/work/_temp/cds-reuse-venv/lib/python3.13/site-packages/codex_deepseek",
+        "version": "0.6.3",
+        "source_sha256": {
+          "web_mcp.py": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8",
+          "supervisor.py": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985",
+          "credentials.py": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003",
+          "cli.py": "9c8d659c2544a6b9bcf7d30a2cfde7b6c1658f6698cd86716fb563369aa6ea6f",
+          "browser.py": "644eb85a5c34e04ba2b65cec960d665b253a5ea1099ee7b5b0dc1366f418b4e5",
+          "arguments.py": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516",
+          "protocol_errors.py": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452",
+          "structured.py": "263e8643f0fc0d7de48856741bbccf8559771a6ba84387332d4a35290a0e2af4",
+          "native_http.py": "490b1499937c852841677e8d0760d16d6d0a9405aefe5dca9a4b81b874dcfaba",
+          "image_maintenance.py": "e21c4e4a8a1904104906ad85dbd7cca286bf17c7171e307806f957d874a1c0f9",
+          "policy.py": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0",
+          "bootstrap.py": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704",
+          "formats.py": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47",
+          "image_transport.py": "0a0322b432c55bd0f011d0640c8c74a133e70d2a69f8c4f6edda73c971f3a9eb",
+          "windows_launchers.py": "99c5f6692c74b3a58e78f99984a288514a538fe159d9c0021b6917876e78d80f",
+          "image_provider.py": "5e58460e45faff149eb210aac68612de7b75b5623ffaa5bf5574655ebdc1c586",
+          "web_config.py": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754",
+          "processes.py": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3",
+          "state.py": "bb1f4e398495ae3bbafe4848165e8e3c129bcc7ae8393abd15ee46cb1d99f1db",
+          "protocol.py": "65ff72d7dbc07383ede0d33e3a1417c9395da040dd80f2018abcb97045d31833",
+          "image_call_reconciliation.py": "14e7b9645bc25e022196f085cff3ff72fbcbe956384ca0db29c5169f2aeaddea",
+          "gateway.py": "73c37dab578e5b514afa0b450f2df7220c5897e15e3e39242a64940efd59bb19",
+          "windows_sockets.py": "7667ba065d3152fc026acf71a8a1118304ab2e1530adf26ecc910561ef82caf8",
+          "service.py": "0518bad766b98501ee32c9e358b81838caf039177fdb67421dab289ddb123b6b",
+          "__init__.py": "419008ec6c362294762f3ba5789d3c29cdf83f268518940735e3ae8f50de07f4",
+          "platforms.py": "b04557ab046d974981ef28a32333f202d0df4b158fb8eab0b989dd03d41c0c44",
+          "image_budget.py": "996bf4493cc06e77ad855bcedc64fb7d6710722f012758d8de06993a69b384b5",
+          "isolation.py": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598",
+          "search.py": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030"
+        }
+      },
+      "suites": {
+        "controller.xml": {
+          "tests": 171,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 171
+        },
+        "native/native.xml": {
+          "tests": 21,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 21
+        },
+        "offline/adapter.xml": {
+          "tests": 2264,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 40,
+          "passed": 2224
+        }
+      },
+      "collection": 2285,
+      "every_collected_case_executed_once": true,
+      "new_identity_cases_passed": 52,
+      "processes": {
+        "native": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [
+            {
+              "pid": 3184,
+              "birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:27846",
+              "ppid": 3172,
+              "creation_time": 1792968848.46,
+              "birth_after": null,
+              "stable": false,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 3172,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:27844"
+            },
+            {
+              "pid": 4762,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 2683,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:26871"
+            }
+          ],
+          "observation_errors": []
+        },
+        "adapter": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [
+            {
+              "pid": 4942,
+              "birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:30111",
+              "ppid": 4876,
+              "creation_time": 1792968871.11,
+              "birth_after": null,
+              "stable": false,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4876,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:29736"
+            },
+            {
+              "pid": 5229,
+              "birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:30630",
+              "ppid": 4876,
+              "creation_time": 1792968876.3,
+              "birth_after": null,
+              "stable": false,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4876,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:29736"
+            },
+            {
+              "pid": 5526,
+              "birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:31729",
+              "ppid": 4876,
+              "creation_time": 1792968887.29,
+              "birth_after": null,
+              "stable": true,
+              "diagnostic_birth_before": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:31729",
+              "reason": "identity_changed_during_owned_diagnostics",
+              "parent_pid": 4876,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:29736"
+            },
+            {
+              "pid": 6091,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4876,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:29736"
+            },
+            {
+              "pid": 6313,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6311,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:33349"
+            },
+            {
+              "pid": 6315,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 4876,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:29736"
+            },
+            {
+              "pid": 6433,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6431,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:33933"
+            },
+            {
+              "pid": 6437,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6435,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:34150"
+            },
+            {
+              "pid": 6447,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6445,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:34439"
+            },
+            {
+              "pid": 6452,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6445,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:34439"
+            },
+            {
+              "pid": 6458,
+              "birth": null,
+              "ppid": null,
+              "creation_time": null,
+              "stable": false,
+              "birth_after": null,
+              "reason": "child_identity_or_metadata_changed",
+              "parent_pid": 6445,
+              "parent_birth": "linux:9e890e09-6cf1-4358-9dbc-a24b999d91f2:34439"
+            }
+          ],
+          "observation_errors": []
+        },
+        "collection": {
+          "passed": true,
+          "forced_cleanup": [],
+          "remaining_after_cleanup": [],
+          "unknown_live": [],
+          "uncertain_observations": [],
+          "observation_errors": []
+        }
+      },
+      "native_package": {
+        "target": "x86_64-unknown-linux-gnu",
+        "recipe_validation": {
+          "mode": "original_archive_target_equivalence",
+          "original_sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+          "current_sha256": "ea0465074bb31edced83fcccbc9e548ad8c59dad46d6bbba015663cadccf8458",
+          "archived_recipe": "/home/runner/work/_temp/cds-reuse-download/runtime-overlays.json",
+          "only_windows_recipe_changes": true,
+          "target_recipe_id": "3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad",
+          "native_manifest_sha256": "74ec1dd14d8394317cec4edd29aaadbaea7629bb29f0f04671d4b3355cb0b630"
+        },
+        "recipe_id": "3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad",
+        "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+        "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "cli": "/home/runner/work/_temp/cds-reused-package/bin/codex",
+        "cli_sha256": "3c80474aec7bbb6f290d9dfeda8602e0a81411f9abac0ce1e45463d35c192432",
+        "helper": "/home/runner/work/_temp/cds-reused-package/bin/codex-http-transport",
+        "helper_sha256": "5d62deeac5422af404d1e2292ea9867b00b916579b76e0346dc9e93c6c57e7c9",
+        "build_receipt_sha256": "4ccc5fcb0f9bfee2f4765b046e69590b04e044d6be5c671ca1347c259e8e9247",
+        "files": 3040
+      },
+      "native_builds": 0,
+      "real_model_requests": 0
+    }
+  },
+  "scope": "Current installed0.6.3 adapter plus exact unchanged native0.6.2 assets; not an App or new complex-business-task result"
+}
