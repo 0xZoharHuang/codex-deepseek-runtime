@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "release": "0.6.2",
-  "publication_status": "candidate_delivery_declaration",
+  "publication_status": "stable_release_published",
   "source_id": "cf9f19eaf67b0fdd8151",
   "installation_status": "new_immutable_installation_verified_without_stable_activation",
   "installation_metadata_sha256": "8f520e47e2f9db32c4aaefc45b99c579bb431e03ae39604c729bc1eca1c42415",
@@ -61,5 +61,6 @@
     "file_readback": true
   },
   "publication_state_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
-  "stable_publication_asserted_by_this_document": false
+  "stable_publication_asserted_by_this_document": true,
+  "publication_record": "publication-record.json"
 }

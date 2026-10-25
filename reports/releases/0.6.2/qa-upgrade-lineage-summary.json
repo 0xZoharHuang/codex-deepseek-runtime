@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "release": "0.6.2",
-  "publication_status": "candidate_delivery_declaration",
+  "publication_status": "stable_release_published",
   "frozen_qualification_source_id": "d69a4edd5b8de66f3db3",
   "current_product_source_id": "cf9f19eaf67b0fdd8151",
   "product_source_file_count": 99,
@@ -56,7 +56,7 @@
   "current_offline_summary": "current-offline-summary.json",
   "old_proofs_relabelled_as_new_QA": false,
   "publication_state_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
-  "stable_publication_asserted_by_this_document": false,
+  "stable_publication_asserted_by_this_document": true,
   "CI_entry_point_lineage": {
     "initial_failed_run": {
       "run_id": 40225926715,
@@ -85,11 +85,33 @@
     },
     "release_asset_route": {
       "source": "release-asset",
-      "declaration_only_at_this_commit": true,
+      "declaration_only_at_this_commit": false,
       "run_only_after_assets_are_public": true,
       "automatic_fallback": false,
       "success_not_inferred_from_actions_artifact_run": true,
-      "verification_record_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2"
+      "verification_record_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
+      "actual_public_acquisition_verified": true,
+      "successful_run_id": 40233851528,
+      "successful_head_sha": "d325437588e7fbde418aa52f008740ea96fab0fd",
+      "summary": "public-asset-qualification-summary.json",
+      "summary_sha256": "ddf1c798797e15b213a312684c606a7f73c2c70d2b2e42c663607b603bcaa41f"
     }
+  },
+  "publication_record": "publication-record.json",
+  "no_external_tools_diagnostic_lineage": {
+    "original_failed_public_asset_run": 40230459754,
+    "original_failure_preserved": true,
+    "audit": "public-asset-observer-audit.json",
+    "verification_QA_commit": "d325437588e7fbde418aa52f008740ea96fab0fd",
+    "release_tag_commit_unchanged": "4f24af36f62c538ba35817ad48aa49d4308220b5",
+    "product99_unchanged": true,
+    "predicate_sha256": "26bf2b6c030aef1f9d7fef0da97e54bd0f2229f7415e913460b03d8fa684c602",
+    "new_test_sha256": "8b9bf5d6c8249310284dc149ad94c688b72e7316ed0d6b872860ce6c377f960e",
+    "new_pure_cases": 48,
+    "existing_pure_cases": 12,
+    "author_pure_total": 60,
+    "independent_raw_mutations_rejected": 48,
+    "actual_restricted_native_command_executed_and_guard_rejected": true,
+    "new_public_asset_run_passed": 40233851528
   }
 }

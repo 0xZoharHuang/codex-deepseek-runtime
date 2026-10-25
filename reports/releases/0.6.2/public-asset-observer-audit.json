@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "QA_fix_verified_pending_fresh_public_asset_CI",
+  "status": "QA_fix_verified_and_fresh_public_asset_CI_passed",
   "product_source_id": "cf9f19eaf67b0fdd8151",
   "release_tag_commit_unchanged": "4f24af36f62c538ba35817ad48aa49d4308220b5",
   "original_run": {
@@ -31,12 +31,25 @@
     "pure_regressions": 60,
     "original_invocations_readonly_reconstructed": 38,
     "independent_mutations_rejected": 48,
-    "actual_restricted_native_command_control": "executed successfully and rejected by both event-only and full guards; no live provider used"
+    "actual_restricted_native_command_control": "executed successfully and rejected by both event-only and full guards; no live provider used",
+    "new_pure_cases": 48,
+    "existing_pure_cases": 12
   },
   "files_sha256": {
     "tests/test_native_payload_retry.py": "26bf2b6c030aef1f9d7fef0da97e54bd0f2229f7415e913460b03d8fa684c602",
     "tests/test_native_no_external_tools.py": "8b9bf5d6c8249310284dc149ad94c688b72e7316ed0d6b872860ce6c377f960e"
   },
   "independent_review_sha256": "50725b22031ac45585e347be9dbd692de8582ca972238954cd3287be0bba8a73",
-  "actual_positive_sha256": "20d0ceb4b0082833094895579e5a168d27ddefd32e14cddf759ffac790bec8e3"
+  "actual_positive_sha256": "20d0ceb4b0082833094895579e5a168d27ddefd32e14cddf759ffac790bec8e3",
+  "successful_public_asset_retest": {
+    "run_id": 40233851528,
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40233851528",
+    "head_sha": "d325437588e7fbde418aa52f008740ea96fab0fd",
+    "summary": "public-asset-qualification-summary.json",
+    "summary_sha256": "ddf1c798797e15b213a312684c606a7f73c2c70d2b2e42c663607b603bcaa41f",
+    "linux_native_passed": 21,
+    "macos_native_passed": 21,
+    "same_product99_and_native_assets": true
+  },
+  "original_failed_run_relabelled": false
 }

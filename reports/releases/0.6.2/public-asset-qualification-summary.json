@@ -1,0 +1,105 @@
+{
+  "run_id": 40233851528,
+  "head_sha": "d325437588e7fbde418aa52f008740ea96fab0fd",
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40233851528",
+  "release_tag": "v0.6.2",
+  "product_tag_commit": "4f24af36f62c538ba35817ad48aa49d4308220b5",
+  "product_source_id": "cf9f19eaf67b0fdd8151",
+  "acquisition_source": "release-asset",
+  "native_rebuilds": 0,
+  "model_requests": 0,
+  "platforms": {
+    "linux": {
+      "artifact_sha256": "12f61d820fce1b244081d034217b0e9cb4cdaf1543b2355596604ed1b0dd665e",
+      "artifact_bytes": 497992,
+      "native_verdict_sha256": "5ace416779cae2ea84232e800efc440c5e97b4d3862c623539714e419421b9a4",
+      "offline_verdict_sha256": "35099481ef45208c0f8ec20256b1ba1df2da6285f734f07da3098c67d9c59e4a",
+      "counts": {
+        "controller.xml": {
+          "total": 171,
+          "passed": 171,
+          "skipped": 0,
+          "sha256": "70f7056e78ccfdf6ed9692121fb3dcd847223a729cc095a3328ce35b79ec050f"
+        },
+        "native/native.xml": {
+          "total": 21,
+          "passed": 21,
+          "skipped": 0,
+          "sha256": "565982984ba0a24a211f818b260f756e1c78dadb238404df53c00393ae71d7c6"
+        },
+        "offline/adapter.xml": {
+          "total": 2212,
+          "passed": 2172,
+          "skipped": 40,
+          "sha256": "8f64dd3c69634ad94057e7cef08b0dd17c20d6be6f9a659f1b517e7a25559839"
+        }
+      },
+      "actual_public_acquisition": {
+        "file": "acquisition/acquisition.json",
+        "sha256": "64b6752dddeba37afa3605acd29343b89acc7250d25212e8cf15267df3b9f830",
+        "status": "passed",
+        "release_tag": "v0.6.2",
+        "downloads": {
+          "archive": {
+            "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/codex-deepseek-native-0.6.2-x86_64-unknown-linux-gnu.tar.gz",
+            "sha256": "94758a863ffe644bb3b8477b611014c43c657fdda00ac668d87fecb540fb8651",
+            "bytes": 160457262
+          },
+          "recipe": {
+            "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/native-build-recipe-5c9e004f.json",
+            "sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+            "bytes": 52848
+          }
+        }
+      },
+      "native_process_hygiene_passed": true,
+      "offline_process_hygiene_passed": true
+    },
+    "macos": {
+      "artifact_sha256": "8d679df36dc3dc959eedbc918aa069cf0f7a712d221e2e970d7dcf615f1673ad",
+      "artifact_bytes": 502246,
+      "native_verdict_sha256": "81a02d6e53348b9062c27b6916f150b27181381c33c7450cff5a194aa233f4a7",
+      "offline_verdict_sha256": "6f616f1eb35bf152cb4a93997aec37865bdcc84c064bb8e348ee60ef2863aaf9",
+      "counts": {
+        "controller.xml": {
+          "total": 171,
+          "passed": 171,
+          "skipped": 0,
+          "sha256": "a79b0b1e61691efb0a189cf3e4c2feec55940418f3ab5e8521edaf5597844f28"
+        },
+        "native/native.xml": {
+          "total": 21,
+          "passed": 21,
+          "skipped": 0,
+          "sha256": "f3fe72fb6e62f61812c665f86a25e04a1839133985fe6688fff5bb13a54a2de2"
+        },
+        "offline/adapter.xml": {
+          "total": 2212,
+          "passed": 2171,
+          "skipped": 41,
+          "sha256": "dee3692c52d121061064e41a53feddca59666e548c8b4bffd7f232f10cc45703"
+        }
+      },
+      "actual_public_acquisition": {
+        "file": "acquisition/acquisition.json",
+        "sha256": "40c71d7982336a5f29200c8ddeff64ee5f8133f9b0028b6fc88fc3e38f607c6e",
+        "status": "passed",
+        "release_tag": "v0.6.2",
+        "downloads": {
+          "archive": {
+            "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/codex-deepseek-native-0.6.2-aarch64-apple-darwin.tar.gz",
+            "sha256": "38f748b4398d65810184d226879d51d5246e81c15ff9d24cb1fd6f94d0a415d9",
+            "bytes": 143722302
+          },
+          "recipe": {
+            "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/native-build-recipe-5c9e004f.json",
+            "sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+            "bytes": 52848
+          }
+        }
+      },
+      "native_process_hygiene_passed": true,
+      "offline_process_hygiene_passed": true
+    }
+  }
+}

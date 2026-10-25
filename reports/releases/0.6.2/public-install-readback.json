@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "release": "0.6.2",
+  "publication_status": "stable_release_published",
+  "publication_state_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
+  "stable_publication_asserted_by_this_document": true,
+  "publication_record": "publication-record.json",
+  "passed": true,
+  "scope": "Normal Windows public-release native download and fresh isolated installation with a hash-locked local Python wheelhouse; version/help dispatch only, not a repeated full runtime qualification",
+  "release_identity": {
+    "tag": "v0.6.2",
+    "commit": "4f24af36f62c538ba35817ad48aa49d4308220b5",
+    "release_id": 423636524,
+    "asset_id": 676022151
+  },
+  "source_id": "cf9f19eaf67b0fdd8151",
+  "product_files": 99,
+  "actual_public_download": {
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.2/codex-deepseek-native-0.6.2-x86_64-pc-windows-msvc.tar.gz",
+    "archive_sha256": "611c2c2639acfcda880ee092c81392b4c2f75bfb348bbb476d0f3bb4e0a35161",
+    "archive_bytes": 204133185,
+    "native_file_count": 2991,
+    "no_local_native_archive_or_manifest_override": true
+  },
+  "python_dependencies": "Hash-locked local wheelhouse",
+  "native_archive_or_manifest_override_used": false,
+  "entry_sha256": "ff30c182fe1b8703f774101a2836e79e1045496c5167f088090a606a4bd18857",
+  "installation_sha256": "4f24c0aaa72e7e57fc26315dee21a5de6ec11e1c6b284041c9f97847766100b0",
+  "native_cli_sha256": "9cc36d6ff0310dfd7b07342976808867dde8c2ee58006848f2d1ca070fd1193a",
+  "native_build_receipt_sha256": "22e49a8a93c9113a8e7b022b5189dfa73c315e440f43b5b1c8429179c775efbe",
+  "native_manifest_sha256": "892fdd523f59264915862be392a9c36ee5f2ed7d1cfd689533658f117f5d9455",
+  "offline_dispatch": [
+    {
+      "name": "version",
+      "exit": 0,
+      "observation_passed": true,
+      "log_sha256": "183a285608dc3b33c378f7e5a68068895b96df467c9dc836a6322805882353b3"
+    },
+    {
+      "name": "exec-help",
+      "exit": 0,
+      "observation_passed": true,
+      "log_sha256": "df0d864ca2076f7654288c6a1e3394e3eaa2ea8f15021df2524efdd90c70986c"
+    }
+  ],
+  "hygiene": {
+    "installer_and_help_observations_passed": true,
+    "forced": 0,
+    "remaining": 0,
+    "unknown_live": 0,
+    "errors": 0,
+    "Low_worker_naturally_exited": true
+  },
+  "default_entry_activated_by_this_check": false,
+  "model_requests": 0,
+  "credential_operations": 0,
+  "High_setup": false,
+  "private_closeout_sha256": "b2a6ff95684dc3fcfc54434f157ddc2f7e89f91d005733253e1dc88484e438e9"
+}

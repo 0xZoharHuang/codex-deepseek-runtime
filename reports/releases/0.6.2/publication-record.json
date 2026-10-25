@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "release": "0.6.2",
+  "status": "stable_release_published",
+  "release_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
+  "release_api_id": 423636524,
+  "release_state": {
+    "draft": false,
+    "prerelease": false,
+    "latest_readback_verified": true
+  },
+  "immutable_product_tag_commit": "4f24af36f62c538ba35817ad48aa49d4308220b5",
+  "verification_QA_commit": "d325437588e7fbde418aa52f008740ea96fab0fd",
+  "product_source_id": "cf9f19eaf67b0fdd8151",
+  "product_source_files": 99,
+  "tag_product_and_verification_product_identical": true,
+  "native_assets_rebuilt_or_replaced": false,
+  "tag_rewritten": false,
+  "main_merge": {
+    "status": "fast_forward_pushed_and_remote_verified",
+    "commit": "d325437588e7fbde418aa52f008740ea96fab0fd",
+    "from_commit": "2074a38ba7635a30cce0e79787015ce9d9154493",
+    "verified_at": 1792964163.832066,
+    "scope": "Verified merge event; later documentation-only commits do not change product identity."
+  },
+  "default_entry_activation": {
+    "performed_by_public_install_acceptance": false,
+    "upgrade_is_separate_from_release_publication": true
+  },
+  "validation_records": {
+    "public_asset_CI": {
+      "run_id": 40233851528,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40233851528",
+      "report": "public-asset-qualification-summary.json",
+      "sha256": "ddf1c798797e15b213a312684c606a7f73c2c70d2b2e42c663607b603bcaa41f"
+    },
+    "normal_Windows_public_install": {
+      "report": "public-install-readback.json",
+      "original_closeout_sha256": "b2a6ff95684dc3fcfc54434f157ddc2f7e89f91d005733253e1dc88484e438e9"
+    },
+    "current_Windows_offline": {
+      "passed": 2229,
+      "platform_inapplicable": 4,
+      "current_consumer_sha256": "4dbf666d03d0e63094c5fd4c0fccbd17652f842e0c373548662e741695fe296e",
+      "report": "current-offline-summary.json"
+    }
+  },
+  "historical_failures_and_qualifier_identities_preserved": true,
+  "release_state_basis": "Verified GitHub stable promotion/latest release and explicit main fast-forward remote readback."
+}
