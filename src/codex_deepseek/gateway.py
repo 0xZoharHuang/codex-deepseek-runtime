@@ -24,6 +24,32 @@ from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOpera
 from .platforms import private_fd, private_directory, replace_file
 
 UPSTREAM = "https://openrouter.ai/api/v1/responses"
+# Exact aliases and endpoint tag/display names verified by the fixed model's
+# OpenRouter catalog. Omitted/null observations remain unknown, not route proof.
+_OBSERVED_MODELS = frozenset({
+    MODEL, MODEL.split("/", 1)[1],
+    "deepseek/deepseek-v4.1-flash-20261017", "deepseek-v4.1-flash-20261017",
+})
+_OBSERVED_PROVIDERS = {
+    PROVIDER: frozenset({PROVIDER, "DeepSeek"}),
+    STRUCTURED_PROVIDER: frozenset({STRUCTURED_PROVIDER, "Morph"}),
+    SERIAL_PROVIDER: frozenset({SERIAL_PROVIDER, "PrimeIntellect"}),
+}
+
+
+def validate_observed_identity(value, requested_provider):
+    """Reject explicit response identity contradictions before native dispatch."""
+    if not isinstance(value, dict):
+        return  # The existing response/event validator owns envelope validation.
+    for name in ("model", "provider"):
+        item = value.get(name)
+        if item is None:
+            continue
+        if not isinstance(item, str) or not item:
+            raise ProtocolError("Observed upstream " + name + " must be a nonempty string")
+        accepted = _OBSERVED_MODELS if name == "model" else _OBSERVED_PROVIDERS[requested_provider]
+        if item not in accepted:
+            raise ProtocolError("Upstream returned an incompatible " + name + ": " + item)
 
 
 def private_write(path, data):
@@ -240,6 +266,7 @@ class Gateway:
                 if not body.get("stream"):
                     result = await upstream.json()
                     validate_response(result)
+                    validate_observed_identity(result, payload['provider']['only'][0])
                     await image_terminal(result['id'],result['status'])
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
@@ -250,6 +277,8 @@ class Gateway:
                                                         "X-Adapter-Request-Id": receipt})
                 await deliver('prepare', request)
                 async for original in sse_events(upstream.content):
+                    validate_observed_identity(original.get('response') if isinstance(original, dict) else None,
+                                               payload['provider']['only'][0])
                     if image_refs and original.get('type') in {'response.completed','response.failed','response.incomplete'}:
                         terminal=original.get('response');validate_response(terminal)
                         if events.response_id and terminal['id']!=events.response_id:raise ProtocolError('Provider terminal changed response identity')

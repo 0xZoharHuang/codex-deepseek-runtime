@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "candidate targeted regression passed; installed and complete three-platform regression pending",
+  "source_scope": "gateway.py response identity checks plus0.6.3 package version; native and pureprotocol unchanged",
+  "basis": {
+    "base_commit": "367ae6885f9d6b19478a987919bc8be9e4893b2a",
+    "patch_sha256": "271e6a738e0cb0afd82615cd8e21da2ea2a112c55fb1ba651481f079759408f2",
+    "gateway_sha256": "73c37dab578e5b514afa0b450f2df7220c5897e15e3e39242a64940efd59bb19",
+    "test_sha256": "6ba7c70705c2ddfd242b2c38ef7f4dd18a482290652bf9a1a82d4c5ab03fb63f"
+  },
+  "targeted": {
+    "final_new_tests": {
+      "baseline": {
+        "pass": 21,
+        "fail": 31,
+        "error": 0,
+        "skip": 0
+      },
+      "candidate": {
+        "pass": 52,
+        "fail": 0,
+        "error": 0,
+        "skip": 0
+      }
+    },
+    "existing_final_candidate_regression": {
+      "pass": 98,
+      "fail": 0,
+      "error": 0,
+      "skip": 0,
+      "files": [
+        "test_gateway.py",
+        "test_gateway_disconnect.py",
+        "test_protocol.py",
+        "test_structured.py",
+        "test_search_audit.py"
+      ]
+    },
+    "transport": "Actual local HTTP client -> Gateway -> fixed native HTTP helper -> loopback provider. Literal synthetic credential only; no paid/external model.",
+    "early_mismatch": "No created/tool completion published after explicit early mismatch.",
+    "late_mismatch": "Existing delivered tool event and synthetic downstream consumer file effect remain; adapter_error and no completed response/history attestation; exactly one upstream call.",
+    "effect_scope": "File marker is written by the test HTTP consumer after received tool completion and before provider sends contradiction. It is not App/native tool execution.",
+    "missing_fields": "No observed identity is invented from requested route. Store.provider continues to mean requested provider, not independent observed proof.",
+    "no_retry": true,
+    "public_patch_dry_run": "git apply --check exit0"
+  },
+  "upstream_incident_observed": false,
+  "native_assets": "reuse exact public0.6.2 assets and original recipes; no Rust rebuild"
+}
