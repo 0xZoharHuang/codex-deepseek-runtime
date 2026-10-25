@@ -2,13 +2,15 @@
 
 本文下方保留0.6.0的历史冻结结论；当前0.6.2见[本版报告](../reports/releases/0.6.2/README.md)。历史身份、数量和失败不改签为新版本结果，操作须匹配实际入口和home。
 
-## 当前0.6.2 Windows候选（尚未发布）
+## 当前 0.6.2 的资格与交付状态
 
 D69严格Windows资格已封存：2,150项offline通过/4项平台不适用，30个有效合并场景、128项正向RPC与3项原生边界、456份Schema无差异。原29通过/1项TUI失败及后续终端补测保留，`single_run_all_passed=false`。Jinja的runtime14项和业务均通过；HTTPcore的runtime14项通过，业务失败、原始超时和provider错误保留。
 
-CF9 `cf9f19eaf67b0fdd8151`已正常新安装；实际runtime29文件和native2991文件与D69相同，产品输入只变化manifest的LF输出及换行。CF9另有doctor/保存线程共2次真实请求、同home受限原生Python写入/外拒、EOF退出与冷恢复，以及进程自然退出证明；当前完整offline为2,179通过/4项平台不适用。见[组件证明](../reports/releases/0.6.2/component-equivalence.json)、[安装健康](../reports/releases/0.6.2/candidate-installation-summary.json)及[QA升级谱系](../reports/releases/0.6.2/qa-upgrade-lineage-summary.json)。D69历史证据保留原producer身份。
+CF9 `cf9f19eaf67b0fdd8151`已正常新安装；实际runtime29文件和native2991文件与D69相同，产品输入只变化manifest的LF输出及换行。CF9另有doctor/保存线程共2次真实请求、同home受限原生Python写入/外拒、EOF退出与冷恢复，以及进程自然退出证明；当前完整offline为2,181通过/4项平台不适用。见[组件证明](../reports/releases/0.6.2/component-equivalence.json)、[安装健康](../reports/releases/0.6.2/candidate-installation-summary.json)及[QA升级谱系](../reports/releases/0.6.2/qa-upgrade-lineage-summary.json)。D69历史证据保留原producer身份。
 
-最终提交的hosted CI（包括本轮macOS/Linux）、正式main/tag和公开资产安装读回仍待完成，稳定入口未切换。下文0.6.0的历史CI不构成0.6.2当前通过证明。
+当前 [CI 40227053597](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40227053597) 已在 `71224bc1ebb40374ea816f9ae12cf78134537a83` 通过：Linux/macOS 各 171 controller、21 native，adapter 分别 2,124/40 skip 和 2,123/41 skip，0 模型/重编译且进程 hygiene 通过。原 Windows 2,179/4 和首次 CI 40225926715 的 collection 失败保留；新增两个隔离入口用例后完整 Windows 为 2,181/4。
+
+本提交仍是候选交付声明；实际 draft/prerelease/stable 状态和发布验证记录以同名 [GitHub Release](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2) 为准。`release-asset` 是显式待交付来源，只能在资产公开后运行，并须单独验证公开下载路由，不自动回退 Actions artifact。该路由通过及 stable/main 不由本文件推定；下文 0.6.0 历史 CI 也不构成当前证明。
 
 ## 0.6.0历史方案
 

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "release": "0.6.2",
-  "publication_status": "candidate_not_published",
+  "publication_status": "candidate_delivery_declaration",
   "scope": "Windows fixed-target local runtime qualification",
   "qualified_source_id": "d69a4edd5b8de66f3db3",
   "target": "x86_64-pc-windows-msvc",
@@ -63,5 +63,7 @@
     "OpenAI cloud entitlements and unsupported model modalities are not equivalence claims",
     "Codex App gateway qualification is separate"
   ],
-  "evidence_policy": "Summary fields and digests only; original raw evidence and sealed producer identities remain private and unchanged."
+  "evidence_policy": "Summary fields and digests only; original raw evidence and sealed producer identities remain private and unchanged.",
+  "publication_state_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
+  "stable_publication_asserted_by_this_document": false
 }

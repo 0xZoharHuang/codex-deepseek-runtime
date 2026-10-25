@@ -1,0 +1,69 @@
+{
+  "run_id": 40227053597,
+  "head_sha": "71224bc1ebb40374ea816f9ae12cf78134537a83",
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40227053597",
+  "platforms": {
+    "linux": {
+      "artifact_sha256": "a7ba9140d57348175778114132104bac281b8f47831cb41765d57a0e9af8a303",
+      "artifact_bytes": 484520,
+      "native_verdict_sha256": "6b87fa9cf7f063eac108c1bdbdaebad6e46558492a89b0ccce659d66558b52cd",
+      "offline_verdict_sha256": "6db0d7e7bf38b8be507991f4b8e19b4de6b21d7e5be2f7c149ee1cd2afcff609",
+      "counts": {
+        "controller.xml": {
+          "total": 171,
+          "passed": 171,
+          "skipped": 0,
+          "sha256": "38e42b4e5b5f806bbe535891e4ecb1d5a198b9a35f2bae2ba4e9b3837096a2cb"
+        },
+        "native/native.xml": {
+          "total": 21,
+          "passed": 21,
+          "skipped": 0,
+          "sha256": "f0f08d8456aa719b0674a51c758ec9aa5fb8622c897c1d058dce8d89d7450a18"
+        },
+        "offline/adapter.xml": {
+          "total": 2164,
+          "passed": 2124,
+          "skipped": 40,
+          "sha256": "a062b9a1aa0502558aacb607cd074df3f9451131376b2d2d3c528205e9eab9fa"
+        }
+      },
+      "native_process_hygiene_passed": true,
+      "offline_process_hygiene_passed": true,
+      "all_collected_executed_once": true
+    },
+    "macos": {
+      "artifact_sha256": "e09af6c0c8690698b969a084e6f8f88b417eeeadf554e6b05c7c6f5041e414b4",
+      "artifact_bytes": 490867,
+      "native_verdict_sha256": "db9235ba04ae70073272de7ce3fa4f013213ec4f42ea27dacd0de94972639df4",
+      "offline_verdict_sha256": "b1b1ab0cc84657dbf46f87c3eb76ab71f244e452f35a52dbe957dea3d0577902",
+      "counts": {
+        "controller.xml": {
+          "total": 171,
+          "passed": 171,
+          "skipped": 0,
+          "sha256": "12bad788f436c01706cebb1c00d04d6c5e2f050178dd6acd11f83fa1a0c42480"
+        },
+        "native/native.xml": {
+          "total": 21,
+          "passed": 21,
+          "skipped": 0,
+          "sha256": "0aa75d9359de6ebd6f650fb72048d7ea2d6b25fef00cbbe996cff3fd636a943d"
+        },
+        "offline/adapter.xml": {
+          "total": 2164,
+          "passed": 2123,
+          "skipped": 41,
+          "sha256": "9de862768dc07038daf2b292256ddd67cefc3bba0b086886bc1687ecea444762"
+        }
+      },
+      "native_process_hygiene_passed": true,
+      "offline_process_hygiene_passed": true,
+      "all_collected_executed_once": true
+    }
+  },
+  "source": "actions-artifact",
+  "native_rebuilds": 0,
+  "model_requests": 0,
+  "stable_release_published": false
+}

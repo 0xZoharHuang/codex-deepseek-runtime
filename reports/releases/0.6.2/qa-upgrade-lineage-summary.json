@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "release": "0.6.2",
-  "publication_status": "candidate_not_published",
+  "publication_status": "candidate_delivery_declaration",
   "frozen_qualification_source_id": "d69a4edd5b8de66f3db3",
   "current_product_source_id": "cf9f19eaf67b0fdd8151",
   "product_source_file_count": 99,
@@ -54,5 +54,42 @@
   },
   "historical_fault_producer_mapping": "Frozen D69 formal fault14 uses the original payload producer; later fault14 with upgraded payload observer remains separately identified.",
   "current_offline_summary": "current-offline-summary.json",
-  "old_proofs_relabelled_as_new_QA": false
+  "old_proofs_relabelled_as_new_QA": false,
+  "publication_state_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2",
+  "stable_publication_asserted_by_this_document": false,
+  "CI_entry_point_lineage": {
+    "initial_failed_run": {
+      "run_id": 40225926715,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40225926715",
+      "head_sha": "714e60bd112c64a0784ec1c37f7de4dc7221b62d",
+      "failure": "Native suite collection could not import trusted checkout QA helpers under isolated Python; no runtime/native failure was substituted",
+      "original_failure_receipt_sha256": "3f9c74ae685d9d486b95138234d24d88168f0fdac68816f0d308536463167b93"
+    },
+    "fix": {
+      "path": "ci/qualify_native.py",
+      "sha256": "2b15bec99ebb19c339833e5d7de276841a2fa9cb1869709c50fd4b44df8ebac6",
+      "behavior": "pytest_command preserves -I/-B and the installed adapter, admitting only trusted ROOT for QA imports; ROOT/src is not added",
+      "test_path": "tests/test_native_ci_imports.py",
+      "test_sha256": "841a1057eb0be817e27159e750fbac486155cd66a541be3a5a196ede35f7be46",
+      "actual_isolated_regression_cases": 2,
+      "poisoned_cwd_and_PYTHONPATH_rejected": true,
+      "part_of_product99": false
+    },
+    "subsequent_successful_run": {
+      "run_id": 40227053597,
+      "head_sha": "71224bc1ebb40374ea816f9ae12cf78134537a83",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40227053597",
+      "source": "actions-artifact",
+      "summary": "hosted-qualification-summary.json",
+      "summary_sha256": "76a53ecbb05abe9c8c3d7d3e42036e63dfc0410bfc4a032316c155277b8d6750"
+    },
+    "release_asset_route": {
+      "source": "release-asset",
+      "declaration_only_at_this_commit": true,
+      "run_only_after_assets_are_public": true,
+      "automatic_fallback": false,
+      "success_not_inferred_from_actions_artifact_run": true,
+      "verification_record_authority": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.2"
+    }
+  }
 }

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source": "actions-artifact",
+  "source": "release-asset",
   "repository": "0xZoharHuang/codex-deepseek-runtime",
   "repository_id": 1427487253,
   "run_id": 40156375058,
