@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "QA_fix_verified_pending_fresh_public_asset_CI",
+  "product_source_id": "cf9f19eaf67b0fdd8151",
+  "release_tag_commit_unchanged": "4f24af36f62c538ba35817ad48aa49d4308220b5",
+  "original_run": {
+    "id": 40230459754,
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/40230459754",
+    "macos": "passed",
+    "linux_native": {
+      "passed": 20,
+      "failed": 1
+    },
+    "linux_artifact_sha256": "1f7a607e4493bdd04696e7d71b0254be8182283e8a99798748ceb1ad535c998d"
+  },
+  "cause": "An owned, retired native shell-snapshot child lacked optional process-name diagnostics. The old no-tools assertion rejected it despite clean lifecycle and no external command events.",
+  "fix": [
+    "Validate complete fixed native CLI JSON schema and reject external command/file/MCP or unknown tool events",
+    "Keep known forbidden executable checks",
+    "Retain missing names as unknown; require the same PID/kernel identity diagnostic witness plus unchanged natural-retirement guards"
+  ],
+  "unchanged": [
+    "runtime product99",
+    "native binaries",
+    "ownership observer",
+    "timeouts and natural exit checks",
+    "original failed evidence",
+    "published tag"
+  ],
+  "validation": {
+    "pure_regressions": 60,
+    "original_invocations_readonly_reconstructed": 38,
+    "independent_mutations_rejected": 48,
+    "actual_restricted_native_command_control": "executed successfully and rejected by both event-only and full guards; no live provider used"
+  },
+  "files_sha256": {
+    "tests/test_native_payload_retry.py": "26bf2b6c030aef1f9d7fef0da97e54bd0f2229f7415e913460b03d8fa684c602",
+    "tests/test_native_no_external_tools.py": "8b9bf5d6c8249310284dc149ad94c688b72e7316ed0d6b872860ce6c377f960e"
+  },
+  "independent_review_sha256": "50725b22031ac45585e347be9dbd692de8582ca972238954cd3287be0bba8a73",
+  "actual_positive_sha256": "20d0ceb4b0082833094895579e5a168d27ddefd32e14cddf759ffac790bec8e3"
+}

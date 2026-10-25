@@ -198,14 +198,98 @@ def evidence(tmp_path,name,value):
     target.mkdir(parents=True,exist_ok=True);(target/(name+'.json')).write_text(json.dumps(value,indent=2),'utf-8')
 
 
+def native_no_external_tool_events(record):
+    """Validate the fixed CLI JSON schema and a complete single-turn stream."""
+    def unique(pairs):
+        value={}
+        for key,item in pairs:
+            assert key not in value,'Duplicate native JSON event key'
+            value[key]=item
+        return value
+    def invalid_constant(value):
+        raise ValueError('Non-finite native JSON value: '+value)
+    def text(value):
+        return isinstance(value,str) and bool(value)
+    lines=record['stdout'].splitlines()
+    assert lines and all(line.strip() for line in lines),'Missing/incomplete native JSON stream'
+    events=[json.loads(line,object_pairs_hook=unique,parse_constant=invalid_constant) for line in lines]
+    assert all(isinstance(event,dict) for event in events)
+    assert events[0].get('type')=='thread.started'
+    thread=events[0].get('thread_id')
+    assert text(thread) and str(uuid.UUID(thread))==thread
+    kinds=[event.get('type') for event in events]
+    assert kinds.count('thread.started')==kinds.count('turn.started')==1
+    start=kinds.index('turn.started')
+    terminal=[i for i,kind in enumerate(kinds) if kind in {'turn.completed','turn.failed'}]
+    assert terminal==[len(events)-1] and start<terminal[0]
+    assert type(record['exit_code']) is int
+    assert (events[-1]['type']=='turn.completed')==(record['exit_code']==0)
+    usage_keys={'input_tokens','cached_input_tokens','cache_write_input_tokens',
+                'output_tokens','reasoning_output_tokens'}
+    for index,event in enumerate(events):
+        kind=event.get('type')
+        if kind=='thread.started':
+            assert set(event)=={'type','thread_id'}
+        elif kind=='turn.started':
+            assert set(event)=={'type'}
+        elif kind=='turn.completed':
+            usage=event.get('usage')
+            assert set(event)=={'type','usage'} and isinstance(usage,dict) and set(usage)==usage_keys
+            assert all(type(value) is int and value>=0 for value in usage.values())
+        elif kind=='turn.failed':
+            error=event.get('error')
+            assert set(event)=={'type','error'} and isinstance(error,dict) and set(error)=={'message'}
+            assert text(error['message'])
+        elif kind=='error':
+            assert set(event)=={'type','message'} and text(event['message'])
+        else:
+            assert kind in {'item.started','item.updated','item.completed'},'Unexpected native event: '+str(kind)
+            item=event.get('item')
+            assert set(event)=={'type','item'} and isinstance(item,dict) and text(item.get('id'))
+            item_type=item.get('type')
+            # Only messages, diagnostics and native plan bookkeeping are allowed.
+            # External execution, file changes, MCP/web and unknown types fail closed.
+            if item_type in {'agent_message','reasoning'}:
+                assert set(item)=={'id','type','text'} and isinstance(item['text'],str)
+                assert kind=='item.completed' and index>start
+            elif item_type=='error':
+                assert set(item)=={'id','type','message'} and text(item['message']) and kind=='item.completed'
+            elif item_type=='todo_list':
+                assert set(item)=={'id','type','items'} and isinstance(item['items'],list) and index>start
+                assert all(isinstance(step,dict) and set(step)=={'text','completed'}
+                           and isinstance(step['text'],str) and type(step['completed']) is bool for step in item['items'])
+            else:
+                raise AssertionError('External/unknown native tool: '+str(item_type))
+    return {'thread_id':thread,'events':len(events),'terminal':events[-1]['type'],
+            'stdout_sha256':hashlib.sha256(record['stdout'].encode()).hexdigest()}
+
 def no_tools(record):
     capacity_natural_exit_assertions(record)
-    assert all(isinstance(child.get('name'),str) and child['name'] for child in record['children']),record
-    observed=' '.join(child['name'] for child in record['children']).lower()
-    assert 'sandbox-setup' not in observed and 'command-runner' not in observed
+    stream=native_no_external_tool_events(record)
+    missing=[]
+    for child in record['children']:
+        names=[child.get('name'),child.get('exe')]
+        if isinstance(child.get('argv'),list) and child['argv']:
+            names.append(child['argv'][0])
+        observed=' '.join(value for value in names if isinstance(value,str)).lower()
+        assert 'sandbox-setup' not in observed and 'command-runner' not in observed
+        if not isinstance(child.get('name'),str) or not child['name']:
+            # The edge was proven before diagnostics became unavailable. Final
+            # natural-exit and unknown-live checks establish retirement; the
+            # diagnostic observation alone does not establish an exit instant.
+            assert child.get('ownership')=='stable_direct_parent_edge' and child.get('stable') is True
+            assert type(child.get('pid')) is int and child['pid']>0
+            assert isinstance(child.get('birth'),str) and child['birth']
+            gone=[row for row in record['uncertain_observations']
+                  if row.get('pid')==child.get('pid') and row.get('birth')==child['birth']
+                  and row.get('reason')=='identity_changed_during_owned_diagnostics'
+                  and 'birth_after' in row and row['birth_after'] is None
+                  and 'diagnostic_birth_before' in row and row['diagnostic_birth_before'] in (None,child['birth'])]
+            assert gone,'Missing child metadata lacks the recorded diagnostic identity-loss witness'
+            missing.append({'pid':child['pid'],'birth':child['birth'],
+                            'classification':'retired_owned_identity_diagnostics_unavailable_name_unknown'})
     assert 'Code Mode is unavailable' not in record['stderr']
-    assert '"type":"command_execution"' not in record['stdout'].replace(' ','')
-
+    return {'native_stream':stream,'ended_unknown_metadata':missing}
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('status,retry_after,expected',[ (413,None,1),(413,'1',2),(503,None,2),(429,'1',2) ])
