@@ -32,38 +32,165 @@ def events(home):
     return found
 
 
-def yielded_background_session(rollout,fixture_name):
-    """Require a real exec result before asserting background retention."""
-    calls=set()
-    def session_id(value):
-        if isinstance(value,dict):
-            value_id=value.get('session_id')
-            if type(value_id) is int and value_id>0:return str(value_id)
-            for child in value.values():
-                found=session_id(child)
-                if found:return found
-        elif isinstance(value,list):
-            for child in value:
-                found=session_id(child)
-                if found:return found
-        elif isinstance(value,str):
-            try:decoded=json.loads(value)
-            except ValueError:decoded=None
-            if isinstance(decoded,(dict,list)):return session_id(decoded)
-            match=re.search(r'"session_id"\s*:\s*([1-9][0-9]*)',value)
-            if match:return match[1]
+def yielded_background_session(rollout,fixture_name,*,expected_thread=None,expected_turn=None,expected_cwd=None,expected_fixture=None,expected_command=None,as_of_interrupt=False):
+    """Require native exec-return provenance; async results retain their cell/wait chain."""
+    calls={};cells={};outputs=set();candidates=[];active_turn=None;cwd_matched=expected_cwd is None;thread_matched=expected_thread is None
+    def same_path(value,wanted):
+        return isinstance(value,str) and Path(value).resolve()==Path(wanted).resolve()
+    def output_json(value):
+        if isinstance(value,(dict,list)):return value
+        if not isinstance(value,str):return None
+        try:return json.loads(value)
+        except ValueError:pass
+        # Only the native status header can precede JSON. No regex search for
+        # session_id in opaque text, literal escape sequences, or arbitrary output.
+        head,separator,body=value.partition('\nOutput:\n')
+        if separator and re.fullmatch(r'(?:Script completed|Script running with cell ID [1-9][0-9]*)\nWall time [0-9]+(?:\.[0-9]+)? seconds',head):
+            try:return json.loads(body)
+            except ValueError:return None
         return None
+    def session_ids(value):
+        value=output_json(value)
+        if isinstance(value,list):
+            found=[]
+            for part in value:
+                if not isinstance(part,dict) or part.get('type')!='input_text':return []
+                found.extend(session_ids(part.get('text')))
+            return found
+        if not isinstance(value,dict):return []
+        if value.get('type')=='input_text':return session_ids(value.get('text'))
+        current=value.get('session_id')
+        if type(current) is not int or current<=0 or value.get('exit_code') is not None:return []
+        if 'output' in value and not isinstance(value['output'],str):return []
+        return [str(current)]
+    def first_text(value):
+        if isinstance(value,str):return value
+        if isinstance(value,list) and value and isinstance(value[0],dict) and value[0].get('type')=='input_text':return value[0].get('text','')
+        return ''
+    def code_exec_arguments(code):
+        # Deliberately prove the fixture's single literal exec and printing of
+        # that exact return value. This is a QA grammar, not a JS interpreter.
+        token=re.compile(r"//[^\n]*|/\*[\s\S]*?\*/|\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60")
+        pieces=[];strings={};offset=0
+        for match in token.finditer(code):
+            original=code[offset:match.start()]
+            if '__qa_literal_' in original:return None
+            pieces.append(original);part=match.group()
+            if part.startswith(('"',"'")):
+                try:
+                    import ast
+                    value=json.loads(part) if part[0]=='"' else ast.literal_eval(part)
+                except (ValueError,SyntaxError):return None
+                marker='__qa_literal_'+str(len(strings))+'__';strings[marker]=value;pieces.append(marker)
+            elif part.startswith(chr(96)):return None
+            else:pieces.append(' '*len(part))
+            offset=match.end()
+        tail=code[offset:]
+        if '__qa_literal_' in tail:return None
+        pieces.append(tail);skeleton=''.join(pieces)
+        matched=re.fullmatch(r'\s*(?:const|let)\s+(?P<var>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+tools\.exec_command\s*\((?P<args>\{[^{}]*\})\)\s*;\s*text\s*\(\s*(?:JSON\.stringify\(\s*(?P=var)\s*(?:,\s*null\s*,\s*[0-9]+)?\s*\)|(?P=var))\s*\)\s*;?\s*',skeleton)
+        if not matched:return None
+        result={}
+        parts=matched['args'][1:-1].split(',')
+        for index,part in enumerate(parts):
+            part=part.strip()
+            if not part:
+                if index==len(parts)-1:continue
+                return None
+            key,separator,value=part.partition(':')
+            key=key.strip();value=value.strip()
+            key=strings.get(key,key)
+            if not separator or not isinstance(key,str) or key in result:return None
+            if value in strings:decoded=strings[value]
+            else:
+                try:decoded=json.loads(value)
+                except ValueError:return None
+                if isinstance(decoded,(dict,list)):return None
+            result[key]=decoded
+        return result
+    def fixture_exec(item):
+        kind=item.get('type');name=item.get('name');value=item.get('input',item.get('arguments',''))
+        if kind=='function_call' and name=='exec_command':
+            try:arguments=json.loads(value) if isinstance(value,str) else value
+            except ValueError:return False
+        elif kind=='custom_tool_call' and name=='exec' and isinstance(value,str):
+            arguments=code_exec_arguments(value)
+        else:return False
+        if not isinstance(arguments,dict):return False
+        command=arguments.get('cmd',arguments.get('command'))
+        if not isinstance(command,str):return False
+        if expected_command is not None and command!=expected_command:return False
+        cwd=arguments.get('workdir',arguments.get('cwd'))
+        if expected_cwd is not None and cwd is not None and not same_path(cwd,expected_cwd):return False
+        wanted=str(Path(expected_fixture).resolve()) if expected_fixture is not None else fixture_name
+        flags=re.IGNORECASE if os.name=='nt' else 0
+        return re.search(r'(?<![\w.])'+re.escape(wanted)+r'(?![\w.-])',command,flags) is not None
+    rows=[]
     for line in Path(rollout).read_text(encoding='utf-8').splitlines():
-        try:row=json.loads(line)
+        try:rows.append(json.loads(line))
         except ValueError:continue
-        if row.get('type')=='event_msg' and row.get('payload',{}).get('type')=='turn_aborted':break
+    if type(as_of_interrupt) is not bool:return None
+    if as_of_interrupt:
+        # Post-run reconstruction ends at this turn's one actual interruption.
+        # Never accept a result that appeared only after that cutoff.
+        if any(value is None for value in (expected_thread,expected_turn,expected_cwd,expected_fixture,expected_command)):return None
+        aborted=[i for i,row in enumerate(rows) if row.get('type')=='event_msg'
+                 and row.get('payload',{}).get('type')=='turn_aborted'
+                 and row.get('payload',{}).get('turn_id')==expected_turn]
+        if len(aborted)!=1 or rows[aborted[0]]['payload'].get('reason')!='interrupted':return None
+        rows=rows[:aborted[0]]
+    for row in rows:
+        item=row.get('payload',{})
+        if row.get('type')=='session_meta':
+            if expected_thread is not None and item.get('id')!=expected_thread:return None
+            if expected_thread is not None:
+                if thread_matched:return None
+                thread_matched=True
+            if expected_cwd is not None and item.get('cwd') is not None:
+                if not same_path(item['cwd'],expected_cwd):return None
+                cwd_matched=True
+            continue
+        if row.get('type')=='turn_context':
+            if expected_turn is None or item.get('turn_id')==expected_turn:
+                if expected_cwd is not None and item.get('cwd') is not None:
+                    if not same_path(item['cwd'],expected_cwd):return None
+                    cwd_matched=True
+            continue
+        if row.get('type')=='event_msg':
+            if item.get('type')=='task_started':active_turn=item.get('turn_id')
+            if item.get('type') in {'turn_aborted','task_complete'} and (expected_turn is None or item.get('turn_id')==expected_turn):return None
+            continue
         if row.get('type')!='response_item':continue
-        item=row.get('payload',{});kind=item.get('type');call_id=item.get('call_id')
-        if kind in {'function_call','custom_tool_call'} and isinstance(call_id,str) and call_id and fixture_name in str(item.get('input',item.get('arguments',''))):calls.add(call_id)
-        if kind in {'function_call_output','custom_tool_call_output'} and call_id in calls:
-            value=session_id(item.get('output'))
-            if value:return {'call_id':call_id,'session_id':value}
-    return None
+        if expected_turn is not None and active_turn!=expected_turn:continue
+        metadata=item.get('internal_chat_message_metadata_passthrough') or {}
+        if expected_turn is not None and metadata.get('turn_id',expected_turn)!=expected_turn:continue
+        kind=item.get('type');call_id=item.get('call_id')
+        if not isinstance(call_id,str) or not call_id:continue
+        if kind in {'function_call','custom_tool_call'}:
+            if call_id in calls:return None
+            if fixture_exec(item):
+                calls[call_id]={'origin':call_id,'cell':None,'chain':[call_id]}
+            elif kind=='function_call' and item.get('name')=='wait':
+                try:arguments=json.loads(item.get('arguments',''))
+                except (ValueError,TypeError):continue
+                if not isinstance(arguments,dict):continue
+                cell=arguments.get('cell_id')
+                if isinstance(cell,str) and re.fullmatch(r'[1-9][0-9]*',cell) and cell in cells:
+                    origin=cells[cell];calls[call_id]={'origin':origin,'cell':cell,'chain':calls[origin]['chain']+[call_id]}
+            continue
+        if kind not in {'function_call_output','custom_tool_call_output'} or call_id not in calls:continue
+        if call_id in outputs:return None
+        outputs.add(call_id);link=calls[call_id];value=item.get('output');header=first_text(value)
+        if header.startswith(('Script failed','Script error','Script terminated')):continue
+        running=re.match(r'\AScript running with cell ID ([1-9][0-9]*)\r?\n',header)
+        if running:
+            cell=running[1]
+            if cell in cells and cells[cell]!=link['origin']:return None
+            cells[cell]=link['origin'];link['cell']=cell;calls[link['origin']]['chain']=link['chain']
+        ids=session_ids(value)
+        if len(ids)>1:return None
+        if ids:candidates.append({'call_id':link['origin'],'result_call_id':call_id,'session_id':ids[0],'cell_id':link['cell'],'call_chain':link['chain'],'thread_id':expected_thread,'turn_id':expected_turn})
+    return candidates[0] if len(candidates)==1 and cwd_matched and thread_matched else None
 
 
 def run(entry,output,sandbox_mode):
@@ -81,7 +208,8 @@ def run(entry,output,sandbox_mode):
              'temporary.write_text(json.dumps(marker),encoding="utf-8")\ntemporary.replace(ready)\n'
              'while True:\n print("NATIVE_INTERRUPT_FIXTURE_ALIVE",flush=True)\n time.sleep(.25)\n')
     fixture.write_text(program,encoding='utf-8');fixture_hash=hashlib.sha256(fixture.read_bytes()).hexdigest()
-    command=shell_command([sys.executable,'-I','-u',str(fixture)])
+    fixture_argv=[sys.executable,'-I','-u',str(fixture)]
+    command=shell_command(fixture_argv)
     prompt=('Do not delegate. Run exactly this command with the native exec tool and yield_time_ms=1000. '
             'Print the full returned tool result including session_id before making another tool call; '
             'if using Code Mode, end that first code execution after printing this result. '
@@ -92,7 +220,7 @@ def run(entry,output,sandbox_mode):
                  'CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT':'1','CODEX_ROLLOUT_TRACE_ROOT':str(root/'native-rollout-traces')}
     child=terminal([str(entry),'--no-alt-screen','-C',str(work),prompt],env=environment,cwd=work)
     transcript=bytearray();tail=b'';fixture_pid=None;fixture_birth=None
-    proof={'passed':False,'entry':str(entry),'sandbox_mode':sandbox_mode,'backend':expected_backend(),'terminal':'conpty' if os.name=='nt' else 'pty','qa_snapshot_sha256':qa_snapshot}
+    proof={'passed':False,'entry':str(entry),'sandbox_mode':sandbox_mode,'backend':expected_backend(),'terminal':'conpty' if os.name=='nt' else 'pty','qa_snapshot_sha256':qa_snapshot,'fixture_argv':fixture_argv}
     def receive():
         nonlocal tail
         data=child.read(.1);transcript.extend(data);scan=tail+data
@@ -117,7 +245,7 @@ def run(entry,output,sandbox_mode):
         assert not any(row['type']=='task_complete' and row.get('turn_id')==first_turn for _,row in events(home))
         with rollout.open(encoding='utf-8') as stream:thread_id=json.loads(stream.readline())['payload']['id']
         proof.update(thread_id=thread_id,interrupted_turn_id=first_turn,fixture_pid=fixture_pid,fixture_namespace_pid=marker['pid'],fixture_birth=fixture_birth)
-        proof['background_session']=until(lambda:yielded_background_session(rollout,fixture.name),60,'Native exec did not yield an actual background session before interruption')
+        proof['background_session']=until(lambda:yielded_background_session(rollout,fixture.name,expected_thread=thread_id,expected_turn=first_turn,expected_cwd=work,expected_fixture=fixture,expected_command=command),60,'Native exec did not yield an actual background session before interruption')
         assert matches(fixture_pid,fixture_birth),'Yielded native fixture already exited before Ctrl-C'
         sent=time.monotonic();interrupt_offset=len(transcript);child.write(b'\x03')
         if proof['backend']=='shared':

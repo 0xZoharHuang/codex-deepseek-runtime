@@ -1,6 +1,6 @@
 # 使用与维护
 
-已发布版本是 v0.5.0；当前源码 0.6.0 仍为候选。稳定版安装与旧验收范围见 [README](../README.md)，候选的实际变化、隔离安装和发布前条件见 [0.6.0 说明](release-0.6.0-candidate.zh-CN.md)。本文的通用用法不能替代候选验收。
+安装入口与当前版本状态见 [README](../README.md) 和 [0.6.2 验收材料](../reports/releases/0.6.2/README.md)。本文提供通用操作；[0.6.0 说明](release-0.6.0-candidate.zh-CN.md)保留该版本的图片传输与 Windows namespace 背景，历史通过结论不能替代当前候选验收。
 
 这个发行包保留固定版本 Codex CLI 的原生执行循环、工具、沙箱、审批、会话、
 多智能体、Code Mode、MCP、Skills、Hooks、队列、goals、记忆及 daemon。
@@ -66,7 +66,7 @@ WebSocket 的端口 0 也保留，由系统分配后通过原生进程的内核�
 可以核对实际模型和提供商。
 
 固定基线、构建哈希、复杂工程验证和逐方法证据须按发行版本阅读。v0.5.0 的
-三平台入口是 `reports/platforms/<target>/runtime-qualification.json`；0.6.0 的待完成项见候选说明。
+三平台入口是 `reports/platforms/<target>/runtime-qualification.json`；当前候选的待完成项见 [0.6.2 报告](../reports/releases/0.6.2/README.md)。
 矩阵区分实际场景调用、保留的原生处理器、后端/平台依赖和上游未实现方法。
 
 ## 0.6.0 可选图片维护
@@ -111,7 +111,7 @@ turn interrupt 与 MCP cancellation 是不同事件。按同版官方 CLI 的原
 0.6.0 Windows 的 namespace 不能直接采用旧 `.sandbox*` 状态；自动迁移尚未提供。
 候选回退和未来同 home 迁移的区别见 [0.6.0 说明](release-0.6.0-candidate.zh-CN.md)。
 
-每个等价结论仅适用于其报告绑定的 Codex 版本、平台与产物。v0.5.0 的三平台结果不延伸到 0.6.0。
+每个等价结论仅适用于其报告绑定的 Codex 版本、平台与产物；历史三平台结果不自动延伸到 0.6.2 或后续源码。
 模型判断质量、厂商隐藏状态、OpenAI 云端权益不属于可由适配器复制的能力。
 原生进程遭 macOS SIGKILL 后可能遗留命令后代，这是官方二进制同样复现的
 上游限制；正常退出、回合取消、包装层退出、服务故障和冷恢复各自独立验证。

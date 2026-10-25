@@ -22,7 +22,7 @@ from verify_real_work import native_reviewer_completions
 
 canonical = _support.comparison_path
 
-VERSION = 1
+VERSION = 2
 HELPERS = ('verify_complex_runtime.py', 'acceptance_assertions.py', 'install.py',
            'host_execution_acceptance.py', 'real_work_imports.py', 'verify_real_work.py',
            'verify_live.py', 'windows_acceptance_setup.py', 'qa_workspace.py')
@@ -347,8 +347,294 @@ def function_outputs(parts, call):
     return values
 
 
-def provider_transport_evidence(provider_requests, receipts, installed_model):
-    """Require a complete trace/receipt join; unknown requests cannot disappear."""
+def _recovery_connections(evidence):
+    """Validate both RPC directions and reproduce the complete native event stream."""
+    if 'controller_connections' not in evidence:
+        return None, []
+    connections = evidence['controller_connections']
+    if (not isinstance(connections, list) or not connections
+            or any(not isinstance(connection, dict) or set(connection) != {'requests', 'events'}
+                   or not isinstance(connection['requests'], list)
+                   or not isinstance(connection['events'], list)
+                   or any(not isinstance(value, dict) for value in connection['requests'] + connection['events'])
+                   for connection in connections)):
+        return None, ['Malformed controller connections']
+    if [event for connection in connections for event in connection['events']] != evidence['native_events']:
+        return None, ['Controller connection events differ from native events']
+    for connection in connections:
+        requests, events = connection['requests'], connection['events']
+        calls = [request for request in requests if 'id' in request and 'method' in request]
+        replies = [event for event in events if 'id' in event and 'method' not in event]
+        ids, reply_ids = [call['id'] for call in calls], [reply['id'] for reply in replies]
+        # The QA client uses a positive integer counter. Server callbacks have
+        # their own typed integer/string ID space, which may overlap this counter.
+        callbacks = [event for event in events if 'id' in event and 'method' in event]
+        answers = [request for request in requests if 'id' in request and 'method' not in request]
+        callback_ids, answer_ids = [call['id'] for call in callbacks], [answer['id'] for answer in answers]
+        callback_id = lambda value: type(value) in (int, str)
+        typed = lambda values: [(type(value).__name__, value) for value in values]
+        if (not requests or requests[0].get('method') != 'initialize'
+                or any('method' in value and (not isinstance(value['method'], str) or not value['method'])
+                       for value in requests + events)
+                or any(request.get('method') in {'turn/start', 'turn/interrupt'} and 'id' not in request
+                       for request in requests)
+                or any(type(value) is not int or value < 1 for value in ids + reply_ids)
+                or len(set(ids)) != len(ids) or len(set(reply_ids)) != len(reply_ids)
+                or set(ids) != set(reply_ids)
+                or any('result' not in reply or 'error' in reply for reply in replies)
+                or any(not callback_id(value) for value in callback_ids + answer_ids)):
+            return None, ['Controller RPC responses are missing, duplicated, unmatched or failed']
+        callback_keys, answer_keys = typed(callback_ids), typed(answer_ids)
+        if (len(set(callback_keys)) != len(callback_keys) or len(set(answer_keys)) != len(answer_keys)
+                or set(callback_keys) != set(answer_keys)
+                or any(set(answer) - {'jsonrpc', 'id', 'result', 'error'}
+                       or ('result' in answer) == ('error' in answer)
+                       or ('error' in answer and not isinstance(answer['error'], dict)) for answer in answers)):
+            return None, ['Native callback replies are malformed, duplicated or unmatched']
+    return connections, []
+
+
+def _recovered_before_explicit_interrupt(connections, thread, turn, retry, terminal, success_finished):
+    """Prove progress before an accepted interrupt; no request-send time is invented."""
+    if connections is None:
+        return None
+    turn_value = terminal['params']['turn']
+    if (turn_value.get('status') != 'interrupted' or 'error' not in turn_value
+            or turn_value['error'] is not None or type(terminal.get('emittedAtMs')) is not int):
+        return None
+    starts, interrupts = [], []
+    for connection_index, connection in enumerate(connections):
+        requests, events = connection['requests'], connection['events']
+        replies = {event['id']: (index, event) for index, event in enumerate(events)
+                   if 'id' in event and 'method' not in event}
+        for request_index, request in enumerate(requests):
+            params = request.get('params', {})
+            if not isinstance(params, dict) or request.get('id') not in replies:
+                continue
+            reply_index, reply = replies[request['id']]
+            result = reply.get('result')
+            if (request.get('method') == 'turn/start' and params.get('threadId') == thread
+                    and isinstance(result, dict) and isinstance(result.get('turn'), dict)
+                    and result['turn'].get('id') == turn):
+                starts.append((connection_index, request_index, reply_index, request, reply))
+            if (request.get('method') == 'turn/interrupt'
+                    and params.get('threadId') == thread and params.get('turnId') == turn):
+                interrupts.append((connection_index, request_index, reply_index, request, reply))
+    if len(starts) != 1 or len(interrupts) != 1:
+        return None
+    start, interrupt = starts[0], interrupts[0]
+    if (start[0] != interrupt[0] or start[1] >= interrupt[1]
+            or start[4]['result']['turn'].get('status') != 'inProgress'
+            or start[4]['result']['turn'].get('error') is not None
+            or interrupt[4]['result'] != {}):
+        return None
+    events = connections[start[0]]['events']
+    retry_indices = [index for index, event in enumerate(events) if event == retry]
+    terminal_indices = [index for index, event in enumerate(events) if event == terminal]
+    if (len(retry_indices) != 1 or len(terminal_indices) != 1
+            or not start[2] < retry_indices[0] < interrupt[2] < terminal_indices[0]
+            or success_finished * 1000 >= terminal['emittedAtMs']):
+        return None
+    tools = []
+    for index, event in enumerate(events):
+        params = event.get('params', {})
+        item = params.get('item', {}) if isinstance(params, dict) else {}
+        if (event.get('method') != 'item/completed' or not isinstance(params, dict) or not isinstance(item, dict)
+                or params.get('threadId') != thread or params.get('turnId') != turn
+                or not isinstance(item.get('id'), str) or not item['id']
+                or item.get('status') != 'completed'
+                or type(params.get('completedAtMs')) is not int
+                or type(event.get('emittedAtMs')) is not int
+                or not retry_indices[0] < index < interrupt[2]
+                or not success_finished * 1000 < params['completedAtMs'] <= event['emittedAtMs'] < terminal['emittedAtMs']):
+            continue
+        actual = ((item.get('type') == 'commandExecution' and type(item.get('exitCode')) is int
+                   and isinstance(item.get('command'), str) and bool(item['command']))
+                  or (item.get('type') == 'fileChange' and isinstance(item.get('changes'), list) and bool(item['changes']))
+                  or (item.get('type') == 'mcpToolCall' and item.get('error') is None
+                      and item.get('result') is not None))
+        began = [(position, candidate) for position, candidate in enumerate(events)
+                 if candidate.get('method') == 'item/started'
+                 and isinstance(candidate.get('params'), dict)
+                 and candidate['params'].get('threadId') == thread
+                 and candidate['params'].get('turnId') == turn
+                 and isinstance(candidate['params'].get('item'), dict)
+                 and candidate['params']['item'].get('id') == item['id']]
+        ends = [candidate for candidate in events if candidate.get('method') == 'item/completed'
+                and isinstance(candidate.get('params'), dict)
+                and candidate['params'].get('threadId') == thread
+                and candidate['params'].get('turnId') == turn
+                and isinstance(candidate['params'].get('item'), dict)
+                and candidate['params']['item'].get('id') == item['id']]
+        # Count every matching start before inspecting its contents: a malformed
+        # duplicate must not disappear from the uniqueness proof.
+        if not actual or len(began) != 1 or len(ends) != 1:
+            continue
+        begin_index, beginning = began[0]
+        started = beginning['params']
+        if (started['item'].get('type') != item.get('type')
+                or started['item'].get('status') != 'inProgress'
+                or type(started.get('startedAtMs')) is not int
+                or type(beginning.get('emittedAtMs')) is not int
+                or not retry_indices[0] < begin_index < index
+                or not success_finished * 1000 < started['startedAtMs']
+                    <= beginning['emittedAtMs'] <= params['completedAtMs']):
+            continue
+        tools.append({'item_id': item['id'], 'type': item['type'], 'event_index': index,
+                      'started_at_ms': started['startedAtMs'],
+                      'start_event_index': begin_index, 'start_event_sha256': digest(beginning),
+                      'completed_at_ms': params['completedAtMs'], 'event_sha256': digest(event)})
+        break
+    if not tools:
+        return None
+    return {'classification': 'request_recovered_then_explicit_interrupt',
+            'connection_index': start[0], 'start_rpc_id': start[3]['id'],
+            'interrupt_rpc_id': interrupt[3]['id'], 'start_request_sha256': digest(start[3]),
+            'start_reply_sha256': digest(start[4]), 'interrupt_request': interrupt[3],
+            'interrupt_reply': interrupt[4], 'interrupt_reply_event_index': interrupt[2],
+            'interrupted_terminal_emitted_at_ms': terminal['emittedAtMs'],
+            'subsequent_native_tools': tools,
+            'timing_scope': 'Success receipt finished before actual native tool start and completion; tool event precedes the accepted interrupt reply and interrupted terminal. Request-send wall time is not recorded or inferred.'}
+
+
+def _provider_recoveries(provider_requests, receipts, evidence):
+    """Join raw receipt timing to one native retry hop; no cache-key inference."""
+    import math
+    from collections import Counter
+    if evidence is None:
+        return {}, []
+    if (not isinstance(evidence, dict)
+            or set(evidence) not in ({'receipt_observations', 'native_events'},
+                                     {'receipt_observations', 'native_events', 'controller_connections'})
+            or not isinstance(evidence['receipt_observations'], list)
+            or not isinstance(evidence['native_events'], list)
+            or any(not isinstance(event, dict) for event in evidence['native_events'])):
+        return {}, ['Malformed recovery evidence']
+    connections, defects = _recovery_connections(evidence)
+    if defects:
+        return {}, defects
+    observations, events = evidence['receipt_observations'], evidence['native_events']
+    if any(event.get('method') in {'error', 'turn/completed'}
+           and (not isinstance(event.get('params'), dict)
+                or event['method'] == 'turn/completed' and not isinstance(event['params'].get('turn'), dict))
+           for event in events):
+        return {}, ['Malformed native recovery event']
+    valid_time = lambda value: type(value) in (int, float) and math.isfinite(value)
+    if any(not isinstance(row, dict) or set(row) != {'id', 'started', 'finished', 'detail'}
+           or not isinstance(row['id'], str) or not row['id']
+           or not valid_time(row['started']) or not valid_time(row['finished'])
+           or row['finished'] < row['started']
+           or (row['detail'] is not None and not isinstance(row['detail'], str))
+           for row in observations):
+        return {}, ['Malformed receipt timing']
+    ids = [row['id'] for row in observations]
+    if len(ids) != len(set(ids)) or set(ids) != {row[0] for row in receipts}:
+        return {}, ['Receipt timing identity mismatch']
+    timing = {row['id']: row for row in observations}
+    rows = {row[0]: row for row in receipts}
+    eligible = {'adapter_error', 'upstream_error'}
+    def scope(key):
+        values = (provider_requests[key].get('thread'), provider_requests[key].get('turn'))
+        return tuple(value if isinstance(value, str) and value else None for value in values)
+    groups = {}
+    for key in rows:
+        groups.setdefault(scope(key), []).append(key)
+    for keys in groups.values():
+        keys.sort(key=lambda key: (timing[key]['started'], key))
+    links = {}
+    for key, row in rows.items():
+        thread, turn = scope(key)
+        detail = timing[key]['detail']
+        if (row[1] not in eligible or not isinstance(thread, str) or not thread
+                or not isinstance(turn, str) or not turn or not isinstance(detail, str) or not detail.strip()):
+            continue
+        if not ((row[1] == 'adapter_error' and row[2] in (None, 200))
+                or (row[1] == 'upstream_error' and type(row[2]) is int and 400 <= row[2] <= 599)):
+            continue
+        sequence = groups[(thread, turn)]
+        position = sequence.index(key)
+        if position + 1 == len(sequence):
+            continue
+        next_key = sequence[position + 1]
+        if sum(timing[other]['started'] == timing[next_key]['started'] for other in sequence) != 1:
+            continue
+        retry = [(index, event) for index, event in enumerate(events)
+                 if event.get('method') == 'error'
+                 and event.get('params', {}).get('threadId') == thread
+                 and event.get('params', {}).get('turnId') == turn
+                 and type(event.get('emittedAtMs')) is int
+                 and timing[key]['finished'] <= event['emittedAtMs'] / 1000 <= timing[next_key]['started']]
+        terminals = [event for event in events if event.get('method') == 'turn/completed'
+                     and event.get('params', {}).get('threadId') == thread
+                     and event.get('params', {}).get('turn', {}).get('id') == turn]
+        if len(retry) != 1 or len(terminals) != 1:
+            continue
+        retry_index, event = retry[0]
+        if event['params'].get('willRetry') is not True:
+            continue
+        error = event['params'].get('error', {})
+        if not isinstance(error, dict):
+            continue
+        info = error.get('codexErrorInfo', {})
+        if not isinstance(info, dict):
+            continue
+        if (not isinstance(error.get('additionalDetails'), str)
+                or not error['additionalDetails'].endswith(detail)
+                or not any(isinstance(info.get(kind), dict)
+                           for kind in ('responseStreamDisconnected', 'httpConnectionFailed'))):
+            continue
+        codes = [info[kind].get('httpStatusCode') for kind in ('responseStreamDisconnected', 'httpConnectionFailed')
+                 if isinstance(info.get(kind), dict)]
+        if (row[1] == 'upstream_error' and not any(type(code) is int and code == row[2] for code in codes)
+                or row[1] == 'adapter_error' and any(code not in (None, 200) for code in codes)):
+            continue
+        terminal = terminals[0]
+        terminal_turn = terminal['params']['turn']
+        if (terminal_turn.get('error') or type(terminal.get('emittedAtMs')) is not int
+                or terminal_turn.get('status') not in ({'completed', 'interrupted'} if connections is not None else {'completed'})):
+            continue
+        success = next((other for other in sequence[position + 1:] if rows[other][1] == 'completed'), None)
+        if (success is None or rows[success][2] != 200 or not rows[success][3]
+                or timing[success]['finished'] > terminal['emittedAtMs'] / 1000):
+            continue
+        interrupted = None
+        if terminal_turn.get('status') == 'interrupted':
+            interrupted = _recovered_before_explicit_interrupt(
+                connections, thread, turn, event, terminal, timing[success]['finished'])
+            if interrupted is None:
+                continue
+        between = sequence[position + 1:sequence.index(success)]
+        if any(rows[other][1] not in eligible for other in between):
+            continue
+        links[key] = {'thread_id': thread, 'turn_id': turn, 'retry_event_index': retry_index,
+                      'retry_event': event, 'next_request_id': next_key,
+                      'completed_request_id': success, 'intervening_error_ids': between,
+                      'terminal_event': terminal}
+        if interrupted is not None:
+            links[key].update(interrupted)
+    use_counts = Counter(link['retry_event_index'] for link in links.values())
+    valid = {key for key, link in links.items() if use_counts[link['retry_event_index']] == 1}
+    # A recovered chain cannot hide a second unproved error between this hop and success.
+    while True:
+        proven_retries = {links[key]['retry_event_index'] for key in valid}
+        remaining = {key for key in valid if all(other in valid for other in links[key]['intervening_error_ids'])
+                     and (links[key].get('classification') != 'request_recovered_then_explicit_interrupt'
+                          or all(index in proven_retries for index, event in enumerate(events)
+                                 if event.get('method') == 'error'
+                                 and event.get('params', {}).get('threadId') == links[key]['thread_id']
+                                 and event.get('params', {}).get('turnId') == links[key]['turn_id']))}
+        if remaining == valid:
+            break
+        valid = remaining
+    return {key: links[key] for key in sorted(valid)}, []
+
+
+def provider_transport_evidence(provider_requests, receipts, installed_model, *, recovery_evidence=None):
+    """v2 joins raw recovery evidence; legacy three-argument calls remain strict.
+
+    Recovered terminal errors keep their IDs, statuses, details and routes. They
+    never become successful individual requests or single-run success claims.
+    """
     from collections import Counter
     requested = set(provider_requests)
     counts = Counter(row[0] for row in receipts)
@@ -356,23 +642,36 @@ def provider_transport_evidence(provider_requests, receipts, installed_model):
     missing = sorted(requested - observed)
     untraced = sorted(observed - requested)
     duplicates = sorted(key for key, count in counts.items() if count != 1)
-    unresolved = sorted(row[0] for row in receipts
-                        if row[1] not in {'completed', 'cancelled'})
+    original_errors = sorted(row[0] for row in receipts
+                             if row[1] not in {'completed', 'cancelled'})
     routes = [{'status': row[1], 'upstream_status': row[2],
                'provider': row[3], 'route_reason': row[5]} for row in receipts]
     valid_ids = all(isinstance(key, str) and key for key in requested | observed)
-    passed = (bool(requested) and valid_ids and not missing and not untraced
-              and not duplicates and not unresolved
-              and all(row[2] == 200 and row[3] for row in receipts
-                      if row[1] == 'completed')
-              and all(value['model'] == installed_model
-                      for value in provider_requests.values()))
-    return {'passed': bool(passed), 'receipt_rows_sha256': digest(receipts),
+    joined = (bool(requested) and valid_ids and not missing and not untraced and not duplicates
+              and all(row[2] == 200 and row[3] for row in receipts if row[1] == 'completed')
+              and all(value['model'] == installed_model for value in provider_requests.values()))
+    recovered, defects = _provider_recoveries(provider_requests, receipts, recovery_evidence) if joined else ({}, [])
+    unrecovered = [key for key in original_errors if key not in recovered]
+    observations = recovery_evidence.get('receipt_observations', []) if isinstance(recovery_evidence, dict) else []
+    details = {row['id']: row.get('detail') for row in observations
+               if isinstance(row, dict) and isinstance(row.get('id'), str)}
+    errors = [{'id': row[0], 'status': row[1], 'upstream_status': row[2],
+               'provider': row[3], 'detail': details.get(row[0]), 'route_reason': row[5],
+               'classification': recovered[row[0]].get('classification', 'recovered') if row[0] in recovered else 'unrecovered'}
+              for row in receipts if row[0] in original_errors]
+    return {'passed': bool(joined and not unrecovered and not defects),
+            'provider_evidence_version': 2,
+            'single_run_all_success': bool(joined and all(row[1] == 'completed' for row in receipts)),
+            'receipt_rows_sha256': digest(receipts), 'errors': errors,
             'routes': sorted({json.dumps(row, sort_keys=True) for row in routes}),
             'request_ids': sorted(requested), 'receipt_ids': sorted(observed),
             'missing_receipt_ids': missing, 'untraced_receipt_ids': untraced,
             'duplicate_receipt_ids': duplicates,
-            'unresolved_or_failed_receipt_ids': unresolved}
+            'original_error_receipt_ids': original_errors,
+            'recovered_error_receipt_ids': sorted(recovered),
+            'unresolved_or_failed_receipt_ids': unrecovered,
+            'recovered_errors': recovered, 'recovery_evidence_defects': defects,
+            'recovery_evidence_sha256': digest(recovery_evidence) if recovery_evidence is not None else None}
 
 
 def reconstruct_case(root, entry):
@@ -495,7 +794,13 @@ def reconstruct_case(root, entry):
     for path in state.parent.glob(state.name+'-wal'): bind(path)
     with closing(readonly(state)) as db, db:
         receipts = db.execute('SELECT id,status,upstream_status,provider,context_key,route_reason FROM receipts ORDER BY id').fetchall()
-    provider_proof = provider_transport_evidence(provider_requests, receipts, installed['model'])
+        observations = [dict(zip(('id', 'started', 'finished', 'detail'), row)) for row in db.execute(
+            'SELECT id,started,finished,detail FROM receipts ORDER BY id')]
+    provider_proof = provider_transport_evidence(provider_requests, receipts, installed['model'],
+        recovery_evidence={'receipt_observations': observations, 'native_events': events,
+                           'controller_connections': [{'requests': requests, 'events': group}
+                                                      for requests, group in zip(sessions, event_groups)]
+                                                      if len(sessions) == len(event_groups) else None})
     controls = report.get('fixture_inputs', {})
     current = real_work_input_hashes(root, root.name)
     for name in real_work_input_names(root.name): bind(root/name)

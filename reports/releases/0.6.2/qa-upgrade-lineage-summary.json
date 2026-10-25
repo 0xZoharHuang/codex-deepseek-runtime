@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "release": "0.6.2",
+  "publication_status": "candidate_not_published",
+  "frozen_qualification_source_id": "d69a4edd5b8de66f3db3",
+  "current_product_source_id": "cf9f19eaf67b0fdd8151",
+  "product_source_file_count": 99,
+  "QA_upgrade_outside_product_source_inventory": true,
+  "old_raw_evidence_and_consumer_seal_preserved": true,
+  "historical_shared_helper_sha256": "0af195fcdafaeb38181c5c50dd35fe97fdc044ef2dcd29f79c58fe7bc4905304",
+  "upgraded_shared_helper_sha256": "1cc39a4693f07fb5b8f1f3c45793bf5cee6a36b8ced341805f80a518b18be845",
+  "changes": [
+    {
+      "path": "verify_mixed_stream_faults.py",
+      "qualified_sha256": "a08ee32964e523661d2ecd82c0e34185f1b15082d135d784ca14f3eda3fa361c",
+      "upgraded_sha256": "517abc1e8491b1f1e066da44aa1d74749c398c74126e778c7d4ba9a068f17d68",
+      "included_in_product99": false
+    },
+    {
+      "path": "tests/test_native_payload_retry.py",
+      "qualified_sha256": "42fe8a9d063160001eb9778e202de123269183481e33d6bb8d130e929b9008b9",
+      "upgraded_sha256": "ff1d1f4aea5978b08636858dff4a109b8eb5907ce5fb5cdb57c32b80165ef35f",
+      "included_in_product99": false
+    },
+    {
+      "path": "tests/test_owned_observer_consumers.py",
+      "qualified_sha256": null,
+      "upgraded_sha256": "fc8c005e7396f52d53e75f82ad6e76d4d624f9fd5f3044e7d76efe1b713d9695",
+      "included_in_product99": false
+    },
+    {
+      "path": "windows_acceptance_setup.py",
+      "qualified_sha256": "0af195fcdafaeb38181c5c50dd35fe97fdc044ef2dcd29f79c58fe7bc4905304",
+      "upgraded_sha256": "1cc39a4693f07fb5b8f1f3c45793bf5cee6a36b8ced341805f80a518b18be845",
+      "included_in_product99": false
+    },
+    {
+      "path": "tests/test_windows_acceptance_setup.py",
+      "qualified_sha256": "74928b286fc251000eadec3d510c5b97550f5d16f0efa7da728428d9e737a423",
+      "upgraded_sha256": "8bce914336da94ac47504d9dc4743e92925d590e1228aca80da299cab0e72c42",
+      "included_in_product99": false
+    }
+  ],
+  "behavior": "QA process observers admit stable direct-parent edges with kernel process identities; uncertain associations do not gain signal authority. Original effect, timeout and failure assertions remain.",
+  "supplemental_validation": {
+    "mixed_stream_fault_kinds": 3,
+    "native_payload_tests": 13,
+    "native_payload_invocations": 19,
+    "helper_pure_tests": 25,
+    "same_new_helper_Low_and_High_sandbox_modes": [
+      "unelevated",
+      "elevated"
+    ]
+  },
+  "historical_fault_producer_mapping": "Frozen D69 formal fault14 uses the original payload producer; later fault14 with upgraded payload observer remains separately identified.",
+  "current_offline_summary": "current-offline-summary.json",
+  "old_proofs_relabelled_as_new_QA": false
+}

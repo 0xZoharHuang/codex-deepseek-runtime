@@ -297,7 +297,8 @@ def test_background_helper_handle_overlay_preserves_nonwindows_recipes():
 
 def test_capacity_overlay_is_complete_common_source_and_changes_all_target_identities():
     recipe=build.runtime_recipe()
-    common=recipe['overlays'][-1]
+    index=next(i for i,item in enumerate(recipe['overlays']) if item['file']=='payload-request-capacity.patch')
+    common=recipe['overlays'][index]
     assert common['file']=='payload-request-capacity.patch'
     expected={
         'codex-rs/Cargo.lock','codex-rs/core/Cargo.toml',
@@ -314,8 +315,8 @@ def test_capacity_overlay_is_complete_common_source_and_changes_all_target_ident
         'codex-rs/core/tests/common/responses.rs',
     }
     assert set(common['changes_by_target'])==set(TARGETS)
-    previous={**recipe,'overlays':recipe['overlays'][:-1]}
-    mutated=copy.deepcopy(recipe);mutated['overlays'][-1]['sha256']='0'*64
+    previous={**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
+    mutated=copy.deepcopy(recipe);mutated['overlays'][index]['sha256']='0'*64
     for target,rows in common['changes_by_target'].items():
         assert len(rows)==18 and {row['path'] for row in rows}==expected
         assert {row['path'] for row in rows if row['before_sha256'] is None}=={
@@ -335,7 +336,7 @@ def test_capacity_overlay_is_complete_common_source_and_changes_all_target_ident
 @pytest.mark.parametrize('target',TARGETS)
 def test_capacity_overlay_cannot_omit_a_platform(tmp_path,monkeypatch,target):
     recipe_copy(tmp_path,monkeypatch,
-        lambda value:value['overlays'][-1]['changes_by_target'].pop(target))
+        lambda value:next(item for item in value['overlays'] if item['file']=='payload-request-capacity.patch')['changes_by_target'].pop(target))
     with pytest.raises(ValueError,match='target coverage'):
         build.runtime_recipe()
 
@@ -388,3 +389,45 @@ def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_p
     with pytest.raises(ReachedOverlay):
         build.main()
     assert len(commands) == 3
+
+
+def test_actual_readable_daemon_overlay_is_last_windows_only_and_keeps_unix_recipes():
+    recipe=build.runtime_recipe()
+    assert build.sha(ROOT/'native/runtime-overlays.json')=='ea0465074bb31edced83fcccbc9e548ad8c59dad46d6bbba015663cadccf8458'
+    last=recipe['overlays'][-1]
+    assert last['file']=='windows-readable-daemon-scratch.patch'
+    assert last['sha256']==build.sha(ROOT/'native'/last['file'])=='1dc6f292394dfc9fe4af5600245ff32f0c93ca0790039fd8a5ddb1021b463859'
+    assert set(last['changes_by_target'])=={WIN}
+    assert {row['path'] for row in last['changes_by_target'][WIN]}=={
+        'codex-rs/windows-sandbox-rs/src/setup_provisioning.rs',
+        'codex-rs/app-server-daemon/src/backend/pid_start.rs',
+        'codex-rs/app-server-daemon/src/backend/pid_tests.rs',
+        'codex-rs/app-server-daemon/src/backend/pid_workdir_windows.rs'}
+    previous={**recipe,'overlays':recipe['overlays'][:-1]}
+    assert build.native_recipe_identity(WIN,recipe)=='048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15'
+    for target in TARGETS:
+        if target==WIN:continue
+        assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,previous)
+
+@pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
+def test_readable_daemon_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_path,monkeypatch,problem):
+    def edit(recipe):
+        if problem=='omit':recipe['overlays'].pop()
+        elif problem=='reorder':recipe['overlays'][-2:]=reversed(recipe['overlays'][-2:])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][-1]))
+        else:
+            last=recipe['overlays'][-1]
+            last['changes_by_target']['x86_64-unknown-linux-gnu']=last['changes_by_target'].pop(WIN)
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):build.runtime_recipe()
+
+def test_public_package_and_install_recipe_readers_use_the_current_entrypoint():
+    package_spec=importlib.util.spec_from_file_location('public_package_recipe_entry',ROOT/'package_native.py')
+    package=importlib.util.module_from_spec(package_spec);package_spec.loader.exec_module(package)
+    install_spec=importlib.util.spec_from_file_location('public_install_recipe_entry',ROOT/'install.py')
+    installer=importlib.util.module_from_spec(install_spec);install_spec.loader.exec_module(installer)
+    recipe=build.runtime_recipe()
+    for target in TARGETS:
+        expected=build.native_recipe_identity(target,recipe)
+        assert package.expected_native_recipe(target)==(expected,recipe['build_toolchain'])
+        assert installer.expected_native_recipe(target)==expected

@@ -156,3 +156,83 @@ def test_failed_attempt_blocks_alias_retry_and_remains_in_cleanup_journal(tmp_pa
     assert len(final["attempted"]) == 1 and not final["prepared"]
     attempts = list(queue.parent.glob("provision-*/attempt.json"))
     assert len(attempts) == 1 and json.loads(attempts[0].read_text())["namespace_cleanup_pending"]
+
+
+@pytest.mark.parametrize("kind", ["natural", "natural_gone", "owned_failure", "uncertain_live", "uncertain_gone", "rejected", "observer_error", "timeout", "missing_birth"])
+def test_private_high_safe_observer_signals_only_proven_owned(tmp_path, monkeypatch, kind):
+    import ci.qualify_native as observer
+    import codex_deepseek.processes as processes
+    value, path, home, entry = fixture_manifest(tmp_path, monkeypatch)
+    output = tmp_path / "output";output.mkdir()
+    live = {2}
+    signals = []
+    parent = type("OwnPopen", (), {})()
+    parent.pid = 1
+    parent.returncode = None
+    parent.poll_calls = 0
+    parent.kills = 0
+    def poll():
+        parent.poll_calls += 1
+        if kind in {"timeout", "missing_birth"}:
+            return parent.returncode
+        if parent.poll_calls > 1:
+            parent.returncode = 9 if kind == "owned_failure" else 0
+        return parent.returncode
+    parent.poll = poll
+    def kill():
+        parent.kills += 1
+        parent.returncode = -1
+    parent.kill = kill
+    def wait(timeout):
+        assert timeout == 10
+        if parent.returncode is None: parent.returncode = 0
+        return parent.returncode
+    parent.wait = wait
+    argv = []
+    def popen(command, **kwargs):
+        argv.append(command)
+        return parent
+    monkeypatch.setattr(qa.subprocess, "Popen", popen)
+    monkeypatch.setattr(processes, "identity", lambda pid: None if kind == "missing_birth" else "own:1")
+    monkeypatch.setattr(processes, "matches", lambda pid, stamp: pid in live and stamp == ("own:2" if pid == 2 else "foreign:3"))
+    def terminate(pid, stamp, timeout):
+        assert pid == 2 and stamp == "own:2" and timeout == 10
+        signals.append((pid, stamp));live.discard(pid)
+    monkeypatch.setattr(processes, "terminate", terminate)
+    def child(pid):
+        assert pid == 2, "Never inspect or signal an unproved foreign candidate"
+        if kind == "natural_gone":
+            live.discard(pid)
+            raise qa.psutil.NoSuchProcess(pid)
+        class Child:
+            def wait(self, timeout):
+                assert timeout == 10;live.discard(pid)
+        return Child()
+    monkeypatch.setattr(qa.psutil, "Process", child)
+    monkeypatch.setattr(qa.psutil, "pid_exists", lambda pid: pid in live)
+    def observe(owned, uncertain, rejected, errors):
+        if kind in {"natural", "natural_gone", "owned_failure", "timeout"}:
+            owned[(2, "own:2")] = {"pid": 2, "birth": "own:2", "ownership": "stable_direct_parent_edge"}
+        if kind in {"uncertain_live", "uncertain_gone"}:
+            uncertain[(3, "foreign:3")] = {"pid": 3, "birth": "foreign:3", "reason": "parent_changed_during_collection"}
+            if kind == "uncertain_live":live.add(3)
+        if kind == "rejected":
+            rejected[(3, "foreign:3")] = {"pid": 3, "birth": "foreign:3", "reason": "current_ppid_differs"}
+            live.add(3)
+        if kind == "observer_error":errors[(1, "own:1")] = {"pid": 1, "error_type": "AccessDenied"}
+    monkeypatch.setattr(observer, "_observe_process_family", observe)
+    monkeypatch.setattr(qa, "_ready", lambda manifest, home: {"ready": True})
+    clock = iter([0, 31] if kind == "timeout" else [0, 0])
+    monkeypatch.setattr(qa.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(qa.time, "sleep", lambda seconds: None)
+    if kind in {"natural", "natural_gone", "uncertain_gone", "rejected"}:
+        assert qa._provision(value, home, output)["ready"]
+    else:
+        with pytest.raises((RuntimeError, TimeoutError)):qa._provision(value, home, output)
+    proof = json.loads((output / "process-cleanup.json").read_text())
+    assert argv[0] == [value["native_binary"], "sandbox", "setup", "--elevated", "--user", value["target_user"], "--codex-home", str(home)]
+    assert signals == ([(2, "own:2")] if kind in {"owned_failure", "timeout"} else [])
+    assert parent.kills == (1 if kind in {"timeout", "missing_birth"} else 0)
+    assert proof["unknown_live"] == ([3] if kind == "uncertain_live" else [])
+    assert not proof["remaining"]
+    assert bool(proof["observation_errors"]) == (kind == "observer_error")

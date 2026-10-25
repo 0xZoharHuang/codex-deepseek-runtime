@@ -59,3 +59,42 @@ def test_self_consistent_old_combination_cannot_be_blessed_as_new(tmp_path,chang
     with pytest.raises(ValueError,match='recipe or toolchain'):
         packager.package_native(package,tmp_path/'native.tar.gz',tmp_path/'manifest.json','https://example.invalid/fixture')
     assert not (tmp_path/'native.tar.gz').exists()
+
+
+
+@pytest.mark.parametrize('autocrlf', ['false', 'true'])
+def test_manifest_utf8_LF_is_stable_through_windows_default_and_Git_roundtrip(tmp_path, monkeypatch, autocrlf):
+    import hashlib
+    import subprocess
+
+    package=tmp_path/'native';native_fixture(package)
+    checkout=tmp_path/'git-checkout';checkout.mkdir()
+    attributes=Path(__file__).resolve().parents[1]/'.gitattributes'
+    (checkout/'.gitattributes').write_bytes(attributes.read_bytes())
+    manifest_path=checkout/'native/runtime-fixture.json'
+    original_write=Path.write_text
+    selected_newline=[]
+    def windows_default_write(path,data,encoding=None,errors=None,newline=None):
+        selected_newline.append(newline)
+        if newline is None:
+            # Exercise the Windows default on every CI OS, not only on Windows.
+            return path.write_bytes(data.replace('\r\n','\n').replace('\n','\r\n').encode(encoding or 'utf-8'))
+        return original_write(path,data,encoding=encoding,errors=errors,newline=newline)
+    monkeypatch.setattr(Path,'write_text',windows_default_write)
+    manifest=packager.package_native(package,tmp_path/'native.tar.gz',manifest_path,'https://example.invalid/fixture')
+    raw=manifest_path.read_bytes()
+    assert selected_newline==['\n']
+    assert raw.endswith(b'\n') and b'\r' not in raw and json.loads(raw.decode('utf-8'))==manifest
+    def git(*args):
+        return subprocess.run(['git','-C',str(checkout),'-c','core.autocrlf='+autocrlf,*args],
+                              check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE).stdout
+    git('init','-q')
+    raw_object=git('hash-object','--no-filters','native/runtime-fixture.json').strip()
+    cleaned=git('hash-object','--path=native/runtime-fixture.json','native/runtime-fixture.json').strip()
+    assert raw_object==cleaned
+    git('add','.gitattributes','native/runtime-fixture.json')
+    blob=git('cat-file','blob',':native/runtime-fixture.json')
+    assert blob==raw and hashlib.sha256(blob).digest()==hashlib.sha256(raw).digest()
+    manifest_path.unlink()
+    git('checkout-index','--force','--','native/runtime-fixture.json')
+    assert manifest_path.read_bytes()==raw

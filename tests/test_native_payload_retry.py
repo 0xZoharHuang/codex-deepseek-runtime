@@ -9,6 +9,8 @@ from aiohttp import web
 import psutil
 import pytest
 from codex_deepseek.protocol import MODEL
+from codex_deepseek.processes import identity, matches, terminate
+from ci.qualify_native import _observe_process_family
 
 TOKEN='synthetic-native-413-fixture-token'
 COMPACT='CDS_NATIVE_COMPACTION_RETRY_FIXTURE_ONLY'
@@ -75,28 +77,34 @@ async def invoke(home,port,work,*,resume=False,ephemeral=True,prompt=None,images
     process=await asyncio.create_subprocess_exec(*args,cwd=work,env=environment(home,port),
         stdin=asyncio.subprocess.PIPE if stdin_prompt else None,
         stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
-    birth=psutil.Process(process.pid).create_time();children=set();stop=asyncio.Event()
+    kernel_birth=identity(process.pid)
+    try:birth=psutil.Process(process.pid).create_time()
+    except psutil.Error:birth=None
+    owner=(process.pid,kernel_birth)
+    family=({owner:{'pid':process.pid,'birth':kernel_birth,'ownership':'created_asyncio_subprocess_handle'}}
+            if kernel_birth else {})
+    uncertain,rejected,observation_errors={},{},{}
+    if kernel_birth is None:
+        observation_errors['owner_identity_missing']={'pid':process.pid,'reason':'created_owner_identity_missing'}
+    stop=asyncio.Event()
     async def observe():
         while not stop.is_set():
-            try:
-                parent=psutil.Process(process.pid)
-                if parent.create_time()==birth:
-                    for child in parent.children(recursive=True):children.add((child.pid,child.create_time(),child.name()))
-            except psutil.Error:pass
+            _observe_process_family(family,uncertain,rejected,observation_errors)
             await asyncio.sleep(.05)
+    def child_rows():
+        return [dict(row,role='child') for key,row in family.items() if key!=owner]
     def remaining():
         rows=[]
-        for pid,stamp,name in sorted(children):
-            try:
-                child=psutil.Process(pid)
-                if child.create_time()==stamp:rows.append({'pid':pid,'birth':stamp,'name':name,'role':'child'})
-            except psutil.NoSuchProcess:pass
-            except psutil.Error as error:
-                # An unreadable registered identity is unknown, never a clean retirement.
-                rows.append({'pid':pid,'birth':stamp,'name':name,'role':'child','identity_error':type(error).__name__})
-        if process.returncode is None:rows.append({'pid':process.pid,'birth':birth,'name':Path(args[0]).name,'role':'main'})
+        for row in child_rows():
+            current=identity(row['pid'])
+            if current==row['birth']:rows.append(row)
+            elif current is None and psutil.pid_exists(row['pid']):
+                rows.append(dict(row,identity_error='identity_unavailable'))
+        if process.returncode is None:
+            rows.append({'pid':process.pid,'birth':birth,'kernel_birth':kernel_birth,
+                         'name':Path(args[0]).name,'role':'main'})
         return rows
-    record={'argv':args,'pid':process.pid,'birth':birth,'stdin_prompt_bytes':len(text.encode()) if stdin_prompt else 0,
+    record={'argv':args,'pid':process.pid,'birth':birth,'kernel_birth':kernel_birth,'stdin_prompt_bytes':len(text.encode()) if stdin_prompt else 0,
         'natural_main_exit':False,'main_timed_out':False,'remaining_before_cleanup':[],
         'forced_owned_cleanup':[],'remaining_after_cleanup':[],'cleanup_errors':[],
         'natural_child_exit_grace_seconds':3.0}
@@ -133,29 +141,26 @@ async def invoke(home,port,work,*,resume=False,ephemeral=True,prompt=None,images
         for row in record['remaining_before_cleanup']:
             if row['role']!='child' or row.get('identity_error'):continue
             try:
-                child=psutil.Process(row['pid'])
-                if child.create_time()!=row['birth']:continue
-                record['forced_owned_cleanup'].append({**row,'action':'terminate'})
-                child.terminate()
-            except psutil.NoSuchProcess:pass
-            except psutil.Error as error:record['cleanup_errors'].append({**row,'error':type(error).__name__})
+                if not matches(row['pid'],row['birth']):continue
+                record['forced_owned_cleanup'].append({**row,'action':'identity_bound_terminate',
+                                                       'timeout_seconds':2})
+                # The existing helper rechecks the kernel identity on the same
+                # Windows process handle used to signal; never reopen by PID alone.
+                await asyncio.to_thread(terminate,row['pid'],row['birth'],timeout=2)
+            except Exception as error:record['cleanup_errors'].append({**row,'error':type(error).__name__})
         if record['forced_owned_cleanup']:
-            deadline=time.monotonic()+2
-            while remaining() and time.monotonic()<deadline:await asyncio.sleep(.05)
-            for row in remaining():
-                if row['role']!='child' or row.get('identity_error'):continue
-                try:
-                    child=psutil.Process(row['pid'])
-                    if child.create_time()!=row['birth']:continue
-                    record['forced_owned_cleanup'].append({**row,'action':'kill'})
-                    child.kill()
-                except psutil.NoSuchProcess:pass
-                except psutil.Error as error:record['cleanup_errors'].append({**row,'error':type(error).__name__})
             deadline=time.monotonic()+2
             while remaining() and time.monotonic()<deadline:await asyncio.sleep(.05)
         record['remaining_after_cleanup']=remaining()
         record['seconds']=time.monotonic()-started
-        record['children']=[{'pid':pid,'birth':stamp,'name':name} for pid,stamp,name in sorted(children)]
+        record['children']=child_rows()
+        record['uncertain_observations']=list(uncertain.values())
+        record['rejected_processes']=list(rejected.values())
+        record['observation_errors']=list(observation_errors.values())
+        record['unknown_live']=sorted({row['pid'] for row in uncertain.values()
+            if (matches(row['pid'],row.get('birth_after') or row.get('birth'))
+                if (row.get('birth_after') or row.get('birth')) else psutil.pid_exists(row['pid']))}
+            | {row['pid'] for row in record['remaining_after_cleanup'] if row.get('identity_error')})
         # Preserve timeout/cancellation lifecycle too, when no record is returned.
         evidence(work.parent,'native-invoke-lifecycle-'+str(process.pid)+'-'+uuid.uuid4().hex,record)
     return record
@@ -195,6 +200,7 @@ def evidence(tmp_path,name,value):
 
 def no_tools(record):
     capacity_natural_exit_assertions(record)
+    assert all(isinstance(child.get('name'),str) and child['name'] for child in record['children']),record
     observed=' '.join(child['name'] for child in record['children']).lower()
     assert 'sandbox-setup' not in observed and 'command-runner' not in observed
     assert 'Code Mode is unavailable' not in record['stderr']
@@ -565,6 +571,7 @@ def capacity_natural_exit_assertions(record):
     assert record['remaining_before_cleanup']==[],record
     assert record['forced_owned_cleanup']==[],record
     assert record['remaining_after_cleanup']==[] and record['cleanup_errors']==[],record
+    assert record['unknown_live']==[] and record['observation_errors']==[],record
 
 
 def capacity_assertions(provider,record,seed_checkpoint=None):

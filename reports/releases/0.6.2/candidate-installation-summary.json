@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "release": "0.6.2",
+  "publication_status": "candidate_not_published",
+  "source_id": "cf9f19eaf67b0fdd8151",
+  "installation_status": "new_immutable_installation_verified_without_stable_activation",
+  "installation_metadata_sha256": "8f520e47e2f9db32c4aaefc45b99c579bb431e03ae39604c729bc1eca1c42415",
+  "entry_sha256": "fcd7f5f9943062bc253bda333564199564a486bf7a3930959a910ad76f177610",
+  "component_equivalence": "component-equivalence.json",
+  "component_equivalence_sha256": "27b483d191fa27de0911feca1a0aa30fa4f4899de37c06e2ed0691fbaea95475",
+  "normal_doctor": {
+    "passed": true,
+    "status": "connected",
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "provider": "DeepSeek",
+    "generation_verification_HTTP": 200,
+    "echo_exact": true
+  },
+  "real_model_requests": 2,
+  "provider_receipts": [
+    {
+      "status": "completed",
+      "upstream_status": 200,
+      "provider": "deepseek",
+      "count": 2
+    }
+  ],
+  "same_home_native_dispatch": {
+    "new_model_requests": 0,
+    "new_High_setup": false,
+    "actual_restricted_token": true,
+    "admin": false,
+    "inside_write_verified": true,
+    "outside_write_denied": true,
+    "command_exit_code": 0,
+    "native_EOF_exit0_count": 2
+  },
+  "hygiene": {
+    "observed_continuation_actors": 15,
+    "all_naturally_exited": true,
+    "provider_idle_bound_unchanged": 150,
+    "provider_naturally_retired": true,
+    "native_daemons_inactive": true,
+    "forced": 0,
+    "remaining": 0,
+    "unknown_live": 0,
+    "errors": 0
+  },
+  "original_failures_preserved": {
+    "PowerShell_constrained_language_rejection": true,
+    "controller_bookkeeping_KeyError": true,
+    "single_run_all_passed": false
+  },
+  "closeout_sha256": "770e97efc0ba0eaf2e2dfd7fd4eb6d1ace113fdaac308f31134494e15971fb3e",
+  "case_verdict_sha256": "eb660c38babcfabc9c3e5583dac24b3f19e48936cc9c118d1fb0e3c914229902",
+  "scope": "New CF9 installation health and minimum native dispatch/cold recovery; frozen D69 full qualification keeps its original identity.",
+  "saved_native_session": {
+    "created_by_real_model_request": true,
+    "same_thread_cold_resumed": true,
+    "history_preserved": true,
+    "file_readback": true
+  }
+}

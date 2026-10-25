@@ -339,8 +339,8 @@ def test_linux_bundled_resource_gate_requires_actual_enforcement_and_tamper_reje
 
 def terminal_fixture(root,entry,interrupt=False):
     import hashlib
-    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
-    if interrupt:names|={'verify_tui_interrupt.py','process_acceptance.py'}
+    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','process_acceptance.py'}
+    if interrupt:names|={'verify_tui_interrupt.py'}
     files={name:acceptance.sha(ROOT/name) for name in sorted(names)}
     installation={'source_id':'fixture','console_script_sha256':acceptance.sha(entry),'native_archive_sha256':'native'}
     qa={'qa_files_sha256':files,'qa_snapshot_sha256':hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest(),
@@ -348,22 +348,36 @@ def terminal_fixture(root,entry,interrupt=False):
     root.mkdir();(root/'home/sessions').mkdir(parents=True);(root/'work').mkdir()
     (root/'qa-source.json').write_text(json.dumps(qa),encoding='utf-8')
     (root/'home/config.toml').write_text('sandbox_mode="workspace-write"\n')
-    native={'target':'x86_64-unknown-linux-gnu'}
+    terminal='conpty' if sys.platform=='win32' else 'pty'
+    native={'target':'x86_64-pc-windows-msvc' if sys.platform=='win32' else 'x86_64-unknown-linux-gnu'}
     if interrupt:
         transcript='• TUI_INTERRUPT_RECOVERED_2719\n'.encode();(root/'transcript.pty').write_bytes(transcript)
         content=b'AFTER_CTRL_C_2719';(root/'work/after-interrupt.txt').write_bytes(content)
         records=[{'kind':'session_start'},{'dir':'from_tui','kind':'op','payload':'CleanBackgroundTerminals'},{'kind':'session_end'}]
         (root/'native-session.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in records))
-        events=[{'type':'session_meta','payload':{'id':'thread'}},
-                {'type':'response_item','payload':{'type':'custom_tool_call','call_id':'fixture-exec','input':'exec_command interrupt_fixture.py'}},
-                {'type':'response_item','payload':{'type':'custom_tool_call_output','call_id':'fixture-exec','output':'{"session_id":1234}'}},
+        from process_acceptance import shell_command
+        work=(root/'work').resolve();fixture=work/'interrupt_fixture.py';fixture.write_text('# synthetic controlled process fixture\n',encoding='utf-8')
+        fixture_argv=[sys.executable,'-I','-u',str(fixture)]
+        command=shell_command(fixture_argv)
+        code='const r = await tools.exec_command('+json.dumps({'cmd':command,'workdir':str(work),'yield_time_ms':1000})+'); text(JSON.stringify(r));'
+        events=[{'type':'session_meta','payload':{'id':'thread','cwd':str(work)}},
+                {'type':'event_msg','payload':{'type':'task_started','turn_id':'old'}},
+                {'type':'turn_context','payload':{'turn_id':'old','cwd':str(work)}},
+                {'type':'response_item','payload':{'type':'custom_tool_call','name':'exec','call_id':'fixture-exec','input':code,'internal_chat_message_metadata_passthrough':{'turn_id':'old'}}},
+                {'type':'response_item','payload':{'type':'custom_tool_call_output','call_id':'fixture-exec','output':'Script running with cell ID 1\nWall time 1.0 seconds\nOutput:\n'}},
+                {'type':'response_item','payload':{'type':'function_call','name':'wait','call_id':'fixture-wait-1','arguments':'{"cell_id":"1"}'}},
+                {'type':'response_item','payload':{'type':'function_call_output','call_id':'fixture-wait-1','output':'Script running with cell ID 1\nWall time 1.0 seconds\nOutput:\n'}},
+                {'type':'response_item','payload':{'type':'function_call','name':'wait','call_id':'fixture-wait-2','arguments':'{"cell_id":"1"}'}},
+                {'type':'response_item','payload':{'type':'function_call_output','call_id':'fixture-wait-2','output':[{'type':'input_text','text':'Script completed\nWall time 1.0 seconds\nOutput:\n'},{'type':'input_text','text':'{"session_id":1234,"output":"ALIVE"}'}]}},
                 {'type':'event_msg','payload':{'type':'turn_aborted','turn_id':'old','reason':'interrupted'}},
+                {'type':'event_msg','payload':{'type':'task_started','turn_id':'new'}},
                 {'type':'event_msg','payload':{'type':'task_complete','turn_id':'new','last_agent_message':'TUI_INTERRUPT_RECOVERED_2719'}}]
         (root/'home/sessions/rollout.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in events))
-        result={'passed':True,'entry':str(entry),'terminal':'pty','backend':'shared','sandbox_mode':'workspace-write',
+        result={'passed':True,'entry':str(entry),'terminal':terminal,'backend':'shared','sandbox_mode':'workspace-write',
                 'qa_snapshot_sha256':qa['qa_snapshot_sha256'],'thread_id':'thread','interrupted_turn_id':'old','continued_turn_id':'new',
                 'background_retained_after_interrupt':True,'native_stop_terminated_fixture':True,'terminal_exit_code':0,
-                'background_session':{'call_id':'fixture-exec','session_id':'1234'},
+                'fixture_argv':fixture_argv,
+                'background_session':{'call_id':'fixture-exec','result_call_id':'fixture-wait-2','session_id':'1234','cell_id':'1','call_chain':['fixture-exec','fixture-wait-1','fixture-wait-2'],'thread_id':'thread','turn_id':'old'},
                 'continued_file_sha256':hashlib.sha256(content).hexdigest(),'fixture_pid':123,'fixture_birth':'saved-birth',
                 'native_session_log_records':len(records),'transcript_bytes':len(transcript)}
     else:
@@ -371,7 +385,7 @@ def terminal_fixture(root,entry,interrupt=False):
         for index,(label,reply) in enumerate([('initial','TUI_VERIFIED_INITIAL_5271'),('cold-resume','TUI_VERIFIED_RESUMED_5271')]):
             (root/(label+'.pty')).write_text('• '+reply+'\n',encoding='utf-8')
             (root/(label+'-native-session.jsonl')).write_text('{"kind":"session_start"}\n{"kind":"session_end"}\n')
-            result.append({'name':label,'passed':True,'terminal':'pty','backend':'shared','thread_id':'same-thread',
+            result.append({'name':label,'passed':True,'terminal':terminal,'backend':'shared','thread_id':'same-thread',
                            'tui_pid':100+index,'daemon_pid':200+index,'native_rollout_trace_files_changed':1,
                            'native_rollout_trace_files':index+1,'rendered_reply':reply})
         traces=root/'native-rollout-traces';traces.mkdir()
@@ -407,6 +421,8 @@ def test_native_tui_cold_resume_cannot_borrow_an_old_reply_or_another_session(tm
 @pytest.mark.parametrize('change',['none','same_turn','cleanup_fallback','no_native_stop','still_running','prompt_only','different_thread',
                                   'wrong_order','wrong_file','sandbox_mode','wrong_source','wrong_installation',
                                   'missing_background','wrong_background','missing_yield','yield_after_interrupt',
+                                  'cross_turn','cross_thread','wrong_cell','wrong_command_literal','no_abort','completed_before_abort','duplicate_abort','foreign_abort','missing_thread_metadata',
+                                  'missing_fixture_argv','wrong_fixture_argv','wrong_python_argv','extra_fixture_arg','changed_fixture_flags',
                                   'title_after_end','unknown_after_end','duplicate_end','missing_end'])
 def test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_process(tmp_path,monkeypatch,change):
     import codex_deepseek.processes
@@ -419,12 +435,36 @@ def test_tui_interrupt_must_continue_in_place_and_really_stop_its_background_pro
     elif change=='prompt_only':(root/'transcript.pty').write_text('Please reply TUI_INTERRUPT_RECOVERED_2719')
     elif change=='different_thread':proof['thread_id']='another'
     elif change=='wrong_order':
-        path=root/'home/sessions/rollout.jsonl';lines=path.read_text().splitlines();path.write_text('\n'.join([*lines[:-2],lines[-1],lines[-2]])+'\n')
+        path=root/'home/sessions/rollout.jsonl';rows=[json.loads(line) for line in path.read_text().splitlines()]
+        complete=next(row for row in rows if row['payload'].get('type')=='task_complete')
+        rows.remove(complete);index=next(i for i,row in enumerate(rows) if row['payload'].get('type')=='turn_aborted');rows.insert(index,complete)
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
     elif change=='missing_background':proof.pop('background_session')
     elif change=='wrong_background':proof['background_session']['session_id']='9999'
-    elif change in {'missing_yield','yield_after_interrupt'}:
-        path=root/'home/sessions/rollout.jsonl';lines=path.read_text().splitlines()
-        path.write_text('\n'.join([lines[i] for i in ([0,1,3,4] if change=='missing_yield' else [0,1,3,2,4])])+'\n')
+    elif change in {'missing_yield','yield_after_interrupt','cross_turn','cross_thread','wrong_cell','wrong_command_literal','no_abort','completed_before_abort','duplicate_abort','foreign_abort','missing_thread_metadata'}:
+        path=root/'home/sessions/rollout.jsonl';rows=[json.loads(line) for line in path.read_text().splitlines()]
+        yielded=next(row for row in rows if row['payload'].get('type')=='function_call_output' and row['payload'].get('call_id')=='fixture-wait-2')
+        aborted=next(row for row in rows if row['payload'].get('type')=='turn_aborted')
+        if change in {'missing_yield','yield_after_interrupt'}:
+            rows.remove(yielded)
+            if change=='yield_after_interrupt':rows.insert(rows.index(aborted)+1,yielded)
+        elif change=='cross_turn':yielded['payload']['internal_chat_message_metadata_passthrough']={'turn_id':'foreign'}
+        elif change=='cross_thread':next(row for row in rows if row.get('type')=='session_meta')['payload']['id']='foreign'
+        elif change=='wrong_cell':next(row for row in rows if row['payload'].get('name')=='wait' and row['payload'].get('call_id')=='fixture-wait-2')['payload']['arguments']='{"cell_id":"99"}'
+        elif change=='wrong_command_literal':
+            call=next(row for row in rows if row['payload'].get('name')=='exec')
+            call['payload']['input']='const label='+json.dumps(proof['fixture_argv'][3])+'; const r=await tools.exec_command({cmd:"echo other"}); text(JSON.stringify(r));'
+        elif change=='no_abort':rows.remove(aborted)
+        elif change=='completed_before_abort':rows.insert(rows.index(aborted),{'type':'event_msg','payload':{'type':'task_complete','turn_id':'old'}})
+        elif change=='duplicate_abort':rows.insert(rows.index(aborted)+1,deepcopy(aborted))
+        elif change=='foreign_abort':aborted['payload']['turn_id']='foreign'
+        elif change=='missing_thread_metadata':rows=[row for row in rows if row.get('type')!='session_meta']
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+    elif change=='missing_fixture_argv':proof.pop('fixture_argv')
+    elif change=='wrong_fixture_argv':proof['fixture_argv'][3]=str(root/'work/other.py')
+    elif change=='wrong_python_argv':proof['fixture_argv'][0]=str(entry)
+    elif change=='extra_fixture_arg':proof['fixture_argv'].append('extra')
+    elif change=='changed_fixture_flags':proof['fixture_argv'][2]='-c'
     elif change=='wrong_file':(root/'work/after-interrupt.txt').write_bytes(b'old')
     elif change=='sandbox_mode':proof['sandbox_mode']='danger-full-access'
     elif change in {'title_after_end','unknown_after_end','duplicate_end','missing_end'}:
@@ -558,13 +598,15 @@ def test_rpc_aggregate_cannot_reuse_stale_or_unbound_success_witnesses(tmp_path,
 
 
 @pytest.mark.parametrize('change',['none','no_explicit_snapshot','snapshot_bytes','snapshot_extra','manifest_digest','runtime_source',
-                                  'missing_verifier','standard_gate','shared_helper','terminal_without_revalidation','terminal_revalidated','shared_terminal_helper'])
+                                  'missing_verifier','standard_gate','shared_helper','terminal_without_revalidation','terminal_revalidated','shared_terminal_helper',
+                                  'fault_verifier','fault_without_snapshot'])
 def test_frozen_regression_lineage_only_admits_reporting_methods_and_test_changes(tmp_path,monkeypatch,change):
     import hashlib
     producer=tmp_path/'producer';consumer=tmp_path/'consumer';producer.mkdir();consumer.mkdir()
     files={'assemble_release_acceptance.py':b'old consumer','verify_remaining_local.py':b'old methods',
            'verify_safety.py':b'unchanged gate','verify_live.py':b'unchanged helper','src/pkg/runtime.py':b'unchanged runtime','tests/test_case.py':b'old test',
-           'verify_tui_audit.py':b'original terminal verifier','terminal_acceptance.py':b'unchanged terminal helper'}
+           'verify_tui_audit.py':b'original terminal verifier','terminal_acceptance.py':b'unchanged terminal helper',
+           'verify_fault_boundaries.py':b'original independent fault verifier'}
     for root in [producer,consumer]:
         for name,data in files.items():
             path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
@@ -584,13 +626,17 @@ def test_frozen_regression_lineage_only_admits_reporting_methods_and_test_change
     elif change=='shared_helper':(consumer/'verify_live.py').write_bytes(b'changed shared execution helper')
     elif change in {'terminal_without_revalidation','terminal_revalidated'}:(consumer/'verify_tui_audit.py').write_bytes(b'known async title after session end')
     elif change=='shared_terminal_helper':(consumer/'terminal_acceptance.py').write_bytes(b'changed terminal execution helper')
+    elif change in {'fault_verifier','fault_without_snapshot'}:(consumer/'verify_fault_boundaries.py').write_bytes(b'proven-edge fault observer')
     (tmp_path/'producer.manifest.json').write_text(json.dumps(receipt));monkeypatch.setattr(acceptance,'SOURCE',consumer)
-    if change in {'none','terminal_revalidated'}:
+    if change in {'none','terminal_revalidated','fault_verifier'}:
         proof=acceptance.validate_regression_source(artifact,metadata,producer,terminal_revalidated=change=='terminal_revalidated')
         assert proof['producer']=='explicit_frozen_snapshot' and proof['producer_snapshot_sha256']==receipt['qa_sha256']
-        assert proof['changed_qa_files']==['assemble_release_acceptance.py','tests/test_case.py','verify_remaining_local.py']+(['verify_tui_audit.py'] if change=='terminal_revalidated' else [])
+        expected=['assemble_release_acceptance.py','tests/test_case.py','verify_remaining_local.py']
+        if change=='terminal_revalidated':expected.append('verify_tui_audit.py')
+        if change=='fault_verifier':expected.append('verify_fault_boundaries.py')
+        assert proof['changed_qa_files']==sorted(expected)
     else:
-        with pytest.raises(SystemExit):acceptance.validate_regression_source(artifact,metadata,None if change=='no_explicit_snapshot' else producer,terminal_revalidated=change=='shared_terminal_helper')
+        with pytest.raises(SystemExit):acceptance.validate_regression_source(artifact,metadata,None if change in {'no_explicit_snapshot','fault_without_snapshot'} else producer,terminal_revalidated=change=='shared_terminal_helper')
 
 
 @pytest.mark.parametrize('change',['none','source','subset','runtime','filtered','junit_missing','nested_external'])
@@ -748,3 +794,341 @@ def test_method_scope_identity_ignores_only_unexecuted_report_code(tmp_path):
     assert acceptance.scope_source_identity(original)!=acceptance.scope_source_identity(changed)
     changed.write_text(source.replace("def qualification_scope(native):","def removed_scope(native):"))
     with pytest.raises(SystemExit,match='dependency inventory'):acceptance.scope_source_identity(changed)
+
+
+def test_postrun_interrupt_replay_requires_actual_abort_and_leaves_live_mode_strict(tmp_path):
+    from verify_tui_interrupt import yielded_background_session
+    from process_acceptance import shell_command
+    entry=tmp_path/'entry';entry.write_bytes(b'actual entry');root=tmp_path/'run'
+    _,_,proof=terminal_fixture(root,entry,True)
+    rollout=root/'home/sessions/rollout.jsonl'
+    scope={'expected_thread':'thread','expected_turn':'old','expected_cwd':(root/'work').resolve(),
+           'expected_fixture':(root/'work/interrupt_fixture.py').resolve(),'expected_command':shell_command(proof['fixture_argv'])}
+    assert yielded_background_session(rollout,'interrupt_fixture.py',**scope) is None
+    assert yielded_background_session(rollout,'interrupt_fixture.py',**scope,as_of_interrupt=True)==proof['background_session']
+    rows=[json.loads(line) for line in rollout.read_text().splitlines()]
+    cutoff=next(i for i,row in enumerate(rows) if row['payload'].get('type')=='turn_aborted')
+    rollout.write_text(''.join(json.dumps(row)+'\n' for row in rows[:cutoff]))
+    assert yielded_background_session(rollout,'interrupt_fixture.py',**scope)==proof['background_session']
+    assert yielded_background_session(rollout,'interrupt_fixture.py',**scope,as_of_interrupt=True) is None
+    assert yielded_background_session(rollout,'interrupt_fixture.py',expected_turn='old',as_of_interrupt=True) is None
+
+
+def _observed_process_graph(monkeypatch, *, foreign=False, root_exits=True):
+    """Deterministic kernel snapshots; all signal operations are synthetic spies."""
+    from types import SimpleNamespace
+    import psutil
+    from ci import qualify_native as qualify
+    import codex_deepseek.processes as process_ids
+    original_children=psutil.Process.children
+    graph={100:{'birth':'root-10','ctime':10,'ppid':1,'alive':True},
+           200:{'birth':'foreign-50' if foreign else 'child-20','ctime':50 if foreign else 20,'ppid':999 if foreign else 100,'alive':True},
+           300:{'birth':'grandchild-60' if foreign else 'grandchild-30','ctime':60 if foreign else 30,'ppid':200,'alive':True}}
+    callbacks={'diagnostic_calls':{}};signals=[]
+    class Process:
+        def __init__(self,pid):
+            if pid not in graph or not graph[pid]['alive']:raise psutil.NoSuchProcess(pid)
+            self.pid=pid;self.initial=graph[pid]['birth']
+        def _raise_if_pid_reused(self):
+            if self.initial!=graph[self.pid]['birth']:raise psutil.NoSuchProcess(self.pid)
+        def create_time(self):return graph[self.pid]['ctime']
+        def ppid(self):
+            callback=callbacks.pop(('ppid',self.pid),None)
+            if callback:callback()
+            return graph[self.pid]['ppid']
+        def name(self):
+            key=(self.pid,'name');callbacks['diagnostic_calls'][key]=callbacks['diagnostic_calls'].get(key,0)+1
+            return 'python.exe'
+        def exe(self):
+            key=(self.pid,'exe');callbacks['diagnostic_calls'][key]=callbacks['diagnostic_calls'].get(key,0)+1
+            return '/synthetic/python.exe'
+        def cmdline(self):
+            key=(self.pid,'argv');callbacks['diagnostic_calls'][key]=callbacks['diagnostic_calls'].get(key,0)+1
+            callback=callbacks.pop(('cmdline',self.pid),None)
+            if callback:callback()
+            return graph[self.pid].get('argv',['python.exe','synthetic-fixture.py'])
+        def children(self,recursive=False):
+            recursive_flags.append(recursive)
+            values=original_children(self,recursive=recursive)
+            callback=callbacks.pop(('children',self.pid),None)
+            if callback:callback()
+            return values
+    recursive_flags=[]
+    monkeypatch.setattr(psutil,'Process',Process)
+    monkeypatch.setattr(psutil,'_ppid_map',lambda:{100:1,200:100,300:200})
+    monkeypatch.setattr(psutil,'pid_exists',lambda pid:graph.get(pid,{}).get('alive',False))
+    def identity(pid):
+        callback=callbacks.pop(('identity',pid),None)
+        if callback:callback()
+        return graph.get(pid,{}).get('birth') if graph.get(pid,{}).get('alive') else None
+    monkeypatch.setattr(process_ids,'identity',identity)
+    monkeypatch.setattr(process_ids,'matches',lambda pid,birth:bool(birth) and identity(pid)==birth)
+    def terminate(pid,birth,timeout=0):
+        assert identity(pid)==birth
+        signals.append((pid,birth));graph[pid]['alive']=False
+    monkeypatch.setattr(process_ids,'terminate',terminate)
+    class Root:
+        pid=100;returncode=None;polls=0
+        def poll(self):
+            self.polls+=1
+            if root_exits and self.polls>=3:
+                self.returncode=0;graph[100]['alive']=False
+            return self.returncode
+        def terminate(self):self.returncode=1;graph[100]['alive']=False
+        def kill(self):self.terminate()
+        def wait(self,timeout=None):return self.returncode
+    root=Root();monkeypatch.setattr(qualify.subprocess,'Popen',lambda *a,**k:root)
+    clock=[0.]
+    monkeypatch.setattr(qualify,'time',SimpleNamespace(monotonic=lambda:clock[0],sleep=lambda dt:clock.__setitem__(0,clock[0]+dt)))
+    return qualify,graph,callbacks,signals,recursive_flags,root
+
+
+def test_recursive_psutil_snapshot_can_join_reused_parent_to_foreign_processes(monkeypatch):
+    import psutil
+    original_children=psutil.Process.children
+    qualify,graph,_,_,_,_=_observed_process_graph(monkeypatch,foreign=True)
+    values=original_children(psutil.Process(100),recursive=True)
+    assert {p.pid for p in values}=={200,300}
+    assert graph[200]['ppid']==999  # The root itself remained the same instance.
+    seen={(100,'root-10'):{'pid':100,'birth':'root-10'}}
+    uncertain={};rejected={};errors={}
+    qualify._observe_process_family(seen,uncertain,rejected,errors)
+    assert set(seen)=={(100,'root-10')} and not uncertain and not errors
+    assert [x['pid'] for x in rejected.values()]==[200]
+
+
+def test_qualification_observer_never_signals_reused_foreign_parent_or_its_child(monkeypatch,tmp_path):
+    import io
+    qualify,graph,_,signals,recursive_flags,_=_observed_process_graph(monkeypatch,foreign=True)
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert result['passed'] and result['returncode']==0 and not signals
+    assert {x['pid'] for x in result['observed']}=={100}
+    assert graph[200]['alive'] and graph[300]['alive']
+    assert result['rejected_processes'][0]['ppid']==999
+    assert not any(recursive_flags)
+
+
+def test_qualification_observer_keeps_real_owned_survivor_as_failure(monkeypatch,tmp_path):
+    import io
+    qualify,_,_,signals,_,_=_observed_process_graph(monkeypatch)
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed']
+    assert {x['pid'] for x in result['remaining_before_cleanup']}=={200,300}
+    assert {pid for pid,_ in signals}=={200,300} and result['remaining_after_cleanup']==[]
+    owned={x['pid']:x for x in result['observed']}
+    assert owned[300]['parent_pid']==200 and owned[300]['parent_birth']=='child-20'
+    assert owned[200]['argv']==['python.exe','synthetic-fixture.py']
+    assert owned[200]['exe']=='/synthetic/python.exe' and owned[200]['name']=='python.exe'
+
+
+def test_qualification_parent_reuse_during_sampling_leaves_child_uncertain_and_unsignalled(monkeypatch,tmp_path):
+    import io
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    callbacks[('children',200)]=lambda:graph[200].update(birth='foreign-70',ctime=70,ppid=999)
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed'] and not signals
+    assert 300 in result['unknown_live'] and graph[300]['alive']
+    assert any(x['reason']=='parent_changed_during_collection' for x in result['uncertain_observations'])
+    row=next(x for x in result['uncertain_observations'] if x['reason']=='parent_changed_during_collection')
+    assert row['parent_birth_before']=='child-20' and row['parent_birth_after']=='foreign-70'
+    assert {x['pid'] for x in result['observed']}=={100,200}
+
+
+def test_qualification_child_reuse_during_metadata_read_is_never_owned(monkeypatch,tmp_path):
+    import io
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    callbacks[('cmdline',200)]=lambda:graph[200].update(birth='foreign-80',ctime=80,ppid=999,argv=['foreign-program','FOREIGN_TEXT_MUST_NOT_PERSIST'])
+    graph[300]['alive']=False
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed'] and not signals
+    assert result['unknown_live']==[200]
+    assert {(x['pid'],x['birth']) for x in result['observed']}=={(100,'root-10'),(200,'child-20')}
+    assert all(x['birth']!='foreign-80' for x in result['observed'])
+    assert 'FOREIGN_TEXT_MUST_NOT_PERSIST' not in json.dumps(result)
+
+
+def test_qualification_stale_ppid_with_child_older_than_parent_is_rejected(monkeypatch):
+    qualify,graph,_,signals,_,_=_observed_process_graph(monkeypatch)
+    graph[200]['ctime']=1
+    seen={(100,'root-10'):{'pid':100,'birth':'root-10'}};uncertain={};rejected={};errors={}
+    qualify._observe_process_family(seen,uncertain,rejected,errors)
+    assert set(seen)=={(100,'root-10')} and not signals and not uncertain
+    # psutil's own nonrecursive ctime filter can reject this before our edge check.
+    assert not errors
+
+
+def test_qualification_root_identity_change_during_snapshot_cannot_enumerate_new_root(monkeypatch):
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    callbacks[('ppid',100)]=lambda:graph[100].update(birth='foreign-root-90',ctime=90,ppid=999)
+    seen={(100,'root-10'):{'pid':100,'birth':'root-10'}}
+    qualify._observe_process_family(seen,{}, {}, {})
+    assert set(seen)=={(100,'root-10')} and not signals
+
+
+def test_qualification_edge_identity_rechecked_before_admission(monkeypatch,tmp_path):
+    import io
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    reads=[0]
+    def change_on_third_read():
+        reads[0]+=1
+        if reads[0]==3:graph[200].update(birth='foreign-95',ctime=95,ppid=999)
+        else:callbacks[('identity',200)]=change_on_third_read
+    callbacks[('identity',200)]=change_on_third_read
+    graph[300]['alive']=False  # No surviving old grandchild in this PID-reuse case.
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert result['passed'] and not signals and graph[200]['alive']
+    assert any(x['reason']=='edge_changed_before_admission' for x in result['uncertain_observations'])
+    assert {x['pid'] for x in result['observed']}=={100} and result['unknown_live']==[]
+
+
+def test_qualification_denied_optional_diagnostics_do_not_erase_owned_survivors(monkeypatch,tmp_path):
+    import io,psutil
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    def denied():raise psutil.AccessDenied(200)
+    callbacks[('cmdline',200)]=denied
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed'] and {pid for pid,_ in signals}=={200,300}
+    # The admission proof persists even if a later sample can read argv normally.
+    assert {x['pid'] for x in result['observed']}=={100,200,300}
+    assert result['observation_errors']==[]
+
+
+def test_qualification_required_parent_metadata_denial_is_failure_without_foreign_signal(monkeypatch,tmp_path):
+    import io,psutil
+    qualify,graph,_,signals,_,_=_observed_process_graph(monkeypatch)
+    original=psutil.Process.ppid
+    def ppid(self):
+        if self.pid==200:raise psutil.AccessDenied(200)
+        return original(self)
+    monkeypatch.setattr(psutil.Process,'ppid',ppid)
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed'] and not signals and result['unknown_live']==[200]
+    assert result['observation_errors'] and result['uncertain_observations']
+    assert graph[200]['alive'] and graph[300]['alive']
+
+
+@pytest.mark.parametrize('disappear_on_read',[1,2])
+def test_qualification_natural_exit_during_child_or_parent_snapshot_is_not_a_live_error(monkeypatch,tmp_path,disappear_on_read):
+    import io,psutil
+    qualify,graph,_,signals,_,_=_observed_process_graph(monkeypatch)
+    graph[300]['alive']=False
+    original=psutil.Process.ppid;reads=[0]
+    def ppid(self):
+        if self.pid==200:
+            reads[0]+=1
+            if reads[0]==disappear_on_read:
+                graph[200]['alive']=False
+                raise psutil.NoSuchProcess(200)
+        return original(self)
+    monkeypatch.setattr(psutil.Process,'ppid',ppid)
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert result['passed'] and not signals
+    assert result['unknown_live']==[] and result['observation_errors']==[]
+    assert result['remaining_before_cleanup']==result['remaining_after_cleanup']==[]
+
+
+def test_qualification_foreign_candidates_never_expose_executable_or_command_line(monkeypatch):
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch,foreign=True)
+    graph[200]['argv']=['other-project','FOREIGN_TASK_OR_CREDENTIAL']
+    seen={(100,'root-10'):{'pid':100,'birth':'root-10'}};uncertain={};rejected={};errors={}
+    qualify._observe_process_family(seen,uncertain,rejected,errors)
+    calls=callbacks['diagnostic_calls']
+    assert calls.get((200,'exe'),0)==calls.get((200,'argv'),0)==calls.get((200,'name'),0)==0
+    assert calls.get((300,'exe'),0)==calls.get((300,'argv'),0)==0
+    assert not signals and not uncertain and not errors
+    assert {row['pid'] for row in rejected.values()}=={200}
+    assert 'FOREIGN_TASK_OR_CREDENTIAL' not in json.dumps([*rejected.values(),*uncertain.values(),*seen.values()])
+    assert not any(key in row for row in rejected.values() for key in ('name','exe','argv'))
+
+def external_terminal_lineage_fixture(tmp_path,monkeypatch):
+    """Use the real offline receipt and source-lineage checks at both call layers."""
+    import hashlib
+    import xml.etree.ElementTree as ET
+    producer=tmp_path/'producer';consumer=tmp_path/'consumer'
+    metadata,native,_=installed();scope={'target':native['target']}
+    names=acceptance.TERMINAL_EXECUTION_SOURCES|set(metadata['source_sha256'])|{'assemble_release_acceptance.py'}
+    for folder in [producer,consumer]:
+        for name in names:
+            path=folder/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixed '+name)
+    metadata['source_sha256']={name:acceptance.sha(producer/name) for name in metadata['source_sha256']}
+    metadata['adapter_source_sha256']={'src/adapter.py':metadata['source_sha256']['src/adapter.py']}
+    files={path.relative_to(producer).as_posix():acceptance.sha(path) for path in producer.rglob('*') if path.is_file()}
+    (tmp_path/'producer.manifest.json').write_text(json.dumps({'source_id':metadata['source_id'],'files':files,
+        'qa_sha256':hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest()}))
+    external=tmp_path/'external-offline';external.mkdir()
+    artifact={'installation':metadata,'native_manifest':native,'target':native['target'],
+              'baseline_matrix_sha256':acceptance.BASELINE_MATRIX_SHA256,
+              'entry':str(acceptance.PureWindowsPath(metadata['release_environment'])/'Scripts/codex-deepseek.exe'),
+              'entry_sha256':metadata['console_script_sha256'],'release':'fixed-release',
+              'tui_sandbox_mode':'workspace-write','required_local_methods':['local'],
+              'controller_environment':{'optimize':0,'windows_token':{'sid':'S-1-5-21-1-2-3-500','elevated':True}},
+              'selected_gates':['offline'],'verifier_source_sha256':acceptance.qa_python_hashes(producer)}
+    xml=ET.Element('testsuite');items=[]
+    for i,(name,reason) in enumerate([('test_current::test_pass',None),*acceptance.expected_offline_skips(native['target']).items()]):
+        module,case=name.split('::');classname='tests.'+module
+        node=ET.SubElement(xml,'testcase',classname=classname,name=case)
+        if reason:ET.SubElement(node,'skipped',type='pytest.skip',message=reason)
+        items.append({'nodeid':str(i),'classname':classname,'name':case})
+    ET.ElementTree(xml).write(external/'offline.xml',encoding='utf-8')
+    (external/'offline-collection.json').write_text(json.dumps({'schema_version':1,'deselected':0,'items':items}))
+    (external/'offline.log').write_text('complete test execution')
+    verdict={'passed':True,'entry_unchanged':True,'verifier_source_unchanged':True,'native_probes_unchanged':True,
+             'gates':[{'gate':'offline','exit':0,'log':'offline.log'}],
+             'offline_collection_sha256':acceptance.sha(external/'offline-collection.json'),
+             'offline_files_sha256':acceptance.offline_file_hashes(external)}
+    for name,value in [('artifact.json',artifact),('verdict.json',verdict),('results.json',verdict['gates'])]:
+        (external/name).write_text(json.dumps(value))
+    monkeypatch.setattr(acceptance,'SOURCE',producer)
+    receipt=acceptance.external_offline_receipt(external,metadata,native,scope)
+    runtime=tmp_path/'runtime';runtime.mkdir()
+    for name in acceptance.OFFLINE_FILES:(runtime/name).write_bytes((external/name).read_bytes())
+    runtime_artifact={**deepcopy(artifact),'selected_gates':sorted(acceptance.GATES),'external_offline':receipt,
+        'controller_environment':{'optimize':0,'windows_token':{'sid':'S-1-5-21-1-2-3-500','elevated':False}}}
+    rows=[({'gate':name,'exit':1 if name=='tui' else 0,'log':name+'.log'} if name!='offline'
+           else {**receipt['gate'],'execution':'separate_complete_offline_run','external_root':receipt['root']})
+          for name in sorted(acceptance.GATES)]
+    runtime_verdict={**deepcopy(verdict),'passed':False,'gates':rows,'external_offline_unchanged':True,
+                     'offline_files_sha256':acceptance.offline_file_hashes(runtime)}
+    for name,value in [('artifact.json',runtime_artifact),('verdict.json',runtime_verdict),('results.json',rows)]:
+        (runtime/name).write_text(json.dumps(value))
+    (consumer/'verify_tui_audit.py').write_text('current independently rerun terminal verifier')
+    monkeypatch.setattr(acceptance,'SOURCE',consumer)
+    replacement=tmp_path/'replacement';replacement.mkdir()
+    replacement_artifact={**deepcopy(runtime_artifact),'selected_gates':sorted(acceptance.TERMINAL_GATES),
+                          'verifier_source_sha256':acceptance.qa_python_hashes(consumer)}
+    replacement_rows=[{'gate':name,'exit':0,'log':name+'.log'} for name in sorted(acceptance.TERMINAL_GATES)]
+    replacement_verdict={**deepcopy(verdict),'gates':replacement_rows}
+    (replacement/'artifact.json').write_text(json.dumps(replacement_artifact))
+    (replacement/'verdict.json').write_text(json.dumps(replacement_verdict))
+    return metadata,native,scope,producer,consumer,external,runtime,runtime_artifact,runtime_verdict,replacement
+
+
+@pytest.mark.parametrize('change',['terminal_revalidated','terminal_without_revalidation','shared_helper',
+                                   'shared_terminal_helper','failed_replacement','raw_external_changed','both'])
+def test_external_offline_lineage_propagates_only_verified_terminal_revalidation(tmp_path,monkeypatch,change):
+    metadata,native,scope,producer,consumer,external,runtime,artifact,verdict,replacement=external_terminal_lineage_fixture(tmp_path,monkeypatch)
+    before={str(p):acceptance.sha(p) for folder in [external,runtime] for p in folder.iterdir()}
+    terminal=False
+    if change!='terminal_without_revalidation':
+        effective,lineage=acceptance.validate_standard_gates(artifact,verdict,replacement)
+        assert lineage['original_failed_gates']==['tui'] and len(effective)==30 and all(row['exit']==0 for row in effective)
+        terminal=True
+    if change=='shared_helper':(consumer/'verify_live.py').write_text('foreign shared helper')
+    elif change=='shared_terminal_helper':(consumer/'terminal_acceptance.py').write_text('foreign terminal helper')
+    elif change=='raw_external_changed':(external/'offline.log').write_text('mutated after receipt')
+    elif change=='failed_replacement':
+        value=json.loads((replacement/'verdict.json').read_text());value['gates'][0]['exit']=1
+        (replacement/'verdict.json').write_text(json.dumps(value))
+        with pytest.raises(SystemExit):acceptance.validate_standard_gates(artifact,verdict,replacement)
+        return
+    options={'producer_snapshot':producer,'terminal_revalidated':terminal,'oauth_revalidated':change=='both'}
+    if change=='terminal_revalidated':
+        proof=acceptance.validate_offline_run(runtime,metadata,native,scope,**options)
+        assert proof['tests_passed']==1 and proof['external_execution']==artifact['external_offline']
+        assert all(acceptance.sha(path)==digest for path,digest in before.items())
+        assert acceptance.load(runtime/'verdict.json')['passed'] is False
+    else:
+        with pytest.raises(SystemExit):acceptance.validate_offline_run(runtime,metadata,native,scope,**options)
+    if change=='both':
+        with pytest.raises(SystemExit,match='mutually exclusive'):
+            acceptance.external_offline_receipt(external,metadata,native,scope,**options)

@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "status": "component_identity_verified",
+  "qualified_source_id": "d69a4edd5b8de66f3db3",
+  "derivative_source_id": "cf9f19eaf67b0fdd8151",
+  "scope": "Actual installed component bytes and source-input lineage only; the derivative is not a re-signing of the frozen qualification run.",
+  "frozen_qualification": {
+    "source_id": "d69a4edd5b8de66f3db3",
+    "accepted_seal_sha256": "e2519a51da86da580ff017dcfb570d1d41a517ed62ddf532698fe04afe67723f",
+    "acceptance_sha256": "e7157b9ac464864329dbd2267ae435f19d0e852f89d0ea4823738c154151e135",
+    "accepted_source_archive_sha256": "9b0f121f902341b57008069702d718879c50b6e94325b883fb2af7d7878d5a2a",
+    "original_failures_preserved": true,
+    "single_run_all_passed": false
+  },
+  "installed_components": {
+    "adapter_runtime": {
+      "files": 29,
+      "all_actual_source_bytes_equal": true,
+      "inventory_sha256": "216b3f1bcd2eed009a85216f17b9f3926746af2e5477bb07a1762481b5da33a7"
+    },
+    "catalog": {
+      "actual_bytes_equal": true,
+      "sha256": "1cff11a28c2ad3d39a1d4668e107218dda74007a619be661e37b9c6d568f7128"
+    },
+    "dependency_lock": {
+      "source_lock_bytes_equal": true,
+      "both_installation_metadata_match_actual_lock": true,
+      "sha256": "18353fc620c19077a405888594359252f43c6800259bdd6f54871b152a59cbf9",
+      "installed_distribution_metadata": {
+        "distributions": 49,
+        "names_versions_and_METADATA_bytes_equal": true,
+        "full_third_party_payload_hashing_claimed": false
+      }
+    },
+    "native_runtime_manifest": {
+      "actual_installed_bytes_equal": true,
+      "sha256": "892fdd523f59264915862be392a9c36ee5f2ed7d1cfd689533658f117f5d9455"
+    },
+    "native_payload": {
+      "files": 2991,
+      "bytes_per_installation": 627694631,
+      "all_actual_file_sha256_match_the_same_manifest": true,
+      "no_extra_missing_or_linked_files": true,
+      "inventory_sha256": "621e54bcb4e81906fec64be3af2022b9bace29e94a1a253f96500c32698dd936",
+      "inventory_algorithm": "SHA256 of compact sorted-key UTF8 JSON array sorted by relative path, each row path/sha256/size"
+    },
+    "native_cli_sha256": "9cc36d6ff0310dfd7b07342976808867dde8c2ee58006848f2d1ca070fd1193a",
+    "native_build_receipt_sha256": "22e49a8a93c9113a8e7b022b5189dfa73c315e440f43b5b1c8429179c775efbe",
+    "native_archive_sha256": "611c2c2639acfcda880ee092c81392b4c2f75bfb348bbb476d0f3bb4e0a35161",
+    "native_recipe_id": "048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15"
+  },
+  "product_source_inputs": {
+    "files_per_release": 99,
+    "unchanged_files": 97,
+    "changed_files": [
+      {
+        "path": "native/runtime-x86_64-pc-windows-msvc.json",
+        "qualified_sha256": "2d184b589d3ba3c047d7ed15f33891e50be9ad2f2d2e51d244db04a020141bc3",
+        "derivative_sha256": "fcf70c2706c1d73f8a33c3c3daf583f886214795e4be6adcb3dfe356c6be5fe6"
+      },
+      {
+        "path": "package_native.py",
+        "qualified_sha256": "d51af0cf805933c60a8d36c89d4ffe7e3d9b2618ea55d3e9a732406e902d2631",
+        "derivative_sha256": "22a690cdaba815e90cb237a2996d12486aac6928255ef38cd9e62c6f447746e4"
+      }
+    ],
+    "package_native_py_change": "Only explicit newline=\"\\n\" added when writing generated native manifest",
+    "windows_manifest_change": {
+      "CRLF_to_LF_only": true,
+      "parsed_JSON_equal": true
+    },
+    "current_public_source_matches_derivative_metadata": true,
+    "QA_upgrade_files_are_not_in_product99": [
+      "verify_mixed_stream_faults.py",
+      "tests/test_native_payload_retry.py",
+      "tests/test_owned_observer_consumers.py",
+      "windows_acceptance_setup.py",
+      "tests/test_windows_acceptance_setup.py"
+    ]
+  },
+  "entrypoint": {
+    "qualified_sha256": "7fc1869646a4de25e78279197df5023d63fc9d6e708351923cea5e9973d3dfff",
+    "derivative_sha256": "fcd7f5f9943062bc253bda333564199564a486bf7a3930959a910ad76f177610",
+    "whole_entry_bytes_equal": false,
+    "common_PE_stub_sha256": "81a618f21cb87db9076134e70388b6e9cb7c2106739011b6a51772d22cae06b7",
+    "embedded_script_AST_equal_after_exact_deployment_path_substitution": true,
+    "each_shebang_points_to_its_own_release_python": true,
+    "new_entry_health": "separate independent validation; not evaluated by this proof"
+  },
+  "metadata_changed_fields": [
+    "console_script_sha256",
+    "native_package",
+    "release_environment",
+    "release_id",
+    "source_id",
+    "source_sha256"
+  ],
+  "evidence": {
+    "private_input_inventory_sha256": "33b4f62d393c07a9595f4e624810f089fa85635b94f332c2247ff7ff8778af5c",
+    "contains_no_prompts_credentials_or_databases": true
+  },
+  "limits": {
+    "frozen_D69_raw_tests_relabelled_as_CF9": false,
+    "native_or_model_execution_in_this_comparison": false,
+    "hosted_CI_success_claimed": false,
+    "model_smoke_success_claimed": false,
+    "new_entry_health_success_claimed": false,
+    "current_offline_result_claimed": false
+  }
+}

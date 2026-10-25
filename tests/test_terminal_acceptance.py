@@ -37,18 +37,102 @@ def test_tui_reply_assertion_rejects_prompt_and_replayed_history():
 def test_interrupt_requires_yielded_native_session_bound_to_fixture_call(tmp_path):
     from verify_tui_interrupt import yielded_background_session
     path=tmp_path/'rollout.jsonl'
-    call={'type':'custom_tool_call','call_id':'owned','input':'exec_command interrupt_fixture.py'}
+    call={'type':'function_call','name':'exec_command','call_id':'owned',
+          'arguments':json.dumps({'cmd':'python interrupt_fixture.py'})}
     def check(output,call_id='owned',source=call):
-        rows=[{'type':'response_item','payload':source},{'type':'response_item','payload':{'type':'custom_tool_call_output','call_id':call_id,'output':output}}]
+        rows=[{'type':'response_item','payload':source},{'type':'response_item','payload':{'type':'function_call_output','call_id':call_id,'output':output}}]
         path.write_text('\n'.join(json.dumps(row) for row in rows),encoding='utf-8')
         return yielded_background_session(path,'interrupt_fixture.py')
     assert not check('aborted by user after 1.0s')
     assert not check('{"session_id":null}')
     assert not check('{"session_id":123}',call_id='unrelated')
-    assert not check('{"session_id":123}',source={**call,'input':'exec_command other.py'})
-    assert check(json.dumps([{'type':'text','text':json.dumps({'session_id':123,'output':'ALIVE'})}]))=={'call_id':'owned','session_id':'123'}
+    assert not check('{"session_id":123}',source={**call,'arguments':json.dumps({'cmd':'python other.py'})})
+    result=check(json.dumps([{'type':'input_text','text':json.dumps({'session_id':123,'output':'ALIVE'})}]))
+    assert result['call_id']=='owned' and result['session_id']=='123'
     path.write_text(json.dumps({'type':'event_msg','payload':{'type':'turn_aborted'}})+'\n'+path.read_text(encoding='utf-8'),encoding='utf-8')
     assert not yielded_background_session(path,'interrupt_fixture.py')
+
+
+def _interrupt_async_rows(tmp_path):
+    cwd=tmp_path.resolve();fixture=cwd/'interrupt_fixture.py';thread='fixture-thread';turn='fixture-turn'
+    code='const r = await tools.exec_command('+json.dumps({'cmd':'python '+str(fixture),'workdir':str(cwd),'yield_time_ms':1000})+'); text(JSON.stringify(r));'
+    rows=[
+        {'type':'session_meta','payload':{'id':thread,'cwd':str(cwd)}},
+        {'type':'event_msg','payload':{'type':'task_started','turn_id':turn}},
+        {'type':'turn_context','payload':{'turn_id':turn,'cwd':str(cwd)}},
+        {'type':'response_item','payload':{'type':'custom_tool_call','name':'exec','call_id':'owned','input':code}},
+        {'type':'response_item','payload':{'type':'custom_tool_call_output','call_id':'owned','output':'Script running with cell ID 1\nWall time 1.0 seconds\nOutput:\n'}},
+        {'type':'response_item','payload':{'type':'function_call','name':'wait','call_id':'wait-one','arguments':'{"cell_id":"1"}'}},
+        {'type':'response_item','payload':{'type':'function_call_output','call_id':'wait-one','output':'Script running with cell ID 1\nWall time 1.0 seconds\nOutput:\n'}},
+        {'type':'response_item','payload':{'type':'function_call','name':'wait','call_id':'wait-two','arguments':'{"cell_id":"1"}'}},
+        {'type':'response_item','payload':{'type':'function_call_output','call_id':'wait-two','output':[{'type':'input_text','text':'Script completed\nWall time 1.0 seconds\nOutput:\n'},{'type':'input_text','text':'{"session_id":123,"output":"ALIVE"}'}]}}
+    ]
+    return rows,{'expected_thread':thread,'expected_turn':turn,'expected_cwd':cwd,'expected_fixture':fixture,'expected_command':'python '+str(fixture)}
+
+
+def _check_interrupt_rows(tmp_path,rows,scope):
+    from verify_tui_interrupt import yielded_background_session
+    path=tmp_path/'async-rollout.jsonl';path.write_text('\n'.join(json.dumps(row) for row in rows)+'\n',encoding='utf-8')
+    return yielded_background_session(path,'interrupt_fixture.py',**scope)
+
+
+def test_interrupt_async_exec_cell_wait_preserves_native_provenance(tmp_path):
+    rows,scope=_interrupt_async_rows(tmp_path)
+    result=_check_interrupt_rows(tmp_path,rows,scope)
+    assert result['call_id']=='owned' and result['result_call_id']=='wait-two'
+    assert result['session_id']=='123' and result['cell_id']=='1'
+    assert result['call_chain']==['owned','wait-one','wait-two']
+    assert result['thread_id']==scope['expected_thread'] and result['turn_id']==scope['expected_turn']
+
+
+@pytest.mark.parametrize('mutation',[
+    'wrong-cell','wrong-output-call','other-fixture','missing-original-exec',
+    'cross-turn','cross-thread','wrong-cwd','duplicate-output','assistant-text',
+    'no-exec-command','printed-cell-header','aborted-turn','duplicate-session',
+    'completed-turn','already-exited-session',
+    'foreign-fixture-literal','comment-fake-call','string-fake-call','print-fake-session',
+    'reassigned-result','prefixed-exit-real-newlines','prefixed-exit-literal-newlines',
+    'text-block-prefixed-exit','native-header-exited','opaque-embedded-session'
+])
+def test_interrupt_async_provenance_rejects_missing_or_foreign_evidence(tmp_path,mutation):
+    import copy
+    rows,scope=_interrupt_async_rows(tmp_path)
+    if mutation=='wrong-cell':
+        for row in rows:
+            item=row['payload']
+            if item.get('name')=='wait':item['arguments']='{"cell_id":"2"}'
+    elif mutation=='wrong-output-call':rows[-1]['payload']['call_id']='foreign'
+    elif mutation=='other-fixture':rows[3]['payload']['input']=rows[3]['payload']['input'].replace('interrupt_fixture.py','other_fixture.py')
+    elif mutation=='missing-original-exec':rows=[row for row in rows if row['payload'].get('call_id')!='owned']
+    elif mutation=='cross-turn':rows[-1]['payload']['internal_chat_message_metadata_passthrough']={'turn_id':'foreign'}
+    elif mutation=='cross-thread':scope={**scope,'expected_thread':'foreign'}
+    elif mutation=='wrong-cwd':scope={**scope,'expected_cwd':tmp_path/'foreign'}
+    elif mutation=='duplicate-output':rows.append(copy.deepcopy(rows[-1]))
+    elif mutation=='assistant-text':rows[-1]={'type':'response_item','payload':{'type':'message','role':'assistant','content':[{'type':'output_text','text':'{"session_id":123}'}]}}
+    elif mutation=='no-exec-command':rows[3]['payload']['input']='text(JSON.stringify({session_id:123})); // '+str(scope['expected_fixture'])
+    elif mutation=='printed-cell-header':rows[4]['payload']['output']='Script completed\nOutput:\nScript running with cell ID 1\n'
+    elif mutation=='aborted-turn':rows.insert(-1,{'type':'event_msg','payload':{'type':'turn_aborted','turn_id':scope['expected_turn']}})
+    elif mutation=='duplicate-session':
+        extra=copy.deepcopy(rows[3]);extra['payload']['call_id']='second-exec'
+        rows.extend([extra,{'type':'response_item','payload':{'type':'custom_tool_call_output','call_id':'second-exec','output':'{"session_id":123}'}}])
+    elif mutation=='completed-turn':rows.append({'type':'event_msg','payload':{'type':'task_complete','turn_id':scope['expected_turn']}})
+    elif mutation=='already-exited-session':rows[-1]['payload']['output']='{"session_id":123,"exit_code":0}'
+    elif mutation=='foreign-fixture-literal':
+        rows[3]['payload']['input']='const label='+json.dumps(str(scope['expected_fixture']))+'; const r=await tools.exec_command({cmd:"echo other"}); text(JSON.stringify(r));'
+    elif mutation=='comment-fake-call':
+        rows[3]['payload']['input']='// await tools.exec_command({cmd:'+json.dumps(scope['expected_command'])+'});\ntext(JSON.stringify({session_id:123}));'
+    elif mutation=='string-fake-call':
+        rows[3]['payload']['input']='const label='+json.dumps('await tools.exec_command({cmd:'+json.dumps(scope['expected_command'])+'});')+'; text(JSON.stringify({session_id:123}));'
+    elif mutation=='print-fake-session':
+        rows[3]['payload']['input']='const r=await tools.exec_command('+json.dumps({'cmd':scope['expected_command']})+'); text(JSON.stringify({session_id:123}));'
+    elif mutation=='reassigned-result':
+        rows[3]['payload']['input']='let r=await tools.exec_command('+json.dumps({'cmd':scope['expected_command']})+'); r={session_id:123}; text(JSON.stringify(r));'
+    elif mutation=='prefixed-exit-real-newlines':rows[-1]['payload']['output']='Script completed\nOutput:\n{"session_id":123,"exit_code":0}'
+    elif mutation=='prefixed-exit-literal-newlines':rows[-1]['payload']['output']=r'Script completed\nOutput:\n{"session_id":123,"exit_code":0}'
+    elif mutation=='text-block-prefixed-exit':rows[-1]['payload']['output']=[{'type':'input_text','text':'Script completed\nOutput:\n{"session_id":123,"exit_code":0}'}]
+    elif mutation=='native-header-exited':rows[-1]['payload']['output']='Script completed\nWall time 1.0 seconds\nOutput:\n{"session_id":123,"exit_code":0}'
+    elif mutation=='opaque-embedded-session':rows[-1]['payload']['output']='untrusted program text {"session_id":123} with trailing diagnostic'
+    assert not _check_interrupt_rows(tmp_path,rows,scope)
 
 
 def collect_until(child,predicate,timeout=12):
@@ -120,3 +204,68 @@ while True:time.sleep(.1)
         birth=identity(child.pid);assert birth and matches(child.pid,birth)
     finally:child.close()
     assert not matches(child.pid,birth),'Failed fixture survived terminal cleanup'
+
+
+@pytest.mark.parametrize('shape',['json-object','json-content-array','native-header-json','text-block-native-header'])
+def test_interrupt_native_running_output_shapes_are_explicit(tmp_path,shape):
+    rows,scope=_interrupt_async_rows(tmp_path)
+    value={'session_id':123,'output':'ALIVE'}
+    if shape=='json-object':output=json.dumps(value)
+    elif shape=='json-content-array':output=json.dumps([{'type':'input_text','text':json.dumps(value)}])
+    elif shape=='native-header-json':output='Script completed\nWall time 1.0 seconds\nOutput:\n'+json.dumps(value)
+    else:output=[{'type':'input_text','text':'Script completed\nWall time 1.0 seconds\nOutput:\n'+json.dumps(value)}]
+    rows[-1]['payload']['output']=output
+    assert _check_interrupt_rows(tmp_path,rows,scope)['session_id']=='123'
+
+
+def _execute_tui_fixture_command(tmp_path,phase):
+    import subprocess
+    from verify_tui_audit import fixture_command
+    command=fixture_command(phase)
+    interpreter=[str(Path(os.environ['SystemRoot'])/'System32/WindowsPowerShell/v1.0/powershell.exe'),'-NoProfile','-NonInteractive','-Command',command] if os.name=='nt' else ['bash','-lc',command]
+    return subprocess.run(interpreter,cwd=tmp_path,capture_output=True,text=True,encoding='utf-8',timeout=20)
+
+
+def test_tui_fixed_commands_write_exact_bytes_and_cold_phase_reads_unchanged_prior_file(tmp_path):
+    first=_execute_tui_fixture_command(tmp_path,'initial')
+    assert first.returncode==0,first.stderr
+    assert (tmp_path/'tui-first.txt').read_bytes()==b'TUI_FIRST_5271' and 'TUI_FIXTURE_BYTES=14' in first.stdout
+    resumed=_execute_tui_fixture_command(tmp_path,'cold-resume')
+    assert resumed.returncode==0,resumed.stderr
+    assert (tmp_path/'tui-first.txt').read_bytes()==b'TUI_FIRST_5271'
+    assert (tmp_path/'tui-resumed.txt').read_bytes()==b'TUI_FIRST_5271_RESUMED' and 'TUI_FIXTURE_BYTES=22' in resumed.stdout
+
+
+@pytest.mark.parametrize('wrong',[None,b'TUI_FIRST_5271\n',b'FOREIGN'])
+def test_tui_cold_command_cannot_hide_missing_or_wrong_prior_bytes(tmp_path,wrong):
+    if wrong is not None:(tmp_path/'tui-first.txt').write_bytes(wrong)
+    result=_execute_tui_fixture_command(tmp_path,'cold-resume')
+    assert result.returncode!=0 and not (tmp_path/'tui-resumed.txt').exists()
+
+
+@pytest.mark.parametrize('state',['missing','LF','wrong','directory'])
+def test_tui_completed_wrong_effect_fails_immediately_without_changing_the_oracle(tmp_path,state):
+    from verify_tui_audit import completed_file_effect
+    target=tmp_path/'result'
+    if state=='LF':target.write_bytes(b'EXACT\n')
+    elif state=='wrong':target.write_bytes(b'OTHER')
+    elif state=='directory':target.mkdir()
+    assert completed_file_effect(target,b'EXACT',set()) is False
+    with pytest.raises(AssertionError,match='required file effect|incorrect file bytes'):
+        completed_file_effect(target,b'EXACT',{'own-rollout'})
+
+
+def test_tui_completed_correct_effect_still_waits_for_real_assistant_render(tmp_path):
+    from verify_tui_audit import completed_file_effect,rendered_reply
+    target=tmp_path/'result';target.write_bytes(b'EXACT');reply='TUI_VERIFIED_INITIAL_5271'
+    effect=completed_file_effect(target,b'EXACT',{'own-rollout'})
+    assert effect and not rendered_reply(('User asks '+reply).encode(),reply)
+    assert effect and rendered_reply(('• '+reply).encode(),reply)
+
+
+def test_tui_fixed_prompt_contains_the_exact_command_and_rejects_unknown_phase():
+    from verify_tui_audit import fixture_prompt,fixture_command
+    for phase in ['initial','cold-resume']:
+        prompt=fixture_prompt(phase,'EXACT_REPLY')
+        assert fixture_command(phase) in prompt and 'native exec' in prompt and 'apply_patch' in prompt
+    with pytest.raises(ValueError):fixture_command('foreign')

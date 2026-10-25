@@ -64,13 +64,18 @@ def test_artifact_metadata_cannot_select_another_or_expired_input(bad):
 
 def selected_fixture(tmp_path,monkeypatch):
     (tmp_path/"native").mkdir()
-    recipe=b"exact recipe";(tmp_path/"native/runtime-overlays.json").write_bytes(recipe)
+    recipe=json.dumps({"schema":1,"upstream_commit":"c"*40,"upstream_toolchain":"1.99.0",
+        "build_toolchain":"1.99.1","required_base_inputs":{"aarch64-apple-darwin":[],
+        "x86_64-unknown-linux-gnu":[],"x86_64-pc-windows-msvc":[]},"overlays":[]}).encode()
+    (tmp_path/"native/runtime-overlays.json").write_bytes(recipe)
     manifest={"target":"aarch64-apple-darwin","distribution_version":"0.6.2","status":"ready",
               "archive":{"sha256":"e"*64},"files":{"build-receipt.json":"f"*64}}
+    from build_native import native_recipe_identity
+    manifest["native_recipe_id"]=native_recipe_identity("aarch64-apple-darwin",json.loads(recipe))
     path=tmp_path/"native/runtime.json";path.write_text(json.dumps(manifest))
     pin={"manifest":"runtime.json","manifest_sha256":reuse.sha(path),"archive_sha256":"e"*64,
          "receipt_sha256":"f"*64,"file_count":1}
-    pins=pins_fixture();pins.update(recipe_sha256=digest(recipe),targets={"aarch64-apple-darwin":pin})
+    pins=pins_fixture();pins.update(recipe_sha256=digest(recipe),current_recipe_sha256=digest(recipe),targets={"aarch64-apple-darwin":pin})
     monkeypatch.setattr(reuse,"ROOT",tmp_path)
     return pins,pin,path,manifest
 
@@ -247,3 +252,79 @@ def test_actions_source_requires_explicit_token_before_network(tmp_path,monkeypa
     with pytest.raises(ValueError,match="token"):
         reuse.acquire_inputs(pins,pin,manifest,tmp_path)
     assert calls==[]
+
+
+def equivalence_fixture(tmp_path,monkeypatch,target):
+    from build_native import native_recipe_identity
+    (tmp_path/"native").mkdir()
+    original={"schema":1,"upstream_commit":"c"*40,"upstream_toolchain":"1.99.0",
+              "build_toolchain":"1.99.1","required_base_inputs":{"aarch64-apple-darwin":[],
+              "x86_64-unknown-linux-gnu":[],"x86_64-pc-windows-msvc":[]},"overlays":[]}
+    current=deepcopy(original)
+    current["required_base_inputs"]["x86_64-pc-windows-msvc"]=[{"file":"windows-base.patch","sha256":"d"*64}]
+    current["overlays"].append({"file":"windows-only.patch","sha256":"e"*64,
+        "changes_by_target":{"x86_64-pc-windows-msvc":[{"path":"windows.rs","fork_sha256":"f"*64}]}})
+    archived=tmp_path/"original-runtime-overlays.json";archived.write_text(json.dumps(original))
+    path=tmp_path/"native/runtime-overlays.json";path.write_text(json.dumps(current))
+    native_id=native_recipe_identity(target,original)
+    pins=pins_fixture();pins.update(recipe_sha256=reuse.sha(archived),recipe_bytes=archived.stat().st_size,
+                                   current_recipe_sha256=reuse.sha(path))
+    manifest={"native_recipe_id":native_id}
+    receipt={"native_recipe_id":native_id,"overlay_recipe_sha256":pins["recipe_sha256"]}
+    monkeypatch.setattr(reuse,"ROOT",tmp_path)
+    return pins,manifest,receipt,archived,path,current
+
+@pytest.mark.parametrize("target",["aarch64-apple-darwin","x86_64-unknown-linux-gnu"])
+def test_windows_only_full_recipe_delta_preserves_original_unix_compilation_identity(tmp_path,monkeypatch,target):
+    pins,manifest,receipt,archived,path,current=equivalence_fixture(tmp_path,monkeypatch,target)
+    assert pins["recipe_sha256"]!=pins["current_recipe_sha256"]
+    proof=reuse.target_recipe_equivalence(pins,target,manifest,receipt,archived)
+    assert proof["target_recipe_id"]==manifest["native_recipe_id"]==receipt["native_recipe_id"]
+    assert proof["original_compilation_recipe_sha256"]==reuse.sha(archived)
+    assert proof["current_validation_recipe_sha256"]==reuse.sha(path)
+    assert not proof["full_recipe_equal"] and proof["native_builds"]==0
+    # Retain the existing, stricter archived-recipe package guard.
+    from ci import qualify_native as native
+    monkeypatch.setattr(native,"ROOT",tmp_path)
+    assert native.recipe_scope_identity(receipt,current,target,archived)["only_windows_recipe_changes"] is True
+
+@pytest.mark.parametrize("target",["aarch64-apple-darwin","x86_64-unknown-linux-gnu"])
+@pytest.mark.parametrize("bad",["current-unpinned","archived-unpinned","manifest-id","receipt-id","receipt-full-recipe",
+                               "selected-base","selected-overlay","selected-upstream","selected-toolchain"])
+def test_target_equivalence_rejects_input_or_selected_target_drift(tmp_path,monkeypatch,target,bad):
+    pins,manifest,receipt,archived,path,current=equivalence_fixture(tmp_path,monkeypatch,target)
+    if bad=="current-unpinned":path.write_text(path.read_text()+"\n")
+    elif bad=="archived-unpinned":archived.write_text(archived.read_text()+"\n")
+    elif bad=="manifest-id":manifest["native_recipe_id"]="0"*64
+    elif bad=="receipt-id":receipt["native_recipe_id"]="0"*64
+    elif bad=="receipt-full-recipe":receipt["overlay_recipe_sha256"]=pins["current_recipe_sha256"]
+    else:
+        if bad=="selected-base":current["required_base_inputs"][target]=[{"file":"changed.patch","sha256":"a"*64}]
+        elif bad=="selected-overlay":current["overlays"].append({"file":"shared.patch","sha256":"b"*64,
+            "changes_by_target":{target:[{"path":"shared.rs","fork_sha256":"a"*64}]}})
+        elif bad=="selected-upstream":current["upstream_commit"]="d"*40
+        elif bad=="selected-toolchain":current["build_toolchain"]="9.9.9"
+        path.write_text(json.dumps(current));pins["current_recipe_sha256"]=reuse.sha(path)
+    with pytest.raises(ValueError):reuse.target_recipe_equivalence(pins,target,manifest,receipt,archived)
+
+@pytest.mark.parametrize("current", [None,"","PENDING_ROOT_SOLEWRITER_FINAL_FULL_RECIPE_SHA256","g"*64,"A"*64])
+def test_current_full_recipe_pin_is_mandatory_and_never_derived_implicitly(tmp_path,monkeypatch,current):
+    pins,pin,path,manifest=selected_fixture(tmp_path,monkeypatch)
+    pins["current_recipe_sha256"]=current
+    with pytest.raises(ValueError,match="explicit current full recipe"):
+        reuse.selected_pin(pins,"aarch64-apple-darwin")
+
+def test_current_selected_target_must_equal_manifest_before_download(tmp_path,monkeypatch):
+    pins,pin,path,manifest=selected_fixture(tmp_path,monkeypatch)
+    recipe_path=tmp_path/"native/runtime-overlays.json";recipe=json.loads(recipe_path.read_bytes())
+    recipe["required_base_inputs"]["aarch64-apple-darwin"]=[{"file":"changed.patch","sha256":"c"*64}]
+    recipe_path.write_text(json.dumps(recipe));pins["current_recipe_sha256"]=reuse.sha(recipe_path)
+    with pytest.raises(ValueError,match="selected target recipe"):
+        reuse.selected_pin(pins,"aarch64-apple-darwin")
+
+def test_stable_recipe_download_still_uses_original_build_recipe_not_new_windows_file():
+    pins,pin,manifest=release_fixture()
+    pins["current_recipe_sha256"]="c"*64
+    inputs=reuse.release_inputs(pins,pin,manifest)
+    assert inputs["recipe"]["sha256"]==pins["recipe_sha256"]=="a"*64
+    assert inputs["recipe"]["url"].endswith("/native-build-recipe-5c9e004f.json")

@@ -15,6 +15,7 @@ from codex_deepseek.platforms import private_directory
 from codex_deepseek.service import native_active
 from credential_acceptance import private_file
 from terminal_acceptance import terminal,write_qa_receipt
+from process_acceptance import python_command,shell_command
 
 
 def plain_terminal(transcript):
@@ -83,6 +84,38 @@ def stop_daemon(entry,root,label,record):
     assert not native_active(root/'home'),'Own native daemon remains active after its stop command'
 
 
+
+def fixture_command(phase):
+    """Fixed byte fixture, independent of a model's choice of text-editing tool."""
+    if phase=='initial':
+        program=("from pathlib import Path; p=Path('tui-first.txt'); data=b'TUI_FIRST_5271'; "
+                 "p.write_bytes(data); actual=p.read_bytes(); assert actual==data; "
+                 "print('TUI_FIXTURE_BYTES='+str(len(actual)))")
+    elif phase=='cold-resume':
+        program=("from pathlib import Path; before=Path('tui-first.txt').read_bytes(); "
+                 "assert before==b'TUI_FIRST_5271'; data=before+b'_RESUMED'; "
+                 "p=Path('tui-resumed.txt'); p.write_bytes(data); actual=p.read_bytes(); "
+                 "assert actual==data; print('TUI_FIXTURE_BYTES='+str(len(actual)))")
+    else:raise ValueError('Unknown TUI fixture phase')
+    return shell_command(python_command(program))
+
+
+def fixture_prompt(phase,reply):
+    prefix='Continue the saved session. ' if phase=='cold-resume' else ''
+    return (prefix+'Do not delegate. This is an exact-byte terminal fixture. Run exactly the following command '
+            'with the native exec tool from the current workspace; do not replace it with apply_patch or another '
+            'writing strategy. The command writes and verifies the exact bytes. Wait for its successful result '
+            'before finishing. Command: '+fixture_command(phase)+'\nYour final assistant message must be exactly '
+            +reply+' with no other text, explanation, formatting or punctuation.')
+
+
+def completed_file_effect(target,expected,completed):
+    if not completed:return False
+    assert target.is_file(),'TUI completed without its required file effect'
+    assert target.read_bytes()==expected,'TUI completed with incorrect file bytes'
+    return True
+
+
 def session(entry,root,arguments,target,expected,label,backend,reply,prior=None):
     environment={**os.environ,'TERM':'xterm-256color','CODEX_DEEPSEEK_HOME':str(root/'home'),
                      'CODEX_TUI_RECORD_SESSION':'1','CODEX_TUI_SESSION_LOG_PATH':str(root/(label+'-native-session.jsonl')),
@@ -111,7 +144,7 @@ def session(entry,root,arguments,target,expected,label,backend,reply,prior=None)
                         except ValueError:continue
                         payload=event.get('payload',{})
                         if event.get('type')=='event_msg' and payload.get('type')=='task_complete' and payload.get('last_agent_message')==reply:completed.add(rollout)
-            if target.exists() and target.read_bytes()==expected.encode('utf-8') and completed and rendered_reply(transcript,reply):break
+            if completed_file_effect(target,expected.encode('utf-8'),completed) and rendered_reply(transcript,reply):break
         else:raise TimeoutError('Native TUI did not finish its actual file operation')
         assert target.exists() and target.read_bytes()==expected.encode('utf-8'),'TUI tool effect missing or bytes differ'
         assert rendered_reply(transcript,reply),'TUI final response missing'
@@ -182,13 +215,13 @@ def main():
     entry=args.entry.resolve();results=[];backend=expected_backend()
     from windows_acceptance_setup import prepare_terminal_fixture
     prepare_terminal_fixture(root,entry)
-    write_qa_receipt(root,entry,['verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'])
-    prompt='Do not delegate. Use native tools to write tui-first.txt containing exactly TUI_FIRST_5271 with no trailing newline and read it back. Your final assistant message must be exactly TUI_VERIFIED_INITIAL_5271 with no other text, explanation, formatting or punctuation.'
+    write_qa_receipt(root,entry,['verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','process_acceptance.py'])
+    prompt=fixture_prompt('initial','TUI_VERIFIED_INITIAL_5271')
     try:
         results.append(session(entry,root,['--no-alt-screen','-C',str(work),prompt],root/'work/tui-first.txt','TUI_FIRST_5271','initial',backend,'TUI_VERIFIED_INITIAL_5271'))
         if backend!='shared':
             assert not native_active(root/'home'),'Embedded native TUI survived its clean terminal exit'
-        prompt='Continue the saved session. Read tui-first.txt and write tui-resumed.txt containing exactly its stripped content followed by _RESUMED with no trailing newline. Read it back. Your final assistant message must be exactly TUI_VERIFIED_RESUMED_5271 with no other text, explanation, formatting or punctuation. Do not delegate.'
+        prompt=fixture_prompt('cold-resume','TUI_VERIFIED_RESUMED_5271')
         results.append(session(entry,root,['--no-alt-screen','-C',str(work),'resume','--last',prompt],root/'work/tui-resumed.txt','TUI_FIRST_5271_RESUMED','cold-resume',backend,'TUI_VERIFIED_RESUMED_5271',prior=results[0]))
     finally:
         stopped=None

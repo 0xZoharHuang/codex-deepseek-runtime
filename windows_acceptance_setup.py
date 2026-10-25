@@ -266,6 +266,10 @@ def _validate_request(manifest, request, request_id):
 
 
 def _provision(manifest, home, output):
+    # The High provisioner observes only proven direct parent edges. Uncertain
+    # associations are diagnostic state and never become signal ownership.
+    from ci.qualify_native import _observe_process_family
+    from codex_deepseek.processes import identity, matches, terminate
     native = Path(manifest["native_binary"])
     if digest(native) != manifest["native_sha256"]:
         raise ValueError("Frozen native setup executable changed")
@@ -278,72 +282,72 @@ def _provision(manifest, home, output):
     env.update(CODEX_HOME=str(home), CODEX_DEEPSEEK_POLICY_HOME=str(home), PYTHONDONTWRITEBYTECODE="1")
     command = [str(native), "sandbox", "setup", "--elevated", "--user",
                manifest["target_user"], "--codex-home", str(home)]
-    descendants = {}
+    owned, uncertain, rejected, observation_errors = {}, {}, {}, {}
     with (output / "native.stdout").open("wb") as stdout, (output / "native.stderr").open("wb") as stderr:
         process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr)
         native_pid = process.pid
         deadline = time.monotonic() + manifest["request_timeout_seconds"]
         failed = True
         try:
+            birth = identity(native_pid)
+            if birth is None:
+                raise RuntimeError("Created provisioner has no stable process identity")
+            owned[(native_pid, birth)] = {"pid": native_pid, "birth": birth, "ownership": "created_Popen_handle"}
             while process.poll() is None:
-                try:
-                    children = psutil.Process(native_pid).children(recursive=True)
-                except psutil.NoSuchProcess:
-                    children = []
-                for child in children:
-                    try:
-                        descendants[child.pid] = child.create_time()
-                    except psutil.NoSuchProcess:
-                        pass
+                _observe_process_family(owned, uncertain, rejected, observation_errors)
                 if time.monotonic() >= deadline:
                     raise TimeoutError("Native ProvisionOnly exceeded the acceptance bound")
                 time.sleep(0.1)
             if process.returncode:
                 raise RuntimeError("Native ProvisionOnly exited " + str(process.returncode))
-            for pid, birth in descendants.items():
+            for (pid, stamp), row in owned.items():
+                if pid == native_pid or not matches(pid, stamp):
+                    continue
                 try:
                     child = psutil.Process(pid)
-                    if abs(child.create_time() - birth) < 0.001:
+                    if matches(pid, stamp):
                         child.wait(timeout=10)
                 except psutil.NoSuchProcess:
-                    pass
+                    pass  # The same admitted instance naturally exited before/during wait.
             failed = False
         finally:
             cleanup_errors = []
-            for pid, birth in descendants.items():
-                try:
-                    child = psutil.Process(pid)
-                    if abs(child.create_time() - birth) < 0.001 and failed:
-                        child.kill()
-                        child.wait(timeout=10)
-                except psutil.NoSuchProcess:
-                    pass
-                except Exception as error:
-                    cleanup_errors.append({"pid": pid, "error_type": type(error).__name__})
+            forced = []
+            if failed:
+                for (pid, stamp), row in owned.items():
+                    if pid == native_pid:
+                        continue
+                    try:
+                        if matches(pid, stamp):
+                            terminate(pid, stamp, timeout=10)
+                            forced.append(row)
+                    except Exception as error:
+                        cleanup_errors.append({"pid": pid, "error_type": type(error).__name__})
             try:
                 if process.poll() is None:
-                    process.kill()
+                    process.kill()  # This Popen retains the original OS process handle.
             except Exception as error:
                 cleanup_errors.append({"pid": native_pid, "error_type": type(error).__name__})
             try:
                 process.wait(timeout=10)
             except Exception as error:
                 cleanup_errors.append({"pid": native_pid, "error_type": type(error).__name__})
-            remaining = []
-            for pid, birth in descendants.items():
-                try:
-                    child = psutil.Process(pid)
-                    if abs(child.create_time() - birth) < 0.001:
-                        remaining.append(pid)
-                except psutil.NoSuchProcess:
-                    pass
-                except Exception as error:
-                    cleanup_errors.append({"pid": pid, "error_type": type(error).__name__})
+            remaining = [row for (pid, stamp), row in owned.items() if matches(pid, stamp)]
+            unknown_live = []
+            for row in uncertain.values():
+                stamp = row.get("birth_after") or row.get("birth")
+                if ((stamp and matches(row["pid"], stamp))
+                        or (not stamp and psutil.pid_exists(row["pid"]))):
+                    unknown_live.append(row["pid"])
             _write_new(output / "process-cleanup.json",
                        {"native_pid": native_pid, "native_exited": process.poll() is not None,
-                        "observed_descendants": descendants, "remaining": remaining,
-                        "errors": cleanup_errors})
-            if cleanup_errors or remaining or process.poll() is None:
+                        "observed_descendants": [row for (pid, stamp), row in owned.items() if pid != native_pid],
+                        "remaining": remaining, "errors": cleanup_errors,
+                        "forced_cleanup": forced, "unknown_live": sorted(set(unknown_live)),
+                        "uncertain_observations": list(uncertain.values()),
+                        "rejected_processes": list(rejected.values()),
+                        "observation_errors": list(observation_errors.values())})
+            if cleanup_errors or remaining or unknown_live or observation_errors or process.poll() is None:
                 raise RuntimeError("Owned native setup process cleanup is incomplete")
     return {"native_pid": native_pid, "exit_code": process.returncode,
             "native_sha256": manifest["native_sha256"], **_ready(manifest, home)}

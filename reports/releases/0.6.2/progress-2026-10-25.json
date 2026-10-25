@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-10-25T12:15:29Z",
+  "status": "candidate_incomplete",
+  "stable_release_activated": false,
+  "qualified_previous_candidate": {
+    "source_commit": "0ef69f5c2e8a5758e6c9900ff921c91e2f9fa6ed",
+    "windows_installation_id": "c71f41a3a68159fac2c1",
+    "windows_native_archive_sha256": "b9c334ebbde39c65e807a2a8c453a2e32194833fd928ecfded59ed72a9888da5",
+    "strict_windows_adapter": {
+      "passed": 1893,
+      "skipped": 4,
+      "collected": 1897,
+      "warnings_as_errors": true
+    },
+    "hosted_run_id": 40172913514,
+    "strict_linux_adapter": {
+      "passed": 1836,
+      "skipped": 40,
+      "native_contract_passed": 21,
+      "collected": 1897,
+      "warnings_as_errors": true
+    },
+    "strict_macos_adapter": {
+      "passed": 1835,
+      "skipped": 41,
+      "native_contract_passed": 21,
+      "collected": 1897,
+      "warnings_as_errors": true
+    },
+    "scope": "These results bind the preceding candidate. They do not qualify the new Windows native patch or a future immutable installation."
+  },
+  "windows_native_changes_pending_qualification": {
+    "patch": "native/windows-readable-daemon-scratch.patch",
+    "patch_sha256": "1dc6f292394dfc9fe4af5600245ff32f0c93ca0790039fd8a5ddb1021b463859",
+    "full_recipe_sha256": "ea0465074bb31edced83fcccbc9e548ad8c59dad46d6bbba015663cadccf8458",
+    "target_recipe_id": "048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15",
+    "changes": [
+      "Use the original native read-permission shortcut before attempting a critical-dependency ACL grant.",
+      "Keep Windows daemon scratch outside its private IPC directory and pin checked directories through child launch."
+    ],
+    "current_state": "exact_native_tests_passed_production_build_running",
+    "selected_native_tests": {
+      "executed": 11,
+      "passed": 11,
+      "ignored": 0,
+      "whole_suite_passed": true,
+      "actual_token": "Limited",
+      "interactive_session": 1,
+      "breakaway_job_flags": 2048,
+      "forced_or_remaining": 0,
+      "source_drift": [],
+      "receipt_sha256": "9ceb64a3f73268f79281dd052e9aebba5dee0bde311a3d8687665f664ccbde1b",
+      "scope": "Actual Windows native OS tests. This is not the final installed CLI or Codex App qualification."
+    },
+    "production_binaries_built": false,
+    "new_native_manifest_published": false,
+    "source_manifest_sha256": "2e9e3a9d1f81776445b7605188d8ea6afab621ce85a28177ba6df2cb60be34df",
+    "normal_public_build_entry": {
+      "status": "passed",
+      "fix": "Added the new overlay to the strict, ordered recipe whitelist.",
+      "targeted_recipe_and_CI_tests_passed": 145,
+      "warnings_as_errors": true,
+      "old_Windows_package_rejected_by_current_recipe": true,
+      "old_Windows_package_replaced": false,
+      "verification_handoff_sha256": "588b1f16b32069c3b0eabfc664064bdcf413d6cda5399951124e993bff5a91a1"
+    },
+    "production_build_started": true
+  },
+  "original_failures_and_followups": [
+    {
+      "area": "Windows offline adapter",
+      "original": "Five service-home fixture failures; retained.",
+      "followup": "Corrected fixture lifecycle and isolation; the strict Windows 1893-pass run completed."
+    },
+    {
+      "area": "Native acceptance batch",
+      "original": {
+        "passed": 26,
+        "failed": 4
+      },
+      "followup": "Crash recovery, TUI warm/cold, and TUI interrupt have separate successful actual-run supplements. Daemon restart still requires the new native scratch patch and its requalification."
+    },
+    {
+      "area": "TUI interrupt assertion",
+      "original": "The original oracle could not resolve the native Code Mode exec-to-cell-to-wait chain.",
+      "followup": "The strict public verifier is integrated. Independent review rejected unrelated command-string and exited-session false positives; the complete Windows terminal test file passed 36 cases under a Limited token with warnings as errors. The actual preceding TUI decision prefix replays through the stricter oracle. Final-installation TUI execution is still pending."
+    },
+    {
+      "area": "Complex Jinja task",
+      "followup": "Actual DeepSeek implementation, review and independent reconstruction passed; workspace 919 and hidden contract 908 tests passed."
+    },
+    {
+      "area": "Complex HTTPcore task",
+      "followup": "Retained failed outcome: six hidden keepalive/HTTP2 GOAWAY checks and portions of runtime evidence remain unsatisfied. This must not be represented as a fully passed task."
+    },
+    {
+      "area": "New selected native test fixture",
+      "original": "Strict registration rejected source filenames mistaken for Rust module names; a later new-test ACL setup was rejected by icacls for an unmapped fake SID.",
+      "followup": "Correct module names came from the executable's own collection. The new test now uses a mapped builtin group for its extra workspace Modify ACE; assertions and helper logic are unchanged."
+    },
+    {
+      "area": "Native grant-path fixture precondition",
+      "original": "A newly created compiler/test temp parent inherited builtin access, causing the intended builtin no-op path instead of the grant-path fixture's required precondition.",
+      "followup": "A new run used the existing private-directory constructor and explicit owner/DACL readback before passing TEMP/TMP. The same assertions then passed as part of the complete 11-test actual Windows suite; original failed evidence remains."
+    },
+    {
+      "area": "Native junction rejection fixture",
+      "original": "The fixture used mixed separators in cmd.exe argv0, so mklink failed before the helper's rejection check.",
+      "followup": "A Limited-token probe reproduced the failure and real junction creation with native separators. Only the new test command path changed. The final actual test created the junction, observed prepare rejection and verified the target ACL/canary were unchanged."
+    }
+  ],
+  "release_gates_remaining": [
+    "Finish the real five-executable Windows release build and verify reused component provenance.",
+    "Assemble the native package; generate and verify the matching archive and Windows manifest.",
+    "Freeze the final product source and create a separate immutable installation without activation.",
+    "Run the full final installed-runtime acceptance batch, including actual read-only dependencies, daemon/TUI, permission/approval negatives, collaboration and fault boundaries.",
+    "Complete a complex real task against the final installation and preserve all outcomes.",
+    "Run strict final-source offline Windows and hosted macOS/Linux qualification with explicit artifact provenance.",
+    "Assemble auditable release evidence, publish and verify the stable CDS release."
+  ],
+  "codex_app_gateway": "Separate project; actual Windows App qualification remains incomplete.",
+  "claim": "No complete native-equivalence or stable-release claim is made."
+}

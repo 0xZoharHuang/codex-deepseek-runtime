@@ -70,3 +70,43 @@ async def test_tcp_reset_never_aborts_before_native_receipt(tmp_path,monkeypatch
     finally:
         if not task.done():
             task.cancel();await asyncio.gather(task,return_exceptions=True)
+
+
+def test_fault_observer_excludes_controller_and_uncertain_or_foreign_candidates(monkeypatch):
+    controller=(100,'root')
+    family={controller:{'pid':100,'birth':'root'}}
+    observed={};uncertain={};rejected={};errors={}
+    def proven_edges(seen,pending,foreign,failures):
+        seen[(200,'owned')]={'pid':200,'birth':'owned','parent_pid':100,'parent_birth':'root'}
+        pending[(300,'unknown')]={'pid':300,'birth':'unknown','parent_pid':200,'parent_birth':'owned'}
+        foreign[(400,'foreign')]={'pid':400,'birth':'foreign','ppid':999}
+    monkeypatch.setattr(verifier,'_observe_process_family',proven_edges)
+    verifier.collect_fault_processes(controller,family,observed,uncertain,rejected,errors)
+    assert list(observed)==[(200,'owned')]
+    assert controller not in observed and (300,'unknown') not in observed and (400,'foreign') not in observed
+    assert observed[(200,'owned')]['parent_birth']=='root' and uncertain and rejected
+    # Repeated sampling replaces the observed view; it never infers ownership
+    # from diagnostic candidates or an earlier unrelated value in that view.
+    observed[(999,'stale')]={'pid':999,'birth':'stale'}
+    verifier.collect_fault_processes(controller,family,observed,uncertain,rejected,errors)
+    assert list(observed)==[(200,'owned')]
+
+
+@pytest.mark.parametrize('alive',[True,False])
+def test_fault_observer_unresolved_live_identity_is_failure_metadata_not_signal_authority(monkeypatch,alive):
+    pending={(300,'maybe'):{'pid':300,'birth':'maybe','birth_after':'maybe','parent_pid':100,'parent_birth':'root'}}
+    monkeypatch.setattr(verifier,'matches',lambda pid,birth:alive and pid==300 and birth=='maybe')
+    monkeypatch.setattr(verifier,'terminate',lambda *a,**k:pytest.fail('An uncertain process was signalled'))
+    value=verifier.fault_observation_issues(pending,{}, {})
+    assert value['unknown_live']==([300] if alive else [])
+    assert value['uncertain_observations']==list(pending.values())
+
+
+def test_fault_observer_keeps_required_helper_in_exact_provenance_inventory():
+    assert 'ci/qualify_native.py' in verifier.VERIFIERS
+    import ast,inspect
+    tree=ast.parse(inspect.getsource(verifier.scenario))
+    assert not any(isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute)
+                   and node.func.attr=='children' for node in ast.walk(tree))
+    assert any(isinstance(node,ast.Call) and isinstance(node.func,ast.Name)
+               and node.func.id=='collect_fault_processes' for node in ast.walk(tree))

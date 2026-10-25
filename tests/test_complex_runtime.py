@@ -348,3 +348,154 @@ def test_stable_owner_proof_rechecks_expected_identity_each_time(state):
     assert rejected['passed'] is False
     assert (owner['native_pid'],owner['native_birth']) in checked
     assert next(row for row in rejected['processes'] if row['pid']==owner['native_pid'])['ended'] is False
+
+
+def recovery_rows():
+    model = 'deepseek/fixed-model'
+    requests = {key: {'model': model, 'thread': 'parent', 'turn': 'original'}
+                for key in ('failure', 'success')}
+    receipts = [('failure', 'adapter_error', 200, 'deepseek', 'shared-cache', 'official_default'),
+                ('success', 'completed', 200, 'morph/fp8', 'shared-cache', 'unattested_native_history_with_hosted_tools')]
+    evidence = {'receipt_observations': [
+        {'id': 'failure', 'started': 1., 'finished': 2., 'detail': 'Provider returned an undeclared tool: update_plan'},
+        {'id': 'success', 'started': 4., 'finished': 5., 'detail': None}],
+        'native_events': [
+            {'method': 'error', 'params': {'threadId': 'parent', 'turnId': 'original',
+                'willRetry': True, 'error': {'additionalDetails': 'stream disconnected before completion: Provider returned an undeclared tool: update_plan',
+                'codexErrorInfo': {'responseStreamDisconnected': {'httpStatusCode': None}}}},
+                'emittedAtMs': 3000},
+            {'method': 'turn/completed', 'params': {'threadId': 'parent',
+                'turn': {'id': 'original', 'status': 'completed', 'error': None}}, 'emittedAtMs': 6000}]}
+    return model, requests, receipts, evidence
+
+
+def test_provider_native_recovery_is_explicit_and_preserves_the_original_failure():
+    from verify_complex_runtime import provider_transport_evidence
+    model, requests, receipts, evidence = recovery_rows()
+    strict = provider_transport_evidence(requests, receipts, model)
+    assert not strict['passed'] and strict['unresolved_or_failed_receipt_ids'] == ['failure']
+    result = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert result['passed'] and result['provider_evidence_version'] == 2
+    assert result['single_run_all_success'] is False
+    assert result['original_error_receipt_ids'] == result['recovered_error_receipt_ids'] == ['failure']
+    assert result['unresolved_or_failed_receipt_ids'] == []
+    assert result['errors'] == [{'id': 'failure', 'status': 'adapter_error', 'upstream_status': 200,
+        'provider': 'deepseek', 'detail': evidence['receipt_observations'][0]['detail'],
+        'route_reason': 'official_default', 'classification': 'recovered'}]
+
+
+@pytest.mark.parametrize('change', [
+    'other-thread', 'other-turn', 'same-cache-other-child', 'no-retry', 'retry-false',
+    'retry-before-finish', 'retry-after-next-start', 'wrong-detail', 'wrong-error-info',
+    'missing-error-event', 'duplicate-error-event', 'missing-terminal', 'duplicate-terminal',
+    'failed-terminal', 'interrupted-terminal', 'wrong-terminal-turn', 'terminal-before-success',
+    'success-before-failure', 'manual-followup', 'missing-request', 'missing-receipt',
+    'untraced-receipt', 'duplicate-receipt', 'unknown-status', 'running-status',
+    'model-drift', 'bad-success-http', 'missing-timing', 'duplicate-timing',
+    'retry-truthy-one', 'duplicate-nonretry-event', 'ambiguous-next-request', 'whitespace-detail',
+    'wrong-error-http-status', 'malformed-native-error', 'malformed-terminal', 'malformed-error-info',
+    'bad-thread-type', 'bad-turn-type',
+    'bad-finish', 'bool-time', 'nonfinite-time', 'malformed-evidence'
+])
+def test_provider_recovery_requires_unique_same_turn_raw_causality(change):
+    from verify_complex_runtime import provider_transport_evidence
+    model, requests, receipts, evidence = recovery_rows()
+    retry = evidence['native_events'][0]
+    terminal = evidence['native_events'][1]
+    timing = evidence['receipt_observations']
+    if change in {'other-thread', 'same-cache-other-child'}:
+        requests['success']['thread'] = 'other-child'
+    elif change == 'other-turn': requests['success']['turn'] = 'later-turn'
+    elif change == 'bad-thread-type': requests['failure']['thread'] = []
+    elif change == 'bad-turn-type': requests['failure']['turn'] = {'not': 'native-turn-id'}
+    elif change == 'no-retry': retry['params'].pop('willRetry')
+    elif change == 'retry-false': retry['params']['willRetry'] = False
+    elif change == 'retry-before-finish': retry['emittedAtMs'] = 1000
+    elif change == 'retry-after-next-start': retry['emittedAtMs'] = 4500
+    elif change == 'wrong-detail': retry['params']['error']['additionalDetails'] = 'different error'
+    elif change == 'wrong-error-info': retry['params']['error']['codexErrorInfo'] = {'other': {}}
+    elif change == 'malformed-native-error': retry['params']['error'] = None
+    elif change == 'malformed-terminal': terminal['params']['turn'] = None
+    elif change == 'malformed-error-info': retry['params']['error']['codexErrorInfo'] = []
+    elif change == 'wrong-error-http-status': retry['params']['error']['codexErrorInfo']['responseStreamDisconnected']['httpStatusCode'] = 429
+    elif change == 'missing-error-event': evidence['native_events'].pop(0)
+    elif change == 'duplicate-error-event': evidence['native_events'].insert(0, retry)
+    elif change == 'missing-terminal': evidence['native_events'].pop()
+    elif change == 'duplicate-terminal': evidence['native_events'].append(terminal)
+    elif change == 'failed-terminal': terminal['params']['turn']['status'] = 'failed'
+    elif change == 'interrupted-terminal': terminal['params']['turn']['status'] = 'interrupted'
+    elif change == 'wrong-terminal-turn': terminal['params']['turn']['id'] = 'different-turn'
+    elif change == 'terminal-before-success': terminal['emittedAtMs'] = 4000
+    elif change == 'success-before-failure': timing[1].update(started=.1, finished=.5)
+    elif change == 'manual-followup':
+        requests['success']['turn'] = 'new-manual-turn'
+        terminal['params']['turn']['id'] = 'new-manual-turn'
+    elif change == 'missing-request': requests.pop('failure')
+    elif change == 'missing-receipt': receipts.pop(0)
+    elif change == 'untraced-receipt': receipts.append(('unknown', 'running', None, None, None, None))
+    elif change == 'duplicate-receipt': receipts.append(receipts[0])
+    elif change == 'unknown-status': receipts[0] = ('failure', 'foreign_terminal', 200, 'deepseek', 'shared-cache', 'official_default')
+    elif change == 'running-status': receipts[0] = ('failure', 'running', 200, 'deepseek', 'shared-cache', 'official_default')
+    elif change == 'model-drift': requests['failure']['model'] = 'changed-model'
+    elif change == 'bad-success-http': receipts[1] = ('success', 'completed', 429, 'morph/fp8', 'shared-cache', 'explicit')
+    elif change == 'retry-truthy-one': retry['params']['willRetry'] = 1
+    elif change == 'duplicate-nonretry-event':
+        from copy import deepcopy
+        duplicate = deepcopy(retry);duplicate['params']['willRetry'] = False
+        evidence['native_events'].insert(0, duplicate)
+    elif change == 'ambiguous-next-request':
+        requests['parallel-success'] = dict(requests['success'])
+        receipts.append(('parallel-success', 'completed', 200, 'morph/fp8', 'shared-cache', 'explicit'))
+        timing.append({'id': 'parallel-success', 'started': 4., 'finished': 5., 'detail': None})
+    elif change == 'whitespace-detail':
+        timing[0]['detail'] = ' '
+        retry['params']['error']['additionalDetails'] += ' '
+    elif change == 'missing-timing': timing.pop(0)
+    elif change == 'duplicate-timing': timing.append(timing[0])
+    elif change == 'bad-finish': timing[0]['finished'] = 0
+    elif change == 'bool-time': timing[0]['started'] = True
+    elif change == 'nonfinite-time': timing[0]['finished'] = float('nan')
+    else: evidence = {}
+    result = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert result['passed'] is False
+
+
+def test_provider_consecutive_retry_chain_requires_evidence_for_each_hop():
+    from copy import deepcopy
+    from verify_complex_runtime import provider_transport_evidence
+    model, requests, receipts, evidence = recovery_rows()
+    requests['second-error'] = dict(requests['failure'])
+    receipts.insert(1, ('second-error', 'adapter_error', 200, 'morph/fp8', 'shared-cache', 'explicit'))
+    evidence['receipt_observations'][1].update(started=7., finished=8.)
+    evidence['receipt_observations'].append({'id': 'second-error', 'started': 4., 'finished': 5.,
+                                           'detail': evidence['receipt_observations'][0]['detail']})
+    second = deepcopy(evidence['native_events'][0]);second['emittedAtMs'] = 6000
+    evidence['native_events'].insert(1, second);evidence['native_events'][-1]['emittedAtMs'] = 9000
+    complete = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert complete['passed'] and complete['recovered_error_receipt_ids'] == ['failure', 'second-error']
+    assert complete['single_run_all_success'] is False
+    evidence['native_events'].pop(1)
+    incomplete = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert not incomplete['passed'] and incomplete['recovered_error_receipt_ids'] == []
+
+
+def test_provider_upstream_terminal_error_needs_the_same_observed_retry_chain():
+    from verify_complex_runtime import provider_transport_evidence
+    model, requests, receipts, evidence = recovery_rows()
+    receipts[0] = ('failure', 'upstream_error', 429, 'deepseek', 'shared-cache', 'official_default')
+    evidence['native_events'][0]['params']['error']['codexErrorInfo'] = {'httpConnectionFailed': {'httpStatusCode': 429}}
+    result = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert result['passed'] and result['single_run_all_success'] is False
+    assert result['errors'][0]['status'] == 'upstream_error' and result['errors'][0]['upstream_status'] == 429
+    evidence['native_events'][0]['params']['willRetry'] = False
+    assert not provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)['passed']
+
+
+def test_provider_adapter_network_error_without_upstream_status_still_needs_exact_native_evidence():
+    from verify_complex_runtime import provider_transport_evidence
+    model, requests, receipts, evidence = recovery_rows()
+    receipts[0] = ('failure', 'adapter_error', None, 'deepseek', 'shared-cache', 'official_default')
+    result = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert result['passed'] and result['errors'][0]['upstream_status'] is None
+    evidence['native_events'][0]['emittedAtMs'] = 4500
+    assert not provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)['passed']

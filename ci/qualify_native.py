@@ -273,11 +273,141 @@ def source_identity() -> dict:
 
 
 
+def _process_snapshot(pid):
+    """Read identity and edge fields only; an unproven PID is not diagnostic scope."""
+    import psutil
+    from codex_deepseek.processes import identity
+    row = {"pid": pid, "birth": identity(pid), "ppid": None, "creation_time": None}
+    if row["birth"] is None:
+        row.update(stable=False, birth_after=None)
+        return row
+    try:
+        process = psutil.Process(pid)
+        row.update(creation_time=process.create_time(), ppid=process.ppid())
+    except (psutil.Error, OSError) as error:
+        row["metadata_error"] = type(error).__name__
+    row["birth_after"] = identity(pid)
+    row["stable"] = (row["birth_after"] == row["birth"]
+                     and type(row["creation_time"]) in (int, float)
+                     and row["creation_time"] >= 0 and type(row["ppid"]) is int)
+    return row
+
+
+def _proven_process_diagnostics(row):
+    """Read text only for an owned identity; discard it if that instance changes."""
+    import psutil
+    from codex_deepseek.processes import identity
+    first = identity(row["pid"])
+    if first != row["birth"]:
+        return None, first, first
+    values = {}
+    try:
+        process = psutil.Process(row["pid"])
+        for key, method in (("name", "name"), ("exe", "exe"), ("argv", "cmdline")):
+            try:
+                values[key] = getattr(process, method)()
+            except (psutil.Error, OSError) as error:
+                values[key] = None
+                values.setdefault("diagnostic_errors", {})[key] = type(error).__name__
+    except (psutil.Error, OSError):
+        return None, first, identity(row["pid"])
+    last = identity(row["pid"])
+    return (values if last == row["birth"] else None), first, last
+
+
+def _observe_process_family(seen, uncertain, rejected, errors):
+    """Admit only individually proven direct-parent edges, never a PPID tree."""
+    import psutil
+    from codex_deepseek.processes import identity, matches
+    stack = list(seen)
+    visited = set()
+
+    def remember(container, row, reason, parent):
+        value = {**row, "reason": reason, "parent_pid": parent["pid"],
+                 "parent_birth": parent["birth"]}
+        key = (value["pid"], value.get("birth"), reason,
+               parent["pid"], parent["birth"])
+        container[key] = value
+
+    while stack:
+        key = stack.pop()
+        if key in visited:
+            continue
+        visited.add(key)
+        parent = seen[key]
+        if not matches(parent["pid"], parent["birth"]):
+            continue
+        first = _process_snapshot(parent["pid"])
+        if not first["stable"] or first["birth"] != parent["birth"]:
+            if first.get("metadata_error") and matches(parent["pid"], parent["birth"]):
+                remember(errors, first, "parent_metadata_unavailable", parent)
+            continue
+        try:
+            children = psutil.Process(parent["pid"]).children(recursive=False)
+        except (psutil.Error, OSError) as error:
+            # A vanished parent has no stable sample; never infer its descendants.
+            if matches(parent["pid"], parent["birth"]):
+                remember(errors, first, "children_unavailable:" + type(error).__name__, parent)
+            continue
+        candidates = [_process_snapshot(child.pid) for child in children]
+        last = _process_snapshot(parent["pid"])
+        parent_stable = (last["stable"] and last["birth"] == parent["birth"]
+                         and last["creation_time"] == first["creation_time"])
+        for child in candidates:
+            if not child["stable"]:
+                remember(uncertain, child, "child_identity_or_metadata_changed", parent)
+                if (child.get("metadata_error") and child.get("birth")
+                        and child.get("birth_after") == child["birth"]):
+                    remember(errors, child, "child_metadata_unavailable", parent)
+                continue
+            if not parent_stable:
+                remember(uncertain, {**child, "parent_birth_before": first["birth"],
+                                     "parent_birth_after": last.get("birth"),
+                                     "parent_after_stable": last["stable"]},
+                         "parent_changed_during_collection", parent)
+                continue
+            if (child["pid"] == parent["pid"]
+                    or child["ppid"] != parent["pid"]
+                    or child["creation_time"] < first["creation_time"]):
+                remember(rejected, child, "not_a_current_direct_child", parent)
+                continue
+            # Recheck the exact edge immediately before extending the owned set.
+            if (not matches(parent["pid"], parent["birth"])
+                    or identity(child["pid"]) != child["birth"]):
+                remember(uncertain, child, "edge_changed_before_admission", parent)
+                continue
+            child_key = (child["pid"], child["birth"])
+            if child_key not in seen:
+                seen[child_key] = {**child, "parent_pid": parent["pid"],
+                                   "parent_birth": parent["birth"],
+                                   "parent_creation_time": first["creation_time"],
+                                   "ownership": "stable_direct_parent_edge"}
+                values, diagnostic_first, diagnostic_last = _proven_process_diagnostics(seen[child_key])
+                if values is not None:
+                    seen[child_key].update(values)
+                else:
+                    remember(uncertain, {**child, "birth_after": diagnostic_last,
+                                         "diagnostic_birth_before": diagnostic_first},
+                             "identity_changed_during_owned_diagnostics", parent)
+                stack.append(child_key)
+        # The parent is also an already-proven identity, or the created Popen.
+        if parent_stable:
+            seen[key].update({name: first.get(name) for name in ("ppid", "creation_time")})
+            values, diagnostic_first, diagnostic_last = _proven_process_diagnostics(parent)
+            if values is not None:
+                seen[key].update(values)
+            else:
+                remember(uncertain, {**first, "birth_after": diagnostic_last,
+                                     "diagnostic_birth_before": diagnostic_first},
+                         "identity_changed_during_owned_diagnostics", parent)
+
+
 def run_observed(command, *, cwd, env, log, timeout):
     """Own only this test process and observed PID/kernel identities."""
     import psutil
     from codex_deepseek.processes import identity, matches, terminate
     seen, unknown = {}, set()
+    uncertain, rejected, observation_errors = {}, {}, {}
     report = {"timed_out": False, "forced_cleanup": [], "remaining_before_cleanup": [],
               "remaining_after_cleanup": [], "unknown_live": []}
     process = subprocess.Popen(command, cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -287,20 +417,9 @@ def run_observed(command, *, cwd, env, log, timeout):
         if birth is None:
             unknown.add(process.pid)
             raise RuntimeError("Created test process has no stable identity")
-        seen[(process.pid, birth)] = {"pid": process.pid, "birth": birth}
+        seen[(process.pid, birth)] = {"pid": process.pid, "birth": birth, "ownership": "created_Popen_handle"}
         while process.poll() is None:
-            for pid, stamp in list(seen):
-                if not matches(pid, stamp):
-                    continue
-                try:
-                    for child in psutil.Process(pid).children(recursive=True):
-                        stamp = identity(child.pid)
-                        if stamp is None:
-                            unknown.add(child.pid)
-                        else:
-                            seen[(child.pid, stamp)] = {"pid": child.pid, "birth": stamp}
-                except psutil.NoSuchProcess:
-                    pass
+            _observe_process_family(seen, uncertain, rejected, observation_errors)
             if time.monotonic() - started > timeout:
                 report["timed_out"] = True
                 break
@@ -336,14 +455,24 @@ def run_observed(command, *, cwd, env, log, timeout):
         report["remaining_after_cleanup"] = [
             row for (pid, stamp), row in seen.items() if matches(pid, stamp)
         ]
-        report["unknown_live"] = sorted(pid for pid in unknown if psutil.pid_exists(pid))
+        # Uncertain association is never promoted to ownership or signalled.
+        uncertain_live = set()
+        for row in uncertain.values():
+            stamp = row.get("birth_after") or row.get("birth")
+            if ((stamp and matches(row["pid"], stamp))
+                    or (not stamp and psutil.pid_exists(row["pid"]))):
+                uncertain_live.add(row["pid"])
+        report["unknown_live"] = sorted(uncertain_live | {pid for pid in unknown if psutil.pid_exists(pid)})
+        report["uncertain_observations"] = list(uncertain.values())
+        report["rejected_processes"] = list(rejected.values())
+        report["observation_errors"] = list(observation_errors.values())
         report["observed"] = list(seen.values())
         report["returncode"] = process.returncode
         report["seconds"] = time.monotonic() - started
     report["passed"] = (report["returncode"] == 0 and not report["timed_out"]
                         and not report.get("error") and not report["remaining_before_cleanup"]
                         and not report["remaining_after_cleanup"] and not report["unknown_live"]
-                        and not report.get("cleanup_errors"))
+                        and not report.get("cleanup_errors") and not report["observation_errors"])
     return report
 
 def main() -> int:

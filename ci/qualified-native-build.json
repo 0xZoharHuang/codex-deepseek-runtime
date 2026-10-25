@@ -34,5 +34,6 @@
       "manifest_sha256": "d95936bfe6a55b51a86af94167cbde1e0b3c0c29ddf6ba9b7d84285090eb2301",
       "file_count": 2947
     }
-  }
+  },
+  "current_recipe_sha256": "ea0465074bb31edced83fcccbc9e548ad8c59dad46d6bbba015663cadccf8458"
 }

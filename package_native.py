@@ -57,7 +57,7 @@ def package_native(package,archive,manifest_path,url):
     manifest={'schema':1,'status':'ready','distribution':'codex-deepseek-runtime','distribution_version':tomllib.loads((Path(__file__).parent/'pyproject.toml').read_text(encoding='utf-8'))['project']['version'],
               'upstream_version':metadata['version'],'upstream_commit':metadata['upstreamCommit'],'patch_sha256':metadata['patchSha256'],
               'target':metadata['target'],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'archive':{'filename':archive.name,'url':url,'sha256':sha(archive)},'files':files}
-    manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n', encoding='utf-8')
+    manifest_path.parent.mkdir(parents=True,exist_ok=True);manifest_path.write_text(json.dumps(manifest,indent=2)+'\n', encoding='utf-8', newline='\n')
     return manifest
 
 

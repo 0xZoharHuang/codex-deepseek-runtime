@@ -207,7 +207,8 @@ def validate_native_faults(root,entry,installation,native,official_sha256):
         proof=load(case/'verdict.json')
         require(proof.get('passed') is True and proof.get('kind')==kind
                 and proof.get('binary_sha256')==artifact['official_sha256' if variant=='official' else 'candidate_sha256']
-                and proof.get('cleanup_errors')==[] and proof.get('remaining_before_forced_cleanup')==[],
+                and proof.get('cleanup_errors')==[] and proof.get('remaining_before_forced_cleanup')==[]
+                and proof.get('unknown_live')==[] and proof.get('observation_errors')==[],
                 'Native fault case failed, changed identity or left owned processes')
         effect_path=case/'effects.jsonl'
         actual_effects=[json.loads(line) for line in effect_path.read_text(encoding='utf-8').splitlines() if line] if effect_path.exists() else []
@@ -684,8 +685,9 @@ def validate_regression_source(artifact,installation,snapshot=None,*,terminal_re
     require(recorded==qa_python_hashes(snapshot),'Original standard gates do not match this producer snapshot')
     changed=sorted(name for name in set(recorded)|set(current) if recorded.get(name)!=current.get(name))
     require(oauth_revalidated or 'tests/oauth_fixture.py' not in changed,'OAuth fixture changes require complete explicit OAuth revalidation')
+    # Independent producers outside the standard gates still require their current proof.
     reporting={'assemble_release_acceptance.py','verify_rpc_observations.py','verify_remaining_methods.py','verify_remaining_local.py',
-               'verify_complex_runtime.py','verify_hook_trust.py','verify_native_source.py'}
+               'verify_complex_runtime.py','verify_hook_trust.py','verify_native_source.py','verify_fault_boundaries.py'}
     if MACOS_KEYRING_DRIVER in changed:
         require(MACOS_KEYRING_DRIVER not in recorded and current[MACOS_KEYRING_DRIVER]==MACOS_KEYRING_DRIVER_SHA256,
                 'Only the reviewed newly added metadata-only macOS QA driver may extend an old snapshot')
@@ -1001,7 +1003,7 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
     if external is not None:
         require(not current,'A standalone offline receipt cannot import another receipt')
         validate_windows_controller(artifact.get('controller_environment',{}),elevated=False)
-        proof=external_offline_receipt(external['root'],installation,native,scope,producer_snapshot=producer_snapshot,oauth_revalidated=oauth_revalidated)
+        proof=external_offline_receipt(external['root'],installation,native,scope,producer_snapshot=producer_snapshot,terminal_revalidated=terminal_revalidated,oauth_revalidated=oauth_revalidated)
         require(external==proof,'External offline execution provenance changed')
         require(normalized_hashes(artifact.get('verifier_source_sha256',{}))==proof['verifier_source_sha256'],
                 'Runtime and referenced offline execution used different QA source')
@@ -1047,8 +1049,9 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
     return result
 
 
-def external_offline_receipt(root,installation,native,scope,*,producer_snapshot=None,oauth_revalidated=False):
+def external_offline_receipt(root,installation,native,scope,*,producer_snapshot=None,terminal_revalidated=False,oauth_revalidated=False):
     """Windows symlink tests need a capable token; runtime gates keep their own token."""
+    require(not (terminal_revalidated and oauth_revalidated),'Terminal and OAuth revalidation are mutually exclusive')
     root=Path(root).resolve()
     require(scope['target']=='x86_64-pc-windows-msvc','External offline execution is a Windows-only qualification path')
     names=['artifact.json','verdict.json','results.json',*OFFLINE_FILES]
@@ -1071,7 +1074,7 @@ def external_offline_receipt(root,installation,native,scope,*,producer_snapshot=
     else:
         # Revalidate the original receipt against its exact frozen producer.
         # Main separately requires complete current offline and current hook proof.
-        validate_regression_source(artifact,installation,producer_snapshot,oauth_revalidated=oauth_revalidated)
+        validate_regression_source(artifact,installation,producer_snapshot,terminal_revalidated=terminal_revalidated,oauth_revalidated=oauth_revalidated)
         require(artifact.get('selected_gates')==['offline'] and len(verdict.get('gates',[]))==1
                 and verdict['gates'][0].get('gate')=='offline' and verdict['gates'][0].get('exit')==0,
                 'Original offline snapshot must contain exactly the passing offline gate')
@@ -1133,8 +1136,8 @@ def gate_evidence(regression,gate):
 
 def validate_terminal_qa(path,entry,installation,native,mode,*,interrupt=False):
     qa=load(path/'qa-source.json')
-    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py'}
-    if interrupt:names|={'verify_tui_interrupt.py','process_acceptance.py'}
+    names={'verify_tui_audit.py','terminal_acceptance.py','credential_acceptance.py','verify_live.py','windows_acceptance_setup.py','qa_workspace.py','process_acceptance.py'}
+    if interrupt:names|={'verify_tui_interrupt.py'}
     files=qa.get('qa_files_sha256',{})
     require(set(files)==names and all(sha(SOURCE/name)==digest for name,digest in files.items()),'Terminal QA source identity changed or is incomplete')
     require(qa.get('qa_snapshot_sha256')==hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest(),'Terminal QA snapshot digest mismatch')
@@ -1182,7 +1185,22 @@ def validate_terminal_qa(path,entry,installation,native,mode,*,interrupt=False):
         if rows and rows[0].get('type')=='session_meta' and rows[0].get('payload',{}).get('id')==proof.get('thread_id'):rollouts.append(rows);rollout_paths.append(file)
     require(len(rollouts)==1,'Native interruption has no unique matching session rollout')
     from verify_tui_interrupt import yielded_background_session
-    background=yielded_background_session(rollout_paths[0],'interrupt_fixture.py')
+    from process_acceptance import shell_command
+    fixture_argv=proof.get('fixture_argv')
+    require(isinstance(fixture_argv,list) and len(fixture_argv)==4
+            and all(isinstance(value,str) and value for value in fixture_argv)
+            and fixture_argv[1:3]==['-I','-u'],'Native interruption fixture argv receipt is missing or changed')
+    python=Path(fixture_argv[0])
+    require(python.is_absolute() and python.is_file()
+            and re.fullmatch(r'pythonw?(?:[0-9]+(?:\.[0-9]+)*)?(?:\.exe)?',python.name,re.IGNORECASE) is not None,
+            'Native interruption fixture interpreter is not an existing absolute Python executable')
+    work=(path/'work').resolve()
+    fixture=work/'interrupt_fixture.py'
+    require(work.is_dir() and fixture.is_file() and Path(fixture_argv[3]).is_absolute()
+            and comparison_path(fixture_argv[3])==comparison_path(fixture),'Native interruption fixture path differs from its actual workspace')
+    background=yielded_background_session(rollout_paths[0],'interrupt_fixture.py',
+        expected_thread=proof['thread_id'],expected_turn=proof['interrupted_turn_id'],
+        expected_cwd=work,expected_fixture=fixture,expected_command=shell_command(fixture_argv),as_of_interrupt=True)
     require(background is not None and proof.get('background_session')==background,'Native interruption lacks a yielded background session before Ctrl-C')
     events=[row['payload'] for row in rollouts[0] if row.get('type')=='event_msg']
     aborted=[i for i,row in enumerate(events) if row.get('type')=='turn_aborted' and row.get('turn_id')==proof['interrupted_turn_id'] and row.get('reason')=='interrupted']
@@ -1315,7 +1333,9 @@ def main():
     p.add_argument('--offline-regression',type=Path,help='Current-source complete offline-only acceptance run')
     work=p.add_mutually_exclusive_group(required=True)
     work.add_argument('--fixtures',type=Path,help='Native complex tasks actually executed on this installed target')
+    work.add_argument('--jinja-fixture',type=Path,help='Actual Jinja case directory; requires --httpcore-fixture when cases have independent roots')
     work.add_argument('--complex-runtime-reference',type=Path,help='Exact accepted Windows complex report plus installation; no local task execution is claimed')
+    p.add_argument('--httpcore-fixture',type=Path,help='Actual HTTPcore case directory, paired with --jinja-fixture')
     p.add_argument('--complex-runtime',type=Path,help='Independent raw runtime proofs; application test failures remain reported separately')
     p.add_argument('--methods-source',type=Path,help='Explicit frozen methods producer snapshot; execution verifiers and scope implementation must match')
     revalidation=p.add_mutually_exclusive_group()
@@ -1323,6 +1343,7 @@ def main():
     revalidation.add_argument('--oauth-regression',type=Path,help='Current-source passing complete four-OAuth run; preserves original failures')
     p.add_argument('--output',type=Path);args=p.parse_args()
     require(not (args.complex_runtime_reference and args.complex_runtime),'A nonlocal reference cannot be passed as local raw complex evidence')
+    require(bool(args.jinja_fixture)==bool(args.httpcore_fixture),'Independent case roots require both --jinja-fixture and --httpcore-fixture')
     entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=load(release/'installation.json');native=load(release/'native-runtime.json')
     scope=qualification_scope(native)
     require(entry==console_entry(release/'venv'),'Expected immutable installed entry')
@@ -1483,7 +1504,8 @@ def main():
     else:
         real={}
         for name in ['jinja','httpcore']:
-            root=args.fixtures/name;row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
+            root=(args.jinja_fixture if name=='jinja' else args.httpcore_fixture) if args.jinja_fixture else args.fixtures/name
+            row=load(root/'results.json');stage=root/row['followup']['evidence'] if row.get('followup') else root;real_artifact=load(stage/'artifact.json');same_install(real_artifact,name+' final real-task pass')
             expected={'verify_real_work.py','acceptance_assertions.py','host_execution_acceptance.py','real_work_imports.py'}
             if 'verify_real_work_followup.py' in real_artifact.get('verifier_sha256',{}):expected.add('verify_real_work_followup.py')
             validate_peer_verifiers(real_artifact,expected,name+' real task')
@@ -1612,7 +1634,7 @@ def main():
                        'The prediction endpoint is declared but unimplemented in frozen upstream.'],
              'evidence_sha256':evidence,'qualification_protocol':'One frozen installed target; exact standard gates plus per-method postconditions, local account and applicable sandbox lifecycles, complex saved tasks, actual browsing and protocol fault recovery. Initial failures remain preserved.',
              'stable_solution':'docs/STABLE_PLAN.zh-CN.md','historical_release_reports':'reports/history/v0.3.0/'}
-    if args.oauth_regression:
+    if args.terminal_regression or args.oauth_regression:
         summary.update(single_run_all_passed=False,original_standard_run={'passed':regression['passed'],'gates':regression['gates'],
                        'passed_count':sum(row['exit']==0 for row in regression['gates']),'failed_count':sum(row['exit']!=0 for row in regression['gates'])})
     if complex_reference is not None:
@@ -1629,11 +1651,11 @@ def main():
     for path in list(output.glob('*.json')):
         dest=history/path.name
         if not dest.exists():shutil.copy2(path,dest)
-    write=lambda name,value:(output/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    write=lambda name,value:(output/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')
     write('runtime-method-matrix.json',matrix);write('remaining-local-methods.json',{'status':'passed','baseline_gap_count':64,'positive_local_methods':methods['positive_local_methods'],'platform_boundary_count':len(platform_boundaries),'backend_boundary_count':4,'methods':{name:{'status':row['status'],'scope':'backend' if name in REMOTE else 'platform_configuration_boundary' if name in platform_boundaries else 'local','reason':row.get('reason'),'evidence_sha256':sha(args.methods/row['evidence'])} for name,row in methods['methods'].items()}})
     write('native-schema-comparison.json',schema);write('runtime-qualification.json',summary);write('acceptance.json',summary)
     write('qualification-lineage.json',{'version':version,'source_id':metadata['source_id'],'runtime_sources_immutable':True,'evidence_sha256':evidence,'initial_failures_preserved':True,'no_automatic_adapter_tool_replay':True,'note':'Native retry and explicit saved-task continuations are separately recorded. Real-task source fixes belong to test workspaces, not the runtime implementation.'})
-    print(json.dumps({'passed':True,'source_id':metadata['source_id'],'target':scope['target'],'positive_local_methods':len(local),'standard_gates':len(GATES),'output':str(output)}),flush=True)
+    print(json.dumps({'passed':True,'source_id':metadata['source_id'],'target':scope['target'],'positive_local_methods':len(local)-len(platform_boundaries),'configuration_boundaries':len(platform_boundaries),'standard_gates':len(GATES),'output':str(output)}),flush=True)
 
 
 if __name__=='__main__':main()

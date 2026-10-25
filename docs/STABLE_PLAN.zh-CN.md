@@ -1,5 +1,17 @@
 # Codex CLI + DeepSeek 的稳定运行方案
 
+本文下方保留0.6.0的历史冻结结论；当前0.6.2见[本版报告](../reports/releases/0.6.2/README.md)。历史身份、数量和失败不改签为新版本结果，操作须匹配实际入口和home。
+
+## 当前0.6.2 Windows候选（尚未发布）
+
+D69严格Windows资格已封存：2,150项offline通过/4项平台不适用，30个有效合并场景、128项正向RPC与3项原生边界、456份Schema无差异。原29通过/1项TUI失败及后续终端补测保留，`single_run_all_passed=false`。Jinja的runtime14项和业务均通过；HTTPcore的runtime14项通过，业务失败、原始超时和provider错误保留。
+
+CF9 `cf9f19eaf67b0fdd8151`已正常新安装；实际runtime29文件和native2991文件与D69相同，产品输入只变化manifest的LF输出及换行。CF9另有doctor/保存线程共2次真实请求、同home受限原生Python写入/外拒、EOF退出与冷恢复，以及进程自然退出证明；当前完整offline为2,179通过/4项平台不适用。见[组件证明](../reports/releases/0.6.2/component-equivalence.json)、[安装健康](../reports/releases/0.6.2/candidate-installation-summary.json)及[QA升级谱系](../reports/releases/0.6.2/qa-upgrade-lineage-summary.json)。D69历史证据保留原producer身份。
+
+最终提交的hosted CI（包括本轮macOS/Linux）、正式main/tag和公开资产安装读回仍待完成，稳定入口未切换。下文0.6.0的历史CI不构成0.6.2当前通过证明。
+
+## 0.6.0历史方案
+
 本方案描述 0.6.0 的固定架构、安装隔离和运维方法。**固定组合的三平台 runtime 与公开原生资产路径的托管 CI 已通过。** 可部署状态与逐平台证据以 [0.6.0 验收记录](release-0.6.0-acceptance.zh-CN.md)及对应 GitHub release 为准；本文件的操作说明不代替验收结论。
 
 CDS 保留 Codex CLI 的原生任务循环、工具、审批、沙箱、会话和子智能体，只在安装隔离、模型协议、传输及确有必要的平台边界适配。模型质量、模型未具备的模态能力、OpenAI 账户权益和专属云端服务单独列明。

@@ -21,7 +21,7 @@ def complete_scenario_set(kinds):
 
 VERIFIERS=("verify_fault_boundaries.py","verify_live.py","windows_acceptance_setup.py","qa_workspace.py",
            "install.py","tests/test_native_raw_http.py","tests/test_native_payload_retry.py",
-           "tests/test_network.py","tests/test_image_transport.py","fixtures/fault-boundaries/mcp_append.py")
+           "tests/test_network.py","tests/test_image_transport.py","fixtures/fault-boundaries/mcp_append.py","ci/qualify_native.py")
 sys.path[:0]=[str(REPO),str(REPO/"tests")]
 from verify_live import Peer,text
 from test_native_raw_http import certificate
@@ -32,6 +32,7 @@ from codex_deepseek.processes import identity,matches,terminate
 from codex_deepseek.platforms import private_directory
 from codex_deepseek.state import session_lines
 from install import console_entry,python_entry,valid_release,source_identity
+from ci.qualify_native import _observe_process_family
 
 KEY1="synthetic-fault-only-invalid"
 KEY2="synthetic-fault-only-restored"
@@ -212,6 +213,25 @@ def new_peer(root,binary,catalog,descriptor,python,mcp):
     env["FAULT_LOCAL_TOKEN"]=descriptor["token"]
     return Peer(root,command=[str(binary)],environment=env)
 
+
+def collect_fault_processes(controller,family,observed,uncertain,rejected,errors):
+    """Use the existing proven-edge observer; this controller is not a child."""
+    _observe_process_family(family,uncertain,rejected,errors)
+    observed.clear()
+    observed.update({key:row for key,row in family.items() if key!=controller})
+
+
+def fault_observation_issues(uncertain,rejected,errors):
+    live=[]
+    for row in uncertain.values():
+        stamp=row.get("birth_after") or row.get("birth")
+        if ((stamp and matches(row["pid"],stamp)) or (not stamp and psutil.pid_exists(row["pid"]))):
+            live.append(row["pid"])
+    return {"uncertain_observations":list(uncertain.values()),
+            "rejected_processes":list(rejected.values()),
+            "observation_errors":list(errors.values()),"unknown_live":sorted(set(live))}
+
+
 async def scenario(root,binary,candidate,catalog,python,kind):
     private_directory(root);private_directory(root/"home");(root/"work").mkdir()
     if kind=="effect-after":(root/"hold-tool-result").write_text("hold")
@@ -223,15 +243,12 @@ async def scenario(root,binary,candidate,catalog,python,kind):
                       CODEX_DEEPSEEK_TRACE_DIR=str(root/"adapter-traces"),CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS="90")
     for key in ["CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_MANIFEST","CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_SHA256"]:os.environ.pop(key,None)
     observed={};stop_observer=asyncio.Event()
+    controller=(os.getpid(),identity(os.getpid()));assert controller[1],"Fixture controller identity is missing"
+    family={controller:{"pid":controller[0],"birth":controller[1],"ownership":"current_fixture_controller"}}
+    uncertain={};rejected={};observation_errors={}
     async def observe():
         while not stop_observer.is_set():
-            parents=[os.getpid()]+[pid for pid,birth in list(observed) if matches(pid,birth)]
-            for pid in parents:
-                try:
-                    for proc in psutil.Process(pid).children(recursive=True):
-                        stamp=identity(proc.pid)
-                        if stamp:observed[(proc.pid,stamp)]={"pid":proc.pid,"birth":stamp,"name":proc.name()}
-                except psutil.Error:pass
+            collect_fault_processes(controller,family,observed,uncertain,rejected,observation_errors)
             await asyncio.sleep(.05)
     watcher=asyncio.create_task(observe())
     peer=None;service=None;report={"kind":kind,"passed":False,"binary":str(binary),"binary_sha256":sha(binary),"started":time.time()}
@@ -344,6 +361,8 @@ async def scenario(root,binary,candidate,catalog,python,kind):
         stop_observer.set();await watcher
         remaining=[row for (pid,birth),row in observed.items() if matches(pid,birth)]
         report["owned_processes"]=list(observed.values());report["remaining_before_forced_cleanup"]=remaining
+        observation=fault_observation_issues(uncertain,rejected,observation_errors);report.update(observation)
+        if observation["unknown_live"] or observation["observation_errors"]:cleanup.append("Process ownership observation remained unresolved")
         if remaining:
             cleanup.append("Owned subprocesses survived normal cleanup")
             for row in remaining:await asyncio.to_thread(terminate,row["pid"],row["birth"],timeout=2)

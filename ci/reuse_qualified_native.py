@@ -44,8 +44,13 @@ def selected_pin(pins, target):
     if pins.get("source") not in {"actions-artifact","release-asset"}:
         raise ValueError("Unknown acquisition source; no automatic fallback")
     pin = pins["targets"][target]
-    if sha(ROOT/"native/runtime-overlays.json") != pins["recipe_sha256"]:
-        raise ValueError("Full current native recipe differs; reuse requires exact equality")
+    # recipe_sha256/recipe_bytes identify the original compiled full recipe.
+    # The current full file must be separately and explicitly reviewed/pinned.
+    current = pins.get("current_recipe_sha256")
+    if not isinstance(current, str) or len(current) != 64 or any(c not in "0123456789abcdef" for c in current):
+        raise ValueError("An explicit current full recipe SHA256 is required")
+    if sha(ROOT/"native/runtime-overlays.json") != current:
+        raise ValueError("Current full native recipe differs from its explicit pin")
     manifest_path = ROOT/"native"/pin["manifest"]
     if sha(manifest_path) != pin["manifest_sha256"]:
         raise ValueError("Current target manifest differs from the reviewed candidate")
@@ -57,7 +62,36 @@ def selected_pin(pins, target):
             or len(manifest.get("files", {})) != pin["file_count"]
             or manifest["files"].get("build-receipt.json") != pin["receipt_sha256"]):
         raise ValueError("Qualified target manifest is incomplete or selects another native build")
+    from build_native import native_recipe_identity
+    current_recipe=unique_json((ROOT/"native/runtime-overlays.json").read_bytes())
+    if manifest.get("native_recipe_id") != native_recipe_identity(target,current_recipe):
+        raise ValueError("Current selected target recipe differs from the original target manifest")
     return pin, manifest
+
+
+def target_recipe_equivalence(pins, target, manifest, receipt, archived_recipe):
+    """Keep original compilation provenance while validating this target today."""
+    from build_native import native_recipe_identity
+    archived_recipe=Path(archived_recipe)
+    current_path=ROOT/"native/runtime-overlays.json"
+    if sha(archived_recipe)!=pins["recipe_sha256"]:
+        raise ValueError("Original compiled full recipe differs from the archived pin")
+    if sha(current_path)!=pins["current_recipe_sha256"]:
+        raise ValueError("Current full recipe changed after explicit selection")
+    original=unique_json(archived_recipe.read_bytes())
+    current=unique_json(current_path.read_bytes())
+    old_id=native_recipe_identity(target,original)
+    current_id=native_recipe_identity(target,current)
+    if (old_id!=current_id or manifest.get("native_recipe_id")!=old_id
+            or receipt.get("native_recipe_id")!=old_id):
+        raise ValueError("Archived/current/manifest/build-receipt selected target identities differ")
+    if receipt.get("overlay_recipe_sha256")!=pins["recipe_sha256"]:
+        raise ValueError("Original receipt does not attest the original full recipe")
+    return {"target":target,"target_recipe_id":old_id,
+            "original_compilation_recipe_sha256":pins["recipe_sha256"],
+            "current_validation_recipe_sha256":pins["current_recipe_sha256"],
+            "full_recipe_equal":pins["recipe_sha256"]==pins["current_recipe_sha256"],
+            "original_build_receipt_preserved":True,"native_builds":0}
 
 
 def validate_run(value, pins):
@@ -234,6 +268,8 @@ def main():
         files=extract_exact(archive,args.package,manifest)
         if files != manifest["files"]:
             raise ValueError("Extracted full package differs from current manifest")
+        scope=target_recipe_equivalence(pins,target,manifest,
+                unique_json((args.package/"build-receipt.json").read_bytes()),recipe)
         identity=package_identity(args.package,recipe)
         url,digest=build_assets(target)["source"]
         args.source_archive.parent.mkdir(parents=True,exist_ok=True)
@@ -241,7 +277,7 @@ def main():
         if sha(pins_path)!=pins_hash:
             raise ValueError("Qualified build selection changed during acquisition")
         selected_pin(pins,target)
-        record.update(status="passed",package=identity,zip_sha256=pin["zip_sha256"],
+        record.update(status="passed",package=identity,target_recipe_equivalence=scope,zip_sha256=pin["zip_sha256"],
                       archive_sha256=pin["archive_sha256"],recipe_sha256=sha(recipe),
                       archive_regular_files=len(files),source_archive_sha256=digest,
                       source_archive_bytes=source_bytes,original_build_receipt_preserved=True)

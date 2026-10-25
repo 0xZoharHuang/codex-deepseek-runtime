@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "release": "0.6.2",
+  "publication_status": "candidate_not_published",
+  "scope": "Windows fixed-target local runtime qualification",
+  "qualified_source_id": "d69a4edd5b8de66f3db3",
+  "target": "x86_64-pc-windows-msvc",
+  "accepted_status": "accepted_for_frozen_target_local_runtime_scope",
+  "accepted_aggregate_sha256": "e7157b9ac464864329dbd2267ae435f19d0e852f89d0ea4823738c154151e135",
+  "accepted_seal_sha256": "e2519a51da86da580ff017dcfb570d1d41a517ed62ddf532698fe04afe67723f",
+  "offline": {
+    "passed": 2150,
+    "platform_inapplicable": 4
+  },
+  "standard_gates": {
+    "effective_combined_passed": 30,
+    "original_passed": 29,
+    "original_failed": 1,
+    "original_failed_gates": [
+      "tui"
+    ],
+    "terminal_revalidation": [
+      "tui",
+      "tui-interrupt"
+    ],
+    "single_run_all_passed": false
+  },
+  "local_methods": {
+    "positive_RPC_methods": 128,
+    "native_configuration_boundaries": 3,
+    "actual_native_client_sessions": 66,
+    "remaining_methods": {
+      "total": 64,
+      "positive": 59,
+      "backend_boundaries": 4,
+      "platform_boundaries": 1
+    }
+  },
+  "native_schema_comparison": {
+    "schemas": 456,
+    "differences": 0
+  },
+  "browser_runtime_mechanisms": 8,
+  "protocol_recovery_kinds": 6,
+  "native_fault_cases": 14,
+  "complex_tasks": {
+    "jinja": {
+      "runtime_mechanisms_passed": 14,
+      "application_task_passed": true
+    },
+    "httpcore": {
+      "runtime_mechanisms_passed": 14,
+      "application_task_passed": false,
+      "original_timeout_and_failed_suites_preserved": true,
+      "original_provider_error_preserved": true,
+      "request_recovery_classification": "request_recovered_then_explicit_interrupt",
+      "single_run_all_success": false
+    }
+  },
+  "qualification_relabelled_as_derivative_single_run": false,
+  "scope_limits": [
+    "Model-generated application correctness is separate from runtime qualification",
+    "OpenAI cloud entitlements and unsupported model modalities are not equivalence claims",
+    "Codex App gateway qualification is separate"
+  ],
+  "evidence_policy": "Summary fields and digests only; original raw evidence and sealed producer identities remain private and unchanged."
+}

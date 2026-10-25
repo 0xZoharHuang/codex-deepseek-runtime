@@ -1,6 +1,6 @@
 # Parallel Windows candidate installation
 
-The current distribution is an unpublished 0.6.0 candidate. The [Chinese candidate guide](release-0.6.0-candidate.zh-CN.md) is the user-facing entrypoint; this page retains the detailed Windows operational boundaries and earlier acceptance snapshots.
+Use the [main README](../README.md) and [0.6.2 qualification record](../reports/releases/0.6.2/README.md) for the current candidate's status and matching artifacts. This page retains generic Windows installation boundaries and earlier snapshots; the [0.6.0 candidate guide](release-0.6.0-candidate.zh-CN.md) is historical context, not current qualification.
 
 This plan uses the existing immutable installer and profile launchers. It does not replace the installed stable CDS, its global entrypoint, or any active native process. Candidate evidence and published release identity are separate: a local hash is not a published Git commit or GitHub release.
 

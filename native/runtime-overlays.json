@@ -1044,6 +1044,34 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-readable-daemon-scratch.patch",
+      "sha256": "1dc6f292394dfc9fe4af5600245ff32f0c93ca0790039fd8a5ddb1021b463859",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/app-server-daemon/src/backend/pid_start.rs",
+            "before_sha256": "8ded330f05e2119a5295090f5dc66ba3dd86dd361433d65c9cfc8ab772febc1d",
+            "after_sha256": "d0be384f57486cb2607bac7d8bf2181209e234cc6ca01c50a452d678f271d675"
+          },
+          {
+            "path": "codex-rs/app-server-daemon/src/backend/pid_tests.rs",
+            "before_sha256": "0a7512266ef4d7a066ae503ee6816d0c35a66cfbe79dad5d7f1caa94c653a422",
+            "after_sha256": "1125b7355d0e2fc3e9aafc6d8cf460baec03d50ac13f0770d416732e82bc2911"
+          },
+          {
+            "path": "codex-rs/app-server-daemon/src/backend/pid_workdir_windows.rs",
+            "before_sha256": null,
+            "after_sha256": "ad1332ec80f53fb2570cee04660a8355048424621a5ef236c2fa80426034c645"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "5b6b98cb561f8fbe0cee2fecee7c323967eb119b17f336342f954b2afd1bac65",
+            "after_sha256": "b526bb85b7428d7c3e4f96fb5f035273e7cfbe6491fa1426369beb824242fe6a"
+          }
+        ]
+      }
     }
   ]
 }

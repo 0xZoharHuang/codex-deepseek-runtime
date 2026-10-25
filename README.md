@@ -186,6 +186,14 @@ codex-deepseek mcp list
 codex-deepseek app-server
 ```
 
+外层 agent 或脚本启动独立 worker 时，固定实际入口、cwd 和 `CODEX_DEEPSEEK_HOME`，通过 stdin 传入任务。例如在已信任的 Git 项目中：
+
+```sh
+codex-deepseek -a never -s workspace-write exec --json -C /path/to/project --output-last-message /path/to/last-message.txt -
+```
+
+`--json` 属于 `exec` 层；控制器应保存 `thread.started` 的线程 ID 和原 home，将 stdout 按 JSONL 解析、stderr 单独保存；同时确认最终 `turn.completed`、进程退出 0，并独立检查实际文件和测试结果。遇到 `turn.failed`、错误事件、非零退出或缺少终态时保留诊断，不把日志混入 JSON 流。最后文本或退出 0 本身不等于任务正确完成。`-a never` 禁止申请新审批，不授予额外文件或网络权限；需要审批回调、运行中 steer 或 interrupt 时，使用持有同一连接的 `app-server`。独立 CLI worker 不会自动成为父 Codex 的原生子智能体；CDS 内的子智能体仍由原生协作工具管理。恢复参数位置和回执语义见[委派指南](docs/delegation-and-local-tools.zh-CN.md)。
+
 需要从某个 turn 前分出恢复线程时，见[固定原生历史恢复流程](docs/native-history-recovery.md)：分页历史需要原 home 的索引，只继续新 fork 子线程；可读 rollout 路径不等于全新 home 的分页迁移。
 
 安装时的默认权限是 `workspace-write` 和 `on-request`。沙箱、人工审批、Guardian 自动审查、Hooks 信任等仍使用原生实现与配置；不要为让某个命令通过而把全局权限改成无限制。子智能体由任务中的原生协作机制创建和管理，`agents` 用来浏览共享本地 daemon 的会话。
@@ -281,6 +289,10 @@ codex-deepseek app-server daemon update --from-cli --yes
 ```
 
 使用本项目的安装器升级；通用上游更新路径会被拒绝，以免移除提供方隔离。隔离候选的回退是结束候选自己的工作后，继续使用保留的稳定入口与原 home。未来同 home 升级需要单独备份与恢复步骤，并保留 home 根目录身份；不承诺状态格式可任意降级。图片账本与未知消费回执应保留到远端清理得到确认。
+
+卸载时先结束所选 home 的任务、子进程与 daemon。Windows 的已安装 release 提供 `sandbox uninstall`：使用该 release 的实际入口和该 home 原有的 `CODEX_DEEPSEEK_HOME`，先查看 `sandbox uninstall --help`，再按其中权限与所有权要求执行；它清理本 home 的沙箱账户和网络规则；目录和用户数据保留，本 home 管理的 ACL 授权由原生撤销流程回收，其他权限不应被重置。不要借旧版的 shared-sandbox 命令清理其他 namespace。
+
+程序移除与会话删除分开处理：确认用户命令入口确由这个安装管理后，再移除该入口及不再需要的安装 root / 不可变版本；会话、配置、图片账本和必要回退材料先保留或备份。macOS/Linux 没有该 Windows 沙箱卸载命令，同样只移除自己的入口和选定安装；PowerShell 的 `cds` alias 另从自己的 profile 中删除。项目没有一条通用 `runtime uninstall` 命令代做这些选择。
 
 取消一个采样轮次不等于清空所有后台工作。后台终端和已发出的 MCP 调用遵循原生生命周期；要清理应结束其实际拥有者，不能仅看到界面停止就认定子进程全部退出。上游直接遭到强杀也存在自身清理边界，报告保留这些事实。
 
