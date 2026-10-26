@@ -135,3 +135,10 @@ turn/interrupt
 - 对已有研究任务的具体 queue 消费时间、当前 feature override 和全部后台进程状态，本诊断没有越界推断。
 
 依据：[官方 app-server API](https://learn.chatgpt.com/docs/app-server#api-overview)，以及固定上游提交中的 `ext/queue/src/service.rs`、`exec/src/lib.rs`、`exec/src/exec_events.rs`、`core/src/session/input_queue.rs`、`sandboxing/src/seatbelt.rs`。本仓库的 CDS wrapper 原样转发这些管理命令，没有把 queue 改写为 steer。
+
+
+## Windows command/exec 的工作目录与权限根
+
+在固定原生版本的 legacy sandboxPolicy 路径中，服务启动时的 config.cwd 仍作为基础 sandbox_cwd；请求中的 cwd 用于命令执行，额外 writableRoots 不会自动删除原来的基础写根。因此，改变命令工作目录不能被当作重新划定权限边界。需要严格限定一个 worker 的写入范围时，应从预期工作目录启动 app-server，并核对实际生效的完整根集合及临时目录条件。现代 permissionProfile 是另一个明确的原生路径，不应与 legacy 参数混称。
+
+0.6.4 的权限验收曾因将“外部” canary 放在仍合法的服务基础目录内而得到写入成功；该原结果保留，没有改动原生策略去迎合测试。最终验证在真实有效根之外放置 canary，使用实际受限账户并独立核对文件效果。
