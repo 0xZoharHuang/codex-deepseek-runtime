@@ -1,0 +1,30 @@
+{
+  "normal_new_installed_entry_used": true,
+  "native_exit": 0,
+  "journaled_metadata_ACE_exactly_revoked": 5,
+  "unrelated_ACE_order_owner_control_FileID_preserved": true,
+  "own_offline_online_accounts_and_group_deleted": true,
+  "native_WFP_firewall_hiddenuser_cleanup_completed": true,
+  "home_and_raw_execution_evidence_preserved": true,
+  "additional_model_requests": 0,
+  "ordinary_readACL_preserved_per_native_contract": true,
+  "actual_payload_readroot_union": 51,
+  "roots_with_remaining_readAllow_for_deleted_own_group": 46,
+  "remaining_readAllow_ACE_count": 46,
+  "extra_QA_hygiene_cleanup_not_executed": "Rootwillcoordinate separately; not a functionalrelease blocker",
+  "schema_version": 1,
+  "passed": true,
+  "scope": "Normal065 native ownednamespace uninstall only; externalQAreadACLcleanup separate",
+  "source_id": "072be79ac2b773d2684c",
+  "entry_sha256": "44c38496b7c2a0d6cc3e72b077379a3c9cdadf16d53d1419651c42ca63f81a16",
+  "independent_closeout_sha256": "0ae91d41ccfac088ec64802c6270e30b821716b6339f4a663fd14acc9b380cd2",
+  "hygiene": {
+    "all_runtime_and_High_controllers_naturally_retired": true,
+    "remaining": 0,
+    "unknown_live": 0,
+    "observer_errors": 0,
+    "forced_signals": 0,
+    "no_daily_PID_defaultlauncher_or_App_actions": true,
+    "no_global_activation": true
+  }
+}

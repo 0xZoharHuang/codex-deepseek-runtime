@@ -1,0 +1,71 @@
+{
+  "status": "passed_current_installed_Windows_profile_permission_and_native_uninstall_scope",
+  "source_id": "072be79ac2b773d2684c",
+  "entry_sha256": "44c38496b7c2a0d6cc3e72b077379a3c9cdadf16d53d1419651c42ca63f81a16",
+  "native_cli_sha256": "6945bc921cb34d052ece8a67f2c2d2aa756878ef3a5858b3d3a8efc9a3ddc057",
+  "original064_failure_reproduced_same_real_profile_home": true,
+  "original_red_proof_sha256": "c2f04a1d8fa53dfb6c93fa33591db9be2f982025bed82926c5b452ee63083ec5",
+  "evidence": {
+    "profile_read_reentry": {
+      "passed": true,
+      "raw_proof_sha256": "915c0e6f6030ef2340ad292aad270b565256bb33111a634070411ab6786f23bf",
+      "scope": "Independent reconstruction of actual065 installed sameprofile ordinaryFullrefresh/readOnly andcoldreentry; originalproducerACLclassificationfailure retained"
+    },
+    "foreign_owner_reject_restore": {
+      "passed": true,
+      "raw_proof_sha256": "b054607c0bf09022e404e0d9a5ffcfb0efb5632b92ca85d2a409a651403dd148",
+      "scope": "Actualnew065 ordinaryLow foreign-owner negative andexactHighrestore plusnormalLow recoveredread, sameownedprofile namespace; no model"
+    },
+    "critical_read_deny_restore": {
+      "passed": true,
+      "raw_proof_sha256": "2a1a7ab45b0d64bdbfcc073afe2839635f9af097d206e48ee3722c14fb1077cd",
+      "scope": "Actual065 Low Fullrefresh criticalRXdeny, unchangedtargetrejection, exactrestore andactualsameSIDread; workspace write pending separately"
+    },
+    "workspace_write_and_outside_deny": {
+      "passed": true,
+      "raw_proof_sha256": "0aab037a6eff874bd31f127c639f5120f13ceeb057ad1ace2b08c60584e2202e",
+      "scope": "Actual065 pendinginsidewrite/outsideDeny onexactpreviouslyprovedworkroots; no repeatedcritical/noop or model"
+    },
+    "native_uninstall_metadata_revoke": {
+      "passed": true,
+      "raw_proof_sha256": "0ae91d41ccfac088ec64802c6270e30b821716b6339f4a663fd14acc9b380cd2",
+      "scope": "Actualnormalinstalled065 native ownnamespace uninstall andexactmetadatarevoke; ordinaryreadACLQAcleanup intentionally separate"
+    }
+  },
+  "metadata_ACE_semantics": "Exact namespace-only non-inheriting FILE_READ_ATTRIBUTES (0x80), bound to existing directory identity; not a read-data or list grant",
+  "ordinary_read_policy_semantics": "Normal native Full/ReadAclsOnly policy separately authorized ordinary group RX (0x1200a9) on its actual read roots; inherited Local RX was verified as this separate native policy effect, never called metadata-only",
+  "other_principals_ACE_order_owner_control_and_FileID_preserved": true,
+  "uninstall": {
+    "native_exit": 0,
+    "exact_metadata_ACE_revoked": 5,
+    "journal_empty": true,
+    "own_accounts_and_group_removed": true,
+    "native_firewall_WFP_hiddenuser_completed": true,
+    "new_model_requests": 0,
+    "hygiene": {
+      "observed_native_family": 8,
+      "Highcontroller_naturally_gone": true,
+      "remaining": 0,
+      "unknown": 0,
+      "errors": 0,
+      "forced": 0,
+      "broker_task_deleted": true
+    },
+    "ordinary_filesystem_ACL_preserved_per_explicit_upstream_uninstall_contract": true,
+    "known_QA_post_uninstall_read_roots": 51,
+    "known_roots_retaining_deleted_QA_group_Allow": 46,
+    "extra_QA_Allow_cleanup": "Separate project-owned final Windows hygiene, not yet performed. Does not alter native uninstall semantics or any active/unknown namespace."
+  },
+  "retained_original_failures": [
+    "Released064 real profile metadata owner refusal",
+    "Initial producer collector incorrectly treated ordinary RX policy effects as metadata-only; exact policy/payload/journal independent reconciliation retained the original assertion failure",
+    "Own foreign-owner helper rejected the original unexpanded drive alias before any ACL mutation; native-style volume resolution corrected only the QA handle wiring",
+    "Workspace evidence path was shadowed by an old list variable before any inside/outside write; only the unexecuted effects were continued, earlier critical/noop calls were not repeated"
+  ],
+  "not_claimed": [
+    "One clean historical run; all original failures remain",
+    "Every native model command succeeded on first attempt",
+    "OpenAI cloud service entitlements",
+    "Codex App acceptance"
+  ]
+}

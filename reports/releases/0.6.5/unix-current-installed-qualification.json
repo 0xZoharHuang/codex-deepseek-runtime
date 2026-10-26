@@ -1,0 +1,54 @@
+{
+  "status": "passed_independent_Windows_record_readback_with_explicit_artifact_limits",
+  "run_id": 40314383545,
+  "commit": "097013bb7eb74769cfcc369eecc76efb8d8be1bd",
+  "product_source_id": "072be79ac2b773d2684c",
+  "adapter_version": "0.6.5",
+  "adapter_files": 29,
+  "reused_native_asset_version": "0.6.2",
+  "current_full_recipe_sha256": "119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76",
+  "original_full_recipe_sha256": "5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6",
+  "platforms": {
+    "x86_64-unknown-linux-gnu": {
+      "artifact_id": 12646945093,
+      "artifact_zip_sha256": "4c9dc2532de1303fb7ca13f5e391d825e89aaf957755fec5169e2e201d5cb4f7",
+      "complete_collection": 2295,
+      "passed": 2255,
+      "platform_skips": 40,
+      "native_cases": 21,
+      "adapter_cases": 2274,
+      "controller_passed": 173,
+      "deselected": 0,
+      "missing_duplicate_or_extra_nodes": 0,
+      "selected_Unix_projection_preserved": true,
+      "original_receipt_bytes_unchanged": true,
+      "recorded_native_adapter_actors_closed_without_forced_cleanup": true
+    },
+    "aarch64-apple-darwin": {
+      "artifact_id": 12646576237,
+      "artifact_zip_sha256": "fa6f7d34a85dac0c7a9eb7fc57691ec61995a4957d2e781487d72aa0328c2ccd",
+      "complete_collection": 2295,
+      "passed": 2254,
+      "platform_skips": 41,
+      "native_cases": 21,
+      "adapter_cases": 2274,
+      "controller_passed": 173,
+      "deselected": 0,
+      "missing_duplicate_or_extra_nodes": 0,
+      "selected_Unix_projection_preserved": true,
+      "original_receipt_bytes_unchanged": true,
+      "recorded_native_adapter_actors_closed_without_forced_cleanup": true
+    }
+  },
+  "real_model_requests": 0,
+  "native_builds": 0,
+  "prior_failed_run_not_overwritten": 40312383584,
+  "scope_limits": [
+    "Readback verifies provided ZIP bytes and recorded CI qualification evidence, not live runner OS state.",
+    "Native archives/binaries and installed adapter source bytes are not included in these small ZIPs; recorded file hashes are cross-bound to exact original receipt bytes and prior qualified snapshots, not independently rehashed binaries.",
+    "Controller JUnit is included; separate controller collection and actor envelopes are not bundled. Native/adapter/complete collection and process envelopes are present and checked.",
+    "Historical transient process identity uncertainty is retained, not removed. No recorded known remaining or unknown-live actors or forced cleanup.",
+    "Temporary GitHub Actions hosts are actual hosted platform evidence; hosted macOS does not replace local Mac testing.",
+    "No model, native CLI, artifact code, download, App or repo/source operation was performed by this Windows reader."
+  ]
+}

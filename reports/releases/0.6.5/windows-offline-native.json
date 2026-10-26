@@ -1,0 +1,185 @@
+{
+  "status": "passed_current_offline_and_native_transport_qualification_scope",
+  "source_id": "072be79ac2b773d2684c",
+  "adapter_version": "0.6.5",
+  "python": "3.13.3",
+  "native_version": "0.164.0-alpha.7",
+  "entry_sha256": "44c38496b7c2a0d6cc3e72b077379a3c9cdadf16d53d1419651c42ca63f81a16",
+  "installation_sha256": "55009ee90c214349d95d7d4fa3c67f2b3776ecbfdf70b1469b4a34135b754299",
+  "native_cli_sha256": "6945bc921cb34d052ece8a67f2c2d2aa756878ef3a5858b3d3a8efc9a3ddc057",
+  "native_archive_sha256": "b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73",
+  "native_manifest_sha256": "232867e26141e0b7c6de6ad50ffd91b14a73becc17981c681c4e356458844dc1",
+  "native_recipe_id": "3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32",
+  "native_raw_overlay_sha256": "119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76",
+  "implementation_commit": "d3b0d69d453c1821ef21b1b593722a1425bee4cc",
+  "subsequent_CI_only_commit": {
+    "commit": "097013bb7eb74769cfcc369eecc76efb8d8be1bd",
+    "product_inputs_101_unchanged": true,
+    "controller_cases_passed": 173,
+    "former_stale_pin_CI_failure": 40312383584
+  },
+  "QA": {
+    "all_29_QA_sources_equal_current_production_29": true,
+    "product_inputs": 101,
+    "repo_guard_files": 512,
+    "pip_check_exit": 0,
+    "preparation": "R1 failed only because controller plan used POSIX instead of Windows path keys; R1 untouched; fresh qa-r2 ran the same mature script with correct keys and all phases passed",
+    "phase_actor_closure": [
+      {
+        "name": "create-venv",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 0
+      },
+      {
+        "name": "install-hashlocked-dependencies",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 0
+      },
+      {
+        "name": "build-exact-candidate-wheel",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 2
+      },
+      {
+        "name": "install-candidate-distribution",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 0
+      },
+      {
+        "name": "pip-check",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 0
+      },
+      {
+        "name": "identity",
+        "exit_code": 0,
+        "forced_cleanup": 0,
+        "remaining_before_cleanup": 0,
+        "unknown_live": 0,
+        "uncertain_observations": 0
+      }
+    ]
+  },
+  "full_offline": {
+    "executions": 1,
+    "actual_precollected": 2295,
+    "actual_collected_for_execution": 2295,
+    "actual_junit_cases": 2295,
+    "passed": 2291,
+    "deselected": 0,
+    "failed": 0,
+    "platform_inapplicable": {
+      "test_cds_skill_inspect::test_posix_actual_space_path_and_exact_version_argument": "POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check",
+      "test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded": "POSIX shell/shebang timeout fixture; not Windows process execution evidence",
+      "test_native_source_extraction::test_unix_extracts_real_symlink_target_and_bytes": "Requires native Unix symlink extraction",
+      "test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot": "Native Linux daemon process identity contract"
+    },
+    "independent_precollection_matches_actual_collection": true,
+    "junit_identity_multiset_matches_collection": true,
+    "public_validate_offline_run_current_consumer_accepted": true,
+    "pytest_seconds": 422.66,
+    "added_since_R138": [
+      "tests/test_native_build_recipe.py::test_metadata_owner_overlay_is_last_windows_only_and_preserves_the_qualified_prefix",
+      "tests/test_native_build_recipe.py::test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted[omit]",
+      "tests/test_native_build_recipe.py::test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted[reorder]",
+      "tests/test_native_build_recipe.py::test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted[duplicate]",
+      "tests/test_native_build_recipe.py::test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted[wrong_target]"
+    ],
+    "removed_since_R138": [],
+    "execution_role": "Elevated interactive user; offline contracts only, not ordinary sandbox or model acceptance"
+  },
+  "native21": {
+    "executions": 1,
+    "status": "passed_native_transport_scope",
+    "cases": 21,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_seconds": 210.9,
+    "real_model_requests": 0,
+    "provider_credentials_read": false,
+    "scope": "real native CLI/helper with synthetic loopback HTTP/TLS fixtures",
+    "all_21_also_in_full_suite": true,
+    "unique_additional_nodes": 0,
+    "composition": "Separate current native transport evidence; not 2295+21 independent tests",
+    "execution_role": "Non-elevated interactive user"
+  },
+  "guards": {
+    "repo_512_exact_unchanged": true,
+    "entry_and_installation_unchanged": true,
+    "native_binary_unchanged": true,
+    "all_external_probe_and_source_archive_inputs_unchanged": true
+  },
+  "process_observation": {
+    "full": {
+      "timed_out": false,
+      "forced_cleanup": 0,
+      "remaining_before_cleanup": 0,
+      "remaining_after_cleanup": 0,
+      "unknown_live": 0,
+      "uncertain_observations": 42,
+      "rejected_processes": 0,
+      "observation_errors": 0,
+      "returncode": 0,
+      "seconds": 431.6595898999949,
+      "passed": true
+    },
+    "native21": {
+      "timed_out": false,
+      "forced_cleanup": 0,
+      "remaining_before_cleanup": 0,
+      "remaining_after_cleanup": 0,
+      "unknown_live": 0,
+      "uncertain_observations": 6,
+      "rejected_processes": 0,
+      "observation_errors": 0,
+      "returncode": 0,
+      "seconds": 217.23113710002508,
+      "passed": true
+    },
+    "scope": "Owned process-family evidence; transient uncertainties retained, not perfect OS-wide coverage"
+  },
+  "non_claims": [
+    "High full offline does not establish Low permission acceptance",
+    "Real native transport with synthetic fixtures is not a paid/model/business workflow result",
+    "No App/UI or other profile peer namespace was operated",
+    "Native package was supplied; no Cargo/Rustc build was launched",
+    "Historical transient process-identity/edge uncertainty is preserved: full42/native6; no forced cleanup, no known remaining or unknown-live actors. This is not a claim of perfect OS-wide process observation",
+    "Original installer ABI/wrong-version layer failures and actual installed receipt were not rewritten",
+    "This report qualifies the requested scopes; whole-product publication readiness is Root-owned"
+  ],
+  "raw_summary_sha256": "1f740f0783785a3f97a82ac1abf4632b733c4d05c8a468aca6f01b4d378978bc",
+  "raw_artifact_sha256": {
+    "full_verdict": "8d3e699f07e8bdedff9789a6782b750d7a506f983ba8534571a5283f6542dfff",
+    "full_collection": "6fdf79ca1c20480dd129fbbf279174b5f3c4611d1cbea0fd4ac5320cec606c2e",
+    "full_junit": "602f17794189086fea47aaed1cbdf0af0724582aa86f4562d22c00ad15ecc573",
+    "current_public_consumer": "100f7cb761001c79c20362868f021f36119a50295bb8042ffa0fc3179da269b0",
+    "pre_collection": "6fdf79ca1c20480dd129fbbf279174b5f3c4611d1cbea0fd4ac5320cec606c2e",
+    "bootstrap_admission": "3f85044cbd25670973947130d76a177cfba9ca1044ad658c42e0f25976164f78",
+    "native21_qualification": "ddc8b9138e4e4668b2a06ef5fdae5a7dd4f8658d750863b30824f5b8df8dbfff",
+    "native21_junit": "d8acec1a48f422c217849aad909daae7473f75fa396909ad64e019962b944223",
+    "sourceguard_before": "53655d6b001ff30e56f9b4b51b01c51bd3b1c28d61d7c37b4f80056ca2489127",
+    "sourceguard_after": "f6e8acab1e2060d3f9a6334b1154582280b5d51ebd89433f10ff55e19809f632",
+    "collection_junit_readback": "f5c9bc0253836be2b9d8e8f71e3dbcec99fd7fcce0b639ad85affe33dd80dc61",
+    "QA_R2_preparation": "8fbd1b06b0d409576edff2633b65003d605f07b5769df3db0c26880894d48421",
+    "QA_R1_failed_preparation": "789d8bc002a3f4c17f95df5c3f8dd5f908e1fddddd0973dc2cce16ce17d86140",
+    "derived_installation_contract": "3d7fadc267d51d174c3c107c3026e476ce02827d56f68034da89403339a0182a",
+    "actual_installed_receipt": "c7f7847674d5a22418e9111e8f850e68bee26c1a2f5885eac06008cb967e7902",
+    "broker_final_receipts": "345d2da2ee86e3f695dcc87a474ab74fd5050f3b07ddba2c24be10ed6e32dcb0",
+    "root_ACL_readback": "0ac7e5bbad12a1c2e4d8bad7c668a00aa365bb4a59039ad77775cbd3056fa327"
+  }
+}

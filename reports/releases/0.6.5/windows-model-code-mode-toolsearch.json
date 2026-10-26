@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "scope": "Oneactual065 defaultCodeMode plus explicitnativeToolSearchoptin task; realMCPdigest+ordinaryreadonlyPowerShellnonce/hash+servedprovider; modelerrorspreserved",
+  "entry_sha256": "44c38496b7c2a0d6cc3e72b077379a3c9cdadf16d53d1419651c42ca63f81a16",
+  "source_id": "072be79ac2b773d2684c",
+  "native_exec_seconds": 101.50111222267151,
+  "controller_model_replays": 0,
+  "actual_model_requests": 12,
+  "served_model": [
+    "deepseek/deepseek-v4.1-flash-20261017"
+  ],
+  "served_provider": "DeepSeek",
+  "all12generation_GET_verified": true,
+  "native_custom_exec_calls": 11,
+  "actual_ToolSearch_calls": 1,
+  "actual_MCP_digest_calls": 1,
+  "actual_wait_calls": 0,
+  "wait_coverage_note": "Noexecyield occurred inthisrun; do notclaim anewwaitinvocation. HistoricalD69actualwaitremainsseparateevidence.",
+  "first_model_tools": [
+    "exec",
+    "wait",
+    "request_user_input"
+  ],
+  "code_mode_scope": {
+    "packaged_defaults_effectively_true": [
+      "code_mode",
+      "code_mode_only",
+      "code_mode_host"
+    ],
+    "only_CodeMode_feature_optin": "code_mode_tool_search",
+    "existingfixture_otherfeatures_disabled_preserved": true
+  },
+  "model_shell_identity_evidence": "OSexistingPowerShellOperational exactownSID+turntimewindow27records/9PIDs; uniquecommandtimepairing,3PIDsalsomatchcanonicalkernelbirthparentobservations. No auditpolicychange.",
+  "model_shell_direct_IsTokenRestricted_probe": false,
+  "restriction_evidence": "Actualread-only/never/legacybackend config andnoescalation/additionalpermission args; samepinnednative restrictedtoken path, realCLM failures, earlier065sameentry/home/readonly IsTokenRestricted probes. Do notmislabel earlierprobe as modelPIDquery.",
+  "ordinary_readonly_no_privilege_expansion": true,
+  "nonce_absent_prompt_and_firstrequest": true,
+  "MCP_returns_only_digest_notnonce": true,
+  "MCP_shell_and_file_SHA256_equal": true,
+  "file_unchanged": true,
+  "file_sha256": "ad1a38e2b609b174ad0f15a735b472df0d493b5ddb718c40402472a73c829ddf",
+  "final_exact_nonce": true,
+  "single_run_all_green": false,
+  "hygiene": {
+    "observed": 35,
+    "remaining": 0,
+    "unknown": 0,
+    "errors": 0,
+    "forced": 0
+  },
+  "failed_native_command_count": 3,
+  "failed_CodeMode_JSONparse_count": 3,
+  "independent_closeout_sha256": "a46b7f0dfcede4cda1e94f5bd418f4e79170020ea3af0eb05c21491798a9392c"
+}

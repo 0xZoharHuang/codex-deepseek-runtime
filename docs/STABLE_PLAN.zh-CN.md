@@ -1,6 +1,16 @@
 # Codex CLI + DeepSeek 的稳定运行方案
 
-## 0.6.4 当前方案
+## 0.6.5 当前方案
+
+0.6.5固定本地runtime功能资格已通过，产品source为072be79ac2b773d2684c；正式公开状态与匿名下载见[本版回执入口](../reports/releases/0.6.5/README.md)，不把draft当stable。Windows标准用户目录的SYSTEM/Administrators所有权现由原生元数据专用谓词正确维护；不改变目录所有者、调度器、审批器或工具执行器。
+
+当前Windows installed完整集合2295：2291通过、4项明确平台不适用、0漏选；普通账户native21全通过且是完整集合子集。真实profile完成Full refresh/冷重入、受限读取、foreign-owner拒绝/精确恢复、critical RX DENY/恢复以及先核effective roots的inside写入/outside拒绝。一轮真实模型任务完成CodeMode/原生本地ToolSearch/MCP digest/未知nonce和哈希，12个请求均独立确认served DeepSeek；3次PowerShell和3次JSON解析失败保留，本轮没有wait调用，不伪造一次全绿。
+
+Linux、macOS当前源码的hosted完整分区分别2255/40skip、2254/41skip，总数均2295，另有173 controller。两个Unix native仍是原字节0.6.2；新的Windows归档b3438fec…/3022文件与完整prepared源码和patch链一起交付。首次CI旧pin失败保留，CI-only修正没有改变101个产品输入。详见[0.6.5材料](../reports/releases/0.6.5/README.md)。
+
+本地runtime不等于OpenAI云服务权益。原生ToolSearch是本地工具发现，联网Web Search使用搜索后台，二者不混写。旧版本复杂任务、原始失败和上游边界仍按原身份保留。日常默认入口的切换与安装资格分开，未知归属旧控制台及其home继续保护；CADSG的App GUI仍独立验收。
+
+## 0.6.4 历史方案
 
 v0.6.4 已正式发布并读回为 GitHub Latest；tag 固定到69b9271247277fb9d2ecb4816706736863a11860，后续报告提交不改变产品 source3ae。见[发布回执](../reports/releases/0.6.4/publication-record.json)。
 

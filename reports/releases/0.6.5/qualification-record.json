@@ -1,0 +1,26 @@
+{
+  "phase": "qualification_complete_before_publication",
+  "version": "0.6.5",
+  "source_id": "072be79ac2b773d2684c",
+  "product_inputs": 101,
+  "runtime_python_modules": 29,
+  "implementation_commit": "d3b0d69d453c1821ef21b1b593722a1425bee4cc",
+  "hosted_CI_commit": "097013bb7eb74769cfcc369eecc76efb8d8be1bd",
+  "hosted_CI_run": 40314383545,
+  "native_archive_sha256": "b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73",
+  "native_recipe_id": "3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32",
+  "native_recipe_raw_sha256": "119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76",
+  "public_reports": {
+    "README.md": "78f68f8f7b540ac980e698008c80c9042d5c21a2068370e0db278ad5a25dfddd",
+    "unix-current-installed-qualification.json": "34b10d8b6f9fecbd002db196b1fbf092d7d79def636eb7c78a3e3017b9071ac9",
+    "windows-model-code-mode-toolsearch.json": "e774705a04ef24ea4fd9a5c950d465d2de3effa01840bddd429ebb864f0e658a",
+    "windows-native-uninstall.json": "523bab2ab717cd7869d964f819b2d7c1b98489100f740550e5981006a84c1cb5",
+    "windows-offline-native.json": "f2c2129ec059553f1ba9c342824e9adb93edb30003f5a6aa93519597f82750b2",
+    "windows-profile-permissions.json": "dbbf814853af2a1c9bd5f4b43adfbd654ab165b5d98e61eec70196ea43774d73",
+    "windows-runtime-summary.json": "b41ae7d60adac1775927757f2d0872da52f9b227dc97730bfdb0721f64ad6497"
+  },
+  "ordinary_read_ACL_hygiene": "Native uninstall explicitly preserves filesystem permissions; deleted test-group Allow cleanup is separately scheduled for final project-owned Windows hygiene.",
+  "native_App_qualification": false,
+  "publication_API_readback_pending": true,
+  "global_daily_launcher_activation": false
+}
