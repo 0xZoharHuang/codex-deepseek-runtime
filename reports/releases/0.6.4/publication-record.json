@@ -1,0 +1,33 @@
+{
+  "submitted_at": 1792993878.493152,
+  "main": "c44afe90db6d30b1910ff4096d97891a217cdf63",
+  "tag_commit": "69b9271247277fb9d2ecb4816706736863a11860",
+  "release_id": 423879320,
+  "status": "verified_stable_latest_and_main",
+  "verified_at": 1792993884.1176372,
+  "draft": false,
+  "prerelease": false,
+  "latest": true,
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.4",
+  "assets": [
+    {
+      "id": 677115447,
+      "name": "codex-deepseek-native-0.6.4-x86_64-pc-windows-msvc.tar.gz",
+      "size": 205432092,
+      "digest": "sha256:aa9e3b2905c145ee79817c627f141f51bea7399e0911d28a56bdcaaa139707eb"
+    },
+    {
+      "id": 677116494,
+      "name": "native-build-recipe-a0ba8ba8.json",
+      "size": 55012,
+      "digest": "sha256:a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146"
+    },
+    {
+      "id": 677116589,
+      "name": "SHA256SUMS",
+      "size": 224,
+      "digest": "sha256:8585703ac5723f13d320925e6cc618a5368644c06e386696862fae58fc9b7c19"
+    }
+  ],
+  "scope": "Verified GitHub stable/latest flags and main after complete scoped qualification; tag remains immutable. This is publication, not additional runtime execution."
+}

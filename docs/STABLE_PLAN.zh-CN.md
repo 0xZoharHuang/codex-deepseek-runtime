@@ -2,6 +2,8 @@
 
 ## 0.6.4 当前方案
 
+v0.6.4 已正式发布并读回为 GitHub Latest；tag 固定到69b9271247277fb9d2ecb4816706736863a11860，后续报告提交不改变产品 source3ae。见[发布回执](../reports/releases/0.6.4/publication-record.json)。
+
 0.6.4 保留原生任务循环、工具、审批、沙箱、会话和协作机制，仅修正 Windows 关键读取路径把 ALLOW 当作充分就绪证据的缺口。实际目标账户或已知正常组存在有效读取/执行 DENY 时，原生设置流程现在明确失败并保留 DACL；系统权限没有被绕过，也没有以放宽权限通过验收。
 
 当前 Windows 完整回归为 2286 通过、4 项平台跳过；真实专用账户完成允许读取、DENY 拒绝、ACL 恢复后再读取，以及先核对原生有效根再执行的工作区允许/拒绝。新 CLI 的一次真实 DeepSeek turn 经原生工具读取随机文件，三个模型请求均由独立 generation 记录确认；首次 Bash 拒绝和同 turn 改用 PowerShell 的恢复保留。范围、失败与逐项证据见[0.6.4 报告](../reports/releases/0.6.4/README.md)。

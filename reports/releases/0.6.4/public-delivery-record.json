@@ -38,6 +38,13 @@
   },
   "user_install_summary_sha256": "d2118a4b5132bfe9c569a5bd2e7f9023f8541cd65ff64f41bf9f51d0f96df35f",
   "daily_activation": "notchanged because oldconsoleownership unknown; explicit immutableentry and independenthome are available",
-  "stable_promotion": "pending final API flag readback; no tag rewrite",
+  "stable_promotion": {
+    "release_id": 423879320,
+    "draft": false,
+    "prerelease": false,
+    "latest": true,
+    "verified_at": 1792993884.1176372,
+    "tag_commit": "69b9271247277fb9d2ecb4816706736863a11860"
+  },
   "old_qualification_identity_preserved": true
 }
