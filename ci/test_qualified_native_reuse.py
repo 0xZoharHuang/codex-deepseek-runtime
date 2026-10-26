@@ -328,3 +328,27 @@ def test_stable_recipe_download_still_uses_original_build_recipe_not_new_windows
     inputs=reuse.release_inputs(pins,pin,manifest)
     assert inputs["recipe"]["sha256"]==pins["recipe_sha256"]=="a"*64
     assert inputs["recipe"]["url"].endswith("/native-build-recipe-5c9e004f.json")
+
+
+@pytest.mark.parametrize("target,original_target_recipe_id",[
+    ("x86_64-unknown-linux-gnu","3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad"),
+    ("aarch64-apple-darwin","02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1"),
+])
+def test_real_repository_pins_admit_current_recipe_and_preserve_original_unix_projection(target,original_target_recipe_id):
+    """Read the shipped pins, not a fixture whose digest is generated to match."""
+    root=Path(__file__).resolve().parents[1]
+    assert reuse.ROOT==root
+    pins=reuse.unique_json((root/"ci/qualified-native-build.json").read_bytes())
+    pin,manifest=reuse.selected_pin(pins,target)
+    current_path=root/"native/runtime-overlays.json"
+    current_recipe=reuse.unique_json(current_path.read_bytes())
+    from build_native import native_recipe_identity
+    assert pins["current_recipe_sha256"]==reuse.sha(current_path)
+    assert pins["recipe_sha256"]=="5c9e004ff5fca6ef94e7fe4e083613ec916858c63c01b53978c49115047456b6"
+    assert pins["producer_commit"]=="bb5943353491550a48926747f1905d9a83b81c43"
+    assert pins["current_recipe_sha256"]!=pins["recipe_sha256"]
+    assert manifest["native_recipe_id"]==native_recipe_identity(target,current_recipe)==original_target_recipe_id
+    assert reuse.release_inputs(pins,pin,manifest)["recipe"]=={
+        "url":reuse.RELEASE_BASE+"/native-build-recipe-5c9e004f.json",
+        "sha256":pins["recipe_sha256"],"bytes":52848,
+    }
