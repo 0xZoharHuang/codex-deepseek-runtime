@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-26T12:20:19.678772+00:00",
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.5/codex-deepseek-native-0.6.5-x86_64-pc-windows-msvc.tar.gz",
+  "http_status": 200,
+  "bytes": 222609996,
+  "sha256": "b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73",
+  "auth_or_cookies_supplied": false,
+  "curl_rc_disabled": true,
+  "runtime_execution": false,
+  "scope": "Anonymous public delivery through authorized publication relay; not Mac runtime or Windows direct-network success",
+  "temporary_native_removed": true
+}

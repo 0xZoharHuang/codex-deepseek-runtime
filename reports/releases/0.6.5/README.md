@@ -1,6 +1,6 @@
 # 0.6.5 固定本地 runtime 资格
 
-功能资格已通过。正式公开发行、匿名下载与日常入口激活是另外的交付状态，以本目录后续发布回执为准；本文不把草稿 release 当作已经公开。
+功能资格与公开交付均已通过。v0.6.5 已正式发布为 GitHub Latest（Release424176116，draft=false、prerelease=false），tag固定于01de977bc7d1d2474d7b8dd2697b80959e29d42b。匿名完整下载222609996字节与归档摘要相符；这属于发布通道验证，不是本机Mac runtime测试。日常默认入口激活另行维护，未知旧控制台继续保护。[发布回执](publication-record.json)、[公开下载](anonymous-public-asset-readback.json)、[Windows独立永久安装](verified-windows-installation.json)。
 
 本版修复 Windows 标准用户目录下的沙箱准备失败。原元数据维护只接受实例用户作为目录所有者，遗漏了合法的 SYSTEM-owned profile 和 Administrators-owned 设置目录。新谓词仅在这段元数据维护中接受实例用户、SYSTEM 和 BUILTIN Administrators；不改目录所有者，不修改任务循环、工具执行、审批、线程或子智能体业务。目录 FileID、防重解析、操作系统 WRITE_DAC、显式 DENY、非继承 FILE_READ_ATTRIBUTES 与精确撤销 journal 保留。
 

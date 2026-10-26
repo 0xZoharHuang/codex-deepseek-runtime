@@ -1,0 +1,60 @@
+{
+  "id": 424176116,
+  "tag_name": "v0.6.5",
+  "target_commitish": "01de977bc7d1d2474d7b8dd2697b80959e29d42b",
+  "draft": false,
+  "prerelease": false,
+  "html_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.5",
+  "published_at": "2026-10-26T12:12:42Z",
+  "latest": true,
+  "tag_commit": "01de977bc7d1d2474d7b8dd2697b80959e29d42b",
+  "tag_object": "a07ad5ad56cf94bb04191de633cbc0932cf49ca2",
+  "assets": [
+    {
+      "id": 677982389,
+      "name": "codex-deepseek-native-0.6.5-x86_64-pc-windows-msvc.tar.gz",
+      "size": 222609996,
+      "digest": "sha256:b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73"
+    },
+    {
+      "id": 677982363,
+      "name": "native-build-recipe-119f16e9.json",
+      "size": 55537,
+      "digest": "sha256:119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76"
+    },
+    {
+      "id": 677982386,
+      "name": "SHA256SUMS",
+      "size": 224,
+      "digest": "sha256:a0ac36549df54b19f47d31fc283f852e6b05388515f311c272947060793c7aef"
+    }
+  ],
+  "verified_at": "2026-10-26T12:12:44.782804+00:00",
+  "main_qualified_push": {
+    "at": "2026-10-26T12:19:44.310992+00:00",
+    "main": "01de977bc7d1d2474d7b8dd2697b80959e29d42b",
+    "tag": "v0.6.5",
+    "tag_commit": "01de977bc7d1d2474d7b8dd2697b80959e29d42b",
+    "release_id": 424176116,
+    "stable_latest_verified": true
+  },
+  "product_source_id": "072be79ac2b773d2684c",
+  "product_inputs": 101,
+  "qualification_tag_immutable": true,
+  "code_and_binary_unchanged_since_qualification": true,
+  "global_daily_entry_activation": false,
+  "independent_Windows_installation_verified": true,
+  "unknown_legacy_console_preserved": true,
+  "anonymous_full_delivery": {
+    "at": "2026-10-26T12:20:19.678772+00:00",
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.5/codex-deepseek-native-0.6.5-x86_64-pc-windows-msvc.tar.gz",
+    "http_status": 200,
+    "bytes": 222609996,
+    "sha256": "b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73",
+    "auth_or_cookies_supplied": false,
+    "curl_rc_disabled": true,
+    "runtime_execution": false,
+    "scope": "Anonymous public delivery through authorized publication relay; not Mac runtime or Windows direct-network success",
+    "temporary_native_removed": true
+  }
+}

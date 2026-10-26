@@ -1,0 +1,37 @@
+{
+  "status": "normal_no_activate_install_verified_runtime_profile_gates_pending",
+  "source_id": "072be79ac2b773d2684c",
+  "entry_sha256": "44c38496b7c2a0d6cc3e72b077379a3c9cdadf16d53d1419651c42ca63f81a16",
+  "installation_sha256": "55009ee90c214349d95d7d4fa3c67f2b3776ecbfdf70b1469b4a34135b754299",
+  "native_cli_sha256": "6945bc921cb34d052ece8a67f2c2d2aa756878ef3a5858b3d3a8efc9a3ddc057",
+  "native_archive_sha256": "b3438fec5f7e5979cac479d3db8e26938291a54e4ed46e0b9673734ffd981a73",
+  "native_manifest_sha256": "232867e26141e0b7c6de6ad50ffd91b14a73becc17981c681c4e356458844dc1",
+  "native_recipe_id": "3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32",
+  "product_inputs_verified": 101,
+  "native_files_verified": 3022,
+  "model_requests": 0,
+  "installer_reinvoked_in_this_readback": false,
+  "original_wrong_version_layer_assertion_retained": true,
+  "original_identity_ABI_failure_retained": true,
+  "global_launcher_or_other_installation_changed": false,
+  "layers": {
+    "distribution": "0.6.5",
+    "module": "0.6.5",
+    "python": "3.13.3",
+    "isolated": 1
+  },
+  "checks": [
+    {
+      "case": "version",
+      "exit": 0,
+      "stdout_sha256": "183a285608dc3b33c378f7e5a68068895b96df467c9dc836a6322805882353b3"
+    },
+    {
+      "case": "help",
+      "exit": 0,
+      "stdout_sha256": "4a7f0188d4d6e6d812c5cfbcf82468336b899acd5e437de7450421a403c0071e"
+    }
+  ],
+  "execution": "non-elevated interactive Windows user",
+  "scope": "Permanent independent installation; exact entry/data home selected explicitly for operations; qualification functional tests used the separate real-profile fixture."
+}

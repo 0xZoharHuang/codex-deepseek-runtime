@@ -2,7 +2,7 @@
 
 ## 0.6.5 当前方案
 
-0.6.5固定本地runtime功能资格已通过，产品source为072be79ac2b773d2684c；正式公开状态与匿名下载见[本版回执入口](../reports/releases/0.6.5/README.md)，不把draft当stable。Windows标准用户目录的SYSTEM/Administrators所有权现由原生元数据专用谓词正确维护；不改变目录所有者、调度器、审批器或工具执行器。
+0.6.5固定本地runtime功能资格与公开交付已通过，产品source为072be79ac2b773d2684c；已正式发布为GitHub Latest，tag固定01de977bc7d1d2474d7b8dd2697b80959e29d42b，222609996字节匿名下载摘要一致，见[发布回执](../reports/releases/0.6.5/publication-record.json)。Windows标准用户目录的SYSTEM/Administrators所有权现由原生元数据专用谓词正确维护；不改变目录所有者、调度器、审批器或工具执行器。
 
 当前Windows installed完整集合2295：2291通过、4项明确平台不适用、0漏选；普通账户native21全通过且是完整集合子集。真实profile完成Full refresh/冷重入、受限读取、foreign-owner拒绝/精确恢复、critical RX DENY/恢复以及先核effective roots的inside写入/outside拒绝。一轮真实模型任务完成CodeMode/原生本地ToolSearch/MCP digest/未知nonce和哈希，12个请求均独立确认served DeepSeek；3次PowerShell和3次JSON解析失败保留，本轮没有wait调用，不伪造一次全绿。
 
