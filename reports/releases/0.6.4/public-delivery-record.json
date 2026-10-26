@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "public_asset_verified_and_independent_Windows_user_install_verified",
+  "tag": "v0.6.4",
+  "tag_commit": "69b9271247277fb9d2ecb4816706736863a11860",
+  "release_id": 423879320,
+  "assets": [
+    {
+      "id": 677115447,
+      "name": "codex-deepseek-native-0.6.4-x86_64-pc-windows-msvc.tar.gz",
+      "bytes": 205432092,
+      "sha256": "aa9e3b2905c145ee79817c627f141f51bea7399e0911d28a56bdcaaa139707eb",
+      "server_digest_verified": true,
+      "local_native_temp_removed": true
+    },
+    {
+      "id": 677116494,
+      "name": "native-build-recipe-a0ba8ba8.json",
+      "bytes": 55012,
+      "sha256": "a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146",
+      "server_digest_verified": true
+    },
+    {
+      "id": 677116589,
+      "name": "SHA256SUMS",
+      "bytes": 224,
+      "sha256": "8585703ac5723f13d320925e6cc618a5368644c06e386696862fae58fc9b7c19",
+      "server_digest_verified": true
+    }
+  ],
+  "public_download": {
+    "normal_manifest_URL_anonymous_full_body_verified": true,
+    "bytes": 205432092,
+    "sha256": "aa9e3b2905c145ee79817c627f141f51bea7399e0911d28a56bdcaaa139707eb",
+    "host_scope": "authorized publication relay; no local CDS or Codex App execution",
+    "Windows_normal_URL_succeeded": false,
+    "Windows_results": "two default-URL connection failures; officialassetAPI200partial12MiBnotcomplete; stableuserinstalluseddocumentedexplicitlocalarchivewithidenticalpublicSHA"
+  },
+  "user_install_summary_sha256": "d2118a4b5132bfe9c569a5bd2e7f9023f8541cd65ff64f41bf9f51d0f96df35f",
+  "daily_activation": "notchanged because oldconsoleownership unknown; explicit immutableentry and independenthome are available",
+  "stable_promotion": "pending final API flag readback; no tag rewrite",
+  "old_qualification_identity_preserved": true
+}

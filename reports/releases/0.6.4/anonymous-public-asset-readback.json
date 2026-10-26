@@ -1,0 +1,15 @@
+{
+  "started": 1792992723.6557949,
+  "finished": 1792992752.949043,
+  "scope": "Anonymous public artifact download through authorized publication relay; no CDS/native/App execution on Mac",
+  "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.4/codex-deepseek-native-0.6.4-x86_64-pc-windows-msvc.tar.gz",
+  "curl_exit": 0,
+  "http_and_download_bytes": "200 205432092",
+  "stderr": "",
+  "credentials_or_cookie_configuration": false,
+  "curlrc_disabled": true,
+  "bytes": 205432092,
+  "sha256": "aa9e3b2905c145ee79817c627f141f51bea7399e0911d28a56bdcaaa139707eb",
+  "passed": true,
+  "local_native_temp_removed": true
+}

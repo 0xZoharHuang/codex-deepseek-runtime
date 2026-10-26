@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "scope": "Windows stable user-root documented offline archive install and actual offline entry/home verification; preserve separate publicnetwork failure evidence",
+  "product_source_id": "3ae81092a494b2abc1e1",
+  "adapter_distribution_version": "0.6.4",
+  "python_interpreter_version": "3.13.3",
+  "entry_sha256": "0779f1fcd5fd08a2dbe05447bd8112280f852171763737ff963ecd644e010e0c",
+  "installation_metadata_sha256": "67bad5e9868e96afbb4171e670eebd34891650fb8f151e3429e0eed6d610f69f",
+  "actual_adapter_source_files": 29,
+  "actual_native_files": 2991,
+  "all_component_hashes_match_qualified_candidate": true,
+  "native_archive_sha256": "aa9e3b2905c145ee79817c627f141f51bea7399e0911d28a56bdcaaa139707eb",
+  "native_archive_bytes": 205432092,
+  "native_cli_sha256": "a8b50bc26c101ca7e77d23b6e5e4cbbf49aeddd7e7dfc4d141909ee4d4281224",
+  "native_build_receipt_sha256": "777c2dbddfca7e276bb56e0c5bc1aca82b424e93e3f63810e1ec76b2b9ce496b",
+  "normal_installer": true,
+  "explicit_native_archive": true,
+  "native_manifest_override": false,
+  "locked_local_Python_wheelhouse": true,
+  "no_activate": true,
+  "actual_version_exit_0": true,
+  "actual_exec_help_exit_0": true,
+  "actual_isolated_installed_Python_identity_verified": true,
+  "explicit_CODEX_DEEPSEEK_HOME_verified": true,
+  "fresh_home_permission_config": {
+    "model_reasoning_effort": "high",
+    "approval_policy": "on-request",
+    "sandbox_mode": "workspace-write"
+  },
+  "home_user_SYSTEM_only": true,
+  "install_container_metadata_traverse_only_allow_is_not_home_access": true,
+  "new_namespace_or_provider_started": false,
+  "normal_manifest_URL_download": {
+    "attempts": 2,
+    "success": false,
+    "preserved_errors": [
+      "WinError10054",
+      "WinError10060"
+    ]
+  },
+  "official_public_asset_API_download": {
+    "requests": 1,
+    "GitHub_auth": false,
+    "HTTP_status": 200,
+    "bytes": 12582912,
+    "complete_archive_hash_verified": false,
+    "stopped_at_declared_bound": true,
+    "partial_preserved": true
+  },
+  "selected_archive_provenance": "Previously qualified local full archive matching the public manifest SHA, installed through documented --native-archive option",
+  "Root_anonymous_relay_readback_is_separate": true,
+  "no_model_or_High_calls": true,
+  "no_global_PATH_profile_defaultroot_or_oldprocess_changes": true,
+  "hygiene": {
+    "owned_observed_actors": 29,
+    "forced_cleanup": 0,
+    "remaining": 0,
+    "unknown_live": 0,
+    "observer_errors": 0,
+    "all_broker_tasks_retired": true
+  },
+  "private_closeout_sha256": "14acec54a2d32f8920adcc00a1c884d8ba486175d08a53c2656922e107cb3ab6",
+  "public_release_promotion_claimed": false
+}

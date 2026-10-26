@@ -101,3 +101,20 @@ identities. One owned namespace and audit fixtures remain in the final cleanup
 ledger; no completed uninstall is claimed here. Existing daily CDS and other
 users' work were not stopped. The qualification used an explicit local archive;
 public download readback is recorded separately after assets are published.
+
+
+## Public asset and user installation readback
+
+The public GitHub asset was anonymously downloaded in full through the authorized
+publication relay and matched the exact 205,432,092 bytes / archive SHA. This is
+artifact verification, not a Mac runtime test. [Download receipt](anonymous-public-asset-readback.json)
+
+The Windows host's normal manifest URL failed twice before receiving the archive.
+A single official anonymous asset-API attempt returned 200 but did not finish the
+body within its bound; its partial download is not a successful verification.
+The documented explicit-archive installer then installed the same verified bytes
+to an independent permanent user directory. All 29 Python and 2991 native files,
+version/help, independent home resolution and private state permissions were
+read back. No default command, old console or App was modified. The direct URL
+network failure is retained; it is not relabeled as a successful Windows online
+install. [User installation](verified-user-install.json) · [Delivery record](public-delivery-record.json)
