@@ -1072,6 +1072,24 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-critical-read-deny-readiness.patch",
+      "sha256": "6ea930fedafdd8bcc1fa8c2563845661cf038c5be86d50488ebfd918fa4bb0bc",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "6f3fa9486602687a4ee6649f78d28ca420106cde448cb4d23891a162d703b33b",
+            "after_sha256": "a6ebc8688c24231f0e3f931cc4d3c245da475e88735d5d4f64e2a4d06c7a3f3f"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "b526bb85b7428d7c3e4f96fb5f035273e7cfbe6491fa1426369beb824242fe6a",
+            "after_sha256": "435f353e1ffeace970e15f408901596eee44c98442e4cd0bb2952692839d2697"
+          }
+        ]
+      }
     }
   ]
 }

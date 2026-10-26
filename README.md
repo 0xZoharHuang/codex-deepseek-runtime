@@ -8,11 +8,11 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **0.6.3：明确校验上游响应身份。** 如果上游响应明确声明了其他模型或与本次指定路由不符的提供方，适配器会返回失败，保留已经发出的工具事件，不自动换路由或重放请求。已验证为同一身份的模型别名、提供方名称与 slug 可以互换；没有返回的身份字段仍记为未知。
+> **0.6.4：Windows 关键读取路径的就绪检查遵守显式拒绝。** 设置程序遇到适用于目标账户或已知组的读取/执行 DENY 时会明确失败，保留原 DACL；不会因为同时存在 ALLOW 就把路径报告为可读。无关 SID、仅写入权限或当前对象不生效的继承 ACE 不被误判为读取拒绝。
 >
-> 本次只修改 Python 协议适配，不重建原生 Codex。原生二进制、沙箱、压缩和线程机制继续使用已校验的 **0.6.2 原生资产**；该组合的原始验收与复杂任务结果保留在[0.6.2 材料](reports/releases/0.6.2/README.md)，本次定向与平台回归另见[0.6.3 材料](reports/releases/0.6.3/README.md)。三平台当前适配层回归与 Windows 官方路由实跑已通过；原生组件复用与本轮实际执行分别记录。
+> Windows 使用本版 **0.6.4 原生资产**；macOS/Linux 继续使用原字节、原构建回执的 **0.6.2 原生资产**，共同 Python 适配器版本为 0.6.4。0.6.3 的显式响应身份校验继续保留：明确不同的模型或提供方会失败，已经发出的工具事件不被抹去，不自动换路由或重放；已验证别名可互换，缺失身份字段仍为未知。
 >
-> 下方命令固定到 v0.6.3。**仅在同名正式 [GitHub Release](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 已发布时安装。** 当前日常入口有正在执行的任务时，先保留该入口，用独立安装和 home 验证候选；不要覆盖或结束其他任务。
+> 本版实际执行范围和发布验证记录见 [0.6.4 材料](reports/releases/0.6.4/README.md)；[0.6.3](reports/releases/0.6.3/README.md) 与 [0.6.2](reports/releases/0.6.2/README.md) 的历史资格及失败原样保留，不改签为本版新执行。下方命令固定到 v0.6.4，**仅在同名正式 [GitHub Release](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.4) 已发布时安装**。日常入口有任务运行时，保留其进程和 home，先使用独立安装验证。
 
 ## 它怎样工作
 
@@ -44,7 +44,7 @@
 
 ## 支持范围与验收状态
 
-0.6.3 的当前资格状态见[本版验收材料](reports/releases/0.6.3/README.md)；它复用[0.6.2 原生 runtime 的既有验收](reports/releases/0.6.2/README.md)。[0.6.1 图片语义修复](reports/releases/0.6.1/README.md)、[0.6.0 冻结资格](docs/release-0.6.0-acceptance.zh-CN.md)和下方 v0.5.0 支持范围仍是各自版本的历史证据，不能当作本轮重新执行的结果。
+0.6.4 的当前资格状态和实际执行范围见[本版验收材料](reports/releases/0.6.4/README.md)。Windows 使用修复后的本版原生产物；Unix 使用[0.6.2 原生 runtime 的原字节与原回执](reports/releases/0.6.2/README.md)，不把组件复用写成重新完成全部验收。[0.6.3 响应身份校验](reports/releases/0.6.3/README.md)的资格记录单独保留。[0.6.1 图片语义修复](reports/releases/0.6.1/README.md)、[0.6.0 冻结资格](docs/release-0.6.0-acceptance.zh-CN.md)和下方 v0.5.0 支持范围仍是各自版本的历史证据，不能当作本轮重新执行的结果。
 
 | 平台 | v0.5.0 历史结论 | 运行条件与证据 |
 | --- | --- | --- |
@@ -60,7 +60,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 
 ## 安装并运行
 
-以下命令针对 v0.6.3，**仅在 GitHub 上对应正式 release 已发布时使用**。发布前请保留当前稳定入口，按[隔离验证说明](docs/release-0.6.0-candidate.zh-CN.md)使用独立 root。源码、当前平台 manifest、原生归档摘要和 recipe 必须一致；本版适配器明确复用 0.6.2 原生包，其中包含请求容量恢复修复；不能拿 0.6.0/0.6.1 的原生资产替代，也无需重新编译 Rust。
+以下命令针对 v0.6.4，**仅在 GitHub 上对应正式 release 已发布时使用**。发布前请保留当前稳定入口，按[隔离验证说明](docs/release-0.6.0-candidate.zh-CN.md)使用独立 root。源码、当前平台 manifest、原生归档摘要和 recipe 必须一致；本版 Windows 清单选择 0.6.4 原生包，macOS/Linux 清单继续选择已发布的 0.6.2 原生包。两者均保留既有请求容量恢复修复；不要跨平台或跨清单替换资产，正常安装无需编译 Rust。
 
 准备 Git、独立 Python 3.11+ 和有可用额度的 OpenRouter key。不要使用 Codex App 或 ChatGPT App 内置的 Python。安装器下载当前平台的固定原生归档，检查 SHA-256 和完整文件清单，然后建立独立 Python 环境；正常使用不需要编译 Rust。
 
@@ -69,7 +69,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 在终端执行：
 
 ```sh
-git clone --branch v0.6.3 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -87,7 +87,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.3 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -105,7 +105,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.3 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -124,13 +124,13 @@ codex-deepseek.exe
 
 ### 下载受限或并行验证版本
 
-可以预先下载与当前源码随附清单和 recipe 匹配的 0.6.2 原生归档，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可以预先下载与当前源码随附的平台清单和 recipe 匹配的原生归档：Windows 为 0.6.4，macOS/Linux 为 0.6.2，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
 python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.2-aarch64-apple-darwin.tar.gz
 ```
 
-另外两份文件名是 `codex-deepseek-native-0.6.2-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.2-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+另外两份文件名是 `codex-deepseek-native-0.6.2-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.4-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
@@ -300,6 +300,6 @@ codex-deepseek app-server daemon update --from-cli --yes
 
 ## 源码与许可证
 
-项目源码采用 Apache-2.0。0.6.2 原生补丁顺序与身份由 [runtime-overlays.json](native/runtime-overlays.json) 记录，包含既有接入补丁、图片 HTTP/413 和 Windows 隔离修复；构建和打包入口是 `build_native.py` / `package_native.py`。源码审计对照固定上游清单与补丁重放；外部 Cargo 依赖版本保持锁定。不同编译环境可能产生不同二进制摘要，不宣称跨机器构建天然逐字节一致。
+项目源码采用 Apache-2.0。各平台实际使用的原生补丁顺序与身份由 [runtime-overlays.json](native/runtime-overlays.json) 记录；本版在既有 Windows 隔离修复后追加关键读取路径的 DENY 就绪检查，Unix 仍保留 0.6.2 的目标 recipe 与原构建回执；构建和打包入口是 `build_native.py` / `package_native.py`。源码审计对照固定上游清单与补丁重放；外部 Cargo 依赖版本保持锁定。不同编译环境可能产生不同二进制摘要，不宣称跨机器构建天然逐字节一致。
 
 包内保留 Codex、ripgrep、Rust/Python 依赖的许可证与归属；Linux bubblewrap 同时提供原始许可证、对应源代码和构建出处，Windows 启动器保留 distlib 许可证。详见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [LICENSE](LICENSE)。[上游补充材料](upstream/README.md) 是可审查的补丁与复现说明，不代表已被 OpenAI 或 OpenRouter 接受。
