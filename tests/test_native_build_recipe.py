@@ -10,6 +10,20 @@ TARGETS=list(build.PLATFORM_ASSETS)
 WIN='x86_64-pc-windows-msvc'
 
 
+def overlay_index(recipe, filename):
+    indices=[index for index,item in enumerate(recipe['overlays']) if item['file']==filename]
+    assert len(indices)==1,filename
+    return indices[0]
+
+
+def recipe_prefix_through(recipe, filename):
+    return {**recipe,'overlays':recipe['overlays'][:overlay_index(recipe,filename)+1]}
+
+
+def serialized_recipe_sha256(recipe):
+    return hashlib.sha256((json.dumps(recipe,indent=2)+'\n').encode('utf-8')).hexdigest()
+
+
 def recipe_copy(tmp_path,monkeypatch,edit=None):
     value=copy.deepcopy(build.runtime_recipe())
     if edit:edit(value)
@@ -392,9 +406,12 @@ def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_p
 
 
 def test_actual_readable_daemon_overlay_remains_before_readiness_and_keeps_unix_recipes():
-    recipe=build.runtime_recipe()
-    assert build.sha(ROOT/'native/runtime-overlays.json')=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
-    last=recipe['overlays'][-2]
+    # Freeze the complete qualified 0.6.4 prefix, including all common inputs.
+    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-critical-read-deny-readiness.patch')
+    assert serialized_recipe_sha256(recipe)=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
+    index=overlay_index(recipe,'windows-readable-daemon-scratch.patch')
+    last=recipe['overlays'][index]
+    assert index+1==overlay_index(recipe,'windows-critical-read-deny-readiness.patch')
     assert last['file']=='windows-readable-daemon-scratch.patch'
     assert last['sha256']==build.sha(ROOT/'native'/last['file'])=='1dc6f292394dfc9fe4af5600245ff32f0c93ca0790039fd8a5ddb1021b463859'
     assert set(last['changes_by_target'])=={WIN}
@@ -403,8 +420,8 @@ def test_actual_readable_daemon_overlay_remains_before_readiness_and_keeps_unix_
         'codex-rs/app-server-daemon/src/backend/pid_start.rs',
         'codex-rs/app-server-daemon/src/backend/pid_tests.rs',
         'codex-rs/app-server-daemon/src/backend/pid_workdir_windows.rs'}
-    previous={**recipe,'overlays':recipe['overlays'][:-2]}
-    assert build.native_recipe_identity(WIN,{**recipe,'overlays':recipe['overlays'][:-1]})=='048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15'
+    previous={**recipe,'overlays':recipe['overlays'][:index]}
+    assert build.native_recipe_identity(WIN,recipe_prefix_through(recipe,'windows-readable-daemon-scratch.patch'))=='048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15'
     for target in TARGETS:
         if target==WIN:continue
         assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,previous)
@@ -412,11 +429,12 @@ def test_actual_readable_daemon_overlay_remains_before_readiness_and_keeps_unix_
 @pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
 def test_readable_daemon_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_path,monkeypatch,problem):
     def edit(recipe):
-        if problem=='omit':recipe['overlays'].pop(-2)
-        elif problem=='reorder':recipe['overlays'][-3:-1]=reversed(recipe['overlays'][-3:-1])
-        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][-2]))
+        index=overlay_index(recipe,'windows-readable-daemon-scratch.patch')
+        if problem=='omit':recipe['overlays'].pop(index)
+        elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
         else:
-            last=recipe['overlays'][-2]
+            last=recipe['overlays'][index]
             last['changes_by_target']['x86_64-unknown-linux-gnu']=last['changes_by_target'].pop(WIN)
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()
@@ -434,13 +452,16 @@ def test_public_package_and_install_recipe_readers_use_the_current_entrypoint():
 
 
 def test_actual_critical_read_deny_overlay_is_last_windows_only_with_exact_sources():
-    recipe=build.runtime_recipe()
-    last=recipe['overlays'][-1]
+    # This layer remains last in its historical prefix, not in every future release.
+    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-critical-read-deny-readiness.patch')
+    index=overlay_index(recipe,'windows-critical-read-deny-readiness.patch')
+    last=recipe['overlays'][index]
+    assert index==len(recipe['overlays'])-1
     assert last == {'file': 'windows-critical-read-deny-readiness.patch', 'sha256': '6ea930fedafdd8bcc1fa8c2563845661cf038c5be86d50488ebfd918fa4bb0bc', 'changes_by_target': {'x86_64-pc-windows-msvc': [{'path': 'codex-rs/windows-sandbox-rs/src/acl.rs', 'before_sha256': '6f3fa9486602687a4ee6649f78d28ca420106cde448cb4d23891a162d703b33b', 'after_sha256': 'a6ebc8688c24231f0e3f931cc4d3c245da475e88735d5d4f64e2a4d06c7a3f3f'}, {'path': 'codex-rs/windows-sandbox-rs/src/setup_provisioning.rs', 'before_sha256': 'b526bb85b7428d7c3e4f96fb5f035273e7cfbe6491fa1426369beb824242fe6a', 'after_sha256': '435f353e1ffeace970e15f408901596eee44c98442e4cd0bb2952692839d2697'}]}}
     assert build.sha(ROOT/'native'/last['file'])==last['sha256']
-    assert build.sha(ROOT/'native/runtime-overlays.json')=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
+    assert serialized_recipe_sha256(recipe)=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
     assert build.native_recipe_identity(WIN,recipe)=='6a86bdef519c5d3e45ef402cb33437c3fcf4aec7ed0e0a1432a314f87ae87e1f'
-    previous={**recipe,'overlays':recipe['overlays'][:-1]}
+    previous={**recipe,'overlays':recipe['overlays'][:index]}
     assert build.native_recipe_identity(WIN,previous)=='048b4e2840ba6d77c68bdada51316f73b96a4154e1192303be40769120606c15'
     for target in TARGETS:
         if target != WIN:
@@ -449,11 +470,60 @@ def test_actual_critical_read_deny_overlay_is_last_windows_only_with_exact_sourc
 @pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
 def test_critical_read_deny_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_path,monkeypatch,problem):
     def edit(recipe):
-        if problem=='omit':recipe['overlays'].pop()
-        elif problem=='reorder':recipe['overlays'][-2:]=reversed(recipe['overlays'][-2:])
-        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][-1]))
+        index=overlay_index(recipe,'windows-critical-read-deny-readiness.patch')
+        if problem=='omit':recipe['overlays'].pop(index)
+        elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
         else:
-            last=recipe['overlays'][-1]
+            last=recipe['overlays'][index]
+            last['changes_by_target']['x86_64-unknown-linux-gnu']=last['changes_by_target'].pop(WIN)
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):build.runtime_recipe()
+
+
+def test_metadata_owner_overlay_is_last_windows_only_and_preserves_the_qualified_prefix():
+    recipe=build.runtime_recipe()
+    index=overlay_index(recipe,'windows-metadata-owner-policy.patch')
+    assert index==len(recipe['overlays'])-1
+    assert index==overlay_index(recipe,'windows-critical-read-deny-readiness.patch')+1
+    last=recipe['overlays'][index]
+    assert last=={
+        'file':'windows-metadata-owner-policy.patch',
+        'sha256':'82d9c9d7ee9b57603e359092ef891a0842209df325128db7241eaceb0067944b',
+        'changes_by_target':{WIN:[{
+            'path':'codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs',
+            'before_sha256':'54149f0d1e81b356bef6772a0259bc8bb0320c51e1ca81a2f4f8169f120b99a8',
+            'after_sha256':'0ef82ccd9e196bb91b7059637f691f9b413c39c1a49504152b33beac386b59ba',
+        }]},
+    }
+    assert build.sha(ROOT/'native'/last['file'])==last['sha256']
+    # Git declares LF for JSON: the actual artifact bytes must match the canonical
+    # serialization, keeping package inputs and the committed recipe identical.
+    document=(ROOT/'native/runtime-overlays.json').read_bytes()
+    assert hashlib.sha256(document).hexdigest()==serialized_recipe_sha256(recipe)=='119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76'
+    previous=recipe_prefix_through(recipe,'windows-critical-read-deny-readiness.patch')
+    assert previous['overlays']==recipe['overlays'][:index]
+    assert serialized_recipe_sha256(previous)=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
+    assert build.native_recipe_identity(WIN,previous)=='6a86bdef519c5d3e45ef402cb33437c3fcf4aec7ed0e0a1432a314f87ae87e1f'
+    assert build.native_recipe_identity(WIN,recipe)=='3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32'
+    expected_unix={
+        'aarch64-apple-darwin':'02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1',
+        'x86_64-unknown-linux-gnu':'3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad',
+    }
+    assert set(expected_unix)==set(TARGETS)-{WIN}
+    for target,expected in expected_unix.items():
+        assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,previous)==expected
+
+
+@pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
+def test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_path,monkeypatch,problem):
+    def edit(recipe):
+        index=overlay_index(recipe,'windows-metadata-owner-policy.patch')
+        if problem=='omit':recipe['overlays'].pop(index)
+        elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
+        else:
+            last=recipe['overlays'][index]
             last['changes_by_target']['x86_64-unknown-linux-gnu']=last['changes_by_target'].pop(WIN)
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()

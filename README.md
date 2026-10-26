@@ -8,11 +8,13 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **0.6.4：Windows 关键读取路径的就绪检查遵守显式拒绝。** 设置程序遇到适用于目标账户或已知组的读取/执行 DENY 时会明确失败，保留原 DACL；不会因为同时存在 ALLOW 就把路径报告为可读。无关 SID、仅写入权限或当前对象不生效的继承 ACE 不被误判为读取拒绝。
+> **0.6.5：修复 Windows 标准用户目录下的沙箱准备。** 祖先目录元数据的维护允许该隔离实例的用户、SYSTEM 和 Administrators；不改变目录所有者。只为本实例隔离组维护非继承的 FILE_READ_ATTRIBUTES 权限项，保留 Windows WRITE_DAC 检查、显式拒绝、FileID、防重解析、精确 journal 与撤销；不增加列目录、文件内容或写入权限。此前 C 盘根目录下的自有 home 验收漏掉了常见的 SYSTEM/Administrators 所有权布局，本版必须以真实用户目录中的原失败夹具复验，不能把提权后的命令算作普通沙箱通过。
 >
-> Windows 使用本版 **0.6.4 原生资产**；macOS/Linux 继续使用原字节、原构建回执的 **0.6.2 原生资产**，共同 Python 适配器版本为 0.6.4。0.6.3 的显式响应身份校验继续保留：明确不同的模型或提供方会失败，已经发出的工具事件不被抹去，不自动换路由或重放；已验证别名可互换，缺失身份字段仍为未知。
+> **保留 0.6.4 的关键读取修复。** 设置程序遇到适用于目标账户或已知组的读取/执行 DENY 时会明确失败，保留原 DACL；不会因为同时存在 ALLOW 就把路径报告为可读。无关 SID、仅写入权限或当前对象不生效的继承 ACE 不被误判为读取拒绝。
 >
-> 本版实际执行范围和发布验证记录见 [0.6.4 材料](reports/releases/0.6.4/README.md)；[0.6.3](reports/releases/0.6.3/README.md) 与 [0.6.2](reports/releases/0.6.2/README.md) 的历史资格及失败原样保留，不改签为本版新执行。下方命令固定到 v0.6.4，**仅在同名正式 [GitHub Release](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.4) 已发布时安装**。日常入口有任务运行时，保留其进程和 home，先使用独立安装验证。
+> Windows 使用本版 **0.6.5 原生资产**；macOS/Linux 继续使用原字节、原构建回执的 **0.6.2 原生资产**，共同 Python 适配器版本为 0.6.5。0.6.3 的显式响应身份校验继续保留：明确不同的模型或提供方会失败，已经发出的工具事件不被抹去，不自动换路由或重放；已验证别名可互换，缺失身份字段仍为未知。
+>
+> 本版实际执行范围和发布验证记录见 [0.6.5 材料](reports/releases/0.6.5/README.md)；[0.6.3](reports/releases/0.6.3/README.md) 、[0.6.4](reports/releases/0.6.4/README.md) 与 [0.6.2](reports/releases/0.6.2/README.md) 的历史资格及失败原样保留，不改签为本版新执行。下方命令固定到 v0.6.5，**仅在同名正式 [GitHub Release](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.5) 已发布时安装**。日常入口有任务运行时，保留其进程和 home，先使用独立安装验证。
 
 ## 它怎样工作
 
@@ -44,7 +46,7 @@
 
 ## 支持范围与验收状态
 
-0.6.4 的当前资格状态和实际执行范围见[本版验收材料](reports/releases/0.6.4/README.md)。Windows 使用修复后的本版原生产物；Unix 使用[0.6.2 原生 runtime 的原字节与原回执](reports/releases/0.6.2/README.md)，不把组件复用写成重新完成全部验收。[0.6.3 响应身份校验](reports/releases/0.6.3/README.md)的资格记录单独保留。[0.6.1 图片语义修复](reports/releases/0.6.1/README.md)、[0.6.0 冻结资格](docs/release-0.6.0-acceptance.zh-CN.md)和下方 v0.5.0 支持范围仍是各自版本的历史证据，不能当作本轮重新执行的结果。
+0.6.5 的当前资格状态和实际执行范围见[本版验收材料](reports/releases/0.6.5/README.md)。Windows 使用修复后的本版原生产物；Unix 使用[0.6.2 原生 runtime 的原字节与原回执](reports/releases/0.6.2/README.md)，不把组件复用写成重新完成全部验收。[0.6.3 响应身份校验](reports/releases/0.6.3/README.md)的资格记录单独保留。[0.6.1 图片语义修复](reports/releases/0.6.1/README.md)、[0.6.0 冻结资格](docs/release-0.6.0-acceptance.zh-CN.md)和下方 v0.5.0 支持范围仍是各自版本的历史证据，不能当作本轮重新执行的结果。
 
 | 平台 | v0.5.0 历史结论 | 运行条件与证据 |
 | --- | --- | --- |
@@ -60,7 +62,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 
 ## 安装并运行
 
-以下命令针对 v0.6.4，**仅在 GitHub 上对应正式 release 已发布时使用**。发布前请保留当前稳定入口，按[隔离验证说明](docs/release-0.6.0-candidate.zh-CN.md)使用独立 root。源码、当前平台 manifest、原生归档摘要和 recipe 必须一致；本版 Windows 清单选择 0.6.4 原生包，macOS/Linux 清单继续选择已发布的 0.6.2 原生包。两者均保留既有请求容量恢复修复；不要跨平台或跨清单替换资产，正常安装无需编译 Rust。
+以下命令针对 v0.6.5，**仅在 GitHub 上对应正式 release 已发布时使用**。发布前请保留当前稳定入口，按[隔离验证说明](docs/release-0.6.0-candidate.zh-CN.md)使用独立 root。源码、当前平台 manifest、原生归档摘要和 recipe 必须一致；本版 Windows 清单选择 0.6.5 原生包，macOS/Linux 清单继续选择已发布的 0.6.2 原生包。两者均保留既有请求容量恢复修复；不要跨平台或跨清单替换资产，正常安装无需编译 Rust。
 
 准备 Git、独立 Python 3.11+ 和有可用额度的 OpenRouter key。不要使用 Codex App 或 ChatGPT App 内置的 Python。安装器下载当前平台的固定原生归档，检查 SHA-256 和完整文件清单，然后建立独立 Python 环境；正常使用不需要编译 Rust。
 
@@ -69,7 +71,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 在终端执行：
 
 ```sh
-git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -87,7 +89,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -105,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -124,13 +126,13 @@ codex-deepseek.exe
 
 ### 下载受限或并行验证版本
 
-可以预先下载与当前源码随附的平台清单和 recipe 匹配的原生归档：Windows 为 0.6.4，macOS/Linux 为 0.6.2，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可以预先下载与当前源码随附的平台清单和 recipe 匹配的原生归档：Windows 为 0.6.5，macOS/Linux 为 0.6.2，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
 python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.2-aarch64-apple-darwin.tar.gz
 ```
 
-另外两份文件名是 `codex-deepseek-native-0.6.2-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.4-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+另外两份文件名是 `codex-deepseek-native-0.6.2-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.5-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
@@ -272,7 +274,7 @@ codex-deepseek doctor
 | 缺少 key / Windows 凭据库不可用 | 运行 `runtime setup-key`；SSH/CI 用安全进程环境。检查是否有旧的 `OPENROUTER_API_KEY` 覆盖系统存储。 |
 | 原生产物或缓存摘要不符 | 保留异常文件，重新取得匹配版本的源码和归档，交给安装器验证；不要关闭摘要检查。 |
 | Linux 缺少动态库或 venv | 安装与系统匹配的 glibc/OpenSSL 3/libcap 运行库及 Python venv 支持；当前验证目标是 Ubuntu 24.04 GNU。 |
-| 模型未宣告 Code Mode 元数据的提醒 | 当前 catalog 不强制工具模式，提醒来自原生检查；模式使用情况见报告，不通过隐藏提醒制造通过。 |
+| 模型未宣告 Code Mode 元数据的提醒 | 原生提醒不会据此禁用工具，纯文本完成也不能证明工具运行。不要为消警强填 catalog 的 tool_mode，否则可能覆盖 profile 的 Direct 选择。[条件、选择顺序及真工具验证方法](docs/code-mode-metadata-warning.zh-CN.md)。 |
 | `Reconnecting... undeclared tool` | 核对本次实际声明的工具集合与调用路径；目录、历史或 Code Mode 内的工具名不代表顶层已开放。保持工具白名单，参见[受控原生重试记录](reports/protocol/undeclared-tool-retry-20261025.json)。该记录覆盖一次未知调用前后已执行工具的保留，不承诺模型再次发出新操作时的业务幂等。 |
 | 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
 | 子任务 DNS 失败 / `curl` 退出 6 / HTTP 000 | 先核对实际子任务网络策略；宿主能解析不等于沙箱能联网，也不能据此断言远端宕机。见[诊断指引](skills/cds/references/diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage)。 |

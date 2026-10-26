@@ -1090,6 +1090,19 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-metadata-owner-policy.patch",
+      "sha256": "82d9c9d7ee9b57603e359092ef891a0842209df325128db7241eaceb0067944b",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+            "before_sha256": "54149f0d1e81b356bef6772a0259bc8bb0320c51e1ca81a2f4f8169f120b99a8",
+            "after_sha256": "0ef82ccd9e196bb91b7059637f691f9b413c39c1a49504152b33beac386b59ba"
+          }
+        ]
+      }
     }
   ]
 }
