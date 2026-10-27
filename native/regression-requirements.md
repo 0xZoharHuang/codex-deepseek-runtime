@@ -46,21 +46,28 @@ The inheritance-domain overlay coordinates the existing DACL operations by
 physical volume/FileID: exclusive for the changed object, shared for the
 unprotected ancestor inheritance domains. Acquire the whole sorted set before
 reading the ACL; re-plan if the protected boundary or physical identity changes.
-Grant/revoke use scope, owner journal, then home transaction order and release the
-guards before advancing to another target. A pathname alias must not redirect a
-write away from the object whose lock was acquired.
+Ordinary permission changes retain these object/inheritance locks. The metadata
+layer pins the current home and authorized paths, checks local namespace subjects
+and effective denials, and adds only non-inheriting FILE_READ_ATTRIBUTES. A pathname
+alias must not redirect a write away from the object whose lock was acquired.
+Metadata grants no longer depend on an owner journal, deleted-object reopening or
+raw NTFS volume queries. Old metadata audit files are retained without being read,
+rewritten or used to select a new grant target.
 
 Run the Windows sandbox library filters acl_lock::tests::,
 ancestor_metadata::tests::, acl::tests::, and deny_read_state::tests:: using
 the pinned compiler, --locked --offline --release, and --test-threads=1.
 The first filter also matches private_acl_lock::tests::; retain exact test names
-and do not count a repeated execution as another case. Some ledger fixtures create
-Windows symlinks and require the corresponding privilege; qualify these in an
-explicitly elevated, owned fixture rather than broadening a runtime sandbox.
+and do not count a repeated execution as another case. List the selected test
+names first and require one executed test for every exact filter; zero matches
+are not a pass. Any remaining deny-read-state fixture requiring symlink privileges
+must run in an explicitly elevated, owned fixture; do not broaden runtime access.
+The separate ignored live-SAM namespace test is conditional and must not count
+as one of the 32 synthetic-subject/owned-object metadata and coordination tests.
 
 Required effects include independent sibling progress, conflicting parent/child
 and alias/hardlink coordination, inherited ACE preservation, protected-boundary
-replanning, exact metadata revocation, OS lock release on process death, and
+replanning, metadata scope/denial preservation, OS lock release on process death, and
 same-handle lock-file retirement without creating a second lock generation.
 Production waits follow the existing native operation lifecycle, with no newly
 introduced five-second cutoff. A genuine related wait longer than five seconds
@@ -78,6 +85,28 @@ These locks coordinate cooperating code using the new implementation. They do no
 take over running older installations, make external ACL writers participate, or
 freeze concurrent changes to the hardlink topology. Do not turn readback checks
 into an unsupported claim of an atomic Windows DACL compare-and-swap.
+
+## Windows native metadata simplification candidate
+
+`windows-native-metadata-minimal.patch` changes only the five declared Windows
+sandbox source files. It retains the CDS namespace/hash domains, native version,
+explicit background-helper handle inheritance, WFP readiness and managed deny-read
+revocation. Existing account credential/state formats are unchanged. The native
+CLI still owns tools, approvals, commands, threads and cleanup.
+
+Native `sandbox uninstall` intentionally preserves the home and filesystem
+permissions. Metadata history must not introduce a separate exact-rollback engine
+or block native account/network cleanup. Do not assert a zero metadata ledger or
+that all filesystem ACEs disappeared. Old native builds cannot discover later
+unjournaled grants; a downgrade must not promise complete filesystem-permission
+restoration.
+
+This source candidate is not a new native release. Keep the published platform
+manifests until a matching immutable Windows package passes its own build and
+installed-runtime gates. The source replay and unit tests do not establish fresh
+installation, antivirus acceptance or a Defender root cause. Test the new package
+with normal protection and preserve the prior failures. Unix recipe identities
+and native bytes must remain unchanged by this Windows-only overlay.
 
 ## Windows launch-critical read permissions
 

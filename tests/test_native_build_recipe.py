@@ -482,7 +482,8 @@ def test_critical_read_deny_overlay_cannot_be_omitted_reordered_or_retargeted(tm
 
 
 def test_metadata_owner_overlay_is_last_windows_only_and_preserves_the_qualified_prefix():
-    recipe=build.runtime_recipe()
+    # Freeze the published 0.6.5 prefix, not every later Windows-only leaf.
+    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-metadata-owner-policy.patch')
     index=overlay_index(recipe,'windows-metadata-owner-policy.patch')
     assert index==len(recipe['overlays'])-1
     assert index==overlay_index(recipe,'windows-critical-read-deny-readiness.patch')+1
@@ -497,10 +498,7 @@ def test_metadata_owner_overlay_is_last_windows_only_and_preserves_the_qualified
         }]},
     }
     assert build.sha(ROOT/'native'/last['file'])==last['sha256']
-    # Git declares LF for JSON: the actual artifact bytes must match the canonical
-    # serialization, keeping package inputs and the committed recipe identical.
-    document=(ROOT/'native/runtime-overlays.json').read_bytes()
-    assert hashlib.sha256(document).hexdigest()==serialized_recipe_sha256(recipe)=='119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76'
+    assert serialized_recipe_sha256(recipe)=='119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76'
     previous=recipe_prefix_through(recipe,'windows-critical-read-deny-readiness.patch')
     assert previous['overlays']==recipe['overlays'][:index]
     assert serialized_recipe_sha256(previous)=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
@@ -525,5 +523,90 @@ def test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_pa
         else:
             last=recipe['overlays'][index]
             last['changes_by_target']['x86_64-unknown-linux-gnu']=last['changes_by_target'].pop(WIN)
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):build.runtime_recipe()
+
+
+def test_native_metadata_minimal_overlay_is_last_windows_only_with_exact_sources():
+    recipe=build.runtime_recipe()
+    index=overlay_index(recipe,'windows-native-metadata-minimal.patch')
+    assert index==len(recipe['overlays'])-1
+    assert index==overlay_index(recipe,'windows-metadata-owner-policy.patch')+1
+    last=recipe['overlays'][index]
+    expected_sources={
+        'codex-rs/windows-sandbox-rs/src/acl.rs':(
+            'a6ebc8688c24231f0e3f931cc4d3c245da475e88735d5d4f64e2a4d06c7a3f3f',
+            '1f9214f88e220f0f5a2fdef602bfa0e5f4b735365d0580bd6161bcbc0f8bbb5d'),
+        'codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs':(
+            '0ef82ccd9e196bb91b7059637f691f9b413c39c1a49504152b33beac386b59ba',
+            '65813376be9f034714bde6806fc1b910ad731824ee094e434bc97a71180b1d6b'),
+        'codex-rs/windows-sandbox-rs/src/namespace_coordination.rs':(
+            '516dbd693b69b0e6dc4f4da7824725ab278cc4a68cd3a48f227132a01c25257e',
+            '7155b3379cb5529d4f8841efc40cb0d52c7fc3f0b29f4f0eb9b048ba9203a814'),
+        'codex-rs/windows-sandbox-rs/src/setup_provisioning.rs':(
+            '435f353e1ffeace970e15f408901596eee44c98442e4cd0bb2952692839d2697',
+            '41db70097e3e9158738603f8cf82787dcf2006b1f1b2ea1306d00b34684b27b9'),
+        'codex-rs/windows-sandbox-rs/src/uninstall_windows.rs':(
+            'cacefb5b6340c3686959c9a00dba7800c724d36f2cf02d549b45f45573ede721',
+            '2d851619c369c6c6eec69de8d5a616fc50d1f81a7c002dd72d94e644317ca42b'),
+    }
+    assert last=={
+        'file':'windows-native-metadata-minimal.patch',
+        'sha256':'3f676554a68bafb74ceaa1f78021fe30f9f5fc8ffc9c572a8e182a07a0cda071',
+        'changes_by_target':{WIN:[
+            {'path':path,'before_sha256':before,'after_sha256':after}
+            for path,(before,after) in expected_sources.items()
+        ]},
+    }
+    patch=ROOT/'native'/last['file']
+    assert build.sha(patch)==last['sha256']
+    patch_paths={
+        line[6:].split('\t')[0] for line in patch.read_text(encoding='utf-8').splitlines()
+        if line.startswith('+++ b/')
+    }
+    assert patch_paths==set(expected_sources)
+    # The metadata reduction must not replace the CDS namespace or its retained
+    # background-handle implementation with the App's separate identities/code.
+    protected_paths={
+        'codex-rs/windows-sandbox-rs/src/namespace.rs',
+        'codex-rs/windows-sandbox-rs/src/namespace_key.rs',
+        'codex-rs/windows-sandbox-rs/src/setup_background.rs',
+    }
+    assert patch_paths.isdisjoint(protected_paths)
+    previous=recipe_prefix_through(recipe,'windows-metadata-owner-policy.patch')
+    assert previous['overlays']==recipe['overlays'][:index]
+    assert serialized_recipe_sha256(previous)=='119f16e9d9847d988e6f453d0dcb37bc10ef6d1eb4d52cc71cdc42b4693a4c76'
+    previous_sources=build.overlay_source_hashes(WIN,previous)
+    assert {path:previous_sources[path] for path in expected_sources}=={
+        path:before for path,(before,_) in expected_sources.items()
+    }
+    # Pin actual public bytes, not only a parsed/reformatted representation.
+    document=(ROOT/'native/runtime-overlays.json').read_bytes()
+    assert document==(json.dumps(recipe,indent=2)+'\n').encode('utf-8')
+    assert hashlib.sha256(document).hexdigest()==serialized_recipe_sha256(recipe)=='4729f350664964b19fd6b8876e40a2e4fa4166b388b4a18bf3b438bab554f4ff'
+    assert build.native_recipe_identity(WIN,previous)=='3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32'
+    assert build.native_recipe_identity(WIN,recipe)=='410a7343667baecf2a8de222e32a09a858eaa626706ba9b65222fc5135dc1ef2'
+    expected_unix={
+        'aarch64-apple-darwin':'02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1',
+        'x86_64-unknown-linux-gnu':'3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad',
+    }
+    assert set(expected_unix)==set(TARGETS)-{WIN}
+    changed=copy.deepcopy(recipe)
+    changed['overlays'][-1]['sha256']='0'*64
+    assert build.native_recipe_identity(WIN,changed)!=build.native_recipe_identity(WIN,recipe)
+    for target,expected in expected_unix.items():
+        assert build.native_recipe_identity(target,recipe)==build.native_recipe_identity(target,previous)==build.native_recipe_identity(target,changed)==expected
+
+
+@pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
+def test_native_metadata_minimal_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_path,monkeypatch,problem):
+    def edit(recipe):
+        index=overlay_index(recipe,'windows-native-metadata-minimal.patch')
+        if problem=='omit':recipe['overlays'].pop(index)
+        elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
+        else:
+            leaf=recipe['overlays'][index]
+            leaf['changes_by_target']['x86_64-unknown-linux-gnu']=leaf['changes_by_target'].pop(WIN)
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()

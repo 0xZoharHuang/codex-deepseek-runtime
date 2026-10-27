@@ -8,6 +8,8 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
+> **Windows 原生修简候选，尚未发布：** 本分支在 0.6.5 的公开输入上追加一个只影响 Windows 的五文件补丁，删除祖先目录元数据的历史 journal、raw NTFS 查询和额外精确撤销引擎；保留当前路径的 FileID／防重解析、本机 SAM 身份、拒绝权限检查及非继承属性授权。原生卸载继续保留 home 和普通文件系统权限。当前正式平台清单尚未更新，源码与单元检查不代表新原生产物已经验收，不要把本分支直接当作新的 0.6.5 安装包。边界与资格要求见 [原生回归说明](native/regression-requirements.md#windows-native-metadata-simplification-candidate)；不会通过改防护设置完成验收，也不声称已经定位 Defender 的具体触发原因。
+
 > **0.6.5：修复 Windows 标准用户目录下的沙箱准备。** 祖先目录元数据的维护允许该隔离实例的用户、SYSTEM 和 Administrators；不改变目录所有者。只为本实例隔离组维护非继承的 FILE_READ_ATTRIBUTES 权限项，保留 Windows WRITE_DAC 检查、显式拒绝、FileID、防重解析、精确 journal 与撤销；不增加列目录、文件内容或写入权限。此前 C 盘根目录下的自有 home 验收漏掉了常见的 SYSTEM/Administrators 所有权布局，本版必须以真实用户目录中的原失败夹具复验，不能把提权后的命令算作普通沙箱通过。
 >
 > **保留 0.6.4 的关键读取修复。** 设置程序遇到适用于目标账户或已知组的读取/执行 DENY 时会明确失败，保留原 DACL；不会因为同时存在 ALLOW 就把路径报告为可读。无关 SID、仅写入权限或当前对象不生效的继承 ACE 不被误判为读取拒绝。

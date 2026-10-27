@@ -1103,6 +1103,39 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-native-metadata-minimal.patch",
+      "sha256": "3f676554a68bafb74ceaa1f78021fe30f9f5fc8ffc9c572a8e182a07a0cda071",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/acl.rs",
+            "before_sha256": "a6ebc8688c24231f0e3f931cc4d3c245da475e88735d5d4f64e2a4d06c7a3f3f",
+            "after_sha256": "1f9214f88e220f0f5a2fdef602bfa0e5f4b735365d0580bd6161bcbc0f8bbb5d"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+            "before_sha256": "0ef82ccd9e196bb91b7059637f691f9b413c39c1a49504152b33beac386b59ba",
+            "after_sha256": "65813376be9f034714bde6806fc1b910ad731824ee094e434bc97a71180b1d6b"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/namespace_coordination.rs",
+            "before_sha256": "516dbd693b69b0e6dc4f4da7824725ab278cc4a68cd3a48f227132a01c25257e",
+            "after_sha256": "7155b3379cb5529d4f8841efc40cb0d52c7fc3f0b29f4f0eb9b048ba9203a814"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+            "before_sha256": "435f353e1ffeace970e15f408901596eee44c98442e4cd0bb2952692839d2697",
+            "after_sha256": "41db70097e3e9158738603f8cf82787dcf2006b1f1b2ea1306d00b34684b27b9"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/uninstall_windows.rs",
+            "before_sha256": "cacefb5b6340c3686959c9a00dba7800c724d36f2cf02d549b45f45573ede721",
+            "after_sha256": "2d851619c369c6c6eec69de8d5a616fc50d1f81a7c002dd72d94e644317ca42b"
+          }
+        ]
+      }
     }
   ]
 }
