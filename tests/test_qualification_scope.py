@@ -655,6 +655,8 @@ def test_current_offline_supplement_requires_full_current_collection_and_exact_t
         if reason:ET.SubElement(node,'skipped',type='pytest.skip',message=reason)
         items.append({'nodeid':str(i),'classname':classname,'name':case})
     collection={'schema_version':1,'deselected':0,'items':items}
+    from offline_origin_fixture import write_origins
+    origins_sha=write_origins(root,metadata,native)
     if change=='source':artifact['verifier_source_sha256']['assemble_release_acceptance.py']='stale'
     elif change=='subset':artifact['selected_gates']=['offline','live']
     elif change=='runtime':artifact['installation']={**metadata,'source_id':'different'}
@@ -666,6 +668,7 @@ def test_current_offline_supplement_requires_full_current_collection_and_exact_t
              'offline_collection_sha256':acceptance.sha(root/'offline-collection.json')}
     (root/'offline.log').write_text('complete test execution')
     verdict['offline_files_sha256']=acceptance.offline_file_hashes(root)
+    verdict['installed_product_origins_sha256']=origins_sha
     (root/'results.json').write_text(json.dumps(verdict['gates']))
     (root/'artifact.json').write_text(json.dumps(artifact));(root/'verdict.json').write_text(json.dumps(verdict));monkeypatch.setattr(acceptance,'SOURCE',source)
     if change=='none':
@@ -674,6 +677,24 @@ def test_current_offline_supplement_requires_full_current_collection_and_exact_t
         assert external['execution']=='separate_complete_offline_run'
         assert external['validation']['tests_passed']==1
         assert external['files_sha256']['offline.xml']==acceptance.sha(root/'offline.xml')
+        # Missing evidence and self-rehashed foreign origins must both fail.
+        original_origins=(root/'offline-installed-origins.json').read_bytes()
+        original_verdict=(root/'verdict.json').read_bytes()
+        for broken in ['missing','foreign','source-bytes','isolation']:
+            if broken=='missing':(root/'offline-installed-origins.json').unlink()
+            else:
+                record=json.loads(original_origins)
+                if broken=='foreign':record['origins']['codex_deepseek']=r'D:\source\codex_deepseek\__init__.py'
+                elif broken=='source-bytes':record['adapter_identity']['source_sha256']={'wrong.py':'wrong'}
+                else:record['isolated']=0
+                (root/'offline-installed-origins.json').write_text(json.dumps(record))
+                changed=json.loads(original_verdict)
+                changed['installed_product_origins_sha256']=acceptance.sha(root/'offline-installed-origins.json')
+                (root/'verdict.json').write_text(json.dumps(changed))
+            with pytest.raises(SystemExit):acceptance.external_offline_receipt(root,metadata,native,scope)
+            (root/'offline-installed-origins.json').write_bytes(original_origins)
+            (root/'verdict.json').write_bytes(original_verdict)
+
         with pytest.raises(SystemExit):acceptance.external_offline_receipt(root,metadata,native,{'target':'aarch64-apple-darwin'})
     else:
         with pytest.raises(SystemExit):acceptance.validate_offline_run(root,metadata,native,scope,current=True)
@@ -1056,6 +1077,8 @@ def external_terminal_lineage_fixture(tmp_path,monkeypatch):
     (tmp_path/'producer.manifest.json').write_text(json.dumps({'source_id':metadata['source_id'],'files':files,
         'qa_sha256':hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest()}))
     external=tmp_path/'external-offline';external.mkdir()
+    from offline_origin_fixture import write_origins
+    origins_sha=write_origins(external,metadata,native)
     artifact={'installation':metadata,'native_manifest':native,'target':native['target'],
               'baseline_matrix_sha256':acceptance.BASELINE_MATRIX_SHA256,
               'entry':str(acceptance.PureWindowsPath(metadata['release_environment'])/'Scripts/codex-deepseek.exe'),
@@ -1076,6 +1099,7 @@ def external_terminal_lineage_fixture(tmp_path,monkeypatch):
              'gates':[{'gate':'offline','exit':0,'log':'offline.log'}],
              'offline_collection_sha256':acceptance.sha(external/'offline-collection.json'),
              'offline_files_sha256':acceptance.offline_file_hashes(external)}
+    verdict['installed_product_origins_sha256']=origins_sha
     for name,value in [('artifact.json',artifact),('verdict.json',verdict),('results.json',verdict['gates'])]:
         (external/name).write_text(json.dumps(value))
     monkeypatch.setattr(acceptance,'SOURCE',producer)

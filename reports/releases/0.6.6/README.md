@@ -101,7 +101,7 @@ isolated installation root remain private evidence; no active entry changed.
 
 ### Windows SQLite sidecar regression retained
 
-The first complete High offline candidate run collected 2357 cases: 2347 passed,
+The first complete High source-suite candidate run collected 2357 cases: 2347 passed,
 6 image-provider cases failed, and 4 named OS-inapplicable cases skipped. The
 failing image database filename was 253 characters and its rollback journal was
 261 characters. SQLite returned SQLITE_CANTOPEN while beginning the transaction;
@@ -114,3 +114,22 @@ formats SQLite I/O filenames centrally at all 13 connection sites. Logical Path
 ownership/link guards, schemas, journal mode, transaction boundaries and read-only
 policy are unchanged. The normal installed SDK and complete regression must be
 requalified before this candidate is promoted; no native recompilation is needed.
+
+
+### Installed-package acceptance origins
+
+The original Low and High complete-suite controller added ROOT/src to
+PYTHONPATH. Those retained aggregate runs are source-suite evidence, including
+their original failures; matching bytes do not establish installed import origin.
+The separate installed native-transport and focused SDK checks retain their
+actual installed scope.
+
+The public complete-offline command now uses the selected immutable environment,
+-I/-B and trusted repository QA helpers without ROOT/src. It checks installed
+adapter bytes before and after execution, rejects foreign lazy product imports
+before execution, checks loaded product module locations throughout the suite,
+and hashes an import-origin receipt into the verdict. Fresh/current receipt
+assembly requires and validates that evidence; explicit historical producer
+receipts remain marked as unverified for installed import origins. Existing
+hostile-cwd/PYTHONPATH test IDs also cover the full controller and lazy-import
+negative control. No test IDs were removed and no extra skip was introduced.

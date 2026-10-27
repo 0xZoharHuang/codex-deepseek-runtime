@@ -30,6 +30,8 @@ def offline_source(tmp_path,monkeypatch):
               'entry_sha256':installation['console_script_sha256'],
               'controller_environment':{'optimize':0,'windows_token':{'sid':'S-1-5-21-1-2-3-500','elevated':True}},
               'selected_gates':['offline'],'verifier_source_sha256':acceptance.qa_python_hashes(source)}
+    from offline_origin_fixture import write_origins
+    origins_sha=write_origins(root,installation,native)
     xml=ET.Element('testsuite');items=[]
     for index,(name,reason) in enumerate([('test_example::test_symlink_creation',None),*acceptance.expected_offline_skips(native['target']).items()]):
         module,case=name.split('::');classname='tests.'+module
@@ -43,6 +45,7 @@ def offline_source(tmp_path,monkeypatch):
              'gates':[{'gate':'offline','exit':0,'seconds':3.25,'log':'offline.log'}],
              'offline_collection_sha256':acceptance.sha(root/'offline-collection.json'),
              'offline_files_sha256':acceptance.offline_file_hashes(root)}
+    verdict['installed_product_origins_sha256']=origins_sha
     save(root/'artifact.json',artifact);save(root/'verdict.json',verdict);save(root/'results.json',verdict['gates'])
     return root,installation,native,{'target':native['target']}
 
@@ -69,7 +72,7 @@ def test_reference_preserves_elevated_execution_and_non_elevated_runtime_context
     assert proof['tests_passed']==1
     assert external['controller_environment']['windows_token']['elevated'] is True
     assert acceptance.load(runtime[0]/'artifact.json')['controller_environment']['windows_token']['elevated'] is False
-    assert set(external['files_sha256'])=={'artifact.json','verdict.json','results.json',*acceptance.OFFLINE_FILES}
+    assert set(external['files_sha256'])=={'artifact.json','verdict.json','results.json','offline-installed-origins.json',*acceptance.OFFLINE_FILES}
     assert external['gate']['seconds']==3.25
 
 

@@ -28,6 +28,7 @@ def test_isolated_pytest_admits_only_trusted_helpers_and_keeps_installed_adapter
     env = dict(os.environ)
     env.update(PYTHONPATH=os.pathsep.join([str(injected), str(qualification.ROOT / "src")]),
                PYTEST_DISABLE_PLUGIN_AUTOLOAD="1")
+    env['CODEX_DEEPSEEK_TEST_COLLECTION_PATH']=str(tmp_path/'probe-collection.json')
     for name in ("PYTEST_ADDOPTS", "PYTEST_PLUGINS"):
         env.pop(name, None)
     installed = subprocess.run(
@@ -68,3 +69,34 @@ def test_isolated_pytest_admits_only_trusted_helpers_and_keeps_installed_adapter
         assert "1 test collected" in result.stdout
     else:
         assert "1 passed" in result.stdout
+
+    # The full public controller must enforce the same installed-only import path.
+    import run_acceptance
+    offline=run_acceptance.installed_offline_command(sys.executable,
+        "-q","-p","no:cacheprovider","-c",os.devnull,str(probe),
+        *(["--collect-only"] if collect_only else []))
+    assert offline[:4]==[sys.executable,"-I","-B","-c"]
+    checked=subprocess.run(offline,cwd=cwd,env=env,capture_output=True,text=True,
+                           encoding="utf-8",timeout=30)
+    assert checked.returncode==0,checked.stdout+checked.stderr
+    assert json.loads(receipt.read_text(encoding="utf-8"))["adapter"]==str(expected)
+    origin_proof=json.loads((tmp_path/'offline-installed-origins.json').read_text(encoding='utf-8'))
+    assert origin_proof['passed'] and origin_proof['isolated']==1
+    assert all(Path(value).is_relative_to(expected.parent) for value in origin_proof['origins'].values())
+    if not collect_only:
+        foreign=tmp_path/"foreign product";foreign.mkdir()
+        (foreign/"outside.py").write_text("raise AssertionError('foreign product executed')\n",encoding="utf-8")
+        probe.write_text(
+            "import pytest,codex_deepseek\n"
+            "def test_lazy_foreign_product_is_rejected_before_execution():\n"
+            f"    codex_deepseek.__path__.insert(0,{str(foreign)!r})\n"
+            "    try:\n"
+            "        with pytest.raises(RuntimeError,match='Product import outside immutable installation'):\n"
+            "            __import__('codex_deepseek.outside')\n"
+            "    finally:\n"
+            f"        codex_deepseek.__path__.remove({str(foreign)!r})\n",encoding="utf-8")
+        denied=subprocess.run(offline,cwd=cwd,env=env,capture_output=True,text=True,
+                              encoding="utf-8",timeout=30)
+        assert denied.returncode==0,denied.stdout+denied.stderr
+        rejected=json.loads((tmp_path/'offline-installed-origins.json').read_text(encoding='utf-8'))
+        assert rejected['passed'] and rejected['rejected_before_execution']==['codex_deepseek.outside']

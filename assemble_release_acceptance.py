@@ -996,6 +996,38 @@ def validate_windows_controller(controller,*,elevated):
             and token.get('elevated') is elevated,'Windows controller token identity/elevation is missing or wrong')
 
 
+def validate_installed_offline_origins(root,installation,native,verdict,*,required=False):
+    """Fresh installed qualification cannot borrow a source-suite receipt."""
+    digest=verdict.get('installed_product_origins_sha256')
+    if digest is None:
+        require(not required,'Current offline qualification lacks installed product import evidence')
+        return None
+    path=Path(root)/'offline-installed-origins.json'
+    require(path.is_file() and not path.is_symlink() and path.stat().st_nlink==1
+            and not getattr(path.lstat(),'st_file_attributes',0)&0x400
+            and sha(path)==digest,'Installed product import evidence is missing, linked or changed')
+    value=load(path);windows=native['target']=='x86_64-pc-windows-msvc'
+    cls=PureWindowsPath if windows else Path
+    prefix=cls(installation['release_environment'])
+    expected=cls(value.get('expected_product_directory',''))
+    require((expected==prefix/'Lib/site-packages/codex_deepseek' if windows else
+             expected.is_relative_to(prefix/'lib') and expected.name=='codex_deepseek'
+             and expected.parent.name=='site-packages'),'Installed product import root differs from the selected release')
+    origins=value.get('origins',{});adapter=value.get('adapter_identity',{})
+    sources={name.removeprefix('src/codex_deepseek/'):digest
+             for name,digest in installation.get('adapter_source_sha256',{}).items()}
+    require(value.get('passed') is True and type(value.get('isolated')) is int and value['isolated']==1
+            and type(value.get('checks')) is int and value['checks']>=2 and value.get('errors')==[]
+            and sources and adapter.get('source_sha256')==sources
+            and cls(adapter.get('directory',''))==expected
+            and 'codex_deepseek' in origins and all(
+                (name=='codex_deepseek' or name.startswith('codex_deepseek.'))
+                and cls(filename).is_relative_to(expected) for name,filename in origins.items()),
+            'Installed product imports escaped or differ from the immutable adapter')
+    return {'sha256':digest,'modules':len(origins),'checks':value['checks'],
+            'directory':str(expected),'installed_product_imports_verified':True}
+
+
 def validate_offline_run(root,installation,native,scope,*,current=False,terminal_revalidated=False,oauth_revalidated=False,producer_snapshot=None):
     require(not (terminal_revalidated and oauth_revalidated),'Terminal and OAuth revalidation are mutually exclusive')
     root=Path(root);artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
@@ -1031,6 +1063,8 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
         require(artifact.get('selected_gates')==['offline'] and len(verdict.get('gates',[]))==1
                 and verdict['gates'][0].get('gate')=='offline' and verdict['gates'][0].get('exit')==0,'Current offline supplement must contain exactly the passing offline gate')
         require(normalized_hashes(artifact.get('verifier_source_sha256',{}))==qa_python_hashes(SOURCE),'Current offline supplement source differs')
+    product_origins=(proof['validation'].get('installed_product_origins') if external is not None else
+                     validate_installed_offline_origins(root,installation,native,verdict,required=current))
     cases=ET.parse(root/'offline.xml').getroot().findall('.//testcase');collection=root/'offline-collection.json'
     require(verdict.get('offline_collection_sha256')==sha(collection),'Offline collection receipt changed after regression')
     validate_offline_collection(cases,load(collection));allowed=expected_offline_skips(scope['target']);skips={}
@@ -1045,6 +1079,8 @@ def validate_offline_run(root,installation,native,scope,*,current=False,terminal
     result={'tests_passed':len(cases)-len(skips),'platform_inapplicable':skips,
             'artifact_sha256':sha(root/'artifact.json'),'verdict_sha256':sha(root/'verdict.json'),
             'collection_sha256':sha(collection),'junit_sha256':sha(root/'offline.xml')}
+    result['installed_product_origins']=product_origins
+    result['installed_product_imports_verified']=product_origins is not None
     if external is not None:result['external_execution']=external
     return result
 
@@ -1058,6 +1094,10 @@ def external_offline_receipt(root,installation,native,scope,*,producer_snapshot=
     require(all((root/name).is_file() and not (root/name).is_symlink()
                 and comparison_path(root/name).parent==comparison_path(root) for name in names),
             'External offline evidence must be ordinary files within its own run')
+    if load(root/'verdict.json').get('installed_product_origins_sha256') is not None:
+        origins=root/'offline-installed-origins.json'
+        require(origins.is_file() and not origins.is_symlink(),'External installed import evidence is missing or linked')
+        names.append('offline-installed-origins.json')
     before={name:sha(root/name) for name in names}
     artifact=load(root/'artifact.json');verdict=load(root/'verdict.json')
     require('external_offline' not in artifact,'Nested offline evidence is not allowed')

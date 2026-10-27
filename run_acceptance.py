@@ -1,7 +1,7 @@
 """Run explicit installed-artifact acceptance gates and preserve every exit status."""
 from __future__ import annotations
 import argparse
-from install import console_entry,_support,source_identity,valid_release
+from install import console_entry,python_entry,_support,source_identity,valid_release
 from assemble_release_acceptance import GATES,KEYRING_PROBE_GATES,qualification_scope,external_offline_receipt,OFFLINE_FILES,offline_file_hashes,validate_windows_controller
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import hashlib
@@ -59,6 +59,68 @@ def pytest_collection_finish(session):
 
 def digest(path):
     with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def installed_offline_pytest(arguments):
+    """Guard the fresh pytest process and every lazy product import."""
+    import importlib.machinery
+    from functools import lru_cache
+    expected=(_support.site_packages(Path(sys.prefix))/'codex_deepseek').resolve()
+    origins={};rejected=[];checks=0;errors=[];adapter_before=None
+    @lru_cache(maxsize=128)
+    def checked(name,filename):
+        if not filename or not Path(filename).resolve().is_relative_to(expected):
+            raise RuntimeError('Product import outside immutable installation: '+name)
+        return str(Path(filename).resolve())
+    def loaded():
+        nonlocal checks
+        checks+=1
+        for name,module in tuple(sys.modules.items()):
+            if name=='codex_deepseek' or name.startswith('codex_deepseek.'):
+                origins[name]=checked(name,getattr(module,'__file__',None))
+    class Guard:
+        def find_spec(self,fullname,path=None,target=None):
+            if fullname!='codex_deepseek' and not fullname.startswith('codex_deepseek.'):return None
+            spec=importlib.machinery.PathFinder.find_spec(fullname,path,target)
+            if spec is not None:
+                try:checked(fullname,spec.origin)
+                except RuntimeError:
+                    rejected.append(fullname)
+                    raise
+            return spec
+        def pytest_runtest_setup(self,item):loaded()
+        def pytest_runtest_teardown(self,item):loaded()
+    guard=Guard();sys.meta_path.insert(0,guard)
+    try:
+        loaded()
+        from ci.qualify_native import adapter_identity
+        adapter_before=adapter_identity()
+        import pytest
+        code=pytest.main(arguments,plugins=[guard,sys.modules[__name__]])
+        loaded()
+        if adapter_identity()!=adapter_before:raise RuntimeError('Installed product bytes changed during offline qualification')
+        return code
+    except BaseException as error:
+        errors.append(type(error).__name__+': '+str(error))
+        raise
+    finally:
+        sys.meta_path.remove(guard)
+        path=os.environ.get('CODEX_DEEPSEEK_TEST_COLLECTION_PATH')
+        if path:
+            Path(path).with_name('offline-installed-origins.json').write_text(json.dumps({
+                'schema_version':1,'python':sys.executable,'isolated':sys.flags.isolated,
+                'expected_product_directory':str(expected),'origins':origins,
+                'checks':checks,'rejected_before_execution':rejected,'errors':errors,
+                'adapter_identity':adapter_before,
+                'passed':not errors and bool(origins) and sys.flags.isolated==1,
+            },indent=2)+'\n',encoding='utf-8')
+
+
+def installed_offline_command(python,*arguments):
+    # ROOT admits trusted verifier modules; -I excludes cwd and ROOT/src/PYTHONPATH.
+    bootstrap=("import sys;sys.path.insert(0,"+repr(str(SOURCE))+");"
+               "import run_acceptance;raise SystemExit(run_acceptance.installed_offline_pytest(sys.argv[1:]))")
+    return [str(python),'-I','-B','-c',bootstrap,*arguments]
 
 
 def windows_token_identity():
@@ -145,7 +207,7 @@ def main():
         'tui-interrupt':[sys.executable,str(SOURCE/'verify_tui_interrupt.py'),'--entry',str(entry),'--output',output('tui-interrupt'),'--sandbox-mode',args.sandbox_mode],
         'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),'--sandbox-mode',args.sandbox_mode,*(['--require-web-research'] if args.require_web_research else [])],
         'native-revocation':[sys.executable,str(SOURCE/'verify_native_revocation.py'),'--probe',str(args.native_probe.resolve()),'--http-binary',environment['CODEX_DEEPSEEK_TEST_HTTP_BINARY'],'--output',output('native-revocation')],
-        'offline':[sys.executable,'-m','pytest','-W','error','-p','run_acceptance','-p','pytest_asyncio.plugin','-o','asyncio_default_fixture_loop_scope=function','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')],
+        'offline':installed_offline_command(python_entry(release/'venv'),'-W','error','-p','pytest_asyncio.plugin','-o','asyncio_default_fixture_loop_scope=function','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')),
         'live':[sys.executable,str(SOURCE/'verify_live.py'),'--agents','--output',output('live')],
         'plugin':[sys.executable,str(SOURCE/'verify_plugin_audit.py'),'--output',output('plugin')],
         'features':[sys.executable,str(SOURCE/'verify_features.py'),'--output',output('features')],
@@ -221,6 +283,7 @@ def main():
         with (root/(name+'.log')).open('w',encoding='utf-8') as log:
             gate_environment=dict(environment)
             if name=='offline':
+                gate_environment.pop('PYTHONPATH',None)
                 gate_environment.pop('CODEX_DEEPSEEK_TEST_WORKSPACE_LAYOUT',None)
                 gate_environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_MANIFEST',None)
                 gate_environment.pop('CODEX_DEEPSEEK_TEST_WINDOWS_PREPARE_SHA256',None)
@@ -247,8 +310,10 @@ def main():
         except (OSError,ValueError,KeyError,SystemExit) as error:
             external_unchanged=False;external_error=str(error)
     collection=root/'offline-collection.json';collection_hash=digest(collection) if 'offline' in selected and collection.is_file() else None
+    origins=root/'offline-installed-origins.json'
+    origins_ok=('offline' not in selected or external is not None or (origins.is_file() and json.loads(origins.read_text(encoding='utf-8')).get('passed') is True))
     offline_hashes=offline_file_hashes(root) if 'offline' in selected and all((root/name).is_file() for name in OFFLINE_FILES) else None
-    verdict={'passed':all(row['exit']==0 for row in results) and unchanged and verifier_unchanged and probes_unchanged and external_unchanged and ('offline' not in selected or offline_hashes is not None),'target':scope['target'],'verifier_source_unchanged':verifier_unchanged,'native_probes_unchanged':probes_unchanged,'offline_collection_sha256':collection_hash,'offline_files_sha256':offline_hashes,'all_gates_selected':set(selected)==GATES,'entry_unchanged':unchanged,'gates':results}
+    verdict={'passed':all(row['exit']==0 for row in results) and unchanged and verifier_unchanged and probes_unchanged and external_unchanged and ('offline' not in selected or offline_hashes is not None) and origins_ok,'installed_product_origins_sha256':digest(origins) if origins.is_file() else None,'target':scope['target'],'verifier_source_unchanged':verifier_unchanged,'native_probes_unchanged':probes_unchanged,'offline_collection_sha256':collection_hash,'offline_files_sha256':offline_hashes,'all_gates_selected':set(selected)==GATES,'entry_unchanged':unchanged,'gates':results}
     if external is not None:verdict.update(external_offline_unchanged=external_unchanged,external_offline_error=external_error)
     (root/'verdict.json').write_text(json.dumps(verdict,indent=2),encoding='utf-8');print('EVIDENCE',root,flush=True)
     raise SystemExit(0 if verdict['passed'] else 1)
