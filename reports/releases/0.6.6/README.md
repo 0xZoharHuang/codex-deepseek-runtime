@@ -86,3 +86,14 @@ was added.
 - Final scoped Windows QA cleanup.
 
 The old 0.6.5 and earlier reports remain immutable historical evidence.
+
+## Retained packaging correction
+
+The first private archive (`5aba077f...`) was rejected by the unchanged strict
+installer before creating an SDK release. Hard-linked staging of the two Windows
+resource mirrors had been serialized as TAR link entries. The normal packager
+now emits independent regular-file byte content, keeps the symlink rejection and
+does not relax installer validation. A real hardlink-staging regression failed
+before the fix; the complete packaging suite then passed under a Limited Windows
+token, including deterministic duplicate archives. The failed archive and
+isolated installation root remain private evidence; no active entry changed.

@@ -98,3 +98,37 @@ def test_manifest_utf8_LF_is_stable_through_windows_default_and_Git_roundtrip(tm
     manifest_path.unlink()
     git('checkout-index','--force','--','native/runtime-fixture.json')
     assert manifest_path.read_bytes()==raw
+
+
+def test_hardlinked_staging_is_regular_content_and_deterministic(tmp_path):
+    import hashlib
+    import os
+    import tarfile
+
+    package = tmp_path / "native"
+    native_fixture(package)
+    original = package / "bin/codex"
+    linked = package / "bin/codex-http-transport"
+    linked.unlink()
+    os.link(original, linked)
+    assert original.stat().st_ino == linked.stat().st_ino
+    assert original.stat().st_nlink >= 2
+
+    one = packager.package_native(
+        package, tmp_path / "one.tar.gz", tmp_path / "one.json",
+        "https://example.invalid/one")
+    two = packager.package_native(
+        package, tmp_path / "two.tar.gz", tmp_path / "two.json",
+        "https://example.invalid/two")
+    assert one["archive"]["sha256"] == two["archive"]["sha256"]
+    assert one["files"] == two["files"]
+    with tarfile.open(tmp_path / "one.tar.gz") as bundle:
+        members = bundle.getmembers()
+        assert {item.name for item in members} == set(one["files"])
+        # The strict normal installer accepts regular data, never TAR hardlinks.
+        assert all(item.isfile() and not item.linkname for item in members)
+        for item in members:
+            stream = bundle.extractfile(item)
+            assert stream is not None
+            with stream:
+                assert hashlib.sha256(stream.read()).hexdigest() == one["files"][item.name]

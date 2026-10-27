@@ -48,7 +48,7 @@ def package_native(package,archive,manifest_path,url):
         raise ValueError('Native package must use the official canonical resource layout')
     if not binaries|{'codex-package.json','build-receipt.json'}<=files.keys():raise ValueError('Native package is incomplete')
     archive.parent.mkdir(parents=True,exist_ok=True)
-    with archive.open('xb') as raw,gzip.GzipFile(fileobj=raw,filename='',mode='wb',mtime=0) as zipped,tarfile.open(fileobj=zipped,mode='w',format=tarfile.PAX_FORMAT) as bundle:
+    with archive.open('xb') as raw,gzip.GzipFile(fileobj=raw,filename='',mode='wb',mtime=0) as zipped,tarfile.open(fileobj=zipped,mode='w',format=tarfile.PAX_FORMAT,dereference=True) as bundle:
         for path in paths:
             info=bundle.gettarinfo(str(path),arcname=path.relative_to(package).as_posix())
             info.uid=info.gid=info.mtime=0;info.uname=info.gname='';info.pax_headers={}
