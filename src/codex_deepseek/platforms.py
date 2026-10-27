@@ -4,12 +4,31 @@ from contextlib import contextmanager
 import asyncio
 import ctypes
 import os
+import ntpath
+from urllib.parse import quote
 from pathlib import Path
 import signal
 import sys
 
 WINDOWS=os.name=='nt'
 EXE='.exe' if WINDOWS else ''
+
+
+def sqlite_filename(path, *, read_only=False):
+    """Use SQLite's extended Windows filename for its database and sidecars.
+
+    This formats only the I/O argument. Callers retain logical Path identities,
+    link checks, transactions, journal policy and explicit uri=True for readers.
+    """
+    value=os.fspath(path)
+    if WINDOWS:
+        if not value.startswith('\\\\?\\'):
+            # Lexical fullpath normalization does not follow filesystem reparses.
+            value=ntpath.abspath(value)
+            value=('\\\\?\\UNC\\'+value[2:] if value.startswith('\\\\') else '\\\\?\\'+value)
+        if read_only:return 'file:'+quote(value,safe='')+'?mode=ro'
+    elif read_only:return Path(value).absolute().as_uri()+'?mode=ro'
+    return value
 
 
 def executable(directory,name):return Path(directory)/(name+EXE)

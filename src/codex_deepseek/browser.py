@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 from pypdf import PdfReader
 import truststore
 from .policy import isolated_path
-from .platforms import private_directory
+from .platforms import private_directory, sqlite_filename
 
 MAX_BODY=10*1024*1024
 MAX_TEXT=4*1024*1024
@@ -76,7 +76,7 @@ class Browser:
         private_directory(directory)
         self.path=directory/'pages.sqlite'
         if self.path.is_symlink():raise ValueError('Browser cache cannot follow a symlink')
-        self.db=sqlite3.connect(self.path,timeout=30)
+        self.db=sqlite3.connect(sqlite_filename(self.path),timeout=30)
         os.chmod(self.path,0o600)
         self.db.execute('CREATE TABLE IF NOT EXISTS pages(id TEXT PRIMARY KEY, payload TEXT, bytes INTEGER, created REAL)')
         self.db.commit();self.allowed=set(allowed_private_hosts);self.client=None;self.resolver=None

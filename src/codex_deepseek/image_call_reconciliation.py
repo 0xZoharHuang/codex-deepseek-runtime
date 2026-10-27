@@ -14,6 +14,7 @@ import re
 import sqlite3
 import time
 from .protocol import MODEL
+from .platforms import sqlite_filename
 from .image_provider import atomic_write as _atomic_write
 from .image_maintenance import retry_after_seconds
 from .image_transport import _file_lock, _strict_json, _private_directory
@@ -39,7 +40,7 @@ def _regular_path(path: Path, *, existing=False):
 def read_project_receipt(path: Path, request_ref: str):
     """One bounded selected row; never read prompts/history or construct ProtocolState."""
     path=Path(path);_regular_path(path,existing=True)
-    with closing(sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=.1)) as db:
+    with closing(sqlite3.connect(sqlite_filename(path,read_only=True),uri=True,timeout=.1)) as db:
         db.row_factory=sqlite3.Row
         if db.execute('PRAGMA user_version').fetchone()[0] != 3:
             raise CallReconciliationError('Unsupported project receipt schema')

@@ -97,3 +97,20 @@ does not relax installer validation. A real hardlink-staging regression failed
 before the fix; the complete packaging suite then passed under a Limited Windows
 token, including deterministic duplicate archives. The failed archive and
 isolated installation root remain private evidence; no active entry changed.
+
+
+### Windows SQLite sidecar regression retained
+
+The first complete High offline candidate run collected 2357 cases: 2347 passed,
+6 image-provider cases failed, and 4 named OS-inapplicable cases skipped. The
+failing image database filename was 253 characters and its rollback journal was
+261 characters. SQLite returned SQLITE_CANTOPEN while beginning the transaction;
+the resulting HTTP 500 and cancellation assertions were retained as failures.
+
+Independent new-database controls reproduced the failure with ordinary Windows
+filenames. An explicit extended-length Windows filename preserved transactions,
+rollback journals, Unicode filenames and escaped read-only URIs. The adapter now
+formats SQLite I/O filenames centrally at all 13 connection sites. Logical Path
+ownership/link guards, schemas, journal mode, transaction boundaries and read-only
+policy are unchanged. The normal installed SDK and complete regression must be
+requalified before this candidate is promoted; no native recompilation is needed.

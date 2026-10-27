@@ -12,7 +12,7 @@ import zstandard
 
 from .protocol import PROVIDER, ProtocolError, native_history_fingerprint
 from .processes import identity, matches, terminate
-from .platforms import private_directory
+from .platforms import private_directory, sqlite_filename
 
 SCHEMA_VERSION = 3
 SERVICE_CLIENT_PREFIX = "service-launcher-v1:"
@@ -23,7 +23,7 @@ class Store:
         self.path = path
         self.owner = str(uuid.uuid4())
         private_directory(path.parent)
-        self.db = sqlite3.connect(path, timeout=30)
+        self.db = sqlite3.connect(sqlite_filename(path), timeout=30)
         os.chmod(path, 0o600)
         if self.db.execute('PRAGMA user_version').fetchone()[0] > SCHEMA_VERSION:
             self.db.close()
@@ -68,7 +68,7 @@ class Store:
     def retain_service(path,owner):
         # Register only explicit CLI clients, never the provider worker's own Store.
         # The service calls this while holding its startup/retirement lock.
-        with closing(sqlite3.connect(path,timeout=30)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(path),timeout=30)) as db, db:
             row=db.execute('SELECT pid,birth FROM runtime_owners WHERE owner_id=? AND closed IS NULL',(owner,)).fetchone()
             if row is None or not matches(*row):
                 raise RuntimeError('Provider client owner is no longer alive')
@@ -77,12 +77,12 @@ class Store:
 
     @staticmethod
     def bind_native(path,owner,supervisor_pid,native_pid):
-        with closing(sqlite3.connect(path,timeout=30)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(path),timeout=30)) as db, db:
             db.execute('UPDATE runtime_owners SET supervisor_pid=?,supervisor_birth=?,native_pid=?,native_birth=? WHERE owner_id=?',
                        (supervisor_pid,identity(supervisor_pid),native_pid,identity(native_pid),owner))
 
     def cleanup_native(self):
-        with closing(sqlite3.connect(self.path,timeout=30)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(self.path),timeout=30)) as db, db:
             row=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE owner_id=?',(self.owner,)).fetchone()
         if row:terminate(*row)
 
@@ -127,7 +127,7 @@ class Store:
 
     @staticmethod
     def owner_lost(path, owner):
-        with closing(sqlite3.connect(path, timeout=30)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(path), timeout=30)) as db, db:
             db.execute('''UPDATE receipts SET finished=?,status='owner_lost',detail=?
                           WHERE owner_id=? AND status='running' ''',
                        (time.time(), 'Owner exited without a terminal response; upstream outcome unknown', owner))
@@ -214,7 +214,7 @@ def migrate_searches(legacy: Path, home: Path, store: Store):
             issues.append({'path':str(path.relative_to(home)),'error':type(error).__name__})
     copied=0
     try:
-        with closing(sqlite3.connect(legacy.resolve().as_uri()+'?mode=ro',uri=True)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(legacy.resolve(),read_only=True),uri=True)) as db, db:
             for key in ids:
                 row=db.execute('SELECT item FROM searches WHERE id=?',(key,)).fetchone()
                 if row:

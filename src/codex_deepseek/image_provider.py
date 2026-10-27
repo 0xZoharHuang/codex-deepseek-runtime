@@ -5,7 +5,7 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import urlencode,urlsplit
 from .image_transport import ImageTransport,OpenRouterFilesBackend,TransportPolicy,_strict_json,_private_directory
-from .platforms import private_fd,replace_file
+from .platforms import private_fd,replace_file,sqlite_filename
 from .protocol import MODEL
 
 POLICIES={'default','default-fallback','system'}
@@ -86,7 +86,7 @@ class ImageProvider:
         with closing(self._db()) as db, db:db.execute('CREATE TABLE IF NOT EXISTS calls(id TEXT PRIMARY KEY,record TEXT NOT NULL)')
     def _db(self):
         if self.receipts.is_symlink() or (self.receipts.exists() and self.receipts.stat().st_nlink!=1):raise ValueError('Image receipt database cannot be linked')
-        return sqlite3.connect(self.receipts,timeout=.1)
+        return sqlite3.connect(sqlite_filename(self.receipts),timeout=.1)
     def transport(self,policy=None):
         policy=policy or self.config['native_outbound_policy']
         return ImageTransport(self.root/'files',self.credentials,OpenRouterFilesBackend(NativeFilesSession(self.native,policy)),self.config['policy'])
@@ -102,7 +102,7 @@ class ImageProvider:
             db.execute('INSERT OR REPLACE INTO calls VALUES (?,?)',(ref,json.dumps(value,allow_nan=False)))
     @staticmethod
     def read_receipt(path,ref):
-        with closing(sqlite3.connect(Path(path).as_uri()+'?mode=ro',uri=True,timeout=.1)) as db, db:
+        with closing(sqlite3.connect(sqlite_filename(path,read_only=True),uri=True,timeout=.1)) as db, db:
             row=db.execute('SELECT record FROM calls WHERE id=?',(ref,)).fetchone()
         return _strict_json(row[0]) if row else None
     async def generation_reader(self,receipt,credentials,**kwargs):

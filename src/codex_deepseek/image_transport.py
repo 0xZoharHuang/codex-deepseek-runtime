@@ -25,7 +25,7 @@ from typing import Any, Callable, Protocol
 from urllib.parse import urlsplit
 
 import psutil
-from .platforms import comparison_path
+from .platforms import comparison_path, sqlite_filename
 from .processes import identity as process_identity
 
 FILE_ID = re.compile(r"or_file_[A-Za-z0-9_-]{8,128}\Z")
@@ -770,7 +770,7 @@ class ImageTransport:
             before=_private_file_stat(path,missing=True)
             for suffix in ('-journal','-wal','-shm'):
                 _private_file_stat(path.with_name(path.name+suffix),missing=True)
-            db = sqlite3.connect(path, isolation_level=None)
+            db = sqlite3.connect(sqlite_filename(path), isolation_level=None)
             db.row_factory = sqlite3.Row
             try:
                 current=_private_file_stat(path)
@@ -1137,7 +1137,7 @@ class ImageTransport:
                 continue
             try:
                 _private_file_stat(database)
-                with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as db:
+                with closing(sqlite3.connect(sqlite_filename(database,read_only=True), uri=True)) as db:
                     self._verify_ledger_identity(db,directory)
                     count = db.execute("SELECT COUNT(*) FROM assets WHERE state NOT IN ('deleted','upload_rejected')").fetchone()[0]
                 if count:

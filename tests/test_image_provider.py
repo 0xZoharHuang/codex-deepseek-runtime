@@ -335,3 +335,27 @@ def test_image_receipt_connections_close_after_commit_read_and_rollback(tmp_path
         # Retain a clean failing test if explicit close ever regresses.
         for connection in connections:
             connection.close()
+
+
+@pytest.mark.asyncio
+async def test_gateway_image_ledger_rollback_sidecar_beyond_win32_limit(tmp_path,monkeypatch):
+    root=tmp_path
+    while len(str(root))<153:
+        root=root/('long-'+('x'*min(32,153-len(str(root)))))
+    root.mkdir(parents=True,exist_ok=True)
+    native=FakeNative()
+    monkeypatch.setattr('codex_deepseek.gateway.NativeTransport',lambda *a,**kw:native)
+    config(root)
+    store=Store(root/'adapter.sqlite')
+    try:
+        async with Gateway(KEY,'LOCAL',store,{}) as gateway,aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',
+                    json={'model':MODEL,'input':payload()['input'],'stream':False},
+                    headers={'Authorization':'Bearer LOCAL'}) as response:
+                assert response.status==200,await response.text()
+            model=next(call for call in native.calls if call['url'].endswith('/responses'))
+            assert json.loads(model['body'])['input'][0]['content'][1]['file_id']
+            assert (await gateway.images.transport().diagnostics(credential=KEY))['active_transport_pins']==0
+            ledgers=list((root/'image-transport/files').glob('*/files.sqlite'))
+            assert len(ledgers)==1 and len(str(ledgers[0])+'-journal')>260
+    finally:store.close()

@@ -5,7 +5,7 @@ Idle services exit; native daemon and active client leases retain the service.
 """
 import asyncio
 from contextlib import ExitStack, closing
-from .platforms import WINDOWS, executable, file_lock, private_directory, private_runtime_home, install_signals, replace_file
+from .platforms import WINDOWS, executable, file_lock, private_directory, private_runtime_home, install_signals, replace_file, sqlite_filename
 import hashlib
 import json
 import os
@@ -98,7 +98,7 @@ def native_active(home):
     state=Path(home)/'provider-state/adapter.sqlite'
     if state.exists():
         try:
-            with closing(sqlite3.connect(state,timeout=5)) as db, db:
+            with closing(sqlite3.connect(sqlite_filename(state),timeout=5)) as db, db:
                 rows=db.execute('SELECT native_pid,native_birth FROM runtime_owners WHERE closed IS NULL AND native_pid IS NOT NULL').fetchall()
                 requests=db.execute("SELECT pid,birth FROM runtime_owners WHERE owner_id IN (SELECT owner_id FROM receipts WHERE status='running')").fetchall()
                 clients=db.execute("SELECT o.pid,o.birth FROM runtime_owners o JOIN adapter_metadata m ON m.key=? || o.owner_id AND m.value='launcher' WHERE o.closed IS NULL",(SERVICE_CLIENT_PREFIX,)).fetchall()
