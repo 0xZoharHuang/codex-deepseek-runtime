@@ -547,10 +547,24 @@ class Events:
             if item_id in self.arguments_done and raw!=self.arguments_done[item_id]:
                 raise ProtocolError('Provider changed finalized tool arguments')
             if item_id in self.custom:
-                # Some providers omit arguments.done. Validate the same prefix
-                # against output_item.done before native dispatch can execute it.
-                self.custom[item_id].finish(raw)
+                # Validate before native dispatch without consuming the tail:
+                # output_item.done must still emit it when arguments.done is absent.
+                copy.deepcopy(self.custom[item_id]).finish(raw)
         if final:self.done[item_id]=copy.deepcopy(item)
+
+    def _finish_custom_input(self, item, output_index):
+        item_id = item['id']
+        if item_id in self.custom_done:
+            return []
+        decoder = self.custom.setdefault(item_id, InputDecoder())
+        delta = decoder.finish(item['arguments'])
+        common = {'item_id': item_id, 'output_index': output_index}
+        result = []
+        if delta:
+            result.append({**common, 'type': 'response.custom_tool_call_input.delta', 'delta': delta})
+        result.append({**common, 'type': 'response.custom_tool_call_input.done', 'input': decoder.decoded})
+        self.custom_done.add(item_id)
+        return result
 
     def transform(self, original: dict) -> list[dict]:
         if not isinstance(original, dict):
@@ -576,12 +590,7 @@ class Events:
                 self.search.add(item["id"])
             event["item"] = self.registry.output(item,final=kind.endswith('.done'))
             if kind.endswith('.done') and item.get('type')=='function_call' and tool and tool.kind=='custom' and item['id'] not in self.custom_done:
-                decoder=self.custom[item['id']]
-                delta=decoder.finish(item['arguments'])
-                common={'item_id':item['id'],'output_index':event.get('output_index',0)}
-                if delta:result.append({**common,'type':'response.custom_tool_call_input.delta','delta':delta})
-                result.append({**common,'type':'response.custom_tool_call_input.done','input':decoder.decoded})
-                self.custom_done.add(item['id'])
+                result.extend(self._finish_custom_input(item, event.get('output_index', 0)))
         elif kind.startswith('response.function_call_arguments.'):
             item_id=event.get('item_id')
             if item_id not in self.items or self.items[item_id].get('type')!='function_call':
@@ -645,6 +654,8 @@ class Events:
             # Validate the entire snapshot first, then emit the missing events.
             for index,(raw,normalized) in enumerate(zip(raw_output,response['output'])):
                 if kind=='response.completed' and raw['id'] not in previously_done:
+                    if normalized.get('type') == 'custom_tool_call':
+                        result.extend(self._finish_custom_input(raw, index))
                     result.append({'type':'response.output_item.done','output_index':index,'item':normalized})
             self.response_id = response.get("id")
             self.usage = response.get("usage") or {}
