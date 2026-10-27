@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "candidate_not_published",
+  "python_version": "0.6.6",
+  "native_source_producer_commit": "37787ecf1882521b168ec8cc16d5dcd5894b2572",
+  "native_source_fingerprint": "9c33e0369dd955f2715d52fbdd3d19265d6ff49a29bf77ad9d777685b308a6ff",
+  "native_recipe_id": "410a7343667baecf2a8de222e32a09a858eaa626706ba9b65222fc5135dc1ef2",
+  "archive_sha256": "5aba077fcc70c5c84ef7cc12d9308b6777c24328e3c94a3b768e0bb1a5300fbf",
+  "manifest_sha256": "28f9ae9201553a27a12c2fc0bd1fdebdc54c35680dd7c1529f7f713ef772def4",
+  "native_helper_actual_execution_passed": true,
+  "native_lifecycle_scoped_passed": true,
+  "original_cold45_test_failure_retained": true,
+  "genuine_independent_cold_seconds": 3.0744357109069824,
+  "complete_installed_offline_pending": true,
+  "complex_real_tasks_pending": true,
+  "Linux_mac_native_original_assets_unchanged": true,
+  "AV_classifier_cause_or_immunity_claim": false
+}

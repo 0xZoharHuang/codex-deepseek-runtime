@@ -1,0 +1,88 @@
+# 0.6.6 integration candidate — not published
+
+This directory records the 0.6.6 candidate. No GitHub release or main merge has
+occurred. The future release URL in the Windows manifest becomes usable only
+after the matching asset is published. Complete installed-launcher, real
+DeepSeek task and final release acceptance are still pending.
+
+## Changes
+
+- Custom tool calls retain final-only input tails. Native completed tool items
+  are authoritative over uncommitted argument previews; invalid or revised
+  previews cannot dispatch a tool early. Bounded diagnostics retain hashes and
+  reason codes rather than raw code, call IDs or user text.
+- The Windows-only metadata layer uses current authorized paths and concrete
+  local namespace subjects. It removes the historical metadata journal, raw
+  NTFS deleted-object proof and extra exact-revocation engine. Native uninstall
+  continues to preserve user files and ordinary filesystem permissions.
+- The native version, CDS namespace domains, background-helper handle whitelist,
+  WFP readiness, managed deny-read revocation and native runtime loops remain.
+
+## Artifact identity
+
+| Item | Value |
+|---|---|
+| Python adapter candidate | 0.6.6 |
+| Native upstream | 0.164.0-alpha.7 / fe136d4e70ef2b5bbed40a2d22b3aabf267796d3 |
+| Five-binary producer commit | 37787ecf1882521b168ec8cc16d5dcd5894b2572 |
+| Prepared native source | 9c33e0369dd955f2715d52fbdd3d19265d6ff49a29bf77ad9d777685b308a6ff |
+| Windows recipe | 410a7343667baecf2a8de222e32a09a858eaa626706ba9b65222fc5135dc1ef2 |
+| Raw recipe | 4729f350664964b19fd6b8876e40a2e4fa4166b388b4a18bf3b438bab554f4ff |
+| Native compiler | 1.99.1, original release flags, two jobs |
+| Windows archive | codex-deepseek-native-0.6.6-x86_64-pc-windows-msvc.tar.gz |
+| Windows archive SHA256 | 5aba077fcc70c5c84ef7cc12d9308b6777c24328e3c94a3b768e0bb1a5300fbf |
+| Windows manifest SHA256 | 28f9ae9201553a27a12c2fc0bd1fdebdc54c35680dd7c1529f7f713ef772def4 |
+
+macOS and Linux keep the exact 0.6.2 native bytes and their original producer
+receipts. Their source recipes did not change. Reuse is not a new native build
+or a fresh cross-platform runtime acceptance pass.
+
+## Executed scopes and retained failure
+
+The fixed official source archive and all public Windows patches were replayed
+to a new directory. All 9376 file contents/sizes matched the admitted canonical
+source, with exactly five changed files. The complete five-target production
+build finished normally: 1214 cached artifacts, 67 compiled artifacts, compiler
+and original process/resource closeout passed.
+
+The complete native layout contains eight unique binaries and two canonical
+Windows resource mirrors. The unchanged HTTP helper's 222 normal/build
+dependencies do not reach WindowsSandbox. All 59 local transitive source inputs
+also match the historical HTTP producer map; official host/ripgrep pins remain.
+
+The new helper was copied, hashed and actually executed using normal Windows
+protection. A Low-owned user-directory home and native elevated provisioning
+created only that fixture's local namespace. Native uninstall/idempotence removed
+only its users/group and WFP objects; shared account properties and existing
+process identities were compared before/after.
+
+The original first cold command used a 45-second test deadline and failed with
+zero command effect. Its project was below the AppData inheritance domain being
+updated in the background. The main helper completed after about 83 seconds and
+the background helper after about 101 seconds; both exited naturally. Source
+and timing support a legitimate related-domain wait, not a claim of a captured
+historical wait chain. This failure remains failed. Native lock/deadline policy
+was not changed. A later same-case warm result is separately recorded.
+
+One additional genuine cold fixture used a Low-owned protected home and an
+independent, owned D-drive workspace. Its first ordinary native command finished
+in 3.074 seconds while the same-birth background read-ACL helper remained alive.
+The actual sandbox account wrote the allowed file, received a real Windows
+AccessDenied on an outside canary, and left the canary unchanged. The native cwd
+junction was resolved and checked against the physical workspace FileID.
+Both fixture namespaces were natively uninstalled and checked idempotently.
+
+These observations do not establish a Defender classifier root cause or future
+immunity. They also do not establish complete launcher, model-quality or real
+business-task acceptance. Exact temporary retired-SID filesystem inventories
+remain private for the final scoped QA cleanup; no general ACL recovery engine
+was added.
+
+## Pending gates
+
+- Complete current offline installed SDK/wrapper qualification.
+- Representative complex real DeepSeek CLI tasks and independent outcome checks.
+- Final version/source/archive/readme reconciliation and publication readback.
+- Final scoped Windows QA cleanup.
+
+The old 0.6.5 and earlier reports remain immutable historical evidence.
