@@ -133,3 +133,21 @@ assembly requires and validates that evidence; explicit historical producer
 receipts remain marked as unverified for installed import origins. Existing
 hostile-cwd/PYTHONPATH test IDs also cover the full controller and lazy-import
 negative control. No test IDs were removed and no extra skip was introduced.
+
+
+### Ordinary Windows home ownership regression
+
+The first complex-task launch failed before native initialization, sandbox
+provisioning or model inference. Its ordinary pre-created home was already owned
+by the current user and granted inherited Modify rights. The old private-home
+constructor requested WRITE_OWNER unnecessarily and failed with Winerror5;
+read-only same-inode controls showed WRITE_DAC without WRITE_OWNER succeeded.
+The candidate now sets only the DACL for an already-correct owner. Exact protected
+legacy BA-owner migration retains explicit owner-write reopening, same-file
+verification and the existing rejection of foreign owners and reparse paths.
+
+The original home, SDDL, raw stderr and failed task artifacts were retained.
+Secondary missing-reviewer database errors now remain explicit failures and
+cannot replace the primary startup/exit/stderr evidence. Installed Low/High
+security-focused and normal native/model workflow qualification are separate
+gates; this correction alone does not mark the complex task complete.

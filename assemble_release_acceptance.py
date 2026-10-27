@@ -411,7 +411,8 @@ def expected_offline_skips(target):
         result['test_runtime_home_owner::test_native_runtime_home_pins_parent_during_a_real_rename_attack']='Windows native parent-handle sharing contract'
         for name in ['test_windows_native_runtime_home_rejects_unproven_BA_owner[unprotected]',
                      'test_windows_native_runtime_home_rejects_unproven_BA_owner[foreign-ace]',
-                     'test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_identity']:
+                     'test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_identity',
+                     'test_windows_system_owned_profile_is_rejected_without_owner_or_acl_changes']:
             result['test_runtime_home_owner::'+name]='Windows protected legacy-BA native profile DACL contract'
         for name in ['test_windows_materializes_exact_bytes_without_symlink',
                      'test_windows_rejects_wrong_link_target[/outside-license]',

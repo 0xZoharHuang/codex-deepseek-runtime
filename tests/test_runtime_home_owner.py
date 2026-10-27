@@ -179,3 +179,35 @@ def test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_ident
     for item in(home,cache):assert owner(item)==user();assert_private(item)
     sd=win32security.GetNamedSecurityInfo(str(cache),win32security.SE_FILE_OBJECT,win32security.DACL_SECURITY_INFORMATION)
     assert win32security.ConvertSecurityDescriptorToStringSecurityDescriptor(sd,1,win32security.DACL_SECURITY_INFORMATION)==before_acl
+
+
+def _windows_system_fixture(path):
+    import win32api,win32con,win32security
+    path.mkdir()
+    token=win32security.OpenProcessToken(win32api.GetCurrentProcess(),win32con.TOKEN_QUERY|win32con.TOKEN_ADJUST_PRIVILEGES)
+    before={str(luid):flags&win32con.SE_PRIVILEGE_ENABLED for luid,flags in win32security.GetTokenInformation(token,win32security.TokenPrivileges)}
+    previous=None
+    try:
+        restore=win32security.LookupPrivilegeValue(None,win32security.SE_RESTORE_NAME)
+        previous=win32security.AdjustTokenPrivileges(token,False,[(restore,win32con.SE_PRIVILEGE_ENABLED)])
+        acl=win32security.ACL()
+        acl.AddAccessAllowedAceEx(win32security.ACL_REVISION_DS,3,0x1f01ff,win32security.ConvertStringSidToSid(user()))
+        acl.AddAccessAllowedAceEx(win32security.ACL_REVISION_DS,3,0x1f01ff,win32security.ConvertStringSidToSid('S-1-5-18'))
+        win32security.SetNamedSecurityInfo(str(path),win32security.SE_FILE_OBJECT,
+            win32security.OWNER_SECURITY_INFORMATION|win32security.DACL_SECURITY_INFORMATION|win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+            win32security.ConvertStringSidToSid('S-1-5-18'),None,acl,None)
+    finally:
+        if previous is not None:win32security.AdjustTokenPrivileges(token,False,previous)
+        after={str(luid):flags&win32con.SE_PRIVILEGE_ENABLED for luid,flags in win32security.GetTokenInformation(token,win32security.TokenPrivileges)}
+        token.Close()
+    assert after==before
+    assert owner(path)=='S-1-5-18'
+
+
+@pytest.mark.skipif(os.name!='nt',reason='Windows protected legacy-BA native profile DACL contract')
+def test_windows_system_owned_profile_is_rejected_without_owner_or_acl_changes(tmp_path):
+    home=tmp_path/'foreign-system';_windows_system_fixture(home)
+    before=security(home);identity=(home.stat().st_dev,home.stat().st_ino)
+    with pytest.raises(PermissionError):private_runtime_home(home)
+    assert owner(home)=='S-1-5-18' and security(home)==before
+    assert (home.stat().st_dev,home.stat().st_ino)==identity and not(home/'cache').exists()
