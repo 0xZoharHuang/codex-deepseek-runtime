@@ -114,3 +114,19 @@ def test_both_real_work_collectors_use_the_same_terminal_evidence(tmp_path):
     after=reviewers(root,"parent")
     assert after[0]["completed_turns"]==1
     assert not fresh_reviewer_completed(after,"followup-turn",before)
+
+
+def test_missing_reviewer_database_preserves_primary_startup_failure(tmp_path):
+    import verify_real_work as work
+    home=tmp_path/'home';home.mkdir()
+    report={'error':'ORIGINAL_STARTUP_FAILURE','scope':'native-runtime'}
+    work.collect_reviewer_evidence(report,tmp_path,home=home)
+    assert report['error']=='ORIGINAL_STARTUP_FAILURE'
+    assert report['reviewers']==[] and report['fresh_review'] is False
+    assert report['reviewer_evidence_status']['status']=='not_started'
+    assert report['reviewer_evidence_status']['error_type']=='RuntimeError'
+    report['thread']='parent-started'
+    work.collect_reviewer_evidence(report,tmp_path,home=home)
+    assert report['error']=='ORIGINAL_STARTUP_FAILURE'
+    assert report['reviewer_evidence_status']['status']=='failed'
+    assert report['fresh_review'] is False

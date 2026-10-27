@@ -127,8 +127,9 @@ def reviewer_evidence(root,parent,*,home=None):
     home=Path(home) if home is not None else root/'home'
     native_events=[event for path in root.glob('events-*.json')
                    for event in json.loads(path.read_text(encoding='utf-8'))]
-    rows=[]
-    with closing(sqlite3.connect(next(home.glob('state_*.sqlite')))) as db, db:
+    rows=[];databases=list(home.glob('state_*.sqlite'))
+    if len(databases)!=1:raise RuntimeError('Native reviewer evidence requires exactly one initialized state database')
+    with closing(sqlite3.connect(_support.sqlite_filename(databases[0],read_only=True),uri=True)) as db, db:
         children=db.execute('SELECT id,source,rollout_path,agent_path FROM threads WHERE agent_path IS NOT NULL').fetchall()
     for child,source,path,agent in children:
         origin=json.loads(source) if source.startswith('{') else {}
@@ -142,6 +143,19 @@ def reviewer_evidence(root,parent,*,home=None):
                      'completed_turns':len(complete),'completed_turn_ids':[r['turn_id'] for r in complete],
                      'verified_completions':complete,'final_message':message,'last_message':message})
     return rows
+
+
+def collect_reviewer_evidence(report,root,*,home):
+    """Keep the primary task failure when reviewer initialization never occurred."""
+    try:
+        report['reviewers']=reviewer_evidence(root,report.get('thread'),home=home)
+        report['reviewer_evidence_status']={'status':'available'}
+    except Exception as error:
+        report['reviewers']=[]
+        report['reviewer_evidence_status']={'status':'not_started' if not report.get('thread') else 'failed',
+                                          'error_type':type(error).__name__,'error':str(error)}
+        report.setdefault('error','Required native reviewer evidence is unavailable')
+    report['fresh_review']=fresh_reviewer_completed(report['reviewers'],report.get('final_turn_id'))
 
 
 def fresh_reviewer_completed(reviews,parent_turn,previous=None):
@@ -261,11 +275,11 @@ multi_agent_v2 = true
     report['diff_check']=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True).returncode
     report['diff_stat']=subprocess.run(['git','diff','--stat'],cwd=work,capture_output=True,text=True).stdout
     (root/'agent.patch').write_bytes(complete_work_patch(work))
-    report['reviewers']=reviewer_evidence(root,report.get('thread'),home=home)
-    report['fresh_review']=fresh_reviewer_completed(report['reviewers'],report.get('final_turn_id'))
+    collect_reviewer_evidence(report,root,home=home)
+    report['startup_failures']=[json.loads(path.read_text(encoding='utf-8')) for path in root.glob('startup-failure-*.json')]
     browser=home/'web-cache/pages.sqlite';pages=[]
     if browser.exists():
-        with closing(sqlite3.connect(browser)) as db, db:
+        with closing(sqlite3.connect(_support.sqlite_filename(browser,read_only=True),uri=True)) as db, db:
             pages=[{key:page.get(key) for key in ['url','source_sha256','retrieved_at']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
     persisted_events=[event for path in root.glob('events-*.json') for event in json.loads(path.read_text(encoding='utf-8'))]
     report['host_platform']=sys.platform

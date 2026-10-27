@@ -131,7 +131,23 @@ class Peer:
                     raise AssertionError("Native fixture did not read the declared elevated Windows backend")
             if not self.sandbox_evidence['passed']:
                 raise AssertionError('Native fixture sandbox configuration differs from the selected QA mode')
-        except BaseException:self.close();raise
+        except BaseException as primary:
+            before=self.process.poll();cleanup=None
+            try:self.close()
+            except BaseException as error:cleanup=error
+            receipt={'initialized':False,'primary_error_type':type(primary).__name__,
+                     'primary_error':str(primary),'returncode_before_cleanup':before,
+                     'returncode_after_cleanup':self.process.returncode,
+                     'stderr_file':Path(self.stderr.name).name,
+                     'stderr_sha256':hashlib.sha256(Path(self.stderr.name).read_bytes()).hexdigest(),
+                     'cleanup_error':None if cleanup is None else str(cleanup)}
+            try:
+                (root/f'startup-failure-{time.time_ns()}.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
+            except BaseException as error:
+                raise BaseExceptionGroup('Native startup and evidence persistence failed',
+                                         [primary,*([cleanup] if cleanup is not None else []),error])
+            if cleanup is not None:raise BaseExceptionGroup('Native startup and cleanup failed',[primary,cleanup])
+            raise
 
     def send(self, message):
         message = _QA_WORKSPACE.workspace_request(self.root, message)
