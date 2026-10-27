@@ -30,8 +30,8 @@ DeepSeek task and final release acceptance are still pending.
 | Raw recipe | 4729f350664964b19fd6b8876e40a2e4fa4166b388b4a18bf3b438bab554f4ff |
 | Native compiler | 1.99.1, original release flags, two jobs |
 | Windows archive | codex-deepseek-native-0.6.6-x86_64-pc-windows-msvc.tar.gz |
-| Windows archive SHA256 | 5aba077fcc70c5c84ef7cc12d9308b6777c24328e3c94a3b768e0bb1a5300fbf |
-| Windows manifest SHA256 | 28f9ae9201553a27a12c2fc0bd1fdebdc54c35680dd7c1529f7f713ef772def4 |
+| Windows archive SHA256 | 59fbae5093423746d3625876e82d7a4106a1dae9fb1def53ba3abeade811c322 |
+| Windows manifest SHA256 | a50e8069549bdcb02c77aa588a48ddbd68352bbd41bb6d4e72335b2545445dfb |
 
 macOS and Linux keep the exact 0.6.2 native bytes and their original producer
 receipts. Their source recipes did not change. Reuse is not a new native build

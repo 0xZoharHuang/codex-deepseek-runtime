@@ -12,7 +12,7 @@
   "archive": {
     "filename": "codex-deepseek-native-0.6.6-x86_64-pc-windows-msvc.tar.gz",
     "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.6/codex-deepseek-native-0.6.6-x86_64-pc-windows-msvc.tar.gz",
-    "sha256": "5aba077fcc70c5c84ef7cc12d9308b6777c24328e3c94a3b768e0bb1a5300fbf"
+    "sha256": "59fbae5093423746d3625876e82d7a4106a1dae9fb1def53ba3abeade811c322"
   },
   "files": {
     "bin/codex-code-mode-host.exe": "671d0ac396098bd56c346a43282faca151affd5455c4a1dc5d875f21e2784cf1",
@@ -22,7 +22,7 @@
     "bin/codex-windows-sandbox-service.exe": "3821c4d419325346203406f74f4f2103606325598396fba8a08b41673e3a065f",
     "bin/codex-windows-sandbox-setup.exe": "d72128445fc306c41cf9fec926465f685beb6448532766ef51f783af25a5a24d",
     "bin/codex.exe": "8ccea3e1352921bb1186041b592403d68dbb4f8075fd6048ea8e0aa3884c0e85",
-    "build-receipt.json": "783710e3a8ad0ed93937d7ed94214bfd0f6b2d8a315214b9dfc7dc0cbedc624b",
+    "build-receipt.json": "2ee20aaada2488e2e6e03f3e899aa73d32097efdd577fff9f08cbb8e3e661120",
     "codex-package.json": "492dc59d78e5d72ea46b092ae517098aeca89737f7ca7a92e53452e95bbc2e7c",
     "codex-path/rg.exe": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680",
     "codex-resources/codex-command-runner.exe": "f60ad1397c6efe454e0f8ca481ff06a0d331e58f352689834b5ce8a94fb894b8",
