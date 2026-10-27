@@ -5,9 +5,10 @@ import pytest
 import assemble_release_acceptance as acceptance
 
 @pytest.mark.parametrize('target,platform,count',[
-    ('x86_64-unknown-linux-gnu','linux',40),
-    ('aarch64-apple-darwin','darwin',41),
-    ('x86_64-pc-windows-msvc','win32',4),
+    # Stable historical node IDs preserve immutable acceptance lineage.
+    pytest.param('x86_64-unknown-linux-gnu','linux',44,id='x86_64-unknown-linux-gnu-linux-40'),
+    pytest.param('aarch64-apple-darwin','darwin',45,id='aarch64-apple-darwin-darwin-41'),
+    pytest.param('x86_64-pc-windows-msvc','win32',4,id='x86_64-pc-windows-msvc-win32-4'),
 ])
 def test_release_and_ci_offline_skip_catalogs_have_exact_case_reason_parity(target,platform,count):
     catalog=json.loads((Path(__file__).resolve().parents[1]/'ci/offline-platform-skips.json').read_text(encoding='utf-8'))

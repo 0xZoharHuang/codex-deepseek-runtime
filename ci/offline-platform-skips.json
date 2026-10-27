@@ -199,6 +199,26 @@
       "classname": "tests.test_runtime_home_owner",
       "name": "test_native_runtime_home_pins_parent_during_a_real_rename_attack",
       "message": "Windows native parent-handle sharing contract"
+    },
+    {
+      "classname": "tests.test_runtime_home_owner",
+      "name": "test_windows_native_runtime_home_rejects_unproven_BA_owner[unprotected]",
+      "message": "Windows protected legacy-BA native profile DACL contract"
+    },
+    {
+      "classname": "tests.test_runtime_home_owner",
+      "name": "test_windows_native_runtime_home_rejects_unproven_BA_owner[foreign-ace]",
+      "message": "Windows protected legacy-BA native profile DACL contract"
+    },
+    {
+      "classname": "tests.test_runtime_home_owner",
+      "name": "test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_identity",
+      "message": "Windows protected legacy-BA native profile DACL contract"
+    },
+    {
+      "classname": "tests.test_runtime_home_owner",
+      "name": "test_windows_system_owned_profile_is_rejected_without_owner_or_acl_changes",
+      "message": "Windows protected legacy-BA native profile DACL contract"
     }
   ],
   "linux": [],
