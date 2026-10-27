@@ -121,3 +121,61 @@ def test_native_runtime_home_pins_parent_during_a_real_rename_attack(tmp_path,mo
     assert attack.get('winerror')==32 and not attack.get('renamed') and not attack.get('junction')
     assert security(victim/'home')==before and canary.read_bytes()==b'outside-same-user-object'
     os.rename(parent,saved);os.rename(saved,parent)  # Handles released on return.
+
+
+def test_existing_current_owner_home_without_write_owner_is_made_private(tmp_path,assert_private):
+    home=tmp_path/'ordinary-owned-home';private_runtime_home(home)
+    original_owner=owner(home)
+    if os.name=='nt':
+        import win32security
+        descriptor=win32security.ConvertStringSecurityDescriptorToSecurityDescriptor(
+            'D:P(A;OICI;0x1301bf;;;'+user()+')(A;OICI;FA;;;SY)',1)
+        win32security.SetNamedSecurityInfo(str(home),win32security.SE_FILE_OBJECT,
+            win32security.DACL_SECURITY_INFORMATION|win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+            None,None,descriptor.GetSecurityDescriptorDacl(),None)
+    else:home.chmod(0o750)
+    assert owner(home)==original_owner==user()
+    private_runtime_home(home)
+    assert owner(home)==original_owner
+    assert_private(home)
+    assert_private(home/'cache')
+
+
+def _windows_ba_fixture(path,*,protected=True,extra=False):
+    import win32security
+    path.mkdir()
+    acl=win32security.ACL()
+    acl.AddAccessAllowedAceEx(win32security.ACL_REVISION_DS,3,0x1f01ff,win32security.ConvertStringSidToSid(user()))
+    acl.AddAccessAllowedAceEx(win32security.ACL_REVISION_DS,3,0x1f01ff,win32security.ConvertStringSidToSid('S-1-5-18'))
+    if extra:acl.AddAccessAllowedAceEx(win32security.ACL_REVISION_DS,3,0x1200a9,win32security.ConvertStringSidToSid('S-1-1-0'))
+    flag=(win32security.PROTECTED_DACL_SECURITY_INFORMATION if protected else win32security.UNPROTECTED_DACL_SECURITY_INFORMATION)
+    win32security.SetNamedSecurityInfo(str(path),win32security.SE_FILE_OBJECT,
+        win32security.OWNER_SECURITY_INFORMATION|win32security.DACL_SECURITY_INFORMATION|flag,
+        win32security.ConvertStringSidToSid('S-1-5-32-544'),None,acl,None)
+    assert owner(path)=='S-1-5-32-544'
+
+
+@pytest.mark.skipif(os.name!='nt',reason='Windows protected legacy-BA native profile DACL contract')
+@pytest.mark.parametrize('layout',['unprotected','foreign-ace'])
+def test_windows_native_runtime_home_rejects_unproven_BA_owner(tmp_path,layout):
+    home=tmp_path/'foreign-BA'
+    _windows_ba_fixture(home,protected=layout!='unprotected',extra=layout=='foreign-ace')
+    before=security(home);identity=(home.stat().st_dev,home.stat().st_ino)
+    with pytest.raises(PermissionError):private_runtime_home(home)
+    assert security(home)==before and (home.stat().st_dev,home.stat().st_ino)==identity
+    assert not(home/'cache').exists()
+
+
+@pytest.mark.skipif(os.name!='nt',reason='Windows protected legacy-BA native profile DACL contract')
+def test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_identity(tmp_path,assert_private):
+    import win32security
+    home=tmp_path/'legacy-BA';_windows_ba_fixture(home)
+    cache=home/'cache';_windows_ba_fixture(cache)
+    before_ids=[(item.stat().st_dev,item.stat().st_ino)for item in(home,cache)]
+    sd=win32security.GetNamedSecurityInfo(str(cache),win32security.SE_FILE_OBJECT,win32security.DACL_SECURITY_INFORMATION)
+    before_acl=win32security.ConvertSecurityDescriptorToStringSecurityDescriptor(sd,1,win32security.DACL_SECURITY_INFORMATION)
+    private_runtime_home(home)
+    assert [(item.stat().st_dev,item.stat().st_ino)for item in(home,cache)]==before_ids
+    for item in(home,cache):assert owner(item)==user();assert_private(item)
+    sd=win32security.GetNamedSecurityInfo(str(cache),win32security.SE_FILE_OBJECT,win32security.DACL_SECURITY_INFORMATION)
+    assert win32security.ConvertSecurityDescriptorToStringSecurityDescriptor(sd,1,win32security.DACL_SECURITY_INFORMATION)==before_acl

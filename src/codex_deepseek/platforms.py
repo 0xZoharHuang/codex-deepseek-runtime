@@ -192,8 +192,9 @@ class _WindowsPrivate:
             target=ctypes.c_void_p();acl=ctypes.c_void_p();default=self.w.BOOL();present=self.w.BOOL()
             if not self.a.GetSecurityDescriptorOwner(descriptor,ctypes.byref(target),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
             if not self.a.GetSecurityDescriptorDacl(descriptor,ctypes.byref(present),ctypes.byref(acl),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
-            flags=1 if preserve_acl else 0x80000005
-            error=self.a.SetSecurityInfo(handle,1,flags,target,None,None if preserve_acl else acl,None)
+            change_owner=owner!=self.sid
+            flags=(1 if change_owner else 0)|(0 if preserve_acl else 0x80000004)
+            error=self.a.SetSecurityInfo(handle,1,flags,target if change_owner else None,None,None if preserve_acl else acl,None)
             if error:raise ctypes.WinError(error)
         finally:self.k.LocalFree(descriptor)
         after,owner=self.security(handle)
@@ -221,7 +222,7 @@ class _WindowsPrivate:
         name=NAME(len(encoded),len(encoded)+2,ctypes.addressof(value))
         attributes=ATTR(ctypes.sizeof(ATTR),parent,ctypes.pointer(name),0x1040,descriptor,None)
         output=self.w.HANDLE();io=IO()
-        if access is None:access=0x1000a0|(0xe0000 if final else 0)
+        if access is None:access=0x1000a0|(0x60000 if final else 0)
         status=self.nt.NtCreateFile(ctypes.byref(output),access,ctypes.byref(attributes),ctypes.byref(io),None,
                                     0x10,3,3,0x00200021,None,0)
         if status<0:raise ctypes.WinError(self.nt.RtlNtStatusToDosError(status))
@@ -245,19 +246,20 @@ class _WindowsPrivate:
                 access=0x1200a0 if final and preserve_existing_acl else None
                 handle=self.relative(parents[-1],component,descriptor,final=final,access=access)
                 parents.append(handle)
-            if preserve_existing_acl:
-                raw,owner=self.security(parents[-1])
-                if owner==self.sid:return
-                # Inspect first without demanding write-owner on an already-owned
-                # readonly shared cache. Migration alone opens an owner-write handle.
+            raw,owner=self.security(parents[-1])
+            if preserve_existing_acl and owner==self.sid:return
+            if owner!=self.sid:
+                # Only the exact prior private BA-owned layout may migrate owner.
+                # Ordinary user-owned directories need WRITE_DAC, not WRITE_OWNER.
                 control=self.w.WORD();revision=self.w.DWORD()
                 protected=bool(self.a.GetSecurityDescriptorControl(raw,ctypes.byref(control),ctypes.byref(revision)) and control.value&0x1000)
                 if owner!='S-1-5-32-544' or not protected or not self.private_acl(raw):
-                    raise PermissionError('Refusing foreign or unproven shared cache owner')
-                writable=self.relative(parents[-2],components[-1],descriptor,final=True,access=0x1a00a0)
+                    raise PermissionError('Refusing foreign or unproven shared private-state owner')
+                writable=self.relative(parents[-2],components[-1],descriptor,final=True,
+                                       access=0x1a00a0 if preserve_existing_acl else 0x1e00a0)
                 parents.append(writable)
                 if self.information(parents[-1],True)!=self.information(parents[-2],True):
-                    raise PermissionError('Native cache identity changed')
+                    raise PermissionError('Native private-state identity changed')
             self.apply(parents[-1],True,preserve_acl=preserve_existing_acl)
         finally:
             for handle in reversed(parents):self.k.CloseHandle(handle)
