@@ -1,6 +1,18 @@
 # Codex CLI + DeepSeek 的稳定运行方案
 
-## 0.6.5 当前方案
+## 0.6.6 集成候选：尚未发布
+
+0.6.6合并两项协议修复和 Windows 原生适配简化。工具的完成项是提交边界：final-only custom input 尾部必须完整交付，function/custom 的预览都不能提前触发执行；已提交调用的改写仍失败。预览违约只保留最多16条哈希化诊断，不写原始代码或用户文本。
+
+Windows 五文件补丁去掉 metadata journal、raw NTFS 和额外精确撤销路径，保留当前授权路径的 FileID／防重解析、有效 DENY、本机 SAM 与非继承属性授予。native producer 是37787ecf1882521b168ec8cc16d5dcd5894b2572，完整原生源码为9c33e0369dd955f2715d52fbdd3d19265d6ff49a29bf77ad9d777685b308a6ff，Windows recipe为410a7343667baecf2a8de222e32a09a858eaa626706ba9b65222fc5135dc1ef2。这些原生产物不改签为后续 Python／文档集成提交重新编译。
+
+当前只关闭了源码／组件与限定 Windows native lifecycle 范围：完整8项 private layout 按正常生产来源组装；新 helper 正常执行，真实文件允许／拒绝、临时 namespace／WFP 删除和幂等卸载有证据。独立 D 盘工作区真正 cold 命令3.074秒完成时后台授权仍存活；native cwd junction 的物理目录／FileID已核对。原 AppData 夹具45秒预算失败保持失败；相关继承域约83／101秒等待是记录中的合法协调，不通过改 runtime timeout／ACL策略隐藏。原生卸载保留 home 和普通 filesystem ACE，最终只按已知路径／FileID／退休 SID 清理自有 QA 材料，不新建 ACL 恢复引擎。
+
+完整 CDS launcher 的 Low 离线安装与协议回归、真实 DeepSeek 复杂任务、最终版本／公开交付仍待后续验收。Python 候选是0.6.6，Windows候选原生资产是0.6.6；Linux/macOS原生0.6.2字节与原 producer 回执不变。不得把已构建、helper可运行或旧版报告写成全部 runtime 已通过，也不承诺 Defender 原因或未来免报。
+
+[预定的 v0.6.6 release 地址](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.6)尚未发布。候选使用正常安装器的显式匹配 manifest／archive／wheelhouse、新 root及 CODEX_HOME，按[README候选步骤](../README.md#安装并运行)验证；不覆盖正在工作的日常 CDS，不读取或改动 Codex App 的登录与状态。以下旧版本材料保留原始身份与范围。
+
+## 0.6.5 历史方案
 
 0.6.5固定本地runtime功能资格与公开交付已通过，产品source为072be79ac2b773d2684c；已正式发布为GitHub Latest，tag固定01de977bc7d1d2474d7b8dd2697b80959e29d42b，222609996字节匿名下载摘要一致，见[发布回执](../reports/releases/0.6.5/publication-record.json)。Windows标准用户目录的SYSTEM/Administrators所有权现由原生元数据专用谓词正确维护；不改变目录所有者、调度器、审批器或工具执行器。
 
