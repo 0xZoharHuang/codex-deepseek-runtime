@@ -158,14 +158,19 @@ def test_provider_pin_checked_for_cli():
 
 
 @pytest.mark.parametrize('field,value',[('call_id','other'),('name','other'),('arguments','{"input":"OTHER"}')])
-def test_item_done_cannot_change_dispatched_custom_call(field,value):
+def test_item_done_keeps_call_identity_and_uses_final_input_before_dispatch(field,value):
     _,registry=prepare(request(tools=[{'type':'custom','name':'exec'}]));events=Events(registry)
     item={'type':'function_call','id':'fc1','call_id':'c1','name':'exec','arguments':''}
     events.transform({'type':'response.output_item.added','item':item})
     raw='{"input":"SAFE"}'
-    events.transform({'type':'response.function_call_arguments.delta','item_id':'fc1','delta':raw})
-    with pytest.raises(ProtocolError):
-        events.transform({'type':'response.output_item.done','item':{**item,'arguments':raw,field:value}})
+    preview=events.transform({'type':'response.function_call_arguments.delta','item_id':'fc1','delta':raw})
+    assert not any(event['type']=='response.output_item.done' for event in preview)
+    completed={'type':'response.output_item.done','item':{**item,'arguments':raw,field:value}}
+    if field=='arguments':
+        assert events.transform(completed)[-1]['item']['input']=='OTHER'
+    else:
+        with pytest.raises(ProtocolError):
+            events.transform(completed)
 
 
 def test_completed_native_tool_call_cannot_be_removed_from_terminal_snapshot():
@@ -250,10 +255,11 @@ def custom_event_stream():
     return events
 
 
-def test_custom_arguments_done_is_validated_before_native_completion_event():
+def test_custom_arguments_done_is_preview_and_final_grammar_is_still_enforced():
     events=custom_event_stream()
+    assert events.transform({'type':'response.function_call_arguments.done','item_id':'tool-1','output_index':0,'arguments':'{"input":"DANGEROUS"}'}) == []
     with pytest.raises(ProtocolError,match='grammar'):
-        events.transform({'type':'response.function_call_arguments.done','item_id':'tool-1','output_index':0,'arguments':'{"input":"DANGEROUS"}'})
+        events.transform({'type':'response.output_item.done','output_index':0,'item':{'id':'tool-1','type':'function_call','name':'checked','call_id':'c','arguments':'{"input":"DANGEROUS"}'}})
 
 
 def test_missing_arguments_done_still_emits_validated_custom_completion():
@@ -264,13 +270,13 @@ def test_missing_arguments_done_still_emits_validated_custom_completion():
     assert output[-1]['item']['type']=='custom_tool_call' and output[-1]['item']['input']=='SAFE'
 
 
-def test_finalized_regular_arguments_cannot_grow_before_output_done():
+def test_regular_arguments_done_remains_preview_until_output_done():
     _,registry=prepare(request(tools=[{'type':'function','name':'read','parameters':{}}]))
     events=Events(registry)
     events.transform({'type':'response.output_item.added','item':{'id':'f','type':'function_call','name':'read','call_id':'c','arguments':''}})
     events.transform({'type':'response.function_call_arguments.done','item_id':'f','arguments':'{}'})
-    with pytest.raises(ProtocolError,match='finalized'):
-        events.transform({'type':'response.output_item.done','item':{'id':'f','type':'function_call','name':'read','call_id':'c','arguments':'{} '}})
+    output=events.transform({'type':'response.output_item.done','item':{'id':'f','type':'function_call','name':'read','call_id':'c','arguments':'{} '}})
+    assert output[-1]['item']['arguments']=='{} '
 
 
 def test_terminal_snapshot_only_call_is_dispatched_before_terminal():

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -42,6 +43,37 @@ def native_history_fingerprint(item):
                'call_id':item.get('call_id'),'arguments':arguments}
     else:return None
     return hashlib.sha256(json.dumps(value,sort_keys=True,ensure_ascii=True,separators=(',',':')).encode()).hexdigest()
+
+
+LOGGER = logging.getLogger(__name__)
+ARGUMENT_DIAGNOSTIC_REASONS = frozenset({
+    "producer_append_constraint_violation",
+    "invalid_uncommitted_custom_preview",
+})
+
+
+def _unicode_text(value):
+    if any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        raise ProtocolError("Tool input contains an unpaired Unicode surrogate")
+    return value
+
+
+def _custom_input(arguments):
+    def unique_fields(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ProtocolError("Custom tool arguments contain duplicate fields")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(arguments, object_pairs_hook=unique_fields)
+    except (TypeError, ValueError) as error:
+        raise ProtocolError("Custom tool arguments must be valid JSON") from error
+    if not isinstance(value, dict) or set(value) != {"input"} or not isinstance(value["input"], str):
+        raise ProtocolError("Custom tool arguments must contain exactly one input string")
+    return _unicode_text(value["input"])
 
 
 @dataclass(frozen=True)
@@ -279,6 +311,8 @@ class Registry:
                 raise ProtocolError('Final function call requires a native call ID')
             if not isinstance(item.get('arguments'),str):
                 raise ProtocolError('Function call arguments must be a native JSON string')
+            if final:
+                _unicode_text(item["arguments"])
             item["name"] = tool.name
             item.pop('namespace',None)
             if tool.namespace:
@@ -291,11 +325,17 @@ class Registry:
                 arguments = item.pop("arguments", "")
                 if final and not arguments:
                     raise ProtocolError('Final custom tool call lacks complete input arguments')
-                value = json.loads(arguments) if arguments else {"input": ""}
-                if not isinstance(value, dict) or set(value) != {"input"} or not isinstance(value["input"], str):
-                    raise ProtocolError("Custom tool arguments must contain exactly one input string")
+                if final:
+                    source = _custom_input(arguments)
+                else:
+                    # Added items may carry only a partial argument envelope.
+                    preview = InputDecoder()
+                    try:
+                        source = preview.feed(arguments)
+                    except ProtocolError:
+                        source = ""
                 item["type"] = "custom_tool_call"
-                item["input"] = value["input"]
+                item["input"] = source
                 if tool.wire in self.formats and final:
                     validate_format(self.formats[tool.wire],item['input'])
             elif tool.kind == "search":
@@ -520,6 +560,10 @@ class Events:
         self.custom_done: set[str] = set()
         self.done: dict[str, dict] = {}
         self.call_items: dict[str,str] = {}
+        self.custom_preview_invalid: set[str] = set()
+        self.argument_diagnostics: list[dict] = []
+        self.argument_diagnostic_count = 0
+        self.argument_diagnostics_truncated = False
 
     def check_item(self, item, *, final):
         if not isinstance(item,dict):raise ProtocolError('Stream output item must be an object')
@@ -541,28 +585,91 @@ class Events:
             raise ProtocolError('Provider changed an already completed output item')
         if item.get('type')=='function_call' and final:
             raw=item.get('arguments','')
-            prefix=self.arguments.get(item_id,'')
-            if not isinstance(raw,str) or not raw.startswith(prefix):
-                raise ProtocolError('Final tool arguments disagree with the streamed prefix')
-            if item_id in self.arguments_done and raw!=self.arguments_done[item_id]:
-                raise ProtocolError('Provider changed finalized tool arguments')
-            if item_id in self.custom:
-                # Validate before native dispatch without consuming the tail:
-                # output_item.done must still emit it when arguments.done is absent.
-                copy.deepcopy(self.custom[item_id]).finish(raw)
+            if not isinstance(raw, str):
+                raise ProtocolError("Function call arguments must be a native JSON string")
+            # Native dispatch takes this completed item, not earlier preview data.
+            # Validate the final payload before releasing any executable event.
+            self.registry.output(item)
+            prefix = self.arguments.get(item_id, "")
+            if (not raw.startswith(prefix)
+                    or item_id in self.arguments_done and raw != self.arguments_done[item_id]):
+                self._argument_diagnostic("producer_append_constraint_violation", item_id, raw)
         if final:self.done[item_id]=copy.deepcopy(item)
 
+    def diagnostic_summary(self):
+        """Bounded hash-only observations; preview is never tool authorization."""
+        return {
+            "total_count": self.argument_diagnostic_count,
+            "truncated": self.argument_diagnostics_truncated,
+            "records": copy.deepcopy(self.argument_diagnostics),
+        }
+
+    def _argument_diagnostic(self, reason, item_id, arguments, *, preview=None):
+        if reason not in ARGUMENT_DIAGNOSTIC_REASONS:
+            raise ValueError("Unknown tool-argument diagnostic reason")
+        self.argument_diagnostic_count += 1
+        if len(self.argument_diagnostics) >= 16:
+            self.argument_diagnostics_truncated = True
+            return
+        def digest(value):
+            text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=True, sort_keys=True)
+            return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
+        record = {
+            "reason": reason,
+            "item_sha256": digest(item_id),
+            "call_sha256": digest(self.items.get(item_id, {}).get("call_id", "")),
+            "preview_arguments_sha256": digest(self.arguments.get(item_id, "") if preview is None else preview),
+            "candidate_arguments_sha256": digest(arguments),
+            "hash_encoding": "utf8-surrogatepass",
+        }
+        self.argument_diagnostics.append(record)
+        LOGGER.warning("Provider tool-argument diagnostic: %s", json.dumps(record, sort_keys=True))
+
+    def _preview_custom_input(self, item, common):
+        item_id = item["id"]
+        decoder = self.custom[item_id]
+        try:
+            normalized = self.registry.output(item)
+            final_decoder = InputDecoder()
+            final_decoder.finish(item["arguments"])
+        except (ProtocolError, ValueError):
+            self.custom_preview_invalid.add(item_id)
+            self._argument_diagnostic("invalid_uncommitted_custom_preview", item_id, item["arguments"])
+            return []
+        source = normalized["input"]
+        if not source.startswith(decoder.decoded):
+            self.custom_preview_invalid.add(item_id)
+            self._argument_diagnostic("producer_append_constraint_violation", item_id, item["arguments"],
+                                      preview=decoder.raw)
+            return []
+        if not item["arguments"].startswith(decoder.raw):
+            self._argument_diagnostic("producer_append_constraint_violation", item_id, item["arguments"],
+                                      preview=decoder.raw)
+        delta = source[len(decoder.decoded):]
+        self.custom[item_id] = final_decoder
+        self.custom_preview_invalid.discard(item_id)
+        # arguments.done remains preview; only output_item.done commits the call.
+        return [{**common, "type": "response.custom_tool_call_input.delta", "delta": delta}] if delta else []
+
     def _finish_custom_input(self, item, output_index):
-        item_id = item['id']
+        item_id = item["id"]
         if item_id in self.custom_done:
             return []
+        source = self.registry.output(item)["input"]
+        final_decoder = InputDecoder()
+        final_decoder.finish(item["arguments"])
         decoder = self.custom.setdefault(item_id, InputDecoder())
-        delta = decoder.finish(item['arguments'])
-        common = {'item_id': item_id, 'output_index': output_index}
+        common = {"item_id": item_id, "output_index": output_index}
         result = []
-        if delta:
-            result.append({**common, 'type': 'response.custom_tool_call_input.delta', 'delta': delta})
-        result.append({**common, 'type': 'response.custom_tool_call_input.done', 'input': decoder.decoded})
+        if source.startswith(decoder.decoded):
+            delta = source[len(decoder.decoded):]
+            if delta:
+                result.append({**common, "type": "response.custom_tool_call_input.delta", "delta": delta})
+        # A revised final source has no native backspace/replacement delta.
+        # The completed input below is authoritative; do not append a fake repair.
+        self.custom[item_id] = final_decoder
+        self.custom_preview_invalid.discard(item_id)
+        result.append({**common, "type": "response.custom_tool_call_input.done", "input": source})
         self.custom_done.add(item_id)
         return result
 
@@ -585,7 +692,15 @@ class Events:
             self.check_item(item,final=kind.endswith('.done'))
             tool = self.registry.resolve(item.get("name", ""))
             if item.get("type") == "function_call" and tool and tool.kind == "custom":
-                self.custom.setdefault(item["id"], InputDecoder())
+                if item["id"] not in self.custom:
+                    self.custom[item["id"]] = InputDecoder()
+                    if not kind.endswith(".done") and item.get("arguments"):
+                        self.arguments[item["id"]] = item["arguments"]
+                        try:
+                            self.custom[item["id"]].feed(item["arguments"])
+                        except ProtocolError:
+                            self.custom_preview_invalid.add(item["id"])
+                            self._argument_diagnostic("invalid_uncommitted_custom_preview", item["id"], item["arguments"])
             if item.get("type") == "function_call" and tool and tool.kind == "search":
                 self.search.add(item["id"])
             event["item"] = self.registry.output(item,final=kind.endswith('.done'))
@@ -605,15 +720,20 @@ class Events:
                         return []
                 raise ProtocolError('Late tool arguments contradict the completed native call')
             if kind.endswith('.delta'):
+                if not isinstance(event.get("delta"), str):
+                    raise ProtocolError("Tool argument delta must be a string")
                 self.arguments[item_id]=self.arguments.get(item_id,'')+event['delta']
             elif kind.endswith('.done'):
                 raw=event['arguments']
-                if not raw.startswith(self.arguments.get(item_id,'')):
-                    raise ProtocolError('Final tool arguments disagree with the streamed prefix')
-                self.arguments[item_id]=raw
-                if item_id in self.arguments_done:
-                    if raw!=self.arguments_done[item_id]:raise ProtocolError('Provider changed finalized tool arguments')
+                if not isinstance(raw, str):
+                    raise ProtocolError("Tool arguments preview must be a string")
+                if item_id in self.arguments_done and raw == self.arguments_done[item_id]:
                     return []
+                if (item_id not in self.custom
+                        and (not raw.startswith(self.arguments.get(item_id, ""))
+                             or item_id in self.arguments_done)):
+                    self._argument_diagnostic("producer_append_constraint_violation", item_id, raw)
+                self.arguments[item_id]=raw
                 self.arguments_done[item_id]=raw
         if kind.startswith("response.function_call_arguments.") and event.get("item_id") in self.search:
             return []
@@ -621,19 +741,25 @@ class Events:
             decoder = self.custom[event["item_id"]]
             common = {key: value for key, value in event.items() if key not in {"type", "delta", "arguments", "sequence_number"}}
             if kind.endswith(".delta"):
-                delta = decoder.feed(event["delta"])
+                if event["item_id"] in self.custom_preview_invalid:
+                    return []
+                try:
+                    delta = decoder.feed(event["delta"])
+                except ProtocolError:
+                    self.custom_preview_invalid.add(event["item_id"])
+                    self._argument_diagnostic("invalid_uncommitted_custom_preview", event["item_id"],
+                                              self.arguments[event["item_id"]])
+                    return []
                 if not delta:
                     return []
                 event = {**common, "type": "response.custom_tool_call_input.delta", "delta": delta}
             elif kind.endswith(".done"):
-                delta = decoder.finish(event["arguments"])
-                # Validate before releasing any event that a native consumer
-                # could interpret as a complete executable custom-tool input.
-                self.registry.output({**self.items[event['item_id']], 'arguments':event['arguments']})
-                if delta:
-                    result.append({**common, "type": "response.custom_tool_call_input.delta", "delta": delta})
-                event = {**common, "type": "response.custom_tool_call_input.done", "input": decoder.decoded}
-                self.custom_done.add(original['item_id'])
+                previews = self._preview_custom_input(
+                    {**self.items[event["item_id"]], "arguments": event["arguments"]}, common)
+                for preview in previews:
+                    preview["sequence_number"] = self.sequence
+                    self.sequence += 1
+                return previews
         if kind in {"response.completed", "response.incomplete", "response.failed"}:
             response = event.get("response", {})
             validate_response(response,kind.removeprefix('response.'))
