@@ -8,7 +8,7 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-**0.6.7 是共享 Python 协议层的修订。** 它补齐了 JSON Schema 最终输出与客户端工具搜索中间调用的组合：搜索调用继续交给原生 runtime，真正的最终回答仍须通过原 Schema 校验；server 搜索、缺少调用 ID、空回答和无效最终 JSON 不会因此变成成功。原生 agent loop、工具执行、审批、子智能体、沙箱和三平台原生产物均保持原样。新增回归与本版验证结果见 [v0.6.7 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)。
+**0.6.7 正在开发，尚未发布。** 当前候选补齐了 JSON Schema 最终输出与原生客户端工具搜索中间调用的组合，并修复压缩历史冷恢复后的容量 checkpoint 哈希表示。搜索调用仍由原生 runtime 执行，最终回答仍须通过原 Schema 校验。候选正在进行原生构建和重复冷恢复验收，不能把已有软件测试结果当作三平台新产物的通过证明。
 
 **此前的 0.6.6 已完成 Windows 主路径的独立安装与真实任务验收。** 它继续使用原生 Codex；本轮修复集中在模型流事件、Windows 私有目录、SQLite 长路径和安装打包。发布后，下载文件与摘要以 [v0.6.6 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.6)为准；具体版本与证据见[本版报告](reports/releases/0.6.6/README.md)。
 
@@ -17,6 +17,8 @@
 - Windows：正常用户已有目录不再被额外要求“更改所有者”权限；SQLite 数据库与日志使用正确的长路径形式；五个原生产物来自同一固定构建并通过真实权限和清理检查。
 
 模型参数预览不会提前触发工具，最终完成项决定调用内容；流失败不会伪装为完成。适配层保留原生工具、审批、沙箱、会话和子智能体机制。旧错误、取消及补测分别记录，本版报告没有把整段历史改写成一次全绿。
+
+当前开发源码另有一项未发布的原生容量恢复候选：修复压缩历史冷恢复后默认 metadata 的哈希表示，并保留两种固定的旧 checkpoint 验证形式。它仍为 **HOLD，未作为稳定原生产物发布**；现有 0.6.6 helper 与平台 manifest 未改动。范围、旧表示兼容上限和验收条件见[源码候选说明](docs/capacity-replay-source.md)。
 
 ## 它怎样工作
 
@@ -48,7 +50,7 @@
 
 ## 支持范围与验收状态
 
-本轮新资格主要覆盖 Windows x86_64。macOS/Linux 继续使用原字节、原 producer 回执的 0.6.2 原生资产，共同 Python 适配器升级为 0.6.7；本轮没有新增 Mac/Linux 实机验收。新证据、旧平台资格和复用范围分别列明，不按单元测试数量推断所有平台均重新验证。
+已发布 0.6.6 的新资格主要覆盖 Windows x86_64；当时 macOS/Linux 复用了固定 producer 的 0.6.2 原生资产。本次源码追溯确认这三个平台均包含同一份旧容量哈希实现，因此 0.6.7 不能继续按“Unix 未受影响”复用旧产物。三平台源码配方检查、可执行产物资格和真实任务验收分别记录，尚未完成的项目保留为待验收。
 
 | 平台 | 本版原生资产 | 验收范围 |
 | --- | --- | --- |
@@ -64,7 +66,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 
 ## 安装并运行
 
-Python 源码使用以下固定 `v0.6.7` tag。原生归档必须匹配该源码随附的平台 manifest 与摘要：Windows 仍为 `v0.6.6`，macOS/Linux 仍为 `v0.6.2`，不要求 Python 包与 native 版本号相同。先核验 [v0.6.7 发布资产及清单](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)；不要把 main 分支当作固定版本。
+以下命令固定到当前公开的 `v0.6.6`；对应平台归档必须匹配该 tag 附带的 manifest 和摘要。0.6.7 尚无稳定 tag 或发布资产，不使用开发分支替代稳定安装。原生容量冷恢复的已知缺陷与修复进展见[源码候选说明](docs/capacity-replay-source.md)；公开版旧验收不代表该缺口已经关闭。
 
 Windows 原生包为 0.6.6，macOS/Linux 原生包仍为已发布的 0.6.2。安装器会校验平台、recipe、工具链与完整文件摘要，正常安装不需要编译 Rust。已有任务应继续使用自己的不可变入口；并行验收使用新目录和下文的 `--no-activate`。
 
@@ -75,7 +77,7 @@ Windows 原生包为 0.6.6，macOS/Linux 原生包仍为已发布的 0.6.2。安
 在终端执行：
 
 ```sh
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -93,7 +95,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -111,7 +113,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py

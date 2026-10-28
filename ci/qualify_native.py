@@ -43,8 +43,9 @@ EXPECTED_NODE_IDS = (
     'tests/test_native_payload_retry.py::test_real_cli_cold_capacity_checkpoint_qualifies_rebuilt_envelopes[token-budget-local-reset]',
     'tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[summary]',
     'tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[token-budget-local-reset]',
+    'tests/test_native_payload_retry.py::test_real_cli_recovered_parallel_metadata_checkpoint_survives_second_cold_capacity',
 )
-EXPECTED_CASES = len(EXPECTED_NODE_IDS)  # Eight raw HTTP cases and thirteen payload/recovery cases.
+EXPECTED_CASES = len(EXPECTED_NODE_IDS)  # Eight raw HTTP cases and fourteen payload/recovery cases.
 
 
 def sha(path: Path) -> str:

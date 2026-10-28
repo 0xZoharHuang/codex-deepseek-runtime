@@ -1,0 +1,13 @@
+# Native capacity replay hash source candidate
+
+Status: source candidate on the 0.6.7 development line; HOLD, not a stable native release. The published 0.6.6 Windows helper binaries and existing platform manifests are unchanged. A passing source recipe or focused module test does not qualify a new CLI, a cold runtime session, or another platform. Current source intentionally requires the new recipe identity, so old ready manifests must not be relabelled as qualification for this candidate.
+
+`payload-request-capacity-replay.patch` follows the unchanged historical `payload-request-capacity.patch` immediately. It changes only `codex-rs/core/src/session/request_capacity.rs`; the runtime still owns compaction, recovery, tools, approvals and agent scheduling. No replacement execution loop or history ledger is introduced.
+
+Native `CompactedItem` serialization materializes absent metadata as exact `CodexHarnessMetadata::default()` when it emits parallel metadata. The v3 hash domain therefore projects missing metadata to that typed Default. Every present metadata value, including client-authored flags, nondefault fields and opaque item metadata, remains exact. History and rollout serialization are not rewritten.
+
+Already-at-capacity sessions may receive HTTP 413 before a fresh ordinary completion can establish a new checkpoint. Eligibility therefore also checks exactly two fixed legacy v2 digests: the replayed metadata as-is, and the replayed metadata with every typed exact-Default slot treated as absent. No per-slot combinations are guessed. An old mixed pattern that matches neither form fails closed; a later successful ordinary completion can advance the existing epoch and write v3. Matching never rewrites a checkpoint or history. Schema version 1, cache location and the `sha256-v1:` digest format remain compatible.
+
+The checked source projection is shared across all three hash forms. Focused native tests cover the actual `RolloutItem::Compacted` parallel metadata roundtrip, nondefault/payload/order/opaque/media tampering, both fixed legacy forms and mixed-form rejection, plus old checkpoint lineage advancing through the existing ordinary-completion storage transition. The standalone Windows module harness excludes one pre-existing private-session integration test; the patch retains that test for full native CI.
+
+Release remains on HOLD until the exact candidate CLI is built and independently accepted on actual cold recovery, checkpoint persistence, effect counts and preserved input. Source-only replay of all three platform recipes is not executable qualification for Linux or macOS. No new native manifest is ready solely because this overlay exists.

@@ -554,6 +554,7 @@ class CapacityProvider(Provider):
     def __init__(self,warm,token_budget=False):
         super().__init__();self.warm=warm;self.token_budget=token_budget;self.home=None;self.phase='seed';self.seed_requests=0
         self.seed_response_ids=[];self.seed_pair=None;self.protected=None;self.budget=None
+        self.cold_input_marker=CAPACITY_COLD_INPUT
         self.fenced=[];self.translated=[];self.before_capacity=None;self.continuation_response_id=None
         self.seed_image_hashes=[];self.remaining_image_hashes=[]
     def activate(self):
@@ -607,13 +608,13 @@ class CapacityProvider(Provider):
             return web.Response(text=reply,content_type='text/event-stream')
         if compaction:
             self.compact_calls+=1
-            assert CAPACITY_UNSEEN.encode() not in raw and CAPACITY_COLD_INPUT.encode() not in raw
+            assert CAPACITY_UNSEEN.encode() not in raw and self.cold_input_marker.encode() not in raw
             assert not capacity_pair(body.get('input',[]),'capacity-call-2')
             if not self.fenced:self.fenced=capacity_checkpoints(self.home)
         else:
             if self.before_capacity is None:self.before_capacity=capacity_checkpoints(self.home)
             current=(capacity_pair(body['input'],'capacity-call-2') if self.warm else
-                [item for item in body['input'] if CAPACITY_COLD_INPUT in json.dumps(item)])
+                [item for item in body['input'] if self.cold_input_marker in json.dumps(item)])
             assert current,'protected new native input must survive every ordinary request'
             if self.protected is None:self.protected=capacity_exact(current)
             else:assert capacity_exact(current)==self.protected,'native recovery changed unconsumed suffix bytes/order'
@@ -658,7 +659,7 @@ def capacity_natural_exit_assertions(record):
     assert record['unknown_live']==[] and record['observation_errors']==[],record
 
 
-def capacity_assertions(provider,record,seed_checkpoint=None):
+def capacity_assertions(provider,record,seed_checkpoint=None,*,require_initial_summary_413=True):
     capacity_natural_exit_assertions(record)
     assert record['exit_code']==0 and 'FIXTURE_OK' in record['stdout'],record
     active=[row for row in provider.calls if row['phase']=='capacity']
@@ -671,9 +672,14 @@ def capacity_assertions(provider,record,seed_checkpoint=None):
         assert len([row for row in provider.calls if row['status']==200])==3
         assert provider.fenced==[]  # No HTTP observer is fabricated for the local reset.
     else:
-        assert len(compact)>=2 and compact[0]['status']==413
+        if require_initial_summary_413:
+            assert len(compact)>=2 and compact[0]['status']==413
+            assert compact[-1]['bytes']<compact[0]['bytes']
+        else:
+            # Only the explicit second-cold stage may start with an already small
+            # consumed prefix. All original cases retain the strict default.
+            assert compact
         assert compact[-1]['status']==200 and compact[-1]['bytes']<=provider.budget
-        assert compact[-1]['bytes']<compact[0]['bytes']
         assert not any(not row['compaction'] and row['status']==200 for row in active[:active.index(compact[-1])])
     assert all(row['status']==(413 if row['bytes']>provider.budget else 200) for row in active)
     assert active[-1]['status']==200 and not active[-1]['compaction']
@@ -880,3 +886,140 @@ async def test_real_cli_direct_image_metadata_cold_capacity(tmp_path,monkeypatch
         capacity_assertions(provider,record,saved[0])
         no_tools(seed)
     finally:await chain.close()
+
+
+class ReplayColdCapacityProvider(CapacityProvider):
+    """Reuse the same byte-budget fault; observe two genuine native cold lifetimes."""
+    def __init__(self):
+        super().__init__(False,False)
+        self.cold_input_marker=CAPACITY_COLD_INPUT+'_FIRST_REPLAY'
+        self.ordinary_inputs=[]
+
+    async def handle(self,request):
+        raw=await request.read()
+        if self.phase=='capacity' and COMPACT.encode() not in raw:
+            self.ordinary_inputs.append(json.loads(raw)['input'])
+        return await super().handle(request)
+
+    def activate_second_cold(self,checkpoint):
+        assert self.phase=='capacity' and self.continuation_response_id==checkpoint['response_id']
+        # Reset only the fixture's observations. Home/history/checkpoint are never
+        # written by this controller; the next native process owns reconstruction.
+        self.calls=[];self.compact_calls=0;self.ordinary_inputs=[]
+        self.fenced=[];self.translated=[];self.before_capacity=None;self.protected=None
+        self.seed_response_ids=[checkpoint['response_id']]
+        self.cold_input_marker=CAPACITY_COLD_INPUT+'_SECOND_REPLAY'
+        self.continuation_response_id=None
+        assert self.budget==CAPACITY_BUDGET
+
+
+def capacity_compacted_parallel_metadata(home):
+    """Observe exact native persisted parallel arrays, without editing/rebuilding them."""
+    rows=[]
+    for path in (home/'sessions').rglob('*.jsonl'):
+        assert not path.is_symlink()
+        for line_number,line in enumerate(path.read_text(encoding='utf-8').splitlines(),1):
+            row=json.loads(line)
+            if row.get('type')!='compacted':continue
+            payload=row.get('payload',{})
+            items=payload.get('replacement_history');metadata=payload.get('replacement_history_metadata')
+            if not isinstance(items,list) or not isinstance(metadata,list):continue
+            assert len(items)==len(metadata) and items
+            defaults=[index for index,value in enumerate(metadata) if value=={'client_authored':False}]
+            nondefaults=[index for index,value in enumerate(metadata) if value!={'client_authored':False}]
+            rows.append({'path':str(path.relative_to(home)),'line':line_number,'items':len(items),
+                'default_slots':defaults,'nondefault_slots':nondefaults,
+                'payload_sha256':[hashlib.sha256(capacity_exact(item)).hexdigest() for item in items],
+                'metadata_sha256':[hashlib.sha256(capacity_exact(value)).hexdigest() for value in metadata]})
+    return rows
+
+
+def capacity_rollout_prefixes(home):
+    result={}
+    for path in (home/'sessions').rglob('*.jsonl'):
+        assert not path.is_symlink()
+        result[str(path.relative_to(home))]=path.read_bytes()
+    assert result
+    return result
+
+
+@pytest.mark.asyncio
+async def test_real_cli_recovered_parallel_metadata_checkpoint_survives_second_cold_capacity(tmp_path,monkeypatch):
+    binary();from test_image_transport import png
+    host=capacity_code_mode_host_input()
+    provider=ReplayColdCapacityProvider();provider.host_input=host
+    chain=await native_chain(tmp_path,provider,monkeypatch,image_config={
+        'schema_version':1,'enabled':True,'native_outbound_policy':'default',
+        'activate_above_bytes':96*1024*1024,'wire_budget_bytes':128*1024*1024})
+    observed={'real_model_requests':0,'host_checkpoint_or_rollout_writes':False,
+              'effect_scope':'actual native update_plan execution events; not a file increment counter'}
+    try:
+        home=configure(tmp_path/'home',chain.port,capacity=True,token_budget=False);provider.home=home
+        work=tmp_path/'work';work.mkdir();image=work/'second-cold-tiny.png';image.write_bytes(png())
+        image_sha=hashlib.sha256(image.read_bytes()).hexdigest()
+        seed=await invoke(home,chain.port,work,ephemeral=False,
+            prompt='CAPACITY_REPLAY_SEED '+('x'*(512*1024)),images=[image])
+        observed['seed']=seed
+        capacity_natural_exit_assertions(seed)
+        assert seed['exit_code']==0 and 'CAPACITY_SEED_DONE' in seed['stdout'],seed
+        assert capacity_native_plan_effects(seed)['counts']=={'1':1,'2':0}
+        saved=capacity_checkpoints(home);assert len(saved)==1
+        provider.activate()
+        # Each new suffix fits the fixed budget; together they exceed it. After
+        # the first completion, the first suffix is confirmed consumed history.
+        first_prompt=provider.cold_input_marker+' '+('a'*(96*1024))
+        first=await invoke(home,chain.port,work,resume=True,ephemeral=False,prompt=first_prompt)
+        observed['first']=first
+        observed['first_requests']=provider.calls
+        observed['first_before']=provider.before_capacity
+        observed['first_translated']=provider.translated
+        capacity_assertions(provider,first,saved[0])
+        first_checkpoint=capacity_checkpoints(home);assert len(first_checkpoint)==1
+        observed['first_ordinary_checkpoint']=first_checkpoint[0]
+        assert first_checkpoint[0]['origin']=='ordinary_completed'
+        assert first_checkpoint[0]['response_id']==provider.continuation_response_id
+        parallel=capacity_compacted_parallel_metadata(home)
+        observed['persisted_parallel_metadata']=parallel
+        assert any(row['default_slots'] and row['nondefault_slots'] for row in parallel),(
+            'Fixture must exercise native CompactedItem mixed default/nondefault parallel metadata',parallel)
+        first_suffix=json.loads(provider.protected)
+        assert len(first_suffix)==1
+        prefixes=capacity_rollout_prefixes(home)
+        observed['before_second_rollout_prefixes']={path:{'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+                                                   for path,raw in prefixes.items()}
+        provider.activate_second_cold(first_checkpoint[0])
+        second_prompt=provider.cold_input_marker+' '+('b'*(96*1024))
+        second=await invoke(home,chain.port,work,resume=True,ephemeral=False,prompt=second_prompt)
+        observed['second']=second
+        observed['second_requests']=provider.calls
+        observed['second_before']=provider.before_capacity
+        observed['second_translated']=provider.translated
+        observed['second_protected_sha256']=hashlib.sha256(provider.protected).hexdigest() if provider.protected else None
+        assert provider.ordinary_inputs
+        first_marker=CAPACITY_COLD_INPUT+'_FIRST_REPLAY'
+        restored=[item for item in provider.ordinary_inputs[0] if first_marker in json.dumps(item)]
+        assert capacity_exact(restored)==capacity_exact(first_suffix),(
+            'Consumed first suffix payload/IDs/opaque metadata/order changed during second cold reload')
+        records=[seed,first,second]
+        assert len({(record['pid'],record['kernel_birth']) for record in records})==3
+        effects=[capacity_native_plan_effects(record) for record in records]
+        observed['native_plan_effects']=effects
+        assert {key:sum(row['counts'][key] for row in effects) for key in ('1','2')}=={'1':1,'2':0}
+        for record in records:
+            capacity_natural_exit_assertions(record)
+            no_tools(record)
+        for path,before in prefixes.items():
+            after=(home/path).read_bytes()
+            assert after.startswith(before),'Existing native rollout bytes changed during cold append'
+        observed['persisted_history_prefixes_unchanged']=True
+        # This fails on the old hash when the new ordinary checkpoint was made
+        # from warm None metadata but the first compaction persisted Default slots.
+        # The smaller consumed prefix can fit its first summary request here.
+        capacity_assertions(provider,second,first_checkpoint[0],require_initial_summary_413=False)
+        observed['final_checkpoint']=capacity_checkpoints(home)
+        assert observed['final_checkpoint'][0]['completed_epoch']>first_checkpoint[0]['completed_epoch']
+        assert hashlib.sha256(image.read_bytes()).hexdigest()==image_sha
+    finally:
+        observed['gateway_requests']=chain.requests
+        evidence(tmp_path,'parallel-metadata-second-cold-capacity',observed)
+        await chain.close()

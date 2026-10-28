@@ -1046,6 +1046,33 @@
       }
     },
     {
+      "file": "payload-request-capacity-replay.patch",
+      "sha256": "bce3a17c66fafbdeaa6112afbbbdd28c2fd70852fb0c436cb5d7ccc767b58fee",
+      "changes_by_target": {
+        "aarch64-apple-darwin": [
+          {
+            "path": "codex-rs/core/src/session/request_capacity.rs",
+            "before_sha256": "c0b5a8f2c9db95f41d4bedee91431e809deccfd043217232c903a8c156ce3535",
+            "after_sha256": "3b2be41c23ffbf16b4aa5ac690e4a055392e095a92631df56e413b9eb2666120"
+          }
+        ],
+        "x86_64-unknown-linux-gnu": [
+          {
+            "path": "codex-rs/core/src/session/request_capacity.rs",
+            "before_sha256": "c0b5a8f2c9db95f41d4bedee91431e809deccfd043217232c903a8c156ce3535",
+            "after_sha256": "3b2be41c23ffbf16b4aa5ac690e4a055392e095a92631df56e413b9eb2666120"
+          }
+        ],
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/core/src/session/request_capacity.rs",
+            "before_sha256": "c0b5a8f2c9db95f41d4bedee91431e809deccfd043217232c903a8c156ce3535",
+            "after_sha256": "3b2be41c23ffbf16b4aa5ac690e4a055392e095a92631df56e413b9eb2666120"
+          }
+        ]
+      }
+    },
+    {
       "file": "windows-readable-daemon-scratch.patch",
       "sha256": "1dc6f292394dfc9fe4af5600245ff32f0c93ca0790039fd8a5ddb1021b463859",
       "changes_by_target": {

@@ -20,6 +20,12 @@ def recipe_prefix_through(recipe, filename):
     return {**recipe,'overlays':recipe['overlays'][:overlay_index(recipe,filename)+1]}
 
 
+def qualified_recipe_before_capacity_replay(recipe):
+    """Keep historical public recipe pins independent of the new shared overlay."""
+    index=overlay_index(recipe,'payload-request-capacity-replay.patch')
+    return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
+
+
 def serialized_recipe_sha256(recipe):
     return hashlib.sha256((json.dumps(recipe,indent=2)+'\n').encode('utf-8')).hexdigest()
 
@@ -407,7 +413,7 @@ def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_p
 
 def test_actual_readable_daemon_overlay_remains_before_readiness_and_keeps_unix_recipes():
     # Freeze the complete qualified 0.6.4 prefix, including all common inputs.
-    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-critical-read-deny-readiness.patch')
+    recipe=recipe_prefix_through(qualified_recipe_before_capacity_replay(build.runtime_recipe()),'windows-critical-read-deny-readiness.patch')
     assert serialized_recipe_sha256(recipe)=='a0ba8ba8d62fa9a85c177251f1b1cdb35321612013ba6564fcbbfa7faebf0146'
     index=overlay_index(recipe,'windows-readable-daemon-scratch.patch')
     last=recipe['overlays'][index]
@@ -453,7 +459,7 @@ def test_public_package_and_install_recipe_readers_use_the_current_entrypoint():
 
 def test_actual_critical_read_deny_overlay_is_last_windows_only_with_exact_sources():
     # This layer remains last in its historical prefix, not in every future release.
-    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-critical-read-deny-readiness.patch')
+    recipe=recipe_prefix_through(qualified_recipe_before_capacity_replay(build.runtime_recipe()),'windows-critical-read-deny-readiness.patch')
     index=overlay_index(recipe,'windows-critical-read-deny-readiness.patch')
     last=recipe['overlays'][index]
     assert index==len(recipe['overlays'])-1
@@ -483,7 +489,7 @@ def test_critical_read_deny_overlay_cannot_be_omitted_reordered_or_retargeted(tm
 
 def test_metadata_owner_overlay_is_last_windows_only_and_preserves_the_qualified_prefix():
     # Freeze the published 0.6.5 prefix, not every later Windows-only leaf.
-    recipe=recipe_prefix_through(build.runtime_recipe(),'windows-metadata-owner-policy.patch')
+    recipe=recipe_prefix_through(qualified_recipe_before_capacity_replay(build.runtime_recipe()),'windows-metadata-owner-policy.patch')
     index=overlay_index(recipe,'windows-metadata-owner-policy.patch')
     assert index==len(recipe['overlays'])-1
     assert index==overlay_index(recipe,'windows-critical-read-deny-readiness.patch')+1
@@ -528,7 +534,7 @@ def test_metadata_owner_overlay_cannot_be_omitted_reordered_or_retargeted(tmp_pa
 
 
 def test_native_metadata_minimal_overlay_is_last_windows_only_with_exact_sources():
-    recipe=build.runtime_recipe()
+    recipe=qualified_recipe_before_capacity_replay(build.runtime_recipe())
     index=overlay_index(recipe,'windows-native-metadata-minimal.patch')
     assert index==len(recipe['overlays'])-1
     assert index==overlay_index(recipe,'windows-metadata-owner-policy.patch')+1
@@ -580,9 +586,9 @@ def test_native_metadata_minimal_overlay_is_last_windows_only_with_exact_sources
     assert {path:previous_sources[path] for path in expected_sources}=={
         path:before for path,(before,_) in expected_sources.items()
     }
-    # Pin actual public bytes, not only a parsed/reformatted representation.
-    document=(ROOT/'native/runtime-overlays.json').read_bytes()
-    assert document==(json.dumps(recipe,indent=2)+'\n').encode('utf-8')
+    # Reconstruct the exact historical public recipe without the new common
+    # replay overlay. Current recipe bytes are pinned separately below.
+    document=(json.dumps(recipe,indent=2)+'\n').encode('utf-8')
     assert hashlib.sha256(document).hexdigest()==serialized_recipe_sha256(recipe)=='4729f350664964b19fd6b8876e40a2e4fa4166b388b4a18bf3b438bab554f4ff'
     assert build.native_recipe_identity(WIN,previous)=='3a2a8b850db835ea3aac609dad8171c12f18c41154a6ce942a2cf558d512de32'
     assert build.native_recipe_identity(WIN,recipe)=='410a7343667baecf2a8de222e32a09a858eaa626706ba9b65222fc5135dc1ef2'
@@ -608,5 +614,62 @@ def test_native_metadata_minimal_overlay_cannot_be_omitted_reordered_or_retarget
         else:
             leaf=recipe['overlays'][index]
             leaf['changes_by_target']['x86_64-unknown-linux-gnu']=leaf['changes_by_target'].pop(WIN)
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):build.runtime_recipe()
+
+
+def test_capacity_replay_overlay_is_single_file_shared_and_preserves_historical_inputs():
+    recipe=build.runtime_recipe()
+    index=overlay_index(recipe,'payload-request-capacity-replay.patch')
+    assert index==overlay_index(recipe,'payload-request-capacity.patch')+1
+    leaf=recipe['overlays'][index]
+    assert leaf['sha256']==build.sha(ROOT/'native'/leaf['file'])=='bce3a17c66fafbdeaa6112afbbbdd28c2fd70852fb0c436cb5d7ccc767b58fee'
+    path='codex-rs/core/src/session/request_capacity.rs'
+    expected=[{'path':path,
+               'before_sha256':'c0b5a8f2c9db95f41d4bedee91431e809deccfd043217232c903a8c156ce3535',
+               'after_sha256':'3b2be41c23ffbf16b4aa5ac690e4a055392e095a92631df56e413b9eb2666120'}]
+    assert leaf['changes_by_target']=={target:expected for target in TARGETS}
+    patch=(ROOT/'native'/leaf['file']).read_text(encoding='utf-8')
+    assert {line[6:] for line in patch.splitlines() if line.startswith('+++ b/')}=={path}
+    historical=qualified_recipe_before_capacity_replay(recipe)
+    assert serialized_recipe_sha256(historical)=='4729f350664964b19fd6b8876e40a2e4fa4166b388b4a18bf3b438bab554f4ff'
+    assert build.sha(ROOT/'native/payload-request-capacity.patch')=='011fbfe849736f44cdb5d95bfc9326e99377469239f5c9fe35c38cbba9ef1beb'
+    expected_ids={'aarch64-apple-darwin': '61d852ba54f522b90a40e5bf6e698a8345ea03bfb95903979654851fcb60e0b3', 'x86_64-unknown-linux-gnu': '2ce6b6cf6d960f3250bb8d3cfa74e7c8a86e98d99cc4b295f276d2f3cb44b100', 'x86_64-pc-windows-msvc': '15c906cca6c2b9cc9b8761fed6e999a6d751e54e06a371a37fd6db1ff06714f9'}
+    assert {target:build.native_recipe_identity(target,recipe) for target in TARGETS}==expected_ids
+    for target in TARGETS:
+        assert build.native_recipe_identity(target,recipe)!=build.native_recipe_identity(target,historical)
+        assert build.overlay_source_hashes(target,recipe)[path]==expected[0]['after_sha256']
+    document=(ROOT/'native/runtime-overlays.json').read_bytes()
+    assert document==(json.dumps(recipe,indent=2)+'\n').encode('utf-8')
+    assert hashlib.sha256(document).hexdigest()=='acc164834bdf4bc3be257156ed82917eda3e81720a5ed6b7008be24c83f7f6db'
+
+
+@pytest.mark.parametrize('target',TARGETS)
+def test_capacity_replay_patch_applies_to_reconstructed_original_capacity_file(tmp_path,target):
+    git=os.environ.get('CODEX_DEEPSEEK_TEST_GIT','git')
+    path='codex-rs/core/src/session/request_capacity.rs'
+    tree=tmp_path/'single-file-capacity';tree.mkdir()
+    command=[git,'-c','core.autocrlf=false','-c','core.eol=lf','apply']
+    subprocess.run([*command,'--include='+path,str(ROOT/'native/payload-request-capacity.patch')],cwd=tree,check=True,capture_output=True)
+    assert build.sha(tree/path)=='c0b5a8f2c9db95f41d4bedee91431e809deccfd043217232c903a8c156ce3535'
+    leaf=next(item for item in build.runtime_recipe()['overlays'] if item['file']=='payload-request-capacity-replay.patch')
+    assert leaf['changes_by_target'][target][0]['before_sha256']==build.sha(tree/path)
+    subprocess.run([*command,'--check',str(ROOT/'native'/leaf['file'])],cwd=tree,check=True,capture_output=True)
+    subprocess.run([*command,str(ROOT/'native'/leaf['file'])],cwd=tree,check=True,capture_output=True)
+    assert build.sha(tree/path)==leaf['changes_by_target'][target][0]['after_sha256']
+    source=(tree/path).read_text(encoding='utf-8')
+    assert 'native_compacted_parallel_metadata_replay_hash_is_stable_and_strict' in source
+    assert 'unmatched_legacy_checkpoint_lineage_can_advance_to_ordinary_v3' in source
+    assert '#[cfg(any())]' not in source
+
+
+@pytest.mark.parametrize('problem',['omit','reorder','duplicate','wrong_target'])
+def test_capacity_replay_overlay_cannot_be_omitted_reordered_duplicated_or_retargeted(tmp_path,monkeypatch,problem):
+    def edit(recipe):
+        index=overlay_index(recipe,'payload-request-capacity-replay.patch')
+        if problem=='omit':recipe['overlays'].pop(index)
+        elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
+        elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
+        else:recipe['overlays'][index]['changes_by_target'].pop(TARGETS[0])
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()
