@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codex-deepseek-runtime"
-version = "0.6.6"
+version = "0.6.7"
 description = "An isolated native Codex runtime distribution for DeepSeek through OpenRouter"
 readme = "README.md"
 license-files = ["LICENSE", "licenses/**/*.txt", "THIRD_PARTY_NOTICES.md"]

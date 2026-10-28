@@ -113,3 +113,65 @@ def test_invalid_explicit_final_is_rejected_before_following_tool_events():
     # The gateway exits this upstream stream on the error, before reading any
     # subsequent function-call completion. No adapter tool replay is involved.
     assert guard.pending==[]
+
+
+def client_search():
+    request=body()
+    request["tools"]=[{"type":"tool_search","execution":"client"}]
+    outgoing,registry=prepare(request)
+    return registry.output({"type":"function_call","name":outgoing["tools"][0]["name"],
+                            "call_id":"schema_search_1","arguments":'{"query":"read probe","limit":3}'})
+
+
+@pytest.mark.parametrize("commentary",[False,True],ids=["tool_only","legacy_commentary"])
+def test_structured_client_discovery_waits_for_the_later_final_answer(commentary):
+    search=client_search()
+    assert search["type"]=="tool_search_call" and search["execution"]=="client"
+    output=([message("Looking up the available tool.")]if commentary else[])+[search]
+    terminal={"type":"response.completed","response":{"status":"completed","output":output}}
+    before=copy.deepcopy(terminal)
+    guard=StructuredOutput(body())
+    if commentary:
+        done={"type":"response.output_item.done","item":output[0]}
+        assert guard.events(done)==[]
+    tool_done={"type":"response.output_item.done","item":search}
+    assert guard.events(tool_done)==[tool_done]
+    assert guard.events(terminal)==([done,terminal]if commentary else[terminal])
+    assert terminal==before and guard.pending==[]
+    # The native tool result permits a later response, not a schema exemption.
+    final=response('{"value":437}')
+    guard.validate(final)
+    with pytest.raises(ProtocolError,match="schema"):
+        guard.validate(response('{"value":"not an integer"}'))
+
+
+def test_client_discovery_does_not_skip_an_explicit_invalid_final_answer():
+    search=client_search()
+    invalid={**message("not JSON"),"phase":"final_answer"}
+    guard=StructuredOutput(body())
+    with pytest.raises(ProtocolError,match="not JSON"):
+        guard.events({"type":"response.output_item.done","item":invalid})
+    with pytest.raises(ProtocolError,match="not JSON"):
+        guard.validate({"status":"completed","output":[search,invalid]})
+    with pytest.raises(ProtocolError,match="schema"):
+        guard.validate({"status":"completed","output":[search,{**message('{"value":false}'),"phase":"final_answer"}]})
+
+
+@pytest.mark.parametrize("invalid",["missing_execution","server_execution","missing_call_id","null_call_id","nonstr_call_id"])
+def test_only_dispatchable_client_discovery_can_defer_the_schema_final(invalid):
+    search=client_search()
+    if invalid=="missing_execution":search.pop("execution")
+    elif invalid=="server_execution":search["execution"]="server"
+    elif invalid=="missing_call_id":search.pop("call_id")
+    elif invalid=="null_call_id":search["call_id"]=None
+    else:search["call_id"]=17
+    with pytest.raises(ProtocolError,match="without a final"):
+        StructuredOutput(body()).validate({"status":"completed","output":[search]})
+
+
+@pytest.mark.parametrize("output",[[],[{"type":"reasoning","summary":[]}],
+                                   [{**message("Working."),"phase":"commentary"}]],
+                         ids=["empty","reasoning_only","commentary_only"])
+def test_structured_discovery_fix_does_not_turn_missing_finals_into_success(output):
+    with pytest.raises(ProtocolError,match="without a final"):
+        StructuredOutput(body()).validate({"status":"completed","output":output})

@@ -22,7 +22,10 @@ class StructuredOutput:
     def validate(self,response):
         if self.validator is None or response.get('status')!='completed':return
         output=response.get('output',[])
-        tools=any(x.get('type') in {'function_call','custom_tool_call'} for x in output)
+        # Client discovery, like a function call, precedes the later schema final.
+        tools=any(x.get('type') in {'function_call','custom_tool_call'} or
+                  (x.get('type')=='tool_search_call' and x.get('execution')=='client'
+                   and isinstance(x.get('call_id'),str)) for x in output)
         messages=[x for x in output if x.get('type')=='message' and x.get('role')=='assistant']
         # A legacy, unphased message accompanying a client tool is commentary.
         # An explicit final_answer remains a final answer even alongside tools.

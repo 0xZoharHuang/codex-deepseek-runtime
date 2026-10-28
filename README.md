@@ -8,7 +8,9 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-**0.6.6 已完成 Windows 主路径的独立安装与真实任务验收。** 它继续使用原生 Codex；本轮修复集中在模型流事件、Windows 私有目录、SQLite 长路径和安装打包。发布后，下载文件与摘要以 [v0.6.6 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.6)为准；具体版本与证据见[本版报告](reports/releases/0.6.6/README.md)。
+**0.6.7 是共享 Python 协议层的修订。** 它补齐了 JSON Schema 最终输出与客户端工具搜索中间调用的组合：搜索调用继续交给原生 runtime，真正的最终回答仍须通过原 Schema 校验；server 搜索、缺少调用 ID、空回答和无效最终 JSON 不会因此变成成功。原生 agent loop、工具执行、审批、子智能体、沙箱和三平台原生产物均保持原样。新增回归与本版验证结果见 [v0.6.7 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)。
+
+**此前的 0.6.6 已完成 Windows 主路径的独立安装与真实任务验收。** 它继续使用原生 Codex；本轮修复集中在模型流事件、Windows 私有目录、SQLite 长路径和安装打包。发布后，下载文件与摘要以 [v0.6.6 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.6)为准；具体版本与证据见[本版报告](reports/releases/0.6.6/README.md)。
 
 - 安装版回归：2364 通过，4 个明确的 Windows 不适用项，零失败；2368 个声明用例全部保留，实际加载的是安装产物。
 - 真实开源任务：DeepSeek 修复了 Jinja 的分支变量问题；915 个工程测试、908 个独立 held-out 测试通过，原生子智能体参与审查与跟进，实际完成网页打开、查找与链接导航。
@@ -46,7 +48,7 @@
 
 ## 支持范围与验收状态
 
-本轮新资格主要覆盖 Windows x86_64。macOS/Linux 继续使用原字节、原 producer 回执的 0.6.2 原生资产，共同 Python 适配器升级为 0.6.6；本轮没有新增 Mac/Linux 实机验收。新证据、旧平台资格和复用范围分别列明，不按单元测试数量推断所有平台均重新验证。
+本轮新资格主要覆盖 Windows x86_64。macOS/Linux 继续使用原字节、原 producer 回执的 0.6.2 原生资产，共同 Python 适配器升级为 0.6.7；本轮没有新增 Mac/Linux 实机验收。新证据、旧平台资格和复用范围分别列明，不按单元测试数量推断所有平台均重新验证。
 
 | 平台 | 本版原生资产 | 验收范围 |
 | --- | --- | --- |
@@ -62,7 +64,7 @@ v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效�
 
 ## 安装并运行
 
-安装源码与原生归档必须使用匹配版本。先确认 [v0.6.6 发布资产](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.6)及相应摘要，再使用以下固定 tag；不要把 main 分支当作固定版本。
+Python 源码使用以下固定 `v0.6.7` tag。原生归档必须匹配该源码随附的平台 manifest 与摘要：Windows 仍为 `v0.6.6`，macOS/Linux 仍为 `v0.6.2`，不要求 Python 包与 native 版本号相同。先核验 [v0.6.7 发布资产及清单](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)；不要把 main 分支当作固定版本。
 
 Windows 原生包为 0.6.6，macOS/Linux 原生包仍为已发布的 0.6.2。安装器会校验平台、recipe、工具链与完整文件摘要，正常安装不需要编译 Rust。已有任务应继续使用自己的不可变入口；并行验收使用新目录和下文的 `--no-activate`。
 
@@ -73,7 +75,7 @@ Windows 原生包为 0.6.6，macOS/Linux 原生包仍为已发布的 0.6.2。安
 在终端执行：
 
 ```sh
-git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -91,7 +93,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -109,7 +111,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.6 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
