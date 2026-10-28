@@ -151,3 +151,73 @@ Secondary missing-reviewer database errors now remain explicit failures and
 cannot replace the primary startup/exit/stderr evidence. Installed Low/High
 security-focused and normal native/model workflow qualification are separate
 gates; this correction alone does not mark the complex task complete.
+
+
+## Final Windows qualification, unpublished local candidate
+
+The qualified immutable adapter is source ID `896f79f4cf091a83e368`
+(product source `bd464109…`). The complete installed-only High suite at
+`6e6a304d…` collected the same 2368 declared IDs: **2364 passed,
+0 failed, 4 exact OS-inapplicable skips**. All product imports came from the
+immutable environment; the independent public receipt validator accepted the
+origin, collection, JUnit, source and launcher bindings.
+
+A real pinned Jinja repair completed through DeepSeek, native Windows commands
+and a native read-only reviewer. The agent changed production symbol tracking and
+two test files. Independent checks ran **915 workspace tests and 908 held-out
+tests**, all passed, with imports bound to the modified production tree. Native
+MCP browser evidence includes open, positive find and click to a distinct official
+documentation page: templates → API. The oracle read guard and controlled inputs
+were retained and the 4247-file Python 3.11 environment stayed byte-identical.
+
+Current-source reconstruction uses all of the paid task's root and native child
+events and all 98 request/receipt pairs. All 14 runtime mechanisms pass in that
+explicit **current 896 source scope**. One HTTP-200 request was cancelled
+downstream and remains cancelled; `single_run_all_success=false`.
+The earlier c221 startup failure and the separate initialize-only smoke remain
+separate phases with original hashes. The unscoped whole-history reconstruction
+remains failed; its result was not relabeled or rewritten.
+
+The fresh native namespace's group/offline/online SIDs 2137/2138/2139 were removed
+by normal native uninstall, followed by a successful idempotent uninstall. Its
+exact WFP provider and sublayers are absent. Default SAM password timestamps,
+enabled state and membership, known default WFP getters, and the existing CDS,
+official SYSTEM sandbox service and gateway process births stayed unchanged.
+The project-owned High worker exited normally and its temporary task was removed.
+Native filesystem policy None preserves existing user/session/workspace
+permissions; cleanup did not introduce an ACL recovery engine.
+
+The earlier rejected hardlink archive, source-importing aggregate runs, SQLite
+long-journal failure, original Winerror5 startup, verifier masking error and
+stale skip-catalog failures remain retained as failures. The normal corrected
+archive is `59fbae5093423746d3625876e82d7a4106a1dae9fb1def53ba3abeade811c322`;
+the wheel is `6e93be1b1b388e1906ffbbf25247f8790bf8e4235f0cb8e53d3c728c5fc2baa9`.
+No new native compilation was performed for the Python/QA corrections.
+
+## Cross-platform scope
+
+The macOS and Linux native assets remain the exact published 0.6.2 producers and
+recipes; they were not rebuilt or relabeled as new Windows outputs.
+
+| Target | Native archive SHA256 | Native recipe |
+| --- | --- | --- |
+| macOS arm64 | `38f748b4398d65810184d226879d51d5246e81c15ff9d24cb1fd6f94d0a415d9` | `02e413453fbecd93bdebad2ba5f7033a7ea201206b3a708e5593b84b62b424d1` |
+| Linux x86_64 GNU | `94758a863ffe644bb3b8477b611014c43c657fdda00ac668d87fecb540fb8651` | `3e752d53b8122d0402cd89850d1368585c8ff6dc800336e796a7875028a745ad` |
+
+This run did not execute fresh Mac tests. The primary Mac was untouched. A bounded
+read-only query of the existing Windows WSL environment timed out after 30 seconds,
+so no fresh Linux SDK execution is claimed; no distro, user, global package,
+daemon or proxy settings were changed. Portable protocol and non-Windows filename
+fallback branches remain covered by the declared Windows-hosted tests; that is
+not described as native Linux/macOS execution.
+
+Publication, active installation changes and final host-wide project cleanup
+remain Root review gates. This report is local and unpublished.
+
+
+Requested provider routes in the Jinja proof are explicit: `deepseek` for
+the official default route and `morph/fp8` for native peer/continuation
+histories with hosted tools. They remain the same fixed DeepSeek model; these are
+recorded intentional routing rules, not request-failure fallback or a claim that
+all requests used the official provider. Requested route names do not establish
+the independently attested identity of every upstream provider.

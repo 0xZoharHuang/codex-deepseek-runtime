@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "candidate_not_published",
+  "status": "locally_qualified_windows_runtime_UNPUBLISHED_root_review_pending",
   "python_version": "0.6.6",
   "native_source_producer_commit": "37787ecf1882521b168ec8cc16d5dcd5894b2572",
   "native_source_fingerprint": "9c33e0369dd955f2715d52fbdd3d19265d6ff49a29bf77ad9d777685b308a6ff",
@@ -11,12 +11,56 @@
   "native_lifecycle_scoped_passed": true,
   "original_cold45_test_failure_retained": true,
   "genuine_independent_cold_seconds": 3.0744357109069824,
-  "complete_installed_offline_pending": true,
-  "complex_real_tasks_pending": true,
+  "complete_installed_offline_pending": false,
+  "complex_real_tasks_pending": false,
   "Linux_mac_native_original_assets_unchanged": true,
   "AV_classifier_cause_or_immunity_claim": false,
   "packager_hardlink_fix": true,
   "old_bad_archive_retained": true,
   "Low_packaging_tests": 11,
-  "full_two_archives_deterministic": true
+  "full_two_archives_deterministic": true,
+  "current_adapter_source_id": "896f79f4cf091a83e368",
+  "current_product_source_commit": "bd464109ad77d27405203a680493121c23e0bbe0",
+  "qualification_source_commit": "6e6a304df8ebb5f08f297e9f3f522a8f1de2558c",
+  "full_installed_cases": 2368,
+  "full_installed_passed": 2364,
+  "full_installed_failed": 0,
+  "full_installed_exact_OS_skips": 4,
+  "source_bound_current896_runtime_mechanisms": 14,
+  "source_bound_current896_runtime_passed": true,
+  "whole_history_reconstruction_stays_failed": true,
+  "single_run_all_success": false,
+  "current_native_namespace_uninstall_and_idempotence_passed": true,
+  "shared_default_resources_unchanged": true,
+  "fresh_Linux_execution_claimed": false,
+  "fresh_Mac_execution_claimed": false,
+  "active_alias_changed": false,
+  "published": false,
+  "requested_provider_routes": [
+    {
+      "requested_provider": "deepseek",
+      "route_reason": "official_default",
+      "status": "completed",
+      "count": 40
+    },
+    {
+      "requested_provider": "morph/fp8",
+      "route_reason": "native_peer_or_continuation_with_hosted_tools",
+      "status": "cancelled",
+      "count": 1
+    },
+    {
+      "requested_provider": "morph/fp8",
+      "route_reason": "native_peer_or_continuation_with_hosted_tools",
+      "status": "completed",
+      "count": 40
+    },
+    {
+      "requested_provider": "morph/fp8",
+      "route_reason": "unattested_native_history_with_hosted_tools",
+      "status": "completed",
+      "count": 17
+    }
+  ],
+  "actual_upstream_provider_identity_attested_for_every_request": false
 }

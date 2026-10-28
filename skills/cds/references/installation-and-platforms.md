@@ -49,3 +49,20 @@ Use the verified distribution installer for updates. The upstream native updater
 Do not change code, provider service configuration or active pointers underneath running work. Prefer an isolated candidate profile and installation, then deliberately switch when its relevant checks pass. Keep the old release and metadata needed for rollback.
 
 For cleanup, identify ownership and live processes first. Remove owned rebuildable caches or closed temporary environments; preserve user sessions, work, meaningful failure evidence and required rollback material. If compressing evidence, verify archive contents before deleting originals. Measure actual free-space changes without double-counting nested roots, hard links or sparse VM disks.
+
+
+### Isolated profiles and the native temporary-directory guard
+
+Keep `CODEX_DEEPSEEK_HOME` outside the launching process's
+`TEMP/TMP/TMPDIR`. Native Codex intentionally refuses to create its
+PATH helper aliases when the home is inside that temporary tree. A zero exit from
+initialize or `--version` does not establish full helper/tool coverage.
+
+Use an existing user data base with sibling `home` and `tmp`
+directories. On Windows a suitable base is under `%LOCALAPPDATA%\cds-cases\<id>`,
+not under `%TEMP%`. Select `<base>\home` with
+`CODEX_DEEPSEEK_HOME` and, only in the worker process, set
+`TEMP=TMP` to `<base>\tmp`. On POSIX use a user-owned
+data base and a sibling `TMPDIR=<base>/tmp`. Preserve OS HOME and the
+normal runtime sandbox/approval policy. Do not disable the native guard or treat
+the warning as successful tool qualification.
