@@ -271,7 +271,7 @@ def test_pinned_macos_layout_may_contain_its_empty_resource_directory(tmp_path):
 @pytest.mark.parametrize("bad", [None, "renamed-same-count", "duplicate-same-count", "missing", "extra"])
 def test_native_collection_requires_the_declared_complete_node_ids(bad):
     nodes = list(native.EXPECTED_NODE_IDS)
-    assert native.EXPECTED_CASES == 21 == len(nodes)
+    assert native.EXPECTED_CASES == 22 == len(nodes)
     assert {
         "tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[summary]",
         "tests/test_native_payload_retry.py::test_real_cli_direct_image_metadata_cold_capacity[token-budget-local-reset]",
