@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "locally_qualified_windows_runtime_UNPUBLISHED_root_review_pending",
+  "status": "locally_qualified_windows_runtime_PUBLICATION_PREPARED",
   "python_version": "0.6.6",
   "native_source_producer_commit": "37787ecf1882521b168ec8cc16d5dcd5894b2572",
   "native_source_fingerprint": "9c33e0369dd955f2715d52fbdd3d19265d6ff49a29bf77ad9d777685b308a6ff",
@@ -19,7 +19,7 @@
   "old_bad_archive_retained": true,
   "Low_packaging_tests": 11,
   "full_two_archives_deterministic": true,
-  "current_adapter_source_id": "896f79f4cf091a83e368",
+  "current_adapter_source_id": "759aa4e7585bc09eeb5f",
   "current_product_source_commit": "bd464109ad77d27405203a680493121c23e0bbe0",
   "qualification_source_commit": "6e6a304df8ebb5f08f297e9f3f522a8f1de2558c",
   "full_installed_cases": 2368,
@@ -62,5 +62,24 @@
       "count": 17
     }
   ],
-  "actual_upstream_provider_identity_attested_for_every_request": false
+  "actual_upstream_provider_identity_attested_for_every_request": false,
+  "benchmark_adapter_source_id": "896f79f4cf091a83e368",
+  "full_installed_evidence_source_id": "896f79f4cf091a83e368",
+  "complex_task_evidence_source_id": "896f79f4cf091a83e368",
+  "final_readme_commit": "53209feec4a2a60b909281ee2e1260b911726864",
+  "final_installed_readme_identity_measured": true,
+  "final_identity_delta_only": [
+    "README.md"
+  ],
+  "installed_product_files_byte_identical": 29,
+  "final_fresh_module_import_origins": 28,
+  "final_bounded_init_config_natural_EOF_passed": true,
+  "final_bounded_model_receipts": 0,
+  "final_wheel_sha256": "7fd2d1968fcd9ed9034f24b8dbb0082bf586b1028f7f663cd0d587c1a9c3ed31",
+  "benchmark_wheel_sha256": "6e93be1b1b388e1906ffbbf25247f8790bf8e4235f0cb8e53d3c728c5fc2baa9",
+  "final_wheel_changed_members": [
+    "codex_deepseek_runtime-0.6.6.dist-info/METADATA",
+    "codex_deepseek_runtime-0.6.6.dist-info/RECORD"
+  ],
+  "full_suite_or_paid_task_replayed_for_README_only": false
 }

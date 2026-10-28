@@ -1,9 +1,14 @@
-# 0.6.6 integration candidate — not published
+# 0.6.6 Windows qualification and release provenance
 
-This directory records the 0.6.6 candidate. No GitHub release or main merge has
-occurred. The future release URL in the Windows manifest becomes usable only
-after the matching asset is published. Complete installed-launcher, real
-DeepSeek task and final release acceptance are still pending.
+This directory records the measured Windows 0.6.6 qualification. The complete
+installed SDK and real DeepSeek task passed in the explicit scopes below.
+Publication is a separate step: at the final local signoff no GitHub release or
+main merge had occurred. The release URL becomes usable only after the exact
+matching assets and their hashes are published and read back.
+
+Earlier component and regression sections preserve their original scope and
+failures. Historical pending-gate statements are superseded only by the explicit
+final qualification and README-identity reconciliation sections below.
 
 ## Changes
 
@@ -78,12 +83,16 @@ business-task acceptance. Exact temporary retired-SID filesystem inventories
 remain private for the final scoped QA cleanup; no general ACL recovery engine
 was added.
 
-## Pending gates
+## Initial pending gates and their disposition
 
-- Complete current offline installed SDK/wrapper qualification.
-- Representative complex real DeepSeek CLI tasks and independent outcome checks.
-- Final version/source/archive/readme reconciliation and publication readback.
-- Final scoped Windows QA cleanup.
+- Complete installed SDK/wrapper qualification: passed in the current-source
+  installed scope recorded below.
+- Real DeepSeek task and independent checks: passed for the pinned Jinja case
+  recorded below; historical failed attempts remain failed.
+- Version/source/archive/README reconciliation: measured separately below.
+  Publication and public asset readback remain a distinct delivery step.
+- Final host-level project cleanup remains separate from the completed
+  per-fixture native namespace uninstall and idempotence checks.
 
 The old 0.6.5 and earlier reports remain immutable historical evidence.
 
@@ -153,9 +162,9 @@ security-focused and normal native/model workflow qualification are separate
 gates; this correction alone does not mark the complex task complete.
 
 
-## Final Windows qualification, unpublished local candidate
+## Final Windows qualification: benchmark producer
 
-The qualified immutable adapter is source ID `896f79f4cf091a83e368`
+The benchmark-qualified immutable adapter is source ID `896f79f4cf091a83e368`
 (product source `bd464109…`). The complete installed-only High suite at
 `6e6a304d…` collected the same 2368 declared IDs: **2364 passed,
 0 failed, 4 exact OS-inapplicable skips**. All product imports came from the
@@ -211,8 +220,9 @@ daemon or proxy settings were changed. Portable protocol and non-Windows filenam
 fallback branches remain covered by the declared Windows-hosted tests; that is
 not described as native Linux/macOS execution.
 
-Publication, active installation changes and final host-wide project cleanup
-remain Root review gates. This report is local and unpublished.
+At the final local qualification signoff, publication, active installation
+changes and final host-wide project cleanup remained separate delivery gates.
+The original local evidence is preserved; later publication does not rewrite it.
 
 
 Requested provider routes in the Jinja proof are explicit: `deepseek` for
@@ -221,3 +231,49 @@ histories with hosted tools. They remain the same fixed DeepSeek model; these ar
 recorded intentional routing rules, not request-failure fallback or a claim that
 all requests used the official provider. Requested route names do not establish
 the independently attested identity of every upstream provider.
+
+## Final README identity and published-artifact candidate
+
+The final root README changes the normal installer source identity to
+`759aa4e7585bc09eeb5f`. It does **not** change the product implementation:
+the source-identity map differs from benchmark source `896f79f4cf091a83e368`
+only at `README.md`. The product source remains `bd464109…`, the complete
+2368-case qualification producer remains `6e6a304d…`, and the real Jinja
+proof remains explicitly bound to benchmark source 896. Those historical
+receipts are not relabeled as a new run under 759.
+
+A normal offline `--no-activate` installation created the new immutable 759
+release under the ordinary Limited admin token. All 29 installed product files
+and the native package path/archive are byte-identical to 896. A fresh process
+imported all 28 product modules from the new immutable environment. Actual
+`--version` and `--help` returned zero with empty stderr; native initialize,
+config/read and natural stdin-EOF returned zero. No thread/turn was started,
+there were zero model receipts, and the exact native setup/namespace-owner
+markers remained absent. Existing CDS PID identity remained unchanged.
+
+The first private smoke worker had a final QA assertion which treated existence
+of `.sandbox` as provisioning. Native initialization legitimately writes a
+sandbox-selection log there. That worker failure and the initial help/version
+warning about the not-yet-created home are retained; the corrected probe checks
+the actual native marker paths, and help/version on the normally initialized
+home have empty stderr. No product code, security policy or provisioning
+mechanism was changed to satisfy that probe.
+
+The normal final wheel has the same 58 ZIP member names as the benchmark wheel.
+Its 56 product/license/entry metadata members are identical; only METADATA
+(the exact updated README body, unchanged metadata headers) and RECORD change.
+The benchmark test/model evidence is transferred through this measured
+product/native byte identity. The full suite and paid task were not replayed
+merely for a README-only identity change.
+
+| Release asset | SHA256 |
+| --- | --- |
+| `codex_deepseek_runtime-0.6.6-py3-none-any.whl` | `7fd2d1968fcd9ed9034f24b8dbb0082bf586b1028f7f663cd0d587c1a9c3ed31` |
+| `codex-deepseek-native-0.6.6-x86_64-pc-windows-msvc.tar.gz` | `59fbae5093423746d3625876e82d7a4106a1dae9fb1def53ba3abeade811c322` |
+| `runtime-x86_64-pc-windows-msvc.json` | `a50e8069549bdcb02c77aa588a48ddbd68352bbd41bb6d4e72335b2545445dfb` |
+
+The former `6e93be1b…` wheel remains the benchmark producer; it is not the
+final README-bearing release wheel. macOS/Linux native asset pins above remain
+unchanged. This reconciliation adds no fresh Mac/Linux or additional paid-model
+execution claim.
+
