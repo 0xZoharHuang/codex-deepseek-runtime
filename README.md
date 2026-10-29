@@ -10,6 +10,8 @@
 
 **0.6.7 修复了严格 JSON 输出与工具搜索的组合，以及压缩历史连续冷恢复时的容量检查点匹配。** 工具仍由原生 runtime 调度，最终 JSON 仍按原 Schema 验证。下载与摘要以 [v0.6.7 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)为准；范围与保留失败见[本版报告](reports/releases/0.6.7/README.md)。
 
+**v0.6.7 许可证声明补充：** 原生归档里的 crate 根目录声明已保留，但打包器漏收了部分嵌套 vendor 目录中的原始 LICENSE／NOTICE。请将[声明补充包](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz)与现有原生归档一起留存或分发，并核对[独立 SHA-256](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz.sha256)。补充包按三个已发布归档及其 manifest 的精确摘要绑定，记录原始文件名、来源和逐文件校验；不替换原归档、二进制或既有验收身份，已有安装无需重装。修正范围和验证见[声明补充报告](reports/releases/0.6.7/attribution-correction.json)。
+
 - Windows：新 CLI 的22项普通权限传输／恢复验收通过；安装版完整离线套件为2384通过、4个既定系统不适用项。对抗 fixture 使用已有管理员测试 token，实际 runtime 和模型任务另以普通权限验证。
 - 真实 DeepSeek：同一旧会话分别完成顶层工具搜索和默认 Code Mode 冷续跑，两条路径都实际调用 MCP 并给出合规 JSON。默认路径一次模型 JavaScript 错误由原生返回后在同一 turn 自行修复，原错误保留。
 - Linux/macOS：两份新 native 在固定 GitHub runner 构建，各通过22项原生验收及完整离线 adapter 回归，没有在本机 Mac 测试。

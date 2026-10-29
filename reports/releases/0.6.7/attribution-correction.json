@@ -1,0 +1,892 @@
+{
+  "schema_version": 1,
+  "kind": "original-source-notice-attribution-correction",
+  "distribution_version": "0.6.7",
+  "original_release_commit": "cb788738864e97a16cde82f3c584164162ab6f7c",
+  "runtime_native_and_model_changes": false,
+  "native_rebuilds": 0,
+  "finding": "The original collector retained crate-root composite license summaries but omitted original named notice files in arbitrary nested vendor directories. aws-lc-sys composite license was already present; its nested main LICENSE differs by a trailing space, while the fiat original includes an AUTHORS URL absent from the wrapper.",
+  "scope": "Exact external workspace-dependency supersets in the original three native archives. Build/test and unused workspace dependencies can be included; no assertion all crates were linked.",
+  "supplement": {
+    "file": "codex-deepseek-native-0.6.7-attribution-supplement.tar.gz",
+    "sha256": "bacfcd0048e17892eb46b6912dbec4935aec5441aff2af9b54bff3ccba94de65",
+    "size": 908296,
+    "sha256_file": "codex-deepseek-native-0.6.7-attribution-supplement.tar.gz.sha256",
+    "members": 48,
+    "all_members_regular_and_hash_verified": true,
+    "secret_binary_absolute_path_scan_passed": true,
+    "index_sha256": "2a8057ddae43c2276dca762c9334e0b1ee8948a351f85a45111a5fb0518c9e4b",
+    "reproducible_second_archive_sha256": "bacfcd0048e17892eb46b6912dbec4935aec5441aff2af9b54bff3ccba94de65"
+  },
+  "original_artifact_verification": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "original_license_and_attribution_files_hashed": 2979,
+      "all_original_license_file_bytes_match_manifest": true,
+      "native_archive_sha256": "985575c3fd371b31ad13242f8fa8dd3877142f5a2b10dedd2f00a17c84499bd1",
+      "native_manifest_sha256": "f4c81428bd85429bed3199ce1eb5ad8e99c10ebb29a4c375e303762357019e40"
+    },
+    {
+      "target": "aarch64-apple-darwin",
+      "original_license_and_attribution_files_hashed": 2941,
+      "all_original_license_file_bytes_match_manifest": true,
+      "native_archive_sha256": "452e387648d5b88f036daf6d1be304bc2deeac23763e65ecfdf84b22d5e41b9f",
+      "native_manifest_sha256": "7dadb8060ca0ab2dce7b70e966b0763ea0621bccf698314a15c701d1de46ae5c"
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "original_license_and_attribution_files_hashed": 3034,
+      "all_original_license_file_bytes_match_manifest": true,
+      "native_archive_sha256": "01f501fc9ef0876449457bd5416b71b43328a2cf1292062bbecf102e99125ac6",
+      "native_manifest_sha256": "25f0e51aa123ee321e4e5e9776de6a45312cdad3dbca4d519ada7787bb301eba"
+    }
+  ],
+  "base_artifacts": [
+    {
+      "native_archive": "codex-deepseek-native-0.6.7-x86_64-pc-windows-msvc.tar.gz",
+      "native_archive_sha256": "985575c3fd371b31ad13242f8fa8dd3877142f5a2b10dedd2f00a17c84499bd1",
+      "native_manifest": "runtime-x86_64-pc-windows-msvc.json",
+      "native_manifest_sha256": "f4c81428bd85429bed3199ce1eb5ad8e99c10ebb29a4c375e303762357019e40",
+      "original_external_packages": 1119,
+      "original_notice_index_sha256": "e18bc4bbdee79877e7f87165f073a5780c9363f98aed1488101589c43ee88575",
+      "target": "x86_64-pc-windows-msvc"
+    },
+    {
+      "native_archive": "codex-deepseek-native-0.6.7-aarch64-apple-darwin.tar.gz",
+      "native_archive_sha256": "452e387648d5b88f036daf6d1be304bc2deeac23763e65ecfdf84b22d5e41b9f",
+      "native_manifest": "runtime-aarch64-apple-darwin.json",
+      "native_manifest_sha256": "7dadb8060ca0ab2dce7b70e966b0763ea0621bccf698314a15c701d1de46ae5c",
+      "original_external_packages": 1109,
+      "original_notice_index_sha256": "ec46348f0bea618aa72c211d90089f9b5215674d4e20c4ed5062a3deae7a97f5",
+      "target": "aarch64-apple-darwin"
+    },
+    {
+      "native_archive": "codex-deepseek-native-0.6.7-x86_64-unknown-linux-gnu.tar.gz",
+      "native_archive_sha256": "01f501fc9ef0876449457bd5416b71b43328a2cf1292062bbecf102e99125ac6",
+      "native_manifest": "runtime-x86_64-unknown-linux-gnu.json",
+      "native_manifest_sha256": "25f0e51aa123ee321e4e5e9776de6a45312cdad3dbca4d519ada7787bb301eba",
+      "original_external_packages": 1140,
+      "original_notice_index_sha256": "4c3ae478e356954bbcd4034c1935aa71c1fbec5c4aec1a45270b985889b3a505",
+      "target": "x86_64-unknown-linux-gnu"
+    }
+  ],
+  "source_graph": {
+    "package_identities": 1212,
+    "original_notice_candidates": 2021,
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "official_source_archive_sha256": "3f9d7e83c9f152a438633813daefacee944d29165101c305e8ac08dc00a0e361",
+    "upstream_Cargo_lock_sha256": "49a1e5e4f67e0ab56ccea5674003ec06d6436b1b7f74b833e3e2440d591bee9b",
+    "source_provenance": "Registry .crate checksums pinned by the exact upstream lock and original Cargo.toml hashes; Git source commits plus original Cargo.toml and git object notice bytes. Missing platform-only registry source notices fetched and verified on Windows without building or executing them."
+  },
+  "supplement_original_notices": {
+    "unique_files": 37,
+    "bytes": 260151,
+    "packages": [
+      {
+        "name": "aws-lc-sys",
+        "version": "0.45.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "aws-lc/LICENSE",
+            "supplement_file": "notices/977c541bd25ffe36975dde25c028c0cd15ddf3d08243983b58e8a6a3d9447523/LICENSE",
+            "sha256": "977c541bd25ffe36975dde25c028c0cd15ddf3d08243983b58e8a6a3d9447523",
+            "size": 20338,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "aws-lc/third_party/fiat/LICENSE",
+            "supplement_file": "notices/43e358d7b6eb109d0f51f7b3a090fd82607965767c25fadee39e922475de2061/LICENSE",
+            "sha256": "43e358d7b6eb109d0f51f7b3a090fd82607965767c25fadee39e922475de2061",
+            "size": 1161,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "bzip2-sys",
+        "version": "0.1.13+1.0.8",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "bzip2-1.0.8/LICENSE",
+            "supplement_file": "notices/c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3/LICENSE",
+            "sha256": "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3",
+            "size": 1896,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "deltae",
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "docs/doc/COPYRIGHT.txt",
+            "supplement_file": "notices/69d756d19fe048b3efd36bc2627e900f8a35144fb7dcf266384d5788026bc8c7/COPYRIGHT.txt",
+            "sha256": "69d756d19fe048b3efd36bc2627e900f8a35144fb7dcf266384d5788026bc8c7",
+            "size": 2029,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "docs/doc/LICENSE-APACHE.txt",
+            "supplement_file": "notices/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2/LICENSE-APACHE.txt",
+            "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+            "size": 10847,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "docs/doc/LICENSE-MIT.txt",
+            "supplement_file": "notices/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3/LICENSE-MIT.txt",
+            "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+            "size": 1023,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "h3",
+        "version": "0.0.8",
+        "source": "git+https://github.com/hyperium/h3?rev=e07e69412876f7e26f026bd75a48b2704d8c8283#e07e69412876f7e26f026bd75a48b2704d8c8283",
+        "new_notices": [
+          {
+            "original_filename": "LICENSE",
+            "supplement_file": "notices/1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2/LICENSE",
+            "sha256": "1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2",
+            "size": 10,
+            "targets": [
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "h3-quinn",
+        "version": "0.0.10",
+        "source": "git+https://github.com/hyperium/h3?rev=e07e69412876f7e26f026bd75a48b2704d8c8283#e07e69412876f7e26f026bd75a48b2704d8c8283",
+        "new_notices": [
+          {
+            "original_filename": "LICENSE",
+            "supplement_file": "notices/1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2/LICENSE",
+            "sha256": "1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2",
+            "size": 10,
+            "targets": [
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "libdbus-sys",
+        "version": "0.2.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "vendor/dbus/cmake/modules/COPYING-CMAKE-SCRIPTS",
+            "supplement_file": "notices/c666ec2313dba24523ccad88f4c04ea4b24fad6545263a35b1d4ab2b08efe50a/COPYING-CMAKE-SCRIPTS",
+            "sha256": "c666ec2313dba24523ccad88f4c04ea4b24fad6545263a35b1d4ab2b08efe50a",
+            "size": 1326,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "vendor/dbus/COPYING",
+            "supplement_file": "notices/e61807cd1c32ff4e7bd5b4b61dd21997c6dc5642cf19316124fe38d50e1f9fa3/COPYING",
+            "sha256": "e61807cd1c32ff4e7bd5b4b61dd21997c6dc5642cf19316124fe38d50e1f9fa3",
+            "size": 29175,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "libsqlite3-sys",
+        "version": "0.37.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "sqlcipher/LICENSE",
+            "supplement_file": "notices/ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131/LICENSE",
+            "sha256": "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131",
+            "size": 1467,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "nucleo",
+        "version": "0.5.0",
+        "source": "git+https://github.com/helix-editor/nucleo.git?rev=4253de9faabb4e5c6d81d946a5e35a90f87347ee#4253de9faabb4e5c6d81d946a5e35a90f87347ee",
+        "new_notices": [
+          {
+            "original_filename": "matcher/LICENSE",
+            "supplement_file": "notices/1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2/LICENSE",
+            "sha256": "1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2",
+            "size": 10,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "nucleo-matcher",
+        "version": "0.3.1",
+        "source": "git+https://github.com/helix-editor/nucleo.git?rev=4253de9faabb4e5c6d81d946a5e35a90f87347ee#4253de9faabb4e5c6d81d946a5e35a90f87347ee",
+        "new_notices": [
+          {
+            "original_filename": "LICENSE",
+            "supplement_file": "notices/1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2/LICENSE",
+            "sha256": "1e881ecf2862d01e6e5bc2b861e46886d2a6fb01499c0c508a209a7271b13cf2",
+            "size": 10,
+            "targets": [
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "objc2-foundation",
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/copying.rs",
+            "supplement_file": "notices/259b22f571b54fed25f68ec5abd8eda223e7b0547a806f13ba797a0eabecd64f/copying.rs",
+            "sha256": "259b22f571b54fed25f68ec5abd8eda223e7b0547a806f13ba797a0eabecd64f",
+            "size": 8610,
+            "targets": [
+              "aarch64-apple-darwin"
+            ]
+          },
+          {
+            "original_filename": "src/tests/copying.rs",
+            "supplement_file": "notices/23d608079a47693a26dfc8a5cb01894ad0136a50714d46221d9380aa4a4b4423/copying.rs",
+            "sha256": "23d608079a47693a26dfc8a5cb01894ad0136a50714d46221d9380aa4a4b4423",
+            "size": 618,
+            "targets": [
+              "aarch64-apple-darwin"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "onig_sys",
+        "version": "69.9.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "oniguruma/COPYING",
+            "supplement_file": "notices/70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f/COPYING",
+            "sha256": "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f",
+            "size": 1340,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "openssl-src",
+        "version": "300.6.1+3.6.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "openssl/external/perl/Text-Template-1.56/LICENSE",
+            "supplement_file": "notices/9837f05336ef3cbacb6a96e1672a0426d81ad01191f214b8d48e22ca62338181/LICENSE",
+            "sha256": "9837f05336ef3cbacb6a96e1672a0426d81ad01191f214b8d48e22ca62338181",
+            "size": 18412,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "openssl/LICENSE.txt",
+            "supplement_file": "notices/7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a/LICENSE.txt",
+            "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+            "size": 10175,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "openssl/util/perl/OpenSSL/copyright.pm",
+            "supplement_file": "notices/04213b69dbebc8ba0dd8a6216af1d9422f9b63619c1cf2f1d8aa107b83bbb608/copyright.pm",
+            "sha256": "04213b69dbebc8ba0dd8a6216af1d9422f9b63619c1cf2f1d8aa107b83bbb608",
+            "size": 1145,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "petgraph",
+        "version": "0.8.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "assets/images/LICENSE.md",
+            "supplement_file": "notices/608fdcbb7daea2541c57228f21fc97deec310b19dafde70b2f4b84a96bf779f8/LICENSE.md",
+            "sha256": "608fdcbb7daea2541c57228f21fc97deec310b19dafde70b2f4b84a96bf779f8",
+            "size": 281,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "plist",
+        "version": "1.9.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "LICENCE",
+            "supplement_file": "notices/5b0ae40d1a35f7ae6591a28e44771240e6a88cb03a66c9189a45b9681639b466/LICENCE",
+            "sha256": "5b0ae40d1a35f7ae6591a28e44771240e6a88cb03a66c9189a45b9681639b466",
+            "size": 1057,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "regex-syntax",
+        "version": "0.8.8",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/unicode_tables/LICENSE-UNICODE",
+            "supplement_file": "notices/74db5baf44a41b1000312c673544b3374e4198af5605c7f9080a402cec42cfa3/LICENSE-UNICODE",
+            "sha256": "74db5baf44a41b1000312c673544b3374e4198af5605c7f9080a402cec42cfa3",
+            "size": 2847,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ring",
+        "version": "0.17.14",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/polyfill/once_cell/LICENSE-APACHE",
+            "supplement_file": "notices/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2/LICENSE-APACHE",
+            "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+            "size": 10847,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "src/polyfill/once_cell/LICENSE-MIT",
+            "supplement_file": "notices/6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc/LICENSE-MIT",
+            "sha256": "6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc",
+            "size": 1022,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "third_party/fiat/LICENSE",
+            "supplement_file": "notices/9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f/LICENSE",
+            "sha256": "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f",
+            "size": 638,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rkyv_derive",
+        "version": "0.8.18",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/serde/LICENSE",
+            "supplement_file": "notices/30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652/LICENSE",
+            "sha256": "30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652",
+            "size": 1022,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rmcp",
+        "version": "3.5.1",
+        "source": "git+https://github.com/modelcontextprotocol/rust-sdk?rev=98a54789b80110ad210495c4ad845c89e1980471#98a54789b80110ad210495c4ad845c89e1980471",
+        "new_notices": [
+          {
+            "original_filename": "LICENSE",
+            "supplement_file": "notices/a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2/LICENSE",
+            "sha256": "a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2",
+            "size": 13,
+            "targets": [
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rmcp-macros",
+        "version": "3.5.1",
+        "source": "git+https://github.com/modelcontextprotocol/rust-sdk?rev=98a54789b80110ad210495c4ad845c89e1980471#98a54789b80110ad210495c4ad845c89e1980471",
+        "new_notices": [
+          {
+            "original_filename": "LICENSE",
+            "supplement_file": "notices/a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2/LICENSE",
+            "sha256": "a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2",
+            "size": 13,
+            "targets": [
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rust-stemmers",
+        "version": "1.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "algorithms/LICENSE",
+            "supplement_file": "notices/ea2879fe94b4b2e6b3c6fb18b3bf265f9ff162637e5e1ac21fabc43d8cf34961/LICENSE",
+            "sha256": "ea2879fe94b4b2e6b3c6fb18b3bf265f9ff162637e5e1ac21fabc43d8cf34961",
+            "size": 1555,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "test_data/LICENSE",
+            "supplement_file": "notices/8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903/LICENSE",
+            "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+            "size": 35147,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "schemafy",
+        "version": "0.5.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "tests/vega/LICENSE",
+            "supplement_file": "notices/155ffbd9aea98a37669e58c32634f4849a4839b4dfee895e00d9c7242cb9d59c/LICENSE",
+            "sha256": "155ffbd9aea98a37669e58c32634f4849a4839b4dfee895e00d9c7242cb9d59c",
+            "size": 1503,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "starlark_syntax",
+        "version": "0.14.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "testcases/parse/license.star",
+            "supplement_file": "notices/a6d5ae5183a5681f86648588fa84ec7fef84f2d7709b0d644a14d0fd8d68a1e9/license.star",
+            "sha256": "a6d5ae5183a5681f86648588fa84ec7fef84f2d7709b0d644a14d0fd8d68a1e9",
+            "size": 2055,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tiff",
+        "version": "0.10.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "tests/COPYRIGHT",
+            "supplement_file": "notices/c341a79df284be8a0321dabda4aa1aeea053b55b4e0db827940c221fcaf29b7b/COPYRIGHT",
+            "sha256": "c341a79df284be8a0321dabda4aa1aeea053b55b4e0db827940c221fcaf29b7b",
+            "size": 334,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tracing-core",
+        "version": "0.1.36",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/spin/LICENSE",
+            "supplement_file": "notices/58545fed1565e42d687aecec6897d35c6d37ccb71479a137c0deb2203e125c79/LICENSE",
+            "sha256": "58545fed1565e42d687aecec6897d35c6d37ccb71479a137c0deb2203e125c79",
+            "size": 1085,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tree-sitter",
+        "version": "0.25.10",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "src/unicode/LICENSE",
+            "supplement_file": "notices/6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d/LICENSE",
+            "sha256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d",
+            "size": 21001,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "v8",
+        "version": "152.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "third_party/highway/src/debian/copyright",
+            "supplement_file": "notices/6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76/copyright",
+            "sha256": "6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76",
+            "size": 825,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "v8/src/compiler/turboshaft/copying-phase.cc",
+            "supplement_file": "notices/8050804c21e9547da764741ae0aa9b8a3fb8df1f7a24c8ba5f94e7fa7e3564d9/copying-phase.cc",
+            "sha256": "8050804c21e9547da764741ae0aa9b8a3fb8df1f7a24c8ba5f94e7fa7e3564d9",
+            "size": 650,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "v8/src/compiler/turboshaft/copying-phase.h",
+            "supplement_file": "notices/c490132c100558fabfa06e785a0c87dad35bc864e7bee4c6e2e05af5d41879dc/copying-phase.h",
+            "sha256": "c490132c100558fabfa06e785a0c87dad35bc864e7bee4c6e2e05af5d41879dc",
+            "size": 47555,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "wayland-protocols",
+        "version": "0.32.10",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "protocols/COPYING",
+            "supplement_file": "notices/f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124/COPYING",
+            "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+            "size": 1502,
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "zstd-sys",
+        "version": "2.0.16+zstd.1.5.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "new_notices": [
+          {
+            "original_filename": "zstd/COPYING",
+            "supplement_file": "notices/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505/COPYING",
+            "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
+            "size": 18091,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          },
+          {
+            "original_filename": "zstd/LICENSE",
+            "supplement_file": "notices/7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8/LICENSE",
+            "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+            "size": 1549,
+            "targets": [
+              "x86_64-pc-windows-msvc",
+              "aarch64-apple-darwin",
+              "x86_64-unknown-linux-gnu"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "buildtime_collector": {
+    "file": "native_licenses.py",
+    "sha256": "bdb2e0e7be94a3b8ad4d584a1a955b9fbfb04042d27913dee38209e25050ede6",
+    "test_file": "tests/test_native_licenses.py",
+    "tests_sha256": "545de67dba7fd3e934fc1709b2ba179af49087c9d3f95bb8a54032f3eb59a764",
+    "change": "Bounded non-following recursive named-notice scan preserving root/dedicated-folder/explicit-license/README behavior; original relative filenames and per-file hashes retained. Rejects redirected, escaped, oversized or compiled/container notice inputs, never silently truncates."
+  },
+  "focused_windows_tests": {
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_original_vendored_notices_survive_wrapper_and_unrelated_binary"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_legacy_dedicated_notice_folder_keeps_arbitrary_attribution_names[licenses]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_legacy_dedicated_notice_folder_keeps_arbitrary_attribution_names[LICENSES]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_legacy_dedicated_notice_folder_keeps_arbitrary_attribution_names[third_party/licenses]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_legacy_dedicated_notice_folder_keeps_arbitrary_attribution_names[third-party/licenses]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_declared_custom_license_and_readme_fallback_remain_supported"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_named_nested_binary_is_rejected_instead_of_published[MZ]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_named_nested_binary_is_rejected_instead_of_published[\\x7fELF]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_named_nested_binary_is_rejected_instead_of_published[PK\\x03\\x04]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_scan_limits_fail_explicitly_without_silent_truncation[entries]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_scan_limits_fail_explicitly_without_silent_truncation[depth]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_scan_limits_fail_explicitly_without_silent_truncation[files]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_scan_limits_fail_explicitly_without_silent_truncation[aggregate]"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_large_notice_is_rejected_before_reading_it"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_declared_escape_and_missing_notice_are_not_silently_ignored"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_output_inside_source_is_rejected_before_any_write"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_reparse_attribute_is_rejected_without_python312_junction_helpers"
+      },
+      {
+        "class": "tests.test_native_licenses",
+        "name": "test_redirected_vendor_directory_never_exports_outside_crate"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[bytes]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[extra]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[missing]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_post_build_mutation_is_rejected_before_creating_an_archive[different-patch]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_unchanged_build_can_be_reproduced_as_identical_archives"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_self_consistent_old_combination_cannot_be_blessed_as_new[missing-recipe]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_self_consistent_old_combination_cannot_be_blessed_as_new[different-recipe]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_self_consistent_old_combination_cannot_be_blessed_as_new[different-toolchain]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_manifest_utf8_LF_is_stable_through_windows_default_and_Git_roundtrip[false]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_manifest_utf8_LF_is_stable_through_windows_default_and_Git_roundtrip[true]"
+      },
+      {
+        "class": "tests.test_package_native",
+        "name": "test_hardlinked_staging_is_regular_content_and_deterministic"
+      },
+      {
+        "class": "tests.test_native_build_recipe",
+        "name": "test_license_metadata_uses_same_recipe_pin_or_supplied_result[False]"
+      },
+      {
+        "class": "tests.test_native_build_recipe",
+        "name": "test_license_metadata_uses_same_recipe_pin_or_supplied_result[True]"
+      },
+      {
+        "class": "tests.test_native_build_recipe",
+        "name": "test_isolated_native_build_loads_checkout_license_inputs"
+      }
+    ],
+    "scope": "Attribution/package fixtures and existing build-helper license provenance tests only. The latter run explicitly selected3cases with64othercasesdeselected. This is not a rerun of the runtime suite."
+  },
+  "preserved_attempts": [
+    {
+      "attempt": 1,
+      "result": "No archive generated. Cached source copy lacked optional .cargo-checksum.json; switched provenance verification to original checksum-pinned .crate bytes."
+    },
+    {
+      "attempt": 2,
+      "result": "No archive generated. Exact Git commit assertion rejected the first rmcp-macros manifest match from another cached revision. Source choice now checks exact commit before collection."
+    }
+  ],
+  "consumer_action": "Keep this supplement together with a v0.6.7 native archive/distribution. Existing installations do not need reinstalling. Original tag, archives, manifests and existing runtime qualification identities remain unchanged.",
+  "actual_production_collector_run": {
+    "external_packages": 1119,
+    "actual_metadata_matches_exact_published_windows_graph": true,
+    "collector_sha256": "bdb2e0e7be94a3b8ad4d584a1a955b9fbfb04042d27913dee38209e25050ede6",
+    "index_sha256": "89251025d73592f23bc3d5db43c0592d2aca92a480bac8cdf29050b26ff496c3",
+    "original_source_notices": 1862,
+    "native_helpers_or_models_executed": false
+  },
+  "native_recipe_identity_verification": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "recipe_id": "15c906cca6c2b9cc9b8761fed6e999a6d751e54e06a371a37fd6db1ff06714f9",
+      "published_manifest_recipe_unchanged": true
+    },
+    {
+      "target": "aarch64-apple-darwin",
+      "recipe_id": "61d852ba54f522b90a40e5bf6e698a8345ea03bfb95903979654851fcb60e0b3",
+      "published_manifest_recipe_unchanged": true
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "recipe_id": "2ce6b6cf6d960f3250bb8d3cfa74e7c8a86e98d99cc4b295f276d2f3cb44b100",
+      "published_manifest_recipe_unchanged": true
+    }
+  ]
+}
