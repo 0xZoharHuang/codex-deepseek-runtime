@@ -63,3 +63,15 @@ Windows 只重新编译 CLI；现有5个 helper 的原始 producer/哈希留在 
 | macOS完整source/package audit | 8186fba55ee1d5070afa6ff1a072a8178833f8af9b9831c8921adfbaf784d9dd |
 
 当前native/runtime*.json固定三平台最终归档。打包只封装已逐字节核验且实际验收过的native字节、完整receipt和许可证，没有重编译或在本机执行Unix代码。
+
+## 最终发行安装回读
+
+最终源码f7394e0ffd128bb5032eb20991e4dfcf2522a11f以普通用户、正常安装器、全新root及 --no-activate 安装，source ID为98e6b2d9c29cdb24a52d。venv明确使用既有独立CDS Python base，没有CADSG依赖；原base2932个文件元数据及核心二进制哈希在安装和运行前后不变，旧入口/home/活动进程未切换。
+
+正常安装产生的wheel与两次独立staged构建逐字节一致：762352fe471c3242dca0172d015a0d3cc86927b25aaa4312b36fad0148c7bb35，167895字节。ZIP CRC、全部57条RECORD哈希、0.6.7包元数据和29模块均校验。29模块/native/catalog与完整测试及两种真实工具模式的已验安装产物相同；只有本版元数据和说明更新。
+
+新独立home无schema的doctor只发一次请求，返回精确CONNECTED。请求固定provider.only=[deepseek]、allow_fallbacks=false，generation元数据核对相同response ID、官方DeepSeek和固定canonical模型。未把strictJSON的Morph路线冒称官方DeepSeek。
+
+--version、原生exec --help及身份检查均exit0。保留默认120秒idle，120.270秒自然退休，观察器exit0，forced/remaining/unknown/errors均为空。安装/doctor两个Limited broker身份、session和退出均核验，专属任务已删除。
+
+最终receipt SHA256：b75c10a3854ae12a24d188e16439716b04dfbf2f9b7f2fdd8ee52bf374914d3e；Root另逐字节重核其30项引用。这个附录只增加报告，不改变任何产品模块、README、native manifest或source ID。
