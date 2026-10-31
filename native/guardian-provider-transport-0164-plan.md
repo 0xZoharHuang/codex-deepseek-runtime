@@ -25,13 +25,23 @@ refill, timeout, capacity and cancellation tests remain required controls.
 
 guardian-provider-transport-0164-candidate.json extends the entire current
 recipe with this one common overlay on all three shipped targets. Every changed
-file has a before/after SHA. The default runtime-overlays.json and existing ready
-native manifests remain unchanged until real new artifacts exist.
+file has a before/after SHA. In this source candidate, runtime-overlays.json is
+promoted to its exact canonical LF bytes before parallel fresh Unix builds. The
+original runtime-overlays-0.6.7-acc16483.json is retained byte for byte (SHA256
+acc164834bdf4bc3be257156ed82917eda3e81720a5ed6b7008be24c83f7f6db).
+Existing 0.6.7 ready manifests and assets remain unmodified rollback provenance;
+they do not attest this new source or qualify as guarded candidate binaries.
 
-The builder accepts the candidate only through explicit --recipe. It rejects
+The default builder and explicit --recipe candidate now require the same reviewed
+26-overlay order, ending in the shared guard. The archived 0.6.7 recipe is not a
+build selection. The builder rejects
 an unreviewed external recipe path, omission/reordering of the guard and
 Windows-only coverage for this common patch. Its receipt records the selected
-recipe's actual SHA. Default source admission remains the old exact stack.
+recipe's actual SHA. Both active and candidate canonical SHA256 are
+29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca.
+JSON semantic equality does not replace this raw-byte identity: changing its LF
+newlines to CRLF yields 56b332e1dd23ef8835016e062036d2846cc8a5aa67bc7a7b68c677d93537cba0.
+Generate source locks with write_bytes or an explicit LF newline policy.
 
 ## Formal Windows producer
 
@@ -74,11 +84,12 @@ do not reconstruct an archive and pretend it matches the original archive pin.
 2. Run the Guardian connection_pool native tests, including the false-provider
    test and existing true-provider/refill/cancellation controls. These are real
    local transport tests and require no model credential.
-3. Only after a real candidate package exists, promote the reviewed candidate
-   recipe to the active lock and require its final guard in the default ordered
-   stack in the same source transition. Until that transition, the existing
-   package/qualification commands deliberately reject a candidate package whose
-   recipe differs from the active lock. Do not bypass their checks.
+3. This branch promotes the reviewed recipe as a source-only candidate so the
+   existing Windows producer and fresh Unix CI can qualify the same inputs in
+   parallel. No generated readiness manifest is changed. Existing package and
+   qualification commands retain their exact recipe/source checks and reject
+   old ready binary identities. Do not bypass those checks or call this source
+   transition a completed build or stable release.
 4. Qualify and package actual outputs with the active reviewed recipe. Generate
    new manifest pins only from those real artifacts. Update the candidate-phase
    admission tests when promoting; the final active recipe must reject guard
@@ -94,7 +105,7 @@ do not reconstruct an archive and pretend it matches the original archive pin.
 Run the selected native tests from this producer's recorded new source tree,
 using the same target cache and release profile:
 
-    cargo +1.99.1 test --locked --release -j 2 -p codex-guardian-v2 async_scorer::sampler::connection_pool:: -- --test-threads=1
+    cargo +1.99.1 test --locked --release -j 2 -p codex-guardian-v2 --lib async_scorer::sampler::connection_pool -- --test-threads=2 --show-output
 
 On Windows with the explicit toolchain, invoke its cargo.exe directly and keep
 RUSTC/RUSTDOC and CARGO_TARGET_DIR in that child environment. Derive the new source
@@ -117,8 +128,21 @@ development machine.
 
 ## Current evidence boundary
 
-All three targets' stable and candidate source stacks were replayed through real
-Git application and exact file hashes without Cargo. Eighty focused
-build/recipe checks passed with no skip, failure or error. This proves source
-admission and builder selection only. Native compilation and behavior,
-installation, and release qualification remain pending.
+The initial stable and explicit-candidate source replay is historical evidence.
+This active-source promotion was separately checked with real three-target Git
+source replay for the active, explicit-candidate and exact archived 0.6.7 stacks,
+plus fail-closed recipe and qualification-controller negative controls. These
+checks do not compile or execute a new native binary.
+
+The fresh Unix workflow additionally runs ci/qualify_guardian_pool.py against the
+producer's actual new source tree and target cache. The existing complete source
+verifier projects the fixed official archive plus all reviewed overlays and
+checks every native source before and after the tests, including dependencies
+not listed in the producer's changed-file receipt. It requires the exact ten
+reviewed Rust tests, rejects ignored tests and upstream network-skip macros that
+return Ok, and reports filtered tests as not executed. Linux tests verify and
+reuse the producer's shipped bwrap digest. The original 22 real CLI/helper
+fixtures and complete installed Python offline collection still run separately.
+Fresh Unix native execution remains a release gate, not a result inferred from
+source or controller checks. App/live-model behavior and installation also
+retain their independent acceptance gates.

@@ -30,6 +30,19 @@ a successful Ubuntu build does not certify every older Linux distribution.
 The three GitHub-owned actions are pinned by commit; their reviewed release
 versions are comments in the workflow.
 
+After the fresh producer, qualify_guardian_pool.py uses its one admitted source
+tree, combined patch, every asserted source file, and complete source inventory
+against the fixed official archive plus reviewed overlays before and after the
+native tests. It retains the full native inventory/hash/count separately from
+the adapter checkout identity, and uses the exact compiler/release environment
+and target cache. It executes the ten specifically named Guardian pool tests:
+false-provider zero-WebSocket HTTP scoring, true-provider prewarm/refill/recovery,
+capacity, and cancellation. Linux reuses the exact verified bwrap digest in the
+package and target cache. It rejects changed/missing/duplicate test identities,
+ignored tests, and upstream skip macros that return Ok. Filtered tests are not
+counted as executed. Original Cargo logs and a separate scope receipt are kept.
+No provider credential or model call is involved.
+
 qualify_native.py checks the complete package inventory, fixed input archives,
 patch stack, source digests, compiler pin, and target before testing. It executes
 both native regression modules without skipping any case, rejects failures,

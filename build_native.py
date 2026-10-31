@@ -141,7 +141,7 @@ def runtime_recipe(recipe_path=None):
     candidate=SOURCE/'native/guardian-provider-transport-0164-candidate.json'
     path=Path(recipe_path) if recipe_path is not None else default
     if path.resolve() not in {default.resolve(),candidate.resolve()}:
-        raise ValueError('Native recipe must select the stable or explicit Guardian candidate file')
+        raise ValueError('Native recipe must select the active or explicit Guardian candidate file')
     recipe=json.loads(path.read_text(encoding='utf-8'),object_pairs_hook=pairs)
     if set(recipe)!={'schema','upstream_commit','upstream_toolchain','build_toolchain','required_base_inputs','overlays'} or type(recipe['schema']) is not int or recipe['schema']!=1 or recipe['upstream_commit']!=COMMIT:
         raise ValueError('Native build recipe has an incompatible schema or upstream baseline')
@@ -151,7 +151,7 @@ def runtime_recipe(recipe_path=None):
     order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch','windows-runner-junction-root.patch','windows-home-metadata.patch','windows-root-acl-sharing.patch','windows-plugin-git-lifecycle.patch','windows-setup-background-handles.patch','windows-ancestor-metadata.patch','windows-acl-inheritance-lock.patch','windows-critical-read.patch','windows-acl-lifecycle.patch','payload-request-capacity.patch','payload-request-capacity-replay.patch','windows-readable-daemon-scratch.patch','windows-critical-read-deny-readiness.patch','windows-metadata-owner-policy.patch','windows-native-metadata-minimal.patch']
     guardian='guardian-provider-transport-0164.patch'
     selected=[item.get('file') for item in recipe['overlays']] if isinstance(recipe['overlays'],list) else None
-    expected_order=order+[guardian] if path.resolve()==candidate.resolve() else order
+    expected_order=order+[guardian]
     if selected!=expected_order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():

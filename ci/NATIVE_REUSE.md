@@ -1,5 +1,13 @@
 # Current-source qualification with pinned native release assets
 
+
+> Current source candidate: the shared Guardian provider transport guard changes
+> both Unix recipe identities. Run native-platform-qualification.yml for a fresh
+> build. The retained qualified-native-build.json describes historical 0.6.2
+> artifacts, and the 0.6.7 manifests remain rollback provenance. Neither is a
+> qualification of this new source. Reuse entry points intentionally reject the
+> current branch rather than rewriting old pins or accepting an older binary.
+
 The reuse workflow runs on disposable GitHub-hosted macOS ARM64 and Linux x64 runners. It downloads reviewed native bytes from the fixed public prerelease **v0.6.0-native.1** in this repository. This prerelease contains native build assets; it is not approval of a stable CDS product release.
 
 Acquisition uses canonical versioned URLs under:

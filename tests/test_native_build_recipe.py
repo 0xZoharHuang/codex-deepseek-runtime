@@ -22,6 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file']!='guardian-provider-transport-0164.patch']}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -78,14 +79,14 @@ def test_preflight_rejects_before_running_git_or_a_compiler(tmp_path,monkeypatch
     with pytest.raises(ValueError):build.apply_runtime_overlays(tree,WIN,inputs,recipe)
 
 
-@pytest.mark.parametrize('candidate',[False,True])
+@pytest.mark.parametrize('recipe_selection',['active','explicit_candidate','archived_067'])
 @pytest.mark.parametrize('target',TARGETS)
-def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,monkeypatch,target,candidate):
+def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,monkeypatch,target,recipe_selection):
     archive=os.environ.get('CODEX_DEEPSEEK_TEST_SOURCE_ARCHIVE')
     if not archive:pytest.skip('requires explicitly supplied cached upstream archive')
     archive=Path(archive);assert build.sha(archive)==build.SOURCE_ASSET[1]
     git=os.environ.get('CODEX_DEEPSEEK_TEST_GIT','git')
-    recipe=build.runtime_recipe(ROOT/'native/guardian-provider-transport-0164-candidate.json' if candidate else None);inputs=copy.deepcopy(recipe['required_base_inputs'][target])
+    recipe=(json.loads((ROOT/'native/runtime-overlays-0.6.7-acc16483.json').read_bytes()) if recipe_selection=='archived_067' else build.runtime_recipe(ROOT/'native/guardian-provider-transport-0164-candidate.json' if recipe_selection=='explicit_candidate' else None));inputs=copy.deepcopy(recipe['required_base_inputs'][target])
     names=[row['file'] for row in inputs]+[row['file'] for row in recipe['overlays'] if target in row['changes_by_target']]
     paths={'codex-rs/rust-toolchain.toml'}
     for name in names:
@@ -115,7 +116,7 @@ def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,m
     diff=build.combined_patch(tree,archive,paths-{'codex-rs/rust-toolchain.toml'})
     assert diff==build.combined_patch(tree,archive,reversed(sorted(paths-{'codex-rs/rust-toolchain.toml'})))
     assert str(tmp_path) not in diff
-    if candidate:
+    if recipe_selection!='archived_067':
         assert 'if !self.config.provider.info().supports_websockets' in diff
         assert 'provider_without_websockets_scores_over_http_without_opening_pool' in diff
     else:
@@ -632,7 +633,7 @@ def test_native_metadata_minimal_overlay_cannot_be_omitted_reordered_or_retarget
 
 
 def test_capacity_replay_overlay_is_single_file_shared_and_preserves_historical_inputs():
-    recipe=build.runtime_recipe()
+    recipe=json.loads((ROOT/'native/runtime-overlays-0.6.7-acc16483.json').read_bytes())
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     assert index==overlay_index(recipe,'payload-request-capacity.patch')+1
     leaf=recipe['overlays'][index]
@@ -652,7 +653,7 @@ def test_capacity_replay_overlay_is_single_file_shared_and_preserves_historical_
     for target in TARGETS:
         assert build.native_recipe_identity(target,recipe)!=build.native_recipe_identity(target,historical)
         assert build.overlay_source_hashes(target,recipe)[path]==expected[0]['after_sha256']
-    document=(ROOT/'native/runtime-overlays.json').read_bytes()
+    document=(ROOT/'native/runtime-overlays-0.6.7-acc16483.json').read_bytes()
     assert document==(json.dumps(recipe,indent=2)+'\n').encode('utf-8')
     assert hashlib.sha256(document).hexdigest()=='acc164834bdf4bc3be257156ed82917eda3e81720a5ed6b7008be24c83f7f6db'
 

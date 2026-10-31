@@ -1163,6 +1163,48 @@
           }
         ]
       }
+    },
+    {
+      "file": "guardian-provider-transport-0164.patch",
+      "sha256": "2d7504fcbfc86918c72eef7629760d590914b78c7bf705042e05f62749bacefe",
+      "changes_by_target": {
+        "aarch64-apple-darwin": [
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool.rs",
+            "before_sha256": "a00a35337d518e7826ca0c4cb854ab01b4696b0edd397dc81ebd9644fdcb08fe",
+            "after_sha256": "a2ca75ba6bfd6caa7cbd67752c11495dee6d4f1909e71d6dde47cc9311f02ee8"
+          },
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool_tests.rs",
+            "before_sha256": "c479b09b2b506f4dfea1d9c38ea0acb66891e8fc433b179a68b4a946211406b8",
+            "after_sha256": "e87ce016fb68b2d6d581d780dc0cb67b8fd5584af12db6f965192ec09a57fd7d"
+          }
+        ],
+        "x86_64-unknown-linux-gnu": [
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool.rs",
+            "before_sha256": "a00a35337d518e7826ca0c4cb854ab01b4696b0edd397dc81ebd9644fdcb08fe",
+            "after_sha256": "a2ca75ba6bfd6caa7cbd67752c11495dee6d4f1909e71d6dde47cc9311f02ee8"
+          },
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool_tests.rs",
+            "before_sha256": "c479b09b2b506f4dfea1d9c38ea0acb66891e8fc433b179a68b4a946211406b8",
+            "after_sha256": "e87ce016fb68b2d6d581d780dc0cb67b8fd5584af12db6f965192ec09a57fd7d"
+          }
+        ],
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool.rs",
+            "before_sha256": "a00a35337d518e7826ca0c4cb854ab01b4696b0edd397dc81ebd9644fdcb08fe",
+            "after_sha256": "a2ca75ba6bfd6caa7cbd67752c11495dee6d4f1909e71d6dde47cc9311f02ee8"
+          },
+          {
+            "path": "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool_tests.rs",
+            "before_sha256": "c479b09b2b506f4dfea1d9c38ea0acb66891e8fc433b179a68b4a946211406b8",
+            "after_sha256": "e87ce016fb68b2d6d581d780dc0cb67b8fd5584af12db6f965192ec09a57fd7d"
+          }
+        ]
+      }
     }
   ]
 }

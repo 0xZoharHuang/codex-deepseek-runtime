@@ -78,12 +78,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
+          python -I -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py ci/test_guardian_pool.py tests/test_native_guardian_recipe.py tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
       - name: Build the pinned native package
         shell: bash
         run: |
           set -euo pipefail
           python -I build_native.py --work "$RUNNER_TEMP/cds-build" --output "$RUNNER_TEMP/cds-native-package" --jobs "${{ matrix.jobs }}" 2>&1 | tee "$RUNNER_TEMP/cds-ci-artifact/build.log"
+      - name: Qualify actual Guardian provider transport and cancellation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I ci/qualify_guardian_pool.py --package "$RUNNER_TEMP/cds-native-package" --build-work "$RUNNER_TEMP/cds-build" --evidence "$RUNNER_TEMP/cds-ci-artifact/guardian-pool"
       - name: Run real native payload and recovery fixtures
         shell: bash
         run: |

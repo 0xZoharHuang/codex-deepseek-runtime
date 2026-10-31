@@ -1,5 +1,15 @@
 # Codex CLI + DeepSeek
 
+> **Development candidate:** this branch promotes the Guardian provider transport
+> source recipe for new three-platform builds. Its active recipe is
+> [runtime-overlays.json](native/runtime-overlays.json), SHA256
+> 29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca.
+> No new binary, installation or stable release is claimed by this source change.
+> Existing 0.6.7 manifests/assets below remain the original rollback baseline;
+> they do not match this candidate recipe and must not be installed using this
+> development checkout. Use the matching 0.6.7 tag for that baseline. See the
+> [candidate qualification plan](native/guardian-provider-transport-0164-plan.md).
+
 **保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**
 
 你仍然用 Codex 的终端界面、命令与文件工具、审批和沙箱、会话恢复、MCP、Code Mode 与子智能体。这个项目提供独立安装、模型协议转换和必要的系统适配；模型给出的工具调用仍交给原生 Codex 执行。
