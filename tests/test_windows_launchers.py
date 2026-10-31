@@ -303,6 +303,60 @@ def test_activation_preserves_foreign_file_changed_after_staging_and_rolls_back(
         assert not list(bin_dir.glob('.codex-deepseek-*')) and not list(root.glob('.codex-deepseek-*'))
 
 
+def test_activation_preserves_real_owned_relative_link_and_rejects_replaced_reference(tmp_path,monkeypatch):
+    installer=installer_module()
+    monkeypatch.setattr(installer,'console_entry',lambda path:Path(path)/'Scripts/codex-deepseek.exe')
+    root=tmp_path/'runtime';bin_dir=tmp_path/'bin'
+    first=release_at(root,'one',b'old managed entry')
+    following=release_at(root,'two',b'new managed entry')
+    third=release_at(root,'three',b'third managed entry')
+    primary=installer.activate_windows(root,first,bin_dir)
+    short=bin_dir/'cds.exe';short.symlink_to(primary.name)
+    original=short.lstat();raw=os.readlink(short)
+    installer.activate_windows(root,following,bin_dir)
+    assert short.is_symlink() and os.readlink(short)==raw==primary.name
+    assert (short.lstat().st_dev,short.lstat().st_ino)==(original.st_dev,original.st_ino)
+    assert short.read_bytes()==primary.read_bytes()==b'new managed entry'
+    receipt=root/'installation.json';before=receipt.read_bytes()
+    replace=installer.replace_file
+    def fail_receipt(source,target):
+        if target==receipt:raise PermissionError('injected linked-entry receipt failure')
+        return replace(source,target)
+    with monkeypatch.context() as patch:
+        patch.setattr(installer,'replace_file',fail_receipt)
+        with pytest.raises(PermissionError,match='linked-entry receipt failure'):
+            installer.activate_windows(root,third,bin_dir)
+    assert receipt.read_bytes()==before and short.read_bytes()==primary.read_bytes()==b'new managed entry'
+    assert (short.lstat().st_dev,short.lstat().st_ino)==(original.st_dev,original.st_ino)
+    # A different link object with the same spelling and resolved target is not the admitted reference.
+    held=bin_dir/'held-original-short';copy=installer.shutil.copy2;changed=[]
+    def change_link_after_backups(source,target):
+        result=copy(source,target)
+        if source==receipt and not changed:
+            short.rename(held);short.symlink_to(primary.name);changed.append(True)
+        return result
+    with monkeypatch.context() as patch:
+        patch.setattr(installer.shutil,'copy2',change_link_after_backups)
+        with pytest.raises(SystemExit,match='short reference changed'):
+            installer.activate_windows(root,third,bin_dir)
+    assert changed and (short.lstat().st_dev,short.lstat().st_ino)!=(original.st_dev,original.st_ino)
+    assert short.read_bytes()==primary.read_bytes()==b'new managed entry' and receipt.read_bytes()==before
+    assert os.readlink(held)==raw
+    # Matching target bytes do not admit a redirect to another entry.
+    foreign=bin_dir/'foreign.exe';foreign.write_bytes(b'new managed entry')
+    short.unlink();short.symlink_to(foreign.name)
+    with pytest.raises(SystemExit,match='unrelated launcher'):
+        installer.activate_windows(root,third,bin_dir)
+    assert short.is_symlink() and os.readlink(short)==foreign.name
+    assert foreign.read_bytes()==primary.read_bytes()==b'new managed entry' and receipt.read_bytes()==before
+    # A dangling link has no verified primary and must not be adopted on a fresh install.
+    short.unlink();primary.unlink();short.symlink_to(primary.name)
+    with pytest.raises(SystemExit,match='unrelated launcher'):
+        installer.activate_windows(root,third,bin_dir)
+    assert short.is_symlink() and os.readlink(short)==primary.name and not primary.exists()
+    assert receipt.read_bytes()==before
+
+
 @WINDOWS
 @pytest.mark.parametrize('kind',['staging','installed','profile'])
 def test_launcher_temp_outputs_bind_current_user_before_publish(tmp_path,kind,assert_private):

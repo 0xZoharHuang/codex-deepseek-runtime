@@ -303,8 +303,16 @@ def activate_windows(root,release,bin_dir):
     # Older installations may have a byte-for-byte managed short entry. Never
     # create a new alias or claim an unrelated command just because of its name.
     short=bin_dir/'cds.exe'
-    launchers=[launcher]
-    if short.exists() or short.is_symlink():launchers.append(short)
+    launchers=[launcher];short_reference=None
+    if short.is_symlink():
+        try:
+            link=short.lstat();raw=os.readlink(short)
+            if raw!=launcher.name or launcher.is_symlink() or not launcher.is_file() or short.resolve()!=launcher.absolute():
+                raise OSError('Unrelated short entry target')
+            short_reference=(link.st_dev,link.st_ino,raw)
+        except (OSError,RuntimeError):
+            raise SystemExit('Preserving unrelated launcher: '+str(short)) from None
+    elif short.exists():launchers.append(short)
     original_digests={}
     for target in launchers:
         managed=False;original_digests[target]=None
@@ -323,6 +331,11 @@ def activate_windows(root,release,bin_dir):
             raise SystemExit('Copied activation file checksum mismatch')
         return path
     def unchanged(target,expected_digest):
+        if short_reference is not None:
+            link=short.lstat()
+            if (not short.is_symlink() or (link.st_dev,link.st_ino,os.readlink(short))!=short_reference
+                or short.resolve()!=launcher.absolute()):
+                raise SystemExit('Activation short reference changed; preserving concurrent file: '+str(short))
         if expected_digest is None:
             changed=target.exists() or target.is_symlink()
         else:
