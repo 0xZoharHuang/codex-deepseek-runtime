@@ -7,12 +7,16 @@ from contextlib import AsyncExitStack
 import codecs
 import hmac
 import json
+import logging
 import os
 import tempfile
+import time
+import uuid
 from pathlib import Path
 
 import aiohttp
 from aiohttp import web
+from aiohttp.web_log import AccessLogger
 
 from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response
 
@@ -64,6 +68,51 @@ def private_write(path, data):
         replace_file(temporary,path)
     finally:
         if temporary is not None and temporary.exists():temporary.unlink()
+
+
+def front_access_logger(trace_source):
+    """Use aiohttp's own completed-request hook, including router rejections."""
+    class FrontAccessLogger(AccessLogger):
+        @property
+        def enabled(self):
+            # aiohttp caches this on connection creation to enable start timing.
+            # Keep timing available when trace is toggled on a live keepalive;
+            # log() retains the existing logger behavior while trace is off.
+            return True
+
+        def log(self, request, response, duration):
+            try:
+                trace_root = trace_source()
+                if not trace_root:
+                    if super().enabled:
+                        super().log(request, response, duration)
+                    return
+                from .policy import isolated_path
+                trace = isolated_path(Path(trace_root))
+                private_directory(trace)
+                record = {
+                    "version": 1,
+                    "completed_at": time.time(),
+                    "duration_seconds": duration,
+                    "method": request.method,
+                    "path": request.path,
+                    "upgrade_websocket": any(
+                        value.strip().lower() == "websocket"
+                        for value in request.headers.get("Upgrade", "").split(",")
+                    ),
+                    "status": response.status,
+                }
+                private_write(trace / ("front-http-" + uuid.uuid4().hex + ".json"),
+                              json.dumps(record, ensure_ascii=True, allow_nan=False) + "\n")
+            except Exception as error:
+                # Never log exception text, request data or a traceback: any of
+                # those can contain credentials. A missing record is not zero.
+                logging.getLogger(__name__).warning(
+                    "Front HTTP trace incomplete (%s); request outcome unchanged",
+                    type(error).__name__,
+                )
+
+    return FrontAccessLogger
 
 
 async def sse_events(content, max_event_bytes=96 * 1024 * 1024):
@@ -158,7 +207,12 @@ class Gateway:
         app.router.add_get("/health", self.health)
         app.router.add_get("/v1/models", self.models)
         app.router.add_post("/v1/responses", self.responses)
-        self.runner = web.AppRunner(app, handler_cancellation=True, shutdown_timeout=5)
+        self.runner = web.AppRunner(
+            app, handler_cancellation=True, shutdown_timeout=5,
+            access_log_class=front_access_logger(
+                lambda: self.trace_source() if self.trace_source else os.environ.get("CODEX_DEEPSEEK_TRACE_DIR")
+            ),
+        )
         await self.runner.setup()
         if self.external_port is not None:
             self.port=self.external_port
