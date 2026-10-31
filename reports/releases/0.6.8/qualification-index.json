@@ -221,10 +221,10 @@
     "not_qualification_of_pending_process_cleanup_backport": true
   },
   "release_owner_remaining": [
-    "Qualify/merge approved process-local10054cleanup backport and bind resulting product/source proofs",
-    "Final clean source/package/secret scan",
-    "Publish exact original native assets and recipe only after CDS gates",
-    "Independent downloaded asset SHA readback, then tag/main decision; CAG remains independent"
+    "Unique frozen source normal noactivate install and fresh Windows native22+origin2+complete software, Unix current-source retained qualification; no Rust rebuild",
+    "Final source/package/secret checks",
+    "Publish original native assets and recipe then independently verify downloaded SHA",
+    "Tag/main promotion only after CDS gates; CAG independent"
   ],
   "cloud_and_model_exclusions": [
     "OpenAI private financial/sports data and account entitlements",
@@ -236,16 +236,23 @@
     "CAG App acceptance",
     "all historical failures erased",
     "URL availability or stable publication",
-    "Approved10054cleanup backport is not yet merged/qualified; present software results do not prove that fix"
+    "Reviewed integrated10054 backport has focused52 evidence; old850 full does not qualify its final installed/crossplatform behavior"
   ],
   "known_runtime_cleanup_gate": {
-    "status": "necessary_process_local_guarded_backport_pending_qualification",
+    "status": "reviewed_process_local_backport_integrated_pending_final_installed_and_crossplatform_qualification",
     "CDS_old_seven_stack_signature_matches": true,
     "deterministic_actual_stdlib_branch_skips_cleanup_proven": true,
     "individual_history_attribution_or_benignness_or_real_leak_claimed": false,
     "real3RST_reproduction": false,
     "Selector_loop_replacement_rejected": true,
     "source_implementation_outside_this_candidate_branch": true,
-    "required_before_stable_release": "Approved minimal process-local single-method cleanup backport and idempotent NativeTransport entry, with actual qualification; never sharedPython/loop-policy/global change."
+    "required_before_stable_release": "Approved minimal process-local single-method cleanup backport and idempotent NativeTransport entry, with actual qualification; never sharedPython/loop-policy/global change.",
+    "reviewed_source_commits": [
+      "aac2de58a2f521f6d4af9d07f24bfd558e83ed47",
+      "d010dc456bba837406233c30ea8c33550d49a516"
+    ],
+    "focused_candidate_cases": 52,
+    "focused_reverse_order_cases": 52,
+    "shared_Python_or_loop_policy_mutation": false
   }
 }

@@ -1,6 +1,6 @@
 # CDS 0.6.8：本地 runtime 资格与交付候选
 
-**可审候选，尚未发布。** 当前正式版仍为v0.6.7。三份新guarded native已真实构建、保留原producer/recipe/receipt；URL是未来发布位置。当前Windows完整软件回归已补齐；必要的10054 process-local cleanup backport资格、最终源码/包/secret扫描和公开资产回读尚须由owner关闭。CAG/Codex App独立验收，不能借本报告通过。
+**可审候选，尚未发布。** 当前正式版仍为v0.6.7。三份新guarded native已真实构建、保留原producer/recipe/receipt；URL是未来发布位置。当前Windows完整软件回归已补齐；已合入最小10054 process-local cleanup backport的最终安装/跨平台资格、最终源码/包/secret扫描和公开资产回读尚须由owner关闭。CAG/Codex App独立验收，不能借本报告通过。
 
 ## 实现边界
 
@@ -30,7 +30,7 @@ Guardian原生最小guard尊重 `supports_websockets=false`，保留HTTP评分/l
 - Windows旧131矩阵为128正向+3项native RestrictedToken command write/terminate/resize平台边界，有原生对照；不虚构额外正向。
 - V2实际目录为六个该版handler，没有 `close_agent`；V1显式close单独按版本契约，不能制造V2缺口或声称调用过。
 - 未声明的模型tool曾被明确拒绝且未执行；schema/工程观察器曾因phase、转义命令或冻结fixture元数据断言失败，原失败保留，修观察器不重放业务改历史。
-- 七个历史CPython10054栈与实际stdlib shutdown分支精确匹配；确定性证据证明该分支跳过close/detach/state。历史每条缺timestamp/FD/receipt，不可称benign或证明实际泄漏，真实3RST有界case未复现。owner已批准最小process-local guarded cleanup backport，**仍待实施/资格并绑定新产品；本页850结果不证明该fix已过**。不改共享Python或换Selector loop。
+- 七个历史CPython10054栈与实际stdlib shutdown分支精确匹配；确定性证据证明该分支跳过close/detach/state。历史每条缺timestamp/FD/receipt，不可称benign或证明实际泄漏，真实3RST有界case未复现。owner已审阅并合入最小process-local单方法guarded cleanup backport与幂等NativeTransport入口，52项定向及逆序控制已通过；**最终安装/跨平台资格仍待完成，本页850结果不能替代**。不改共享Python或换Selector loop。
 - web覆盖OpenRouter Exa搜索及codex_web MCP open/find/click/PDF读取，不是OpenAI私有托管 `web.run` 全函数复刻；Exa cached/index/location/image后端语义明确unsupported，不静默丢参数或列passed。
 - 私有金融/体育云数据、云账户权益、模型质量/缺失模态单列；不由换模型取得，也不把本地后台命令/队列/目标因此排除。其他模块不因叫“云”便自动豁免。
 
@@ -43,3 +43,6 @@ Guardian原生最小guard尊重 `supports_websockets=false`，保留HTTP评分/l
 首次Windowsfull的2550pass/6fail/4skip原样保留：5项子pytest缺QA框架、1项junction夹具用UTF8解GBK stdout。仅临时为未激活QA prefix加入单行外部框架路径，修夹具bytes捕获，6原失败targeted通过后完整复验；最终CAS撤销该单文件，原5042文件完全一致。没有改产品、资格器、权限、断言或skip。
 
 按[0.6.8操作方案](../../../docs/release-0.6.8.zh-CN.md)先新root/no-activate验证；正常安装不编译Rust。owner完成独立CDS gates、发布原字节资产并下载校验后再决定tag/main；不先公开再把未验范围写成全过。
+
+
+最终候选以tag/外部qualification handoff解析精确源码，本文不内嵌自身提交SHA。native/Rust资产不因文档或process-local Python修复重编；新修复必须绑定其实际新安装与当前源码回归。原始失败及historical 850结果保持身份。

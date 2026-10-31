@@ -10,9 +10,9 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **候选修正严格最终JSON+auto工具选择及Guardian HTTP-only传输，保留原生执行机制。** 本轮Windows已知Jinja工程独立930项通过；当前850 Linux/macOS各22native+249controller，offline分别2457+44skip/2456+45skip。Windows当前完整software2560已实测2556通过、4项原source条件skip；原native22单列沿用，旧数字不代替。10054 cleanup分支的必要process-local fix仍待独立资格，不能据此宣布最终稳定发布。模型质量、云权益、平台条件和原始失败见本版索引。
+> **候选修正严格最终JSON+auto工具选择及Guardian HTTP-only传输，保留原生执行机制。** 本轮Windows已知Jinja工程独立930项通过；当前850 Linux/macOS各22native+249controller，offline分别2457+44skip/2456+45skip。Windows当前完整software2560已实测2556通过、4项原source条件skip；原native22单列沿用，旧数字不代替。10054 cleanup分支的最小process-local修复已合入，最终新安装/跨平台资格仍待完成，不能据此宣布最终稳定发布。模型质量、云权益、平台条件和原始失败见本版索引。
 >
-> **下方v0.6.7段落和安装命令是当前公开稳定/回滚基线，不是0.6.8资格。** 候选未发布前不自动切换日常入口。
+> **当前公开稳定/回滚基线仍是v0.6.7，详见旧tag。** 本页主安装命令为0.6.8交付候选方案，只有公开资产回读与最终gate完成后才作为发布入口；当前不自动切换日常安装。
 
 [v0.6.7公开基线与完整许可证补充](reports/releases/0.6.7/README.md)保留原版本身份。0.6.8的范围、原始失败与待关闭事项集中于本版资格索引；当前未发布，不把未来资产URL当可用下载。
 
@@ -54,13 +54,13 @@
 | Linux x86_64 GNU | current850实际22native+249controller；offline2457通过+44平台skip，glibc/OpenSSL3/libcap条件。 |
 | macOS Apple Silicon | current850实际22native+249controller；offline2456通过+45平台skip。 |
 
-这些数字不证明所有177 RPC在每OS逐项fresh实测，也不覆盖CAG App。10054的cleanup分支缺陷已确认，最小process-local修复尚待独立资格；发布owner必须先关闭该gate。详见[本版索引](reports/releases/0.6.8/README.md)。
+这些数字不证明所有177 RPC在每OS逐项fresh实测，也不覆盖CAG App。10054的cleanup分支缺陷已确认，最小process-local修复已合入并有52项定向控制，最终新安装/跨平台资格待完成；发布owner必须先关闭该gate。详见[本版索引](reports/releases/0.6.8/README.md)。
 
 原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
 
-## 当前公开稳定版安装（v0.6.7）
+## 安装并运行（0.6.8候选，公开发布后使用下载入口）
 
-以下命令固定到 v0.6.7，三平台归档均为0.6.7，必须匹配该 tag 随附的 manifest 和摘要。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
+以下命令为本次v0.6.8交付方案；该tag/资产尚未公开前仅用已验证本地archive/manifest按操作草案验收，不把未来URL当可用下载。发布后必须匹配该tag随附的平台manifest和摘要。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
 
 已有任务继续使用自己的不可变入口。并行验证或升级先用新目录及下文 --no-activate，当前任务完成后再切换，不覆盖正在使用的启动器、profile 或 sandbox 目录。
 
@@ -71,7 +71,7 @@
 在终端执行：
 
 ```sh
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.8 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -89,7 +89,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.8 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -107,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.7 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.8 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -126,13 +126,13 @@ codex-deepseek.exe
 
 ### 下载受限或并行验证版本
 
-可以预先下载与当前源码随附的平台清单和 recipe 匹配的0.6.7原生归档，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可以预先下载与当前源码随附的平台清单和 recipe 匹配的0.6.8原生归档，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
-python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.7-aarch64-apple-darwin.tar.gz
+python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.8-aarch64-apple-darwin.tar.gz
 ```
 
-另外两份文件名是 `codex-deepseek-native-0.6.7-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.7-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+另外两份文件名是 `codex-deepseek-native-0.6.8-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.8-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
