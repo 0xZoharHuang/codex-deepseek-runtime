@@ -337,7 +337,7 @@ async def test_actual_aiohttp_connection_reaches_clean_state(original_target, re
     try:
         await asyncio.wait_for(asyncio.to_thread(client), 3)
         async with asyncio.timeout(2):
-            while not accepted or not accepted[0]._called_connection_lost:
+            while not accepted or not accepted[0]._called_connection_lost or runner.server.connections:
                 await asyncio.sleep(.01)
         assert accepted[0]._sock is None and accepted[0]._server is None
         assert not runner.server.connections
