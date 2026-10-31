@@ -1,0 +1,124 @@
+# Guardian provider transport: pinned 0.164 candidate
+
+Status: prepared source candidate, not a qualified native release. No Cargo build,
+Rust test, model request, installation or native asset relabeling was performed
+while preparing this change.
+
+The earlier 0.6.8 plan to reuse every 0.6.7 native byte applied only to the pure
+protocol change. It is superseded for this transport defect: the shared Guardian
+V2 connection pool ignores a provider's supports_websockets=false setting.
+Reusing the affected CLI cannot close that defect.
+
+## Minimal change and admission
+
+The base remains fe136d4e70ef2b5bbed40a2d22b3aabf267796d3,
+Codex 0.164.0-alpha.7. The production patch is three lines in start_refill,
+returning before opening a WebSocket pool for an HTTP-only provider. Runtime
+approvals, scoring, scheduling, cancellation, concurrency, HTTP transport and the
+WebSocket-capable path remain native.
+
+guardian-provider-transport-0164.patch is byte-identical to the independently
+prepared 0.165 patch because both original pool and test files have the same
+preimages. Its loopback test exercises actual HTTP scoring twice, no socket
+opens, no idle sockets and the Guardian request header. Existing true-provider,
+refill, timeout, capacity and cancellation tests remain required controls.
+
+guardian-provider-transport-0164-candidate.json extends the entire current
+recipe with this one common overlay on all three shipped targets. Every changed
+file has a before/after SHA. The default runtime-overlays.json and existing ready
+native manifests remain unchanged until real new artifacts exist.
+
+The builder accepts the candidate only through explicit --recipe. It rejects
+an unreviewed external recipe path, omission/reordering of the guard and
+Windows-only coverage for this common patch. Its receipt records the selected
+recipe's actual SHA. Default source admission remains the old exact stack.
+
+## Formal Windows producer
+
+Use build_native.py, not another runtime, launcher or build supervisor. A fresh
+output is required. Set process-local MSVC INCLUDE/LIB and PATH from the known
+working compiler environment. No machine environment, App profile or existing
+CDS installation needs changing.
+
+Example maintainer command after those environment checks:
+
+    python -I -B build_native.py --work <owned-existing-CDS-work> --output <fresh-output> --jobs 2 --recipe <checkout>/native/guardian-provider-transport-0164-candidate.json --toolchain-bin <pinned-1.99.1-toolchain-bin>
+
+The optional toolchain directory selects its rustc, rustdoc and cargo directly;
+the builder still rejects a rustc version other than the recipe's exact pin.
+Without it, the established Rustup path is unchanged. This avoids installing a
+Rustup proxy merely to use a compiler already present on the Windows host.
+
+The standard work/target and CARGO_HOME caches can be reused. The builder extracts
+a fresh source directory, so registry dependencies may be cached while workspace
+crates still rebuild. Do not promise a one-crate rebuild or rewrite Cargo
+fingerprints to obtain it.
+
+The standard producer retains the HTTP helper and complete Windows CLI/sandbox
+target command. A prior dependency graph shows Guardian V2 is reachable from the
+CLI and not from the HTTP/sandbox/service helper normal/build closures. That is
+only a necessary condition for component reuse. Skipping a helper additionally
+requires exact source, dependency, compiler, flags and producer-byte evidence.
+Until that is independently qualified, keep the standard complete producer.
+Never label old assets as repaired just because their other components are
+unchanged.
+
+The archived official source, original Code Mode Host and ripgrep downloads must
+match build_assets() hashes. A verified existing file may seed the download cache;
+do not reconstruct an archive and pretend it matches the original archive pin.
+
+## Qualification and promotion
+
+1. Produce the first real candidate package and retain its compiler commands,
+   full recipe, source hashes, original logs, receipt and exact output hashes.
+2. Run the Guardian connection_pool native tests, including the false-provider
+   test and existing true-provider/refill/cancellation controls. These are real
+   local transport tests and require no model credential.
+3. Only after a real candidate package exists, promote the reviewed candidate
+   recipe to the active lock and require its final guard in the default ordered
+   stack in the same source transition. Until that transition, the existing
+   package/qualification commands deliberately reject a candidate package whose
+   recipe differs from the active lock. Do not bypass their checks.
+4. Qualify and package actual outputs with the active reviewed recipe. Generate
+   new manifest pins only from those real artifacts. Update the candidate-phase
+   admission tests when promoting; the final active recipe must reject guard
+   omission, not accept the old stack as a fallback.
+5. Use the existing native-platform-qualification workflow for Linux and macOS
+   after that source promotion. Its full pinned producer and native/adapter
+   qualification remain required. The native-platform-reuse workflow must not
+   reuse an old CLI for this common source change.
+6. Publish stable support only after target qualification and exact remote asset
+   readback. Source replay and Python tests do not substitute for Rust, native,
+   live CDS or App acceptance.
+
+Run the selected native tests from this producer's recorded new source tree,
+using the same target cache and release profile:
+
+    cargo +1.99.1 test --locked --release -j 2 -p codex-guardian-v2 async_scorer::sampler::connection_pool:: -- --test-threads=1
+
+On Windows with the explicit toolchain, invoke its cargo.exe directly and keep
+RUSTC/RUSTDOC and CARGO_TARGET_DIR in that child environment. Derive the new source
+tree from this producer's directory admission; do not pick an unrelated newest
+directory.
+
+## Existing Unix CI dependencies
+
+Keep the current pinned checkout/upload actions and Python 3.13.3 setup. Linux
+uses ubuntu-24.04 with build-essential, binutils, make, pkg-config, libcap-dev,
+libasound2-dev and perl. macOS uses the existing macos-15 arm64 workflow with its
+uname check; do not assume a runner's architecture from its label alone.
+Install the exact Rust 1.99.1 recipe pin and existing hashed Python test lock.
+No new crate or OS dependency is added by the three-line guard or its test.
+
+Linux still builds/strips its pinned bwrap resource before embedding its SHA in
+the CLI. Code Mode Host, ripgrep and license provenance remain pinned. Use hosted
+runners for Unix verification; this work does not require operating on the Mac
+development machine.
+
+## Current evidence boundary
+
+All three targets' stable and candidate source stacks were replayed through real
+Git application and exact file hashes without Cargo. Eighty focused
+build/recipe checks passed with no skip, failure or error. This proves source
+admission and builder selection only. Native compilation and behavior,
+installation, and release qualification remain pending.

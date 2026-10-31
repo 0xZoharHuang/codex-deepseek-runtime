@@ -129,7 +129,7 @@ def extract_source_archive(archive, tree, *, windows):
             raise RuntimeError('Windows source archive link materialization mismatch')
 
 
-def runtime_recipe():
+def runtime_recipe(recipe_path=None):
     """Read the explicit patch stack; target qualification remains a separate gate."""
     def pairs(values):
         result={}
@@ -137,21 +137,29 @@ def runtime_recipe():
             if key in result:raise ValueError('Duplicate native build recipe key: '+key)
             result[key]=value
         return result
-    recipe=json.loads((SOURCE/'native/runtime-overlays.json').read_text(encoding='utf-8'),object_pairs_hook=pairs)
+    default=SOURCE/'native/runtime-overlays.json'
+    candidate=SOURCE/'native/guardian-provider-transport-0164-candidate.json'
+    path=Path(recipe_path) if recipe_path is not None else default
+    if path.resolve() not in {default.resolve(),candidate.resolve()}:
+        raise ValueError('Native recipe must select the stable or explicit Guardian candidate file')
+    recipe=json.loads(path.read_text(encoding='utf-8'),object_pairs_hook=pairs)
     if set(recipe)!={'schema','upstream_commit','upstream_toolchain','build_toolchain','required_base_inputs','overlays'} or type(recipe['schema']) is not int or recipe['schema']!=1 or recipe['upstream_commit']!=COMMIT:
         raise ValueError('Native build recipe has an incompatible schema or upstream baseline')
     if any(not isinstance(recipe[key],str) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',recipe[key]) for key in ['upstream_toolchain','build_toolchain']):
         raise ValueError('Native toolchains must be explicit release pins')
     if set(recipe['required_base_inputs'])!=set(PLATFORM_ASSETS):raise ValueError('Native recipe target set mismatch')
     order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch','windows-runner-junction-root.patch','windows-home-metadata.patch','windows-root-acl-sharing.patch','windows-plugin-git-lifecycle.patch','windows-setup-background-handles.patch','windows-ancestor-metadata.patch','windows-acl-inheritance-lock.patch','windows-critical-read.patch','windows-acl-lifecycle.patch','payload-request-capacity.patch','payload-request-capacity-replay.patch','windows-readable-daemon-scratch.patch','windows-critical-read-deny-readiness.patch','windows-metadata-owner-policy.patch','windows-native-metadata-minimal.patch']
-    if not isinstance(recipe['overlays'],list) or [item.get('file') for item in recipe['overlays']]!=order:raise ValueError('Native overlay order mismatch')
+    guardian='guardian-provider-transport-0164.patch'
+    selected=[item.get('file') for item in recipe['overlays']] if isinstance(recipe['overlays'],list) else None
+    expected_order=order+[guardian] if path.resolve()==candidate.resolve() else order
+    if selected!=expected_order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():
         names=['codex-runtime.patch']+(['windows-transport.patch'] if target.endswith('windows-msvc') else [])
         if not isinstance(inputs,list) or [item.get('file') for item in inputs]!=names or any(set(item)!={'file','sha256'} or not digest(item['sha256']) for item in inputs):raise ValueError('Invalid required native baseline inputs')
     for item in recipe['overlays']:
         if set(item)!={'file','sha256','changes_by_target'} or not digest(item['sha256']):raise ValueError('Invalid native overlay identity')
-        expected_targets=set(PLATFORM_ASSETS) if item['file'].startswith('payload-') else {'x86_64-pc-windows-msvc'}
+        expected_targets=set(PLATFORM_ASSETS) if item['file'].startswith('payload-') or item['file']==guardian else {'x86_64-pc-windows-msvc'}
         if set(item['changes_by_target'])!=expected_targets:raise ValueError('Invalid native overlay target coverage')
         for changes in item['changes_by_target'].values():
             if not isinstance(changes,list) or not changes:raise ValueError('Native overlay needs source hash assertions')
@@ -229,8 +237,20 @@ def native_license_collector():
     return module.collect
 
 
+def compiler_commands(pin, directory=None):
+    if directory is None:
+        return ['rustup','run',pin,'rustc','--version'],['cargo','+'+pin],{}
+    directory=Path(directory).expanduser().resolve()
+    suffix='.exe' if platform.system()=='Windows' else ''
+    files={name:directory/(name+suffix) for name in ['rustc','rustdoc','cargo']}
+    if any(not path.is_file() or path.is_symlink() for path in files.values()):
+        raise ValueError('Pinned toolchain directory must contain rustc, rustdoc and cargo')
+    return [str(files['rustc']),'--version'],[str(files['cargo'])],{
+        'RUSTC':str(files['rustc']),'RUSTDOC':str(files['rustdoc'])}
+
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--work',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--jobs',type=int,default=2);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--work',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--recipe',type=Path,default=SOURCE/'native/runtime-overlays.json');parser.add_argument('--toolchain-bin',type=Path);args=parser.parse_args()
     if not 1<=args.jobs<=16:raise SystemExit('Build jobs must be between 1 and 16')
     target=build_target();assets=build_assets(target);suffix='.exe' if platform.system()=='Windows' else ''
     collect=native_license_collector()
@@ -270,16 +290,16 @@ def main():
         patch_id=hashlib.sha256(combined.encode()).hexdigest()
         if patch_id!=extra['combined_patch_sha256']:raise RuntimeError('Combined Windows fork identity mismatch')
         patch_inputs.append({'file':'windows-transport.patch','sha256':sha(overlay)})
-    recipe=runtime_recipe();recipe_id=native_recipe_identity(target,recipe);overlay_hashes=apply_runtime_overlays(tree,target,patch_inputs,recipe)
+    recipe=runtime_recipe(args.recipe);recipe_id=native_recipe_identity(target,recipe);overlay_hashes=apply_runtime_overlays(tree,target,patch_inputs,recipe)
     source_paths={entry['path'] for entry in expected['files']}|set(overlay_hashes)
     if suffix:source_paths.update(row['path'] for row in extra['files'])
     combined=combined_patch(tree,archives['source'],source_paths);(build/'combined.patch').write_bytes(combined.encode())
     patch_id=hashlib.sha256(combined.encode()).hexdigest()
     toolchain_pin=recipe['build_toolchain']
-    toolchain=subprocess.run(['rustup','run',toolchain_pin,'rustc','--version'],check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
+    compiler,cargo,compiler_environment=compiler_commands(toolchain_pin,args.toolchain_bin)
+    toolchain=subprocess.run(compiler,check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
     if not toolchain.startswith('rustc '+toolchain_pin+' '):raise RuntimeError('Native compiler differs from the explicit qualification pin')
-    cargo=['cargo','+'+toolchain_pin]
-    environment={**os.environ,'CARGO_INCREMENTAL':'0','CARGO_BUILD_JOBS':str(args.jobs),'CARGO_PROFILE_RELEASE_DEBUG':'0','CARGO_PROFILE_RELEASE_STRIP':'symbols','CARGO_PROFILE_RELEASE_LTO':'false','CARGO_PROFILE_RELEASE_CODEGEN_UNITS':'16','CARGO_TARGET_DIR':str(work/'target')}
+    environment={**os.environ,'CARGO_INCREMENTAL':'0','CARGO_BUILD_JOBS':str(args.jobs),'CARGO_PROFILE_RELEASE_DEBUG':'0','CARGO_PROFILE_RELEASE_STRIP':'symbols','CARGO_PROFILE_RELEASE_LTO':'false','CARGO_PROFILE_RELEASE_CODEGEN_UNITS':'16','CARGO_TARGET_DIR':str(work/'target'),**compiler_environment}
     bwrap_command=None
     if 'linux' in target:
         # Match upstream release ordering: build/strip the resource first, then
@@ -338,7 +358,7 @@ def main():
     metadata={'layoutVersion':1,'version':VERSION,'target':target,'variant':'codex','resourcesDir':'codex-resources','pathDir':'codex-path','entrypoint':'bin/codex'+suffix,'distribution':'codex-deepseek-runtime','upstreamCommit':COMMIT,'patchSha256':patch_id,'patchInputs':patch_inputs,'recipeId':recipe_id}
     (output/'codex-package.json').write_text(json.dumps(metadata,indent=2), encoding='utf-8')
     validate_native_layout(tree,output,target)
-    receipt={'schema':1,'profile':'release','upstream_commit':COMMIT,'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},'patch_sha256':patch_id,'patch_inputs':patch_inputs,'rustc':toolchain,'cargo_command':command,'cargo_commands':[helper_command,command],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'upstream_toolchain_pin':recipe['upstream_toolchain'],'overlay_recipe_sha256':sha(SOURCE/'native/runtime-overlays.json'),'source_files':{name:sha(tree/name) for name in sorted(source_paths)},'combined_patch_sha256':patch_id,'environment':{key:environment[key] for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS','CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP','CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},'files':{path.relative_to(output).as_posix():sha(path) for path in sorted(output.rglob('*')) if path.is_file()}}
+    receipt={'schema':1,'profile':'release','upstream_commit':COMMIT,'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},'patch_sha256':patch_id,'patch_inputs':patch_inputs,'rustc':toolchain,'cargo_command':command,'cargo_commands':[helper_command,command],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'upstream_toolchain_pin':recipe['upstream_toolchain'],'overlay_recipe_sha256':sha(args.recipe),'source_files':{name:sha(tree/name) for name in sorted(source_paths)},'combined_patch_sha256':patch_id,'environment':{key:environment[key] for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS','CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP','CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},'files':{path.relative_to(output).as_posix():sha(path) for path in sorted(output.rglob('*')) if path.is_file()}}
     if bwrap_command:receipt['bwrap']={'command':bwrap_command,'embedded_sha256':environment['CODEX_BWRAP_SHA256'],'resource':'codex-resources/bwrap'}
     (output/'build-receipt.json').write_text(json.dumps(receipt,indent=2), encoding='utf-8');print(json.dumps({'package':str(output),'receipt':str(output/'build-receipt.json')},indent=2))
 

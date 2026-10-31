@@ -78,13 +78,14 @@ def test_preflight_rejects_before_running_git_or_a_compiler(tmp_path,monkeypatch
     with pytest.raises(ValueError):build.apply_runtime_overlays(tree,WIN,inputs,recipe)
 
 
+@pytest.mark.parametrize('candidate',[False,True])
 @pytest.mark.parametrize('target',TARGETS)
-def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,monkeypatch,target):
+def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,monkeypatch,target,candidate):
     archive=os.environ.get('CODEX_DEEPSEEK_TEST_SOURCE_ARCHIVE')
     if not archive:pytest.skip('requires explicitly supplied cached upstream archive')
     archive=Path(archive);assert build.sha(archive)==build.SOURCE_ASSET[1]
     git=os.environ.get('CODEX_DEEPSEEK_TEST_GIT','git')
-    recipe=build.runtime_recipe();inputs=copy.deepcopy(recipe['required_base_inputs'][target])
+    recipe=build.runtime_recipe(ROOT/'native/guardian-provider-transport-0164-candidate.json' if candidate else None);inputs=copy.deepcopy(recipe['required_base_inputs'][target])
     names=[row['file'] for row in inputs]+[row['file'] for row in recipe['overlays'] if target in row['changes_by_target']]
     paths={'codex-rs/rust-toolchain.toml'}
     for name in names:
@@ -114,6 +115,11 @@ def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,m
     diff=build.combined_patch(tree,archive,paths-{'codex-rs/rust-toolchain.toml'})
     assert diff==build.combined_patch(tree,archive,reversed(sorted(paths-{'codex-rs/rust-toolchain.toml'})))
     assert str(tmp_path) not in diff
+    if candidate:
+        assert 'if !self.config.provider.info().supports_websockets' in diff
+        assert 'provider_without_websockets_scores_over_http_without_opening_pool' in diff
+    else:
+        assert 'provider_without_websockets_scores_over_http_without_opening_pool' not in diff
     assert 'raw_protocol_version' in diff and 'StatusCode::PAYLOAD_TOO_LARGE' in diff
     if target==WIN:
         assert 'Remove this isolated Codex home' in diff
@@ -361,7 +367,8 @@ def test_capacity_overlay_cannot_omit_a_platform(tmp_path,monkeypatch,target):
         build.runtime_recipe()
 
 
-def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_path, monkeypatch):
+@pytest.mark.parametrize("candidate_recipe",[False,True])
+def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_path, monkeypatch,candidate_recipe):
     """Exercise main's actual Windows baseline extraction/diff, stop before Cargo."""
     import io,sys
     source = tmp_path/"checkout";(source/"native").mkdir(parents=True)
@@ -394,7 +401,11 @@ def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_p
         commands.append(command)
     monkeypatch.setattr(build.subprocess,"run",no_process)
     recipe = {"fixture":"NO MODEL OR PRODUCTION RECIPE"}
-    monkeypatch.setattr(build,"runtime_recipe",lambda:recipe)
+    selected=source/"native"/("guardian-provider-transport-0164-candidate.json"if candidate_recipe else"runtime-overlays.json")
+    def selected_recipe(path):
+        assert path==selected
+        return recipe
+    monkeypatch.setattr(build,"runtime_recipe",selected_recipe)
     monkeypatch.setattr(build,"native_recipe_identity",lambda target,recipe:"fixture-recipe")
     class ReachedOverlay(Exception):pass
     def stop_at_overlay(tree,target,patch_inputs,received):
@@ -405,7 +416,9 @@ def test_windows_main_reaches_overlay_after_original_diff_without_compiler(tmp_p
             {"file":"windows-transport.patch","sha256":digest(windows)}]
         raise ReachedOverlay
     monkeypatch.setattr(build,"apply_runtime_overlays",stop_at_overlay)
-    monkeypatch.setattr(sys,"argv",["build_native.py","--work",str(tmp_path/"work"),"--output",str(tmp_path/"output")])
+    argv=["build_native.py","--work",str(tmp_path/"work"),"--output",str(tmp_path/"output")]
+    if candidate_recipe:argv+=["--recipe",str(selected)]
+    monkeypatch.setattr(sys,"argv",argv)
     with pytest.raises(ReachedOverlay):
         build.main()
     assert len(commands) == 3
