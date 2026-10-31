@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py ci/test_guardian_pool.py tests/test_native_guardian_recipe.py tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
+          python -I -m pytest -p pytest_asyncio.plugin -W error -o asyncio_default_fixture_loop_scope=function ci/test_native_reuse.py ci/test_guardian_pool.py ci/test_native_build_retention.py tests/test_native_licenses.py tests/test_native_license_aliases.py tests/test_native_checkpoint_imports.py tests/test_native_guardian_recipe.py tests/test_native_build_recipe.py::test_isolated_native_build_loads_checkout_license_inputs -q -p no:cacheprovider --basetemp "$RUNNER_TEMP/cds-build-entry-test" --junitxml "$RUNNER_TEMP/cds-ci-artifact/build-entry.xml"
       - name: Build the pinned native package
         shell: bash
         run: |
@@ -108,10 +108,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/cds-ci-artifact"
           git rev-parse HEAD > "$RUNNER_TEMP/cds-ci-artifact/source-commit.txt"
           cp native/runtime-overlays.json "$RUNNER_TEMP/cds-ci-artifact/runtime-overlays.json"
-          if [[ -f "$RUNNER_TEMP/cds-native-package/build-receipt.json" ]]; then
-            tar -czf "$RUNNER_TEMP/cds-ci-artifact/native-package.tar.gz" -C "$RUNNER_TEMP/cds-native-package" .
-            shasum -a 256 "$RUNNER_TEMP/cds-ci-artifact/native-package.tar.gz" > "$RUNNER_TEMP/cds-ci-artifact/native-package.sha256"
-          fi
+          python -I ci/retain_native_build.py --package "$RUNNER_TEMP/cds-native-package" --work "$RUNNER_TEMP/cds-build" --evidence "$RUNNER_TEMP/cds-ci-artifact"
       - name: Upload bounded qualification artifacts
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

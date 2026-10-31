@@ -86,3 +86,24 @@ branch may be deleted. For a future changed recipe, dispatch the fresh-build
 workflow on the new candidate ref. The separate reuse workflow applies only to
 its exact pinned native assets and recipe-equivalence rules; it cannot qualify
 changed common native code by reusing an older binary.
+
+## Compile failure preservation
+
+The builder records an immutable compiled-not-qualified checkpoint before Cargo
+metadata and notice collection. It binds the exact compiled package files,
+compiler commands/profile/driver inputs and complete native source inventory,
+which must remain unchanged through compilation. Actual Cargo metadata stdout
+and its command receipt are retained separately when that stage succeeds.
+
+The always step preserves a bounded native-package-unqualified archive even
+when the final build receipt was never written, plus source/recipe/checkpoint
+metadata. It does not archive the Cargo target/cache, label output ready, bypass
+qualification or resume a build. A later repair must keep the original failure
+and receipt unchanged and record explicit postcompile derivation/provenance;
+existing compiled bits do not by themselves prove the native tests passed.
+
+Native notice collection resolves relative notice-file aliases only inside an
+admitted crate or its exact Cargo-pinned Git checkout. Git HEAD, tree/index mode,
+alias text and full target content must match the locked Git objects. This also
+handles Windows checkout materialization; arbitrary short strings are not paths.
+Logical source, alias chain, resolved target and content SHA remain attributed.

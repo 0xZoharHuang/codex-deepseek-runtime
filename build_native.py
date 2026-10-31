@@ -237,6 +237,45 @@ def native_license_collector():
     return module.collect
 
 
+
+def native_source_snapshot(tree, archive):
+    """Reuse the complete source inventory, including the archive's known link."""
+    original_path = list(sys.path)
+    try:
+        sys.path.insert(0, str(SOURCE))
+        spec = importlib.util.spec_from_file_location("cds_compile_source_inventory", SOURCE/"verify_native_source.py")
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    finally:
+        sys.path[:] = original_path
+    if module.build.SOURCE.resolve() != SOURCE.resolve():
+        raise ValueError("Compile inventory loaded another source checkout")
+    _, links = module.upstream_inventory(archive)
+    files = module.source_inventory(tree, links)
+    return {"files": files, "sha256": module.inventory_digest(files)}
+
+
+def write_compile_checkpoint(build, output, provenance, before, after):
+    """Immutable evidence of compiled files; explicitly not package qualification."""
+    if before != after:
+        raise ValueError("Native sources changed during compilation; outputs remain unqualified")
+    files = {}
+    for path in sorted(output.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("Compiled output contains a redirected file")
+        if path.is_file():
+            files[path.relative_to(output).as_posix()] = {"sha256": sha(path), "bytes": path.stat().st_size}
+    if not files:
+        raise ValueError("Compile checkpoint has no output files")
+    record = {**provenance, "schema": 1, "status": "compiled-not-qualified", "ready": False,
+              "source_unchanged_through_compile": True,
+              "full_source_inventory": before, "output_root": str(output),
+              "output_files": files}
+    path = build/"compile-checkpoint.json"
+    with path.open("xb") as stream:
+        stream.write(json.dumps(record, indent=2).encode())
+    return path
+
+
 def compiler_commands(pin, directory=None):
     if directory is None:
         return ['rustup','run',pin,'rustc','--version'],['cargo','+'+pin],{}
@@ -295,6 +334,7 @@ def main():
     if suffix:source_paths.update(row['path'] for row in extra['files'])
     combined=combined_patch(tree,archives['source'],source_paths);(build/'combined.patch').write_bytes(combined.encode())
     patch_id=hashlib.sha256(combined.encode()).hexdigest()
+    source_before=native_source_snapshot(tree,archives['source'])
     toolchain_pin=recipe['build_toolchain']
     compiler,cargo,compiler_environment=compiler_commands(toolchain_pin,args.toolchain_bin)
     toolchain=subprocess.run(compiler,check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
@@ -352,13 +392,39 @@ def main():
             'post_build':['strip','--strip-debug','--strip-unneeded','bwrap'],
         },indent=2),encoding='utf-8')
     for executable in ['bin/codex','bin/codex-code-mode-host','codex-path/rg','bin/codex-http-transport']:(output/(executable+suffix)).chmod(0o755)
+    compile_checkpoint=write_compile_checkpoint(build,output,{
+        'target':target,'upstream_commit':COMMIT,'upstream_version':VERSION,
+        'native_recipe_id':recipe_id,'overlay_recipe_sha256':sha(args.recipe),
+        'recipe_path':str(args.recipe),'patch_inputs':patch_inputs,
+        'combined_patch_sha256':patch_id,'source_tree':str(tree),
+        'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},
+        'rustc':toolchain,'build_toolchain_pin':toolchain_pin,
+        'cargo_commands':([bwrap_command]if bwrap_command else[])+[helper_command,command],
+        'environment':{key:environment[key]for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS',
+            'CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP',
+            'CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},
+        'compiler_driver_inputs':{name:sha(SOURCE/name)for name in [
+            'build_native.py','native_licenses.py','verify_native_source.py']},
+        },source_before,native_source_snapshot(tree,archives['source']))
     metadata_command=[*cargo,'metadata','--locked','--format-version','1','--manifest-path',str(tree/'codex-rs/Cargo.toml'),'--filter-platform',target]
-    dependency_metadata=json.loads(subprocess.run(metadata_command,env=environment,check=True,capture_output=True,text=True,encoding='utf-8').stdout)
+    metadata_result=subprocess.run(metadata_command,env=environment,capture_output=True)
+    metadata_raw=metadata_result.stdout
+    (build/'dependency-metadata.json').write_bytes(metadata_raw)
+    (build/'dependency-metadata.stderr').write_bytes(metadata_result.stderr)
+    (build/'dependency-metadata-command.json').write_bytes(json.dumps({
+        'command':metadata_command,'returncode':metadata_result.returncode,
+        'stdout_sha256':hashlib.sha256(metadata_raw).hexdigest(),
+        'stderr_sha256':hashlib.sha256(metadata_result.stderr).hexdigest(),
+        'scope':'Postcompile Cargo metadata only; not another Rust build'},indent=2).encode())
+    metadata_result.check_returncode()
+    dependency_metadata=json.loads(metadata_raw)
     collect(tree/'codex-rs/Cargo.toml',output/'licenses/rust',metadata=dependency_metadata,target=target)
     metadata={'layoutVersion':1,'version':VERSION,'target':target,'variant':'codex','resourcesDir':'codex-resources','pathDir':'codex-path','entrypoint':'bin/codex'+suffix,'distribution':'codex-deepseek-runtime','upstreamCommit':COMMIT,'patchSha256':patch_id,'patchInputs':patch_inputs,'recipeId':recipe_id}
     (output/'codex-package.json').write_text(json.dumps(metadata,indent=2), encoding='utf-8')
     validate_native_layout(tree,output,target)
     receipt={'schema':1,'profile':'release','upstream_commit':COMMIT,'archives':{key:{'url':url,'sha256':digest} for key,(url,digest) in assets.items()},'patch_sha256':patch_id,'patch_inputs':patch_inputs,'rustc':toolchain,'cargo_command':command,'cargo_commands':[helper_command,command],'native_recipe_id':recipe_id,'build_toolchain_pin':toolchain_pin,'upstream_toolchain_pin':recipe['upstream_toolchain'],'overlay_recipe_sha256':sha(args.recipe),'source_files':{name:sha(tree/name) for name in sorted(source_paths)},'combined_patch_sha256':patch_id,'environment':{key:environment[key] for key in ['CARGO_INCREMENTAL','CARGO_BUILD_JOBS','CARGO_PROFILE_RELEASE_DEBUG','CARGO_PROFILE_RELEASE_STRIP','CARGO_PROFILE_RELEASE_LTO','CARGO_PROFILE_RELEASE_CODEGEN_UNITS']},'files':{path.relative_to(output).as_posix():sha(path) for path in sorted(output.rglob('*')) if path.is_file()}}
+    receipt['compile_checkpoint_sha256']=sha(compile_checkpoint)
+    receipt['dependency_metadata_sha256']=hashlib.sha256(metadata_raw).hexdigest()
     if bwrap_command:receipt['bwrap']={'command':bwrap_command,'embedded_sha256':environment['CODEX_BWRAP_SHA256'],'resource':'codex-resources/bwrap'}
     (output/'build-receipt.json').write_text(json.dumps(receipt,indent=2), encoding='utf-8');print(json.dumps({'package':str(output),'receipt':str(output/'build-receipt.json')},indent=2))
 
