@@ -134,19 +134,35 @@ def test_close_failure_is_not_falsely_marked_closed_or_detached():
 
 @pytest.fixture
 def original_target(monkeypatch):
+    if sys.platform != "win32":
+        pytest.skip("Windows stdlib Proactor is not available/imported on Unix")
     from asyncio import proactor_events
     target = proactor_events._ProactorBasePipeTransport
-    original = target._call_connection_lost
+    current = target._call_connection_lost
+    # Earlier full-suite tests may already have constructed NativeTransport.
+    # Recover only the real method saved at the exact-source installation.
+    if current is compat._call_connection_lost and compat._installed_target is target:
+        original = compat._original_method
+        assert original is not None
+    else:
+        original = current
     monkeypatch.setattr(target, "_call_connection_lost", original)
     monkeypatch.setattr(compat, "_WINDOWS", True)
     monkeypatch.setattr(compat, "_installed_target", None)
+    monkeypatch.setattr(compat, "_original_method", None)
     monkeypatch.setattr(compat, "_warned", False)
     return target, original
 
 
 def require_reviewed(original):
-    if not inspect.isfunction(original) or hashlib.sha256(inspect.getsource(original).encode()).hexdigest() not in compat._REVIEWED_SOURCES:
-        pytest.skip("This interpreter's Proactor source is not the reviewed qualification target")
+    reviewed = (
+        inspect.isfunction(original)
+        and hashlib.sha256(inspect.getsource(original).encode()).hexdigest() in compat._REVIEWED_SOURCES
+    )
+    if not reviewed:
+        if sys.platform == "win32" and sys.version_info[:3] == (3, 13, 3):
+            pytest.fail("Packaged Windows CPython3.13.3 must run the reviewed original-method controls")
+        pytest.skip("Explicitly unqualified interpreter source; not the reviewed Windows qualification target")
 
 
 def test_real_stdlib_installer_and_second_install_are_exact_identity(original_target, monkeypatch):

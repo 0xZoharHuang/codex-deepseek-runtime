@@ -22,6 +22,7 @@ _REVIEWED_SOURCES = frozenset({
 })
 _lock = threading.Lock()
 _installed_target = None
+_original_method = None
 _warned = False
 
 
@@ -59,7 +60,7 @@ def _not_applied(reason, source_hash="unavailable"):
 
 def install_proactor_cleanup_backport():
     """Repair a known method only in this process; retain Python >=3.11 support."""
-    global _installed_target
+    global _installed_target, _original_method
     if not _WINDOWS:
         return "not_applicable"
     with _lock:
@@ -98,6 +99,7 @@ def install_proactor_cleanup_backport():
             return _not_applied("source_unavailable")
         if source_hash not in _REVIEWED_SOURCES:
             return _not_applied("unreviewed_source", source_hash)
+        _original_method = current
         target._call_connection_lost = _call_connection_lost
         _installed_target = target
         return "applied"
