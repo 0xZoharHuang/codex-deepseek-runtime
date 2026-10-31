@@ -1,5 +1,6 @@
 """Automatic native tools and strict final schemas use explicit wire mappings."""
 import copy
+from contextlib import closing
 import hashlib
 import json
 import sqlite3
@@ -146,11 +147,13 @@ def test_mapping_does_not_coerce_falsy_invalid_native_instructions(instructions)
 
 def test_receipt_column_is_additive_and_original_rows_and_format_data_are_preserved(tmp_path):
     path = tmp_path / "legacy.sqlite"
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute("CREATE TABLE receipts(id TEXT PRIMARY KEY,started REAL,finished REAL,status TEXT,upstream_status INTEGER,response_id TEXT,usage TEXT,detail TEXT)")
         db.execute("INSERT INTO receipts VALUES (?,?,?,?,?,?,?,?)",
                    ("legacy", 1, 2, "completed", 200, "old-response", "{}", None))
         db.execute("PRAGMA user_version=3")
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        db.execute("SELECT 1")  # Transaction completion must also end this fixture handle.
     body = request(); _, registry = prepare(body)
     store = Store(path)
     try:

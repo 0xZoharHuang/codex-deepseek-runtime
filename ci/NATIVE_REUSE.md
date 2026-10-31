@@ -44,3 +44,25 @@ A versioned GitHub release asset can still be replaced by a maintainer. The chec
 After changing acquisition or its pins, run both hosted jobs through the actual release-asset path and retain their proofs. Successful acquisition establishes input integrity; it does not by itself establish real-model behavior, App GUI acceptance or complete product-release readiness.
 
 Official references: [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases), [Linking to releases](https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases).
+
+## Retained 49da native-only forensic qualification
+
+The registered native-platform-qualification.yml dispatch uses retained_mode=true\nand retained_target=linux-x64 to call retained-native-qualification.yml at the\nsame candidate commit. The default retained_mode=false preserves the original\nfresh-build job. The helper is workflow_call-only, a single-target recovery job.
+Its separate retained-native-build-49da.json pins the real compiled package and
+proofs from the original Actions job. The full original workflow/adapter failure
+is preserved. The entry point accepts only concrete build, pool10 and native22
+step successes, exact artifact/package/receipt digests, unchanged complete Rust
+source/lock/patch/test/driver inputs, and exact original test identities.
+
+It does not run Cargo or recompile Rust. It carries only the original unchanged
+Rust component scope, then reruns the current-source native22 partition and full
+installed-adapter offline collection. An old summary, skipped test, changed
+native input or expired artifact is rejected. No ready manifest is fabricated.
+Linux may be dispatched independently; an unavailable Mac pin fails closed.
+
+These Actions artifacts expire. This explicit diagnostic path is **not a stable
+installer/default dependency** and has no fallback to another build. Once the
+new native release is fully qualified, publish permanent versioned native
+archives/receipts and use their reviewed immutable release-asset pins for normal
+long-term qualification. Keep the expiring input only as historical provenance;
+do not make users rely on a seven-day CI download.

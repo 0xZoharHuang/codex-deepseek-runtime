@@ -2,6 +2,20 @@ name: Native platform transport qualification
 
 on:
   workflow_dispatch:
+    inputs:
+      retained_mode:
+        description: Reuse the exact reviewed retained native build; never run fresh Cargo
+        required: false
+        type: boolean
+        default: false
+      retained_target:
+        description: Reviewed retained artifact target
+        required: false
+        type: choice
+        default: linux-x64
+        options:
+          - linux-x64
+          - macos-arm64
 
 permissions:
   contents: read
@@ -12,6 +26,7 @@ concurrency:
 
 jobs:
   native:
+    if: ${{ inputs.retained_mode != true }}
     name: ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -118,3 +133,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  retained:
+    if: ${{ inputs.retained_mode == true }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/retained-native-qualification.yml
+    with:
+      platform: ${{ inputs.retained_target }}

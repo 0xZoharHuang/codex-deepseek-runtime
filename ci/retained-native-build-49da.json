@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "scope": "retained-native-build-and-transport-only",
+  "repository": "0xZoharHuang/codex-deepseek-runtime",
+  "repository_id": 1427487253,
+  "producer_commit": "49da17e1f72c1effde8aeb6c4f3432ca50eab2a5",
+  "run_id": 41178694277,
+  "run_attempt": 1,
+  "workflow_path": ".github/workflows/native-platform-qualification.yml",
+  "recipe_sha256": "29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca",
+  "recipe_bytes": 60611,
+  "temporary_expiring_input": true,
+  "stable_release_policy": "Not a default stable dependency. After qualified permanent native release, use reviewed permanent release assets; this diagnostic mode fails on expiry and never falls back.",
+  "targets": {
+    "x86_64-unknown-linux-gnu": {
+      "job_id": 124471467160,
+      "job_name": "linux-x64",
+      "job_conclusion": "failure",
+      "required_steps": {
+        "Build the pinned native package": "success",
+        "Qualify actual Guardian provider transport and cancellation": "success",
+        "Run real native payload and recovery fixtures": "success",
+        "Check adapter and platform regressions": "failure",
+        "Retain package provenance and original failures": "success",
+        "Upload bounded qualification artifacts": "success"
+      },
+      "artifact_id": 13036790418,
+      "artifact_name": "cds-linux-x64-49da17e1f72c1effde8aeb6c4f3432ca50eab2a5-1",
+      "zip_bytes": 174595838,
+      "zip_sha256": "e527cd432b2fd00bf82fb8ad948a3034c35c2d14425d1d1bdd8b9112df4619d4",
+      "expires_at": "2026-11-07T08:18:40Z",
+      "archive_bytes": 159540998,
+      "archive_sha256": "2c6ef1241c20b741a3d76037c09ebe3ed7d15ac60c59f55743e218603ce59d38",
+      "receipt_sha256": "cd8122a1c2c3fccd9d12dcd0e0a3f9e8437793d9c3b59605b4a10b8593ab2fe9",
+      "cli_sha256": "c22a8196350b0bd81dfe9bbea354db28dac2752e3116b1c3e9db550c7fcf7aca",
+      "helper_sha256": "5d62deeac5422af404d1e2292ea9867b00b916579b76e0346dc9e93c6c57e7c9",
+      "recipe_id": "11b02e3e34e52e7b339cb0f34cd25658c6c00f09293446394041c51a9020c053",
+      "checkpoint_member": "compile-checkpoints/b-21389c91/compile-checkpoint.json",
+      "members": {
+        "guardian-pool/qualification.json": {
+          "bytes": 2898073,
+          "sha256": "95592d3379a19858dc2ead4862182bf81db17ecbde7026c2d4ad898ef3d142f7"
+        },
+        "guardian-pool/native-pool.log": {
+          "bytes": 107662,
+          "sha256": "4b93ed362a88ce5c75982fb0b05a6b78b2ae80b09237fb443cb523b312e6dd84"
+        },
+        "native-qualification/qualification.json": {
+          "bytes": 127801,
+          "sha256": "19b1e4abcff48631fb6734daaf97c2d5542aa49050c2ab50c7ad22677f6ee878"
+        },
+        "native-qualification/native.xml": {
+          "bytes": 3343,
+          "sha256": "6ee741f576d8c6571b1fb1b0415a8604cfdadfbda3930de36e6a724e1e366b16"
+        },
+        "compile-checkpoints/b-21389c91/compile-checkpoint.json": {
+          "bytes": 1313543,
+          "sha256": "05a7e255befa33d61d5228d004cf4c39996ba7faa9eb33187f6ededa3cb74432"
+        },
+        "retained-build-scope.json": {
+          "bytes": 1344,
+          "sha256": "dd35d6ba0c51a74623f5da10e1c8d256bfa90a1b472ee73f69262e3853ed565f"
+        }
+      }
+    }
+  }
+}
