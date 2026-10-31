@@ -21,11 +21,13 @@ def test_schema_format_requirement_preserves_native_tools_history_and_streaming(
     plain,_=prepare(body);original=copy.deepcopy(body)
     schema={'type':'object','properties':{'value':{'type':'integer'}},'required':['value'],'additionalProperties':False}
     body['text']={'format':{'type':'json_schema','name':'result','strict':True,'schema':schema}}
-    frozen=copy.deepcopy(body);structured,_=prepare(body)
+    frozen=copy.deepcopy(body);structured,registry=prepare(body)
     assert body==frozen
     assert structured['tools']==plain['tools'] and structured['input']==plain['input']
-    assert structured['stream'] is True and structured['text']==body['text']
-    assert structured['instructions']==original['instructions']+'\n\n'+STRUCTURED_FORMAT_INSTRUCTION
+    assert structured['stream'] is True and structured['text']=={'format':{'type':'json_object'}}
+    assert structured['instructions'].startswith(original['instructions']+'\n\n'+STRUCTURED_FORMAT_INSTRUCTION)
+    assert json.loads(structured['instructions'].split('JSON Schema:\n',1)[1])==schema
+    assert registry.structured_output_mapping['requested_strict'] is True
     assert plain['instructions']==original['instructions']
     again,_=prepare({**body,'instructions':structured['instructions']})
     assert again['instructions']==structured['instructions']

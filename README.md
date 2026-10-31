@@ -8,6 +8,10 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
+> **当前开发分支是 0.6.8 候选，尚未发布。** 候选保留原生工具循环与审批，修正严格 JSON 任务中的自动工具选择，并补齐 Guardian V2 对 HTTP-only provider 的传输设置。Python adapter 使用 0.6.8，原生基础保持固定 0.164；原生最小修复、安装版和真实 CLI 验收仍在进行。具体机制与发布门槛见[候选报告](reports/releases/0.6.8/README.md)。
+>
+> **当前正式下载仍是 v0.6.7。** 下方发布链接、安装命令和既有验收数字继续属于该已发布版本，不代表候选已经通过。
+
 **0.6.7 修复了严格 JSON 输出与工具搜索的组合，以及压缩历史连续冷恢复时的容量检查点匹配。** 工具仍由原生 runtime 调度，最终 JSON 仍按原 Schema 验证。下载与摘要以 [v0.6.7 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)为准；范围与保留失败见[本版报告](reports/releases/0.6.7/README.md)。
 
 **v0.6.7 许可证声明补充：** 原生归档里的 crate 根目录声明已保留，但打包器漏收了部分嵌套 vendor 目录中的原始 LICENSE／NOTICE。请将[声明补充包](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz)与现有原生归档一起留存或分发，并核对[独立 SHA-256](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz.sha256)。补充包按三个已发布归档及其 manifest 的精确摘要绑定，记录原始文件名、来源和逐文件校验；不替换原归档、二进制或既有验收身份，已有安装无需重装。修正范围和验证见[声明补充报告](reports/releases/0.6.7/attribution-correction.json)。

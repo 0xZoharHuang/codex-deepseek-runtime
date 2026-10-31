@@ -208,7 +208,8 @@ class Gateway:
             transport_policy=network_policy(request.headers)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
-        receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason)
+        receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason,
+                                   structured_output_mapping=registry.structured_output_mapping)
         trace = None
         response = None
         events = Events(registry)
