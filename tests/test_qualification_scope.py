@@ -219,7 +219,13 @@ def test_only_exact_os_inapplicable_cases_may_skip():
     linux=acceptance.expected_offline_skips('x86_64-unknown-linux-gnu')
     mac=acceptance.expected_offline_skips('aarch64-apple-darwin')
     windows=acceptance.expected_offline_skips('x86_64-pc-windows-msvc')
-    assert len(linux)==44 and len(mac)==45 and len(windows)==4
+    # Totals belong to the catalog parity test; verify independent OS semantics here.
+    assert windows=={
+        'test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot':'Native Linux daemon process identity contract',
+        'test_cds_skill_inspect::test_posix_actual_space_path_and_exact_version_argument':'POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check',
+        'test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded':'POSIX shell/shebang timeout fixture; not Windows process execution evidence',
+        'test_native_source_extraction::test_unix_extracts_real_symlink_target_and_bytes':'Requires native Unix symlink extraction'}
+    assert mac=={**linux,'test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot':'Native Linux daemon process identity contract'}
     assert not any('terminal_acceptance' in key or 'test_activation_preserves_unrelated' in key for key in mac)
     assert set(mac)-set(linux)=={'test_platforms::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot'}
     assert {name:reason for name,reason in windows.items() if name.startswith('test_cds_skill_inspect::')}=={

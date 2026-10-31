@@ -81,13 +81,14 @@ def test_all_four_passing_gates_required_before_probe_revalidation(oauth_run,mon
     assert called==[]
 
 def test_exact_skip_map_keeps_windows_scope_and_rejects_unlisted_skip():
-    assert len(acceptance.expected_offline_skips('x86_64-unknown-linux-gnu'))==44
-    assert len(acceptance.expected_offline_skips('aarch64-apple-darwin'))==45
-    assert len(acceptance.expected_offline_skips('x86_64-pc-windows-msvc'))==4
+    # Complete platform totals are checked once by test_offline_skip_catalogs.
+    # This control protects the Windows-only scope of the cleanup exceptions.
+    windows=acceptance.expected_offline_skips('x86_64-pc-windows-msvc')
+    assert not any(name.startswith(('test_windows_sandbox_admission::','test_windows_asyncio::')) for name in windows)
     assert 'test_windows_sandbox_admission::invented' not in acceptance.expected_offline_skips('aarch64-apple-darwin')
     added={'test_runtime_home_owner::test_windows_native_runtime_home_rejects_unproven_BA_owner[foreign-ace]', 'test_runtime_home_owner::test_windows_exact_private_BA_home_and_cache_migrate_without_replacing_identity', 'test_runtime_home_owner::test_windows_system_owned_profile_is_rejected_without_owner_or_acl_changes', 'test_runtime_home_owner::test_windows_native_runtime_home_rejects_unproven_BA_owner[unprotected]'}
     for target in ['x86_64-unknown-linux-gnu','aarch64-apple-darwin']:
         catalog=acceptance.expected_offline_skips(target)
         assert added<=set(catalog)
         assert all(catalog[name]=='Windows protected legacy-BA native profile DACL contract' for name in added)
-    assert not(added&set(acceptance.expected_offline_skips('x86_64-pc-windows-msvc')))
+    assert not(added&set(windows))
