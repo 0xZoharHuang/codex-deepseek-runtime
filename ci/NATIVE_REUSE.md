@@ -100,3 +100,18 @@ live metadata/digest checks. On expiry or any origin/content mismatch,
 acquisition fails and retains evidence. Normal stable installation must use
 reviewed permanent release assets after complete qualification; it must never
 depend on the expiring artifacts or automatically rebuild as a fallback.
+
+
+## Retain an original native archive when preparing a permanent asset
+
+Use the existing `package_native.py` utility's explicit archive-input mode when a reviewed native package is already retained as a TAR. Preserve the qualified archive identity when staging Unix assets on Windows. A fresh archive changes its byte identity and replaces original directory/ownership/timestamp metadata. The existing fresh packager already assigns canonical executable modes; this input mode does not claim that its default path drops those execution bits.
+
+```text
+python package_native.py --existing-archive ORIGINAL.tar.gz \
+  --expected-target TARGET --archive-sha256 TRUSTED_SHA256 --archive-size TRUSTED_BYTES \
+  --manifest PRIVATE_CANDIDATE.json --url DECLARED_VERSIONED_ASSET_URL
+```
+
+This mode is mutually exclusive with the existing `--package ... --archive ...` fresh-packaging path. Supply the independently reviewed archive SHA256, byte size and target. The utility reads but never extracts or rewrites the input archive. It verifies every regular file against the original build receipt, metadata, current full recipe and toolchain, canonical resource layout, and target-specific executable modes. It permits the original root/parent directories and the canonical empty resource directories; it rejects redirected/special members, duplicate or unsafe paths, unknown PAX semantics, privileged or inappropriate modes, incomplete TAR/gzip endings, missing or unattested files and mismatched targets/receipts/recipes. Output must be fresh and is UTF-8 with LF newlines.
+
+The standard manifest's `status: ready` means only that this local artifact meets the existing installer artifact contract. It does not publish it, prove that the declared URL exists, establish model/runtime acceptance, or approve a stable release. The archive-input CLI reports `public_release_asserted: false`. Keep candidates outside tracked `native/runtime-*.json` files until all required qualification is complete. A release owner then publishes the exact original bytes and performs independent asset download/hash verification before promoting permanent release-asset pins. The default fresh-package path and standard installer manifest schema remain unchanged.
