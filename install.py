@@ -275,41 +275,97 @@ def activate_windows(root,release,bin_dir):
     """Copy the verified immutable entry; preserve unknown or locked launchers."""
     root=Path(root).resolve();release=Path(release).resolve();bin_dir=Path(bin_dir)
     if release.parent!=root/'releases':raise SystemExit('Activation requires an owned immutable release')
-    entry=console_entry(release/'venv');metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    entry=console_entry(release/'venv');metadata_payload=(release/'installation.json').read_bytes()
+    metadata=json.loads(metadata_payload);receipt_digest=hashlib.sha256(metadata_payload).hexdigest()
     digest=sha(entry)
     if digest!=metadata['console_script_sha256']:raise SystemExit('Installed launcher checksum mismatch')
     bin_dir.mkdir(parents=True,exist_ok=True);launcher=bin_dir/'codex-deepseek.exe';legacy=bin_dir/'codex-deepseek.cmd'
     prefix='@rem codex-deepseek managed '+base64.b64encode(os.fsencode(root)).decode()+'\n'
-    previous_entry=None;previous_digest=None
+    previous_entry=None;previous_digest=None;previous_receipt_digest=None
     try:
-        previous=json.loads((root/'installation.json').read_text(encoding='utf-8'))
+        previous_payload=(root/'installation.json').read_bytes()
+        previous_receipt_digest=hashlib.sha256(previous_payload).hexdigest();previous=json.loads(previous_payload)
         environment=Path(previous['release_environment']).resolve();candidate=console_entry(environment)
         if (environment.name=='venv' and environment.parent.parent==root/'releases'
             and not candidate.is_symlink() and previous['console_script_sha256']==sha(candidate)):
             previous_entry=candidate;previous_digest=previous['console_script_sha256']
     except (OSError,ValueError,KeyError,TypeError):pass
+    legacy_digest=None
     if legacy.exists() or legacy.is_symlink():
         expected=(prefix+'@echo off\nsetlocal DisableDelayedExpansion\nchcp 65001 >nul\n"'
                   +str(previous_entry).replace('%','%%')+'" %*\n')
-        if legacy.is_symlink() or previous_entry is None or legacy.read_text(encoding='utf-8')!=expected:
+        if legacy.is_symlink() or previous_entry is None:
             raise SystemExit('Preserving unrelated launcher: '+str(legacy))
-    if launcher.exists() or launcher.is_symlink():
-        managed=False
-        if not launcher.is_symlink():
-            actual=sha(launcher)
-            if actual==digest:managed=True
-            else:managed=previous_digest is not None and actual==previous_digest
-        if not managed:raise SystemExit('Preserving unrelated launcher: '+str(launcher))
-    descriptor,temporary_name=tempfile.mkstemp(prefix='.codex-deepseek-',suffix='.exe',dir=bin_dir);os.close(descriptor)
-    temporary=Path(temporary_name)
+        legacy_payload=legacy.read_bytes()
+        if legacy_payload.decode('utf-8').replace('\r\n','\n').replace('\r','\n')!=expected:
+            raise SystemExit('Preserving unrelated launcher: '+str(legacy))
+        legacy_digest=hashlib.sha256(legacy_payload).hexdigest()
+    # Older installations may have a byte-for-byte managed short entry. Never
+    # create a new alias or claim an unrelated command just because of its name.
+    short=bin_dir/'cds.exe'
+    launchers=[launcher]
+    if short.exists() or short.is_symlink():launchers.append(short)
+    original_digests={}
+    for target in launchers:
+        managed=False;original_digests[target]=None
+        if not target.is_symlink() and target.is_file():
+            actual=sha(target);original_digests[target]=actual
+            managed=actual==digest or (previous_digest is not None and actual==previous_digest)
+        if target.exists() or target.is_symlink():
+            if not managed:raise SystemExit('Preserving unrelated launcher: '+str(target))
+    receipt=root/'installation.json'
+    if receipt.is_symlink():raise SystemExit('Preserving unrelated installation receipt: '+str(receipt))
+    staged=[];published=[];rollback_incomplete=False
+    def stage(source,target,expected_digest=None):
+        descriptor,name=tempfile.mkstemp(prefix='.codex-deepseek-',suffix=target.suffix,dir=target.parent);os.close(descriptor)
+        path=Path(name);staged.append(path);shutil.copy2(source,path)
+        if sha(path)!=(expected_digest if expected_digest is not None else sha(source)):
+            raise SystemExit('Copied activation file checksum mismatch')
+        return path
+    def unchanged(target,expected_digest):
+        if expected_digest is None:
+            changed=target.exists() or target.is_symlink()
+        else:
+            changed=target.is_symlink() or not target.is_file() or sha(target)!=expected_digest
+        if changed:raise SystemExit('Activation target changed; preserving concurrent file: '+str(target))
     try:
-        shutil.copyfile(entry,temporary)
-        if sha(temporary)!=digest:raise SystemExit('Copied launcher checksum mismatch')
-        replace_file(temporary,launcher)
+        # Prepare every new file and rollback copy before changing an entry.
+        replacements=[(target,stage(entry,target,digest)) for target in launchers]
+        replacements.append((receipt,stage(release/'installation.json',receipt,receipt_digest)))
+        original_digests[receipt]=previous_receipt_digest
+        backups={target:stage(target,target,original_digests[target]) if target.exists() else None
+                 for target,_ in replacements}
+        legacy_backup=stage(legacy,legacy,legacy_digest) if legacy.exists() else None
+        try:
+            for target,temporary in replacements[:-1]:
+                unchanged(target,original_digests[target])
+                replace_file(temporary,target);published.append((target,digest,backups[target]))
+            if legacy_backup is not None:
+                unchanged(legacy,legacy_digest)
+                legacy.unlink();published.append((legacy,None,legacy_backup))
+            target,temporary=replacements[-1]
+            unchanged(target,original_digests[target])
+            replace_file(temporary,target);published.append((target,receipt_digest,backups[target]))
+        except BaseException as error:
+            rollback_errors=[]
+            for target,published_digest,backup in reversed(published):
+                try:
+                    # Do not overwrite a concurrently changed command or receipt.
+                    if published_digest is None:
+                        if target.exists() or target.is_symlink():raise OSError('Activation rollback path changed: '+str(target))
+                    elif target.is_symlink() or not target.is_file() or sha(target)!=published_digest:
+                        raise OSError('Activation rollback file changed: '+str(target))
+                    if backup is None:target.unlink()
+                    else:replace_file(backup,target)
+                except OSError as rollback_error:rollback_errors.append(str(rollback_error))
+            if rollback_errors:
+                rollback_incomplete=True
+                raise RuntimeError('Windows activation failed; rollback incomplete; retained recovery copies: '
+                                   +', '.join(str(path) for path in staged if path.exists())+'; '+'; '.join(rollback_errors)) from error
+            raise
     finally:
-        temporary.unlink(missing_ok=True)
-    temporary=root/'installation.new.json';shutil.copy2(release/'installation.json',temporary);replace_file(temporary,root/'installation.json')
-    if legacy.exists():legacy.unlink()
+        if not rollback_incomplete:
+            for temporary in staged:temporary.unlink(missing_ok=True)
     return launcher
 
 
