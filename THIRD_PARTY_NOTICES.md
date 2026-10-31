@@ -43,3 +43,15 @@ Windows console entrypoints use the public ScriptMaker API of distlib 0.4.4
 `licenses/distlib-LICENSE.txt` and its wheel is pinned by SHA-256 in the lock.
 The standard distlib executable launcher directly starts the isolated Python
 entry script; it does not embed or replace the Codex agent runtime.
+
+The process-local Windows Proactor cleanup backport in
+src/codex_deepseek/windows_asyncio.py derives only its small connection-lost
+method from CPython 3.13.3 (Lib/asyncio/proactor_events.py, Python Software
+Foundation License Version 2). Copyright (c) 2001-2024 Python Software Foundation;
+All Rights Reserved. The original license is retained in
+licenses/cpython-proactor-PSF.txt. The change wraps shutdown in try/finally so
+an error cannot skip the original close/detach/state cleanup; it preserves the
+original error and does not change the event loop or Codex runtime. Only an exact
+reviewed function is replaced in the current process. Unrecognized versions are
+left unchanged with an explicit diagnostic, without claiming the fix applies.
+Upstream source: https://github.com/python/cpython/blob/v3.13.3/Lib/asyncio/proactor_events.py

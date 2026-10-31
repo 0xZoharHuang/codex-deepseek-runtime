@@ -36,6 +36,8 @@ class NativeRawUnsupported(NativeRawUnavailable):
 
 class NativeTransport:
     def __init__(self,upstream,*,binary=None,metadata_path=None):
+        from .windows_asyncio import install_proactor_cleanup_backport
+        install_proactor_cleanup_backport()
         self.upstream=upstream;self.binary=binary;self.metadata_path=metadata_path;self.failures=[];self.restarts=0;self.process=None;self.client=None
         self.lock=asyncio.Lock();self.token=secrets.token_urlsafe(48);self.port=None;self.closed=False;self.raw_protocol_version=None
 
