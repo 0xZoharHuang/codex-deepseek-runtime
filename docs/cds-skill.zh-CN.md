@@ -29,7 +29,7 @@
 
 ## 安装到使用方的技能目录
 
-这次技能随仓库分支发布，**已发布的 v0.5.0 tag 和归档保持不变**。从含有 `skills/cds` 的本仓库工作区执行下列命令；命令只复制技能，不安装或升级 CDS runtime。
+技能随所选发行源码提供；先核对实际CDS版本/tag及技能来源，再从含有 `skills/cds` 的对应工作区执行下列命令。命令只复制技能，不安装或升级CDS runtime，既有tag与原归档保持其历史身份。
 
 需要同时供普通 Codex 和 CDS 使用时，官方支持的用户目录 `~/.agents/skills/cds` 最方便。Windows 对应用户主目录下的 `.agents\skills\cds`。两者共享的是指令文件，配置、凭据、会话和运行进程仍分别保存。若只供某个独立 profile 使用，则复制到其 `CODEX_HOME/skills/cds`；不要为了装技能把 CDS 的 home 指到 Codex App。
 
@@ -79,6 +79,6 @@ python verify_cds_skill.py --entry <实际CDS可执行文件> --output <另一�
 
 测试使用独立 CDS home，保留原始事件和失败，并停止自己的 native/provider 进程；完成后由调用方按需要保留结果、清理测试目录。它不是整个 runtime 的跨平台资格验收，也不能用一次业务成功证明未来所有模型任务正确。技能结构检查、前向决策测试、无模型原生发现、真实模型任务分别记录。
 
-本次 Windows SSH 实测保留了一项环境限制：PowerShell 在原生 unelevated workspace 沙箱下出现 `0xC0000142`；同机同二进制绕过 CDS 直接调用原生 runtime，结果相同。CMD 在相同权限下正常。真实模型任务最终完成，不表示所有中间命令都成功；技能提供按实际 shell 处理引号与选择兼容工具的指引，不把放宽权限当成默认修复。
+历史2026-10-22 Windows SSH验证保留了一项环境限制：PowerShell 在原生 unelevated workspace 沙箱下出现 `0xC0000142`；同机同二进制绕过 CDS 直接调用原生 runtime，结果相同。CMD 在相同权限下正常。真实模型任务最终完成，不表示所有中间命令都成功；技能提供按实际 shell 处理引号与选择兼容工具的指引，不把放宽权限当成默认修复。
 
 [2026-10-22 验证记录](../reports/skills/cds-20261022.json)分别列出 13 个前向场景、18 项 helper 单测、三平台原生发现，以及 Windows 的实际模型任务、失败和对照结果。最终共享技能的 9 个文件在三台环境中逐项哈希一致。

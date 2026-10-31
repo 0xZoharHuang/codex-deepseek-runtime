@@ -1,6 +1,6 @@
-# CDS 0.6.8 安装、升级与回滚草案
+# CDS 0.6.8 安装、升级与回滚
 
-**候选尚未发布。** 正式v0.6.8 tag/资产独立回读成功后才按该tag正常安装；当前公开稳定版仍为v0.6.7。发布前仅用owner已核本地manifest/archive，未来URL失败不换任意旧包。
+取得v0.6.8匹配源码、平台清单与归档后，使用标准安装器；下载与发布可用性以[本版release页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.8)及实际回读SHA为准。不要因文件名相同混用旧recipe或自称URL已验证。
 
 ## 先隔离验证
 

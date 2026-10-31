@@ -1,48 +1,46 @@
-# CDS 0.6.8：本地 runtime 资格与交付候选
+# CDS 0.6.8 本地 runtime 资格
 
-**可审候选，尚未发布。** 当前正式版仍为v0.6.7。三份新guarded native已真实构建、保留原producer/recipe/receipt；URL是未来发布位置。当前Windows完整软件回归已补齐；已合入最小10054 process-local cleanup backport的最终安装/跨平台资格、最终源码/包/secret扫描和公开资产回读尚须由owner关闭。CAG/Codex App独立验收，不能借本报告通过。
+CDS保留固定Codex原生工具、权限、会话与协作机制，用协议/传输适配连接固定DeepSeek模型。下载、tag、最终源码和公开资产的权威是[本版release页及回执](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.8)，不是预填URL或报告内嵌的未来自提交SHA。
 
-## 实现边界
+## 实现与版本
 
-固定原生Codex `0.164.0-alpha.7` / `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`，模型 `deepseek/deepseek-v4.1-flash-1017`。工具、审批、沙箱、会话、重试、压缩、队列、目标、线程/子智能体仍交给原生runtime；不新建agent loop、调度器或审批器。
+- 原生基线为`0.164.0-alpha.7` / `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`；模型`deepseek/deepseek-v4.1-flash-1017`。
+- strict最终schema+auto+有效工具的已识别组合保留原始工具/历史/ID/auto，明示输出格式映射，再以原请求StructuredOutput校验最终JSON。不强迫tool、不造synthetic final、不失败后换模型/提供方；不承诺上游完整schema受约束解码。
+- 原生Guardian最小guard尊重supports_websockets=false，保留原HTTP评分/lease/取消及支持WebSocket的池；未禁Guardian或改full access。
+- Windows已识别CPython3.13.3关闭方法采用process-local shutdown-finally兼容修复，清理close/detach/state但保留原异常。未改共享Python或事件循环策略；未知实现明确NOT_APPLIED，不盲改。
+- 没有另建agent loop、工具调度器、审批器或子智能体系统。三平台native资产沿原构建身份，后续CI/data-only与文档变更按组件逐字节沿用，不重复Rust或同一业务任务。
 
-严格最终schema+auto+有效工具的已识别组合，保留工具/历史/ID/auto，显式适配上游输出格式并用原始请求的StructuredOutput校验最终JSON。官方object/array根使用已验证JSON语法模式，其他已识别路由/根使用完整schema指令；不强迫tool、不做synthetic final、不失败后换提供方。**不承诺上游完整schema受约束解码**，无效最终JSON不能发布成功完成。
+## 可独立核对的证据
 
-Guardian原生最小guard尊重 `supports_websockets=false`，保留HTTP评分/lease/取消与支持WebSocket的池行为；没有禁用Guardian或改full access。Front trace是请求观察；许可证采集恢复原始完整notice，永久资产复用原tar而不重写其身份。
+[qualification-index.json](qualification-index.json)列原始证据SHA及边界；私有项目内容、系统身份和凭据不随摘要公开。摘要不是新运行。
 
-## 实际证据与沿用条件
-
-机器索引见 [qualification-index.json](qualification-index.json)。索引保留原证据SHA与范围；私有项目内容、系统身份、凭据不随公开摘要上传。摘要不是重新实测。
-
-| 范围 | 结果与限制 |
+| 证据 | 实际范围 |
 | --- | --- |
-| Guardian Rust | 实际source-bound 10项；只在native recipe/source/二进制精确相同下沿用，不把文档提交叫新编译。 |
-| Windows native | 安装版49da普通权限22项native与2来源guard；850使用同一`cc3aa33a…`CLI，未假称重新跑22。 |
-| Linux/macOS current850 | 各22native+249controller零failure/error/skip；各offline2501：Linux2457通过44skip，Mac2456通过45skip。skip按实际平台逐项保留。 |
-| Windows current850 | 本候选完整collection2582=software2560+原native22分区；实际安装850的software2556通过、4项原source条件skip，零failure/error/deselection。每次lazy import守护、29产品及5042原prefix文件撤销QA前置后全相同，旧production不变。原native22明确component carry；不是全部177 fresh RPC。 |
-| Jinja真实工程 | DeepSeek主→子→孙、真实web/审批、Stop/warm/cold同UUID；独立908 public+22 private=930全过。初始6fail902pass和旧观察器失败保留。已知任务、非盲测/SWE分数；930只证明工程结果。120保护输入、4237依赖与Git状态独立核验。 |
-| schema | 真工具读取未知数据后同turn返回严格JSON，含无phase最终项；另30项安装版正负边界全过，不称30项全负控。 |
-| Guardian/front | 新850两窗口5个完成POST：4个DeepSeek-only声明+1显式Morph Guardian；0模型窗口Upgrade，2 GET Upgrade→405正控。复杂任务另9个Morph评分通过。不代表物理socket/frame总数，不伪称generation-provider attestation。 |
-| 177本地目录 | 固定CDS0.164目录177；同版本漏索引3项getAuthStatus(false,false)、getConversationSummary、gitDiffToRemote已补原生语义/副作用验证。不是三平台各177次fresh调用；CAG0.165的179不是CDS遗漏。 |
+| 最终Windows软件 | ac3受控源码完整collection2601=software2579+native22；software2575通过/4原平台skip，零failure/error/deselection，JUnit/collection/分区Counter精确。 |
+| Windows fresh native及来源 | 新正常no-activate安装产品30；普通权限22native、2origin guard通过。与ac3及最终docs/data的差异按产品30/native/lock/installer/catalog精确字节绑定，不伪称文档后重跑。 |
+| Linux | ac3 GitHub run41214753061：249controller及22native零failure/error/skip；software2579中2524通过/55实际平台skip，安装源30与0.6.8实际核验。 |
+| macOS ARM64 | ac3 GitHub run41214756560：249controller及22native零failure/error/skip；software2579中2523通过/56实际平台skip。没有在用户Mac主机测试。 |
+| Rust Guardian | 实际source-bound10项；仅在native/source/recipe/二进制不变下carry。不是文档/data变更后再次Rust编译。 |
+| Windows真实工程 | DeepSeek主→子→孙、web查证、实际审批、Stop/warm/cold同UUID；独立908 public+22 private=930全过。已知任务，非盲测/SWE分数；120保护输入、4237依赖与Git状态独立核验，controller未代模型修业务。 |
+| schema | 真工具读取提示/schema未知数据后同turn合规JSON，含无phase最终项；另30项安装版正负边界全过，不称30项全为负控。 |
+| HTTP/Guardian | 已验850两窗口共5个完成POST：4个DeepSeek-only声明+1显式Morph Guardian，0模型窗口Upgrade，2 GET Upgrade→405正控；复杂任务另9次Morph评分。不是物理socket/frame总数，也未伪称generation-provider attestation。 |
+| 177本地目录 | CDS0.164目录177；同版本漏索引getAuthStatus(false,false)、getConversationSummary、gitDiffToRemote已补原生语义/副作用验证。不是每平台177次fresh RPC；CAG0.165的179不算CDS遗漏。 |
 
-## 保留失败与条件
+当前Windows来源guard5156次检查、临时QA框架路径单文件CAS撤销后新prefix5045文件逐byte恢复，旧00b5042及日常入口未改。最终仅docs/data的源码身份变化，由新的wheel/normalSXS/origin/入口及外部release handoff补绑定，不将旧prefix改名成新安装。
 
-- Windows旧131矩阵为128正向+3项native RestrictedToken command write/terminate/resize平台边界，有原生对照；不虚构额外正向。
-- V2实际目录为六个该版handler，没有 `close_agent`；V1显式close单独按版本契约，不能制造V2缺口或声称调用过。
-- 未声明的模型tool曾被明确拒绝且未执行；schema/工程观察器曾因phase、转义命令或冻结fixture元数据断言失败，原失败保留，修观察器不重放业务改历史。
-- 七个历史CPython10054栈与实际stdlib shutdown分支精确匹配；确定性证据证明该分支跳过close/detach/state。历史每条缺timestamp/FD/receipt，不可称benign或证明实际泄漏，真实3RST有界case未复现。owner已审阅并合入最小process-local单方法guarded cleanup backport与幂等NativeTransport入口，52项定向及逆序控制已通过；**最终安装/跨平台资格仍待完成，本页850结果不能替代**。不改共享Python或换Selector loop。
-- web覆盖OpenRouter Exa搜索及codex_web MCP open/find/click/PDF读取，不是OpenAI私有托管 `web.run` 全函数复刻；Exa cached/index/location/image后端语义明确unsupported，不静默丢参数或列passed。
-- 私有金融/体育云数据、云账户权益、模型质量/缺失模态单列；不由换模型取得，也不把本地后台命令/队列/目标因此排除。其他模块不因叫“云”便自动豁免。
+## 失败、边界及未作出的承诺
 
-## 资产、安装与回滚
+- 初始Jinja 6fail/902pass、未声明模型tool被拒且未执行、观察器phase/转义/冻结元数据失败都保留；后续930只证明工程结果，机制另有事件证据。
+- 首Windows软件2550pass6fail4skip保留；五个子pytest缺框架和junction夹具GBK文本解码，修QA前置/bytes捕获后6targeted和完整回归独立通过，未改产品/断言/权限/skip。原065 full的FIN观察失败也保留：transport已清理，aiohttp异步done callback未结束；修同2秒等待条件而保全部assert后最终回归通过。
+- 七个历史10054栈精确匹配跳过清理的stdlib分支；修复的是分支清理。历史每条缺timestamp/FD/receipt，不能重定性benign、具体Stop归因或实测泄漏；异常仍可见。真实3RST有界case未复现不能被叫证明原日志消失。
+- Windows旧131矩阵128正向及3项native RestrictedToken command write/terminate/resize平台边界保原生对照，不造额外正向。
+- V2实际六个handler无close_agent；V1显式close按版本契约。不能虚构V2 API/通过。
+- web覆盖OpenRouter Exa搜索与codex_web MCP open/find/click/PDF；不是私有托管web.run全函数复刻。Exa cached/index/location/image等不支持语义明确报错，未丢字段或列passed。
+- 私有金融/体育云数据、账户/云权益、模型质量及缺失模态单列；不由换模型取得，也不能把本地命令、队列、目标因此排除。其他模块不因叫“云”自动豁免。
+- CAG/Codex App独立；本报告不替其GUI、闭源工作流或业务通过。各解释器/OS/CPU未自动扩展资格。
 
-活动`native/runtime*.json`为标准artifact manifest，ready只指本地资产契约；未来v0.6.8 URL当前不保证存在。三原tar在完整库存/hash/模式/recipe检查前后SHA/大小/身份未变；Windows未重包Unix原tar。原receipt和完整许可证随各包保留。
+## 交付与回滚
 
-原0.6.7三manifest逐字节归档于`native/rollback/0.6.7/`，原recipe为`native/runtime-overlays-0.6.7-acc16483.json`；旧资产须匹配旧tag，不能冒充新guarded资产。[旧许可证补充](../0.6.7/attribution-correction.json)仍保留。
+活动native/runtime*.json使用原字节三tar及完整receipt、license和recipe。ready只指artifact契约，下载必须以release页实际提供内容和SHA回读；不在Windows重包Unix已资格原tar。
 
-首次Windowsfull的2550pass/6fail/4skip原样保留：5项子pytest缺QA框架、1项junction夹具用UTF8解GBK stdout。仅临时为未激活QA prefix加入单行外部框架路径，修夹具bytes捕获，6原失败targeted通过后完整复验；最终CAS撤销该单文件，原5042文件完全一致。没有改产品、资格器、权限、断言或skip。
-
-按[0.6.8操作方案](../../../docs/release-0.6.8.zh-CN.md)先新root/no-activate验证；正常安装不编译Rust。owner完成独立CDS gates、发布原字节资产并下载校验后再决定tag/main；不先公开再把未验范围写成全过。
-
-
-最终候选以tag/外部qualification handoff解析精确源码，本文不内嵌自身提交SHA。native/Rust资产不因文档或process-local Python修复重编；新修复必须绑定其实际新安装与当前源码回归。原始失败及historical 850结果保持身份。
+原0.6.7三manifest逐byte存native/rollback/0.6.7，原recipe acc16483保留；旧资产配旧tag及[许可证补充](../0.6.7/attribution-correction.json)，不冒充新guarded资产。正常安装、same-home恢复、版本切换、rollback和owned清理见[0.6.8方案](../../../docs/release-0.6.8.zh-CN.md)及[稳定方案](../../../docs/STABLE_PLAN.zh-CN.md)。最终源码由tag/外部qualification回执解析，本文不制造自身SHA固定点。

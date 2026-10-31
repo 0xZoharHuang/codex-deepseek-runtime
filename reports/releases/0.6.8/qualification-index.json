@@ -1,12 +1,9 @@
 {
   "schema": "CDS068-scoped-local-runtime-release-index/v1",
-  "status": "reviewable_candidate_not_published",
-  "published": false,
-  "public_release_ready": false,
+  "status": "scoped_local_runtime_qualification_release_availability_by_release_page",
   "version": "0.6.8",
-  "qualified_product_source": "8508949739bcb438e57518b4bef5608abad11584",
+  "qualified_product_source": "065e4f59f115f443c0d98cf8b6cfd94db7ee9cd2",
   "release_preparation_base": "8571a28cb1cb02b1c9bbdf734fc5f191f1b0823f",
-  "final_release_commit": null,
   "native": {
     "version": "0.164.0-alpha.7",
     "upstream": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
@@ -23,8 +20,7 @@
         "sha256": "2c6ef1241c20b741a3d76037c09ebe3ed7d15ac60c59f55743e218603ce59d38"
       },
       "files": 3074,
-      "recipe_id": "11b02e3e34e52e7b339cb0f34cd25658c6c00f09293446394041c51a9020c053",
-      "URL_status": "future_not_published"
+      "recipe_id": "11b02e3e34e52e7b339cb0f34cd25658c6c00f09293446394041c51a9020c053"
     },
     {
       "target": "aarch64-apple-darwin",
@@ -36,8 +32,7 @@
         "sha256": "24ece777f42daad67f0f0925803b3f4bf5caaafda7f1090e19e6fcd4a07661bb"
       },
       "files": 2973,
-      "recipe_id": "e6a502256bcb9b510e7db020dd6d9679d5d2f5f436937f374ea430f0e03c3a14",
-      "URL_status": "future_not_published"
+      "recipe_id": "e6a502256bcb9b510e7db020dd6d9679d5d2f5f436937f374ea430f0e03c3a14"
     },
     {
       "target": "x86_64-pc-windows-msvc",
@@ -49,8 +44,7 @@
         "sha256": "41657d8eeb2bfb07f9e2f8ddb881910e8722fbeda0e52352897f81dcb346bbda"
       },
       "files": 3020,
-      "recipe_id": "fe2cbc07d60b223769b26e2af7444a752b8f51a0115f1cf3b877322e8c558b8f",
-      "URL_status": "future_not_published"
+      "recipe_id": "fe2cbc07d60b223769b26e2af7444a752b8f51a0115f1cf3b877322e8c558b8f"
     }
   ],
   "rollback067": {
@@ -140,9 +134,93 @@
       "original_raw_sha256": "b4b386899491ee19d3b736270509b6c465e03825f8272011af2dc56f7af5acc2",
       "bytes": 7084,
       "scope": "Seven historical shutdown10054 stacks match the actual stdlib branch that deterministically skips close/detach/state. Individual historical timing/FD/receipt and actual resource leaks not proven; bounded real3RST did not reproduce. Backport implementation/qualification pending."
+    },
+    {
+      "id": "Root-final-ac3-Unix",
+      "original_raw_sha256": "49a99e51f5d0007d6701a676935305c668623a17194e93d7ddc9dde0ae63e049",
+      "scope": "both actual hosted ac3 current source22/controller249/full software2579 and installed30 exact"
+    },
+    {
+      "id": "Root-final-ac3-Windows",
+      "original_raw_sha256": "aa69fa0590c53c3f4a55108f34fb60d29055999df8b24317c08f65e32823524b",
+      "scope": "current2575+4/nativefresh22/origin2/exactCounter/prefix5045 restoration"
     }
   ],
-  "qualified_facts_with_scope": {
+  "cloud_and_model_exclusions": [
+    "OpenAI private financial/sports data and account entitlements",
+    "Model quality or absent modalities",
+    "Full private hosted web.run service implementation is not claimed; Exa cached/index/location/image unsupported errors stay explicit"
+  ],
+  "not_claimed": [
+    "all177 fresh RPC on each OS",
+    "CAG App acceptance",
+    "all historical failures erased",
+    "URL availability or stable publication",
+    "Publication/download availability solely from real release page and asset readback, not this qualification status",
+    "Final docs-only source identity/wheel/prefix is independently rebound by external handoff, not relabelled old prefix"
+  ],
+  "release_page": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.8",
+  "qualified_acceptance_source": "ac3f1210f6e4ab192fa0746337dd7ed3f10e9db1",
+  "product_code_source": "065e4f59f115f443c0d98cf8b6cfd94db7ee9cd2",
+  "source_binding_rule": "Final docs/data do not self-embed a future commit; resolve source through tag/external qualification handoff. Same product30/native/lock/catalog/installer/license input equality is explicit component carry.",
+  "current_crossplatform": {
+    "source": "ac3f1210f6e4ab192fa0746337dd7ed3f10e9db1",
+    "Root_raw_both_platforms_sha256": "49a99e51f5d0007d6701a676935305c668623a17194e93d7ddc9dde0ae63e049",
+    "linux": {
+      "run": 41214753061,
+      "native_passed": 22,
+      "controller_passed": 249,
+      "software": 2579,
+      "passed": 2524,
+      "skipped": 55
+    },
+    "macos": {
+      "run": 41214756560,
+      "native_passed": 22,
+      "controller_passed": 249,
+      "software": 2579,
+      "passed": 2523,
+      "skipped": 56
+    },
+    "failure_error": 0,
+    "controller_native_skip": 0,
+    "no_Rust_rebuild": true
+  },
+  "Windows_final_current": {
+    "source": "ac3f1210f6e4ab192fa0746337dd7ed3f10e9db1",
+    "Root_proof_sha256": "aa69fa0590c53c3f4a55108f34fb60d29055999df8b24317c08f65e32823524b",
+    "software_XML_sha256": "99aef2a7ff7a439e1e33094d7b7d9690a7090f7624891b3fa3775de6bea3e3f5",
+    "all_collection": 2601,
+    "software": 2579,
+    "passed": 2575,
+    "skipped": 4,
+    "failed": 0,
+    "error": 0,
+    "deselected": 0,
+    "native_fresh": 22,
+    "origin_guard": 2,
+    "product_modules": 30,
+    "same_product30_wheel_and_native_to_doc_data_successor": true,
+    "new_prefix5045_restored_exact": true,
+    "old_prefix5042_and_daily_preserved": true
+  },
+  "process_local_cleanup_fix": {
+    "status": "recognized_process_local_fix_qualified_same_product_native_and_current_full_scope",
+    "CDS_old_seven_stack_signature_matches": true,
+    "deterministic_actual_stdlib_branch_skips_cleanup_proven": true,
+    "individual_history_attribution_or_benignness_or_real_leak_claimed": false,
+    "real3RST_reproduction": false,
+    "Selector_loop_replacement_rejected": true,
+    "reviewed_source_commits": [
+      "aac2de58a2f521f6d4af9d07f24bfd558e83ed47",
+      "d010dc456bba837406233c30ea8c33550d49a516"
+    ],
+    "focused_candidate_cases": 52,
+    "focused_reverse_order_cases": 52,
+    "shared_Python_or_loop_policy_mutation": false,
+    "historical_seven_not_relabelled_benign_or_measured_leak": true
+  },
+  "historical_checkpoint_facts_r227": {
     "CDS_native": "fe136/0.164.0-alpha.7/177declared source methods; notCAG0.165/179",
     "legacy3": "getAuthStatus(false,false),getConversationSummary,pathidentity+negative,gitDiffToRemote exactbinarypatch/indexunchanged actual",
     "current850": "Linux/Mac actualnative22+249controls zeroerrors/skips, offline2501=2457+44Linux/2456+45Mac",
@@ -155,7 +233,8 @@
     "remaining": "7CPython10054callbacks preserve/attributionnotproven; no assertedproductdefect yet. Permanentassets/publicationpending. CAGnotcomplete.",
     "web": "CDShostedExasearch+MCPreaderopen/find/click/PDFtext; notfullstandaloneweb.run; Exacached/index/location/imageexplicitunsupportednotpassed"
   },
-  "Windows_current_complete_software": {
+  "historical_checkpoint_facts_r227_scope": "Original checkpoint facts retained as history; current qualified status/counters are the explicit Windows_final_current/current_crossplatform/process_local_cleanup_fix objects.",
+  "historical_Windows850_complete_software": {
     "status": "passed_installed850_with_release_preparation_tests",
     "complete_collection": 2582,
     "software_collection": 2560,
@@ -219,40 +298,5 @@
     "old_production_files_unchanged": true,
     "first_failure_preserved": "First run2550pass6fail4skip; five isolated child pytest prerequisites and one GBK junction-fixture decode corrected without product/qualifier/permission change. Six targeted originals pass before full rerun.",
     "not_qualification_of_pending_process_cleanup_backport": true
-  },
-  "release_owner_remaining": [
-    "Unique frozen source normal noactivate install and fresh Windows native22+origin2+complete software, Unix current-source retained qualification; no Rust rebuild",
-    "Final source/package/secret checks",
-    "Publish original native assets and recipe then independently verify downloaded SHA",
-    "Tag/main promotion only after CDS gates; CAG independent"
-  ],
-  "cloud_and_model_exclusions": [
-    "OpenAI private financial/sports data and account entitlements",
-    "Model quality or absent modalities",
-    "Full private hosted web.run service implementation is not claimed; Exa cached/index/location/image unsupported errors stay explicit"
-  ],
-  "not_claimed": [
-    "all177 fresh RPC on each OS",
-    "CAG App acceptance",
-    "all historical failures erased",
-    "URL availability or stable publication",
-    "Reviewed integrated10054 backport has focused52 evidence; old850 full does not qualify its final installed/crossplatform behavior"
-  ],
-  "known_runtime_cleanup_gate": {
-    "status": "reviewed_process_local_backport_integrated_pending_final_installed_and_crossplatform_qualification",
-    "CDS_old_seven_stack_signature_matches": true,
-    "deterministic_actual_stdlib_branch_skips_cleanup_proven": true,
-    "individual_history_attribution_or_benignness_or_real_leak_claimed": false,
-    "real3RST_reproduction": false,
-    "Selector_loop_replacement_rejected": true,
-    "source_implementation_outside_this_candidate_branch": true,
-    "required_before_stable_release": "Approved minimal process-local single-method cleanup backport and idempotent NativeTransport entry, with actual qualification; never sharedPython/loop-policy/global change.",
-    "reviewed_source_commits": [
-      "aac2de58a2f521f6d4af9d07f24bfd558e83ed47",
-      "d010dc456bba837406233c30ea8c33550d49a516"
-    ],
-    "focused_candidate_cases": 52,
-    "focused_reverse_order_cases": 52,
-    "shared_Python_or_loop_policy_mutation": false
   }
 }

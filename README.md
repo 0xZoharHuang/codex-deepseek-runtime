@@ -1,6 +1,6 @@
 # Codex CLI + DeepSeek
 
-> **0.6.8可审发布候选，尚未发布。** 当前公开稳定版仍v0.6.7。三平台guarded native、真实模型工程和范围证据分别见[0.6.8资格索引](reports/releases/0.6.8/README.md)，安装/升级/回滚见[操作草案](docs/release-0.6.8.zh-CN.md)。ready是本地artifact契约，不证明未来URL已上线。
+**CDS 0.6.8：原生 Codex CLI runtime + 固定 DeepSeek 模型。** 下载与可用资产以[v0.6.8发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.8)及其摘要/回执为准，不能因清单有URL就跳过下载校验。本版范围见[资格索引](reports/releases/0.6.8/README.md)，稳定安装、升级和回滚见[操作方案](docs/release-0.6.8.zh-CN.md)。
 
 **保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**
 
@@ -10,11 +10,9 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **候选修正严格最终JSON+auto工具选择及Guardian HTTP-only传输，保留原生执行机制。** 本轮Windows已知Jinja工程独立930项通过；当前850 Linux/macOS各22native+249controller，offline分别2457+44skip/2456+45skip。Windows当前完整software2560已实测2556通过、4项原source条件skip；原native22单列沿用，旧数字不代替。10054 cleanup分支的最小process-local修复已合入，最终新安装/跨平台资格仍待完成，不能据此宣布最终稳定发布。模型质量、云权益、平台条件和原始失败见本版索引。
->
-> **当前公开稳定/回滚基线仍是v0.6.7，详见旧tag。** 本页主安装命令为0.6.8交付候选方案，只有公开资产回读与最终gate完成后才作为发布入口；当前不自动切换日常安装。
+0.6.8保留原生工具循环、审批、沙箱、会话与子智能体，修正严格最终JSON+auto工具组合、Guardian HTTP-only传输和已识别Windows Proactor关闭分支。兼容层不新建agent loop或替换原生调度；process-local cleanup backport不修改共享Python/事件循环策略，shutdown异常仍可见。
 
-[v0.6.7公开基线与完整许可证补充](reports/releases/0.6.7/README.md)保留原版本身份。0.6.8的范围、原始失败与待关闭事项集中于本版资格索引；当前未发布，不把未来资产URL当可用下载。
+Windows独立工程930项通过（已知任务，非盲测）；产品绑定的fresh native22、origin2与当前software2575通过+4平台skip分别留证。Unix数据由本版资格索引按实际CI源码及组件沿用条件列明。不能把这些数字等同于每OS每个177 RPC新调用，也不覆盖独立CAG App。
 
 ## 它怎样工作
 
@@ -46,21 +44,21 @@
 
 ## 支持范围与验收状态
 
-0.6.8候选使用三份新guarded native原始归档，完整receipt、recipe与许可证随包保留；没有在Mac主机运行测试。源码/资产、安装、实际native调用、模型工程结果分别给证据，不相互替代。
+0.6.8使用三份新guarded native原始归档，完整receipt、recipe与许可证随包保留；没有在Mac主机运行测试。源码/资产、安装、实际native调用、模型工程结果分别给证据，不相互替代。
 
 | 平台 | 已有资格与范围 |
 | --- | --- |
-| Windows x86_64 | 普通权限原native22；installed850真实schema/tool/Guardian/front；当前software2556通过+4实际平台skip，原native22分区独立；已知Jinja工程独立930全过。 |
-| Linux x86_64 GNU | current850实际22native+249controller；offline2457通过+44平台skip，glibc/OpenSSL3/libcap条件。 |
-| macOS Apple Silicon | current850实际22native+249controller；offline2456通过+45平台skip。 |
+| Windows x86_64 | 普通权限fresh native22；installed850真实schema/tool/Guardian/front；当前software2575通过+4实际平台skip，native22分区独立；已知Jinja工程独立930全过。 |
+| Linux x86_64 GNU | 当前源码实际22native+249controller；offline2524通过+55平台skip，glibc/OpenSSL3/libcap条件。 |
+| macOS Apple Silicon | 当前源码实际22native+249controller；offline2523通过+56平台skip。 |
 
-这些数字不证明所有177 RPC在每OS逐项fresh实测，也不覆盖CAG App。10054的cleanup分支缺陷已确认，最小process-local修复已合入并有52项定向控制，最终新安装/跨平台资格待完成；发布owner必须先关闭该gate。详见[本版索引](reports/releases/0.6.8/README.md)。
+这些数字不证明所有177 RPC在每OS逐项fresh实测，也不覆盖CAG App。10054 shutdown分支曾跳过清理；已识别方法的process-local backport保留原异常并完成close/detach/state，实际新安装与同产品源码回归分别绑定。历史每条日志的时机/FD/资源后果不重定性为benign。详见[本版索引](reports/releases/0.6.8/README.md)。
 
 原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
 
-## 安装并运行（0.6.8候选，公开发布后使用下载入口）
+## 安装并运行
 
-以下命令为本次v0.6.8交付方案；该tag/资产尚未公开前仅用已验证本地archive/manifest按操作草案验收，不把未来URL当可用下载。发布后必须匹配该tag随附的平台manifest和摘要。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
+取得v0.6.8的匹配源码和本平台资产后，使用下列标准入口。下载可用性以发布页为准，平台manifest、recipe和归档摘要必须匹配。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
 
 已有任务继续使用自己的不可变入口。并行验证或升级先用新目录及下文 --no-activate，当前任务完成后再切换，不覆盖正在使用的启动器、profile 或 sandbox 目录。
 
