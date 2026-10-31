@@ -62,6 +62,57 @@
           "sha256": "dd35d6ba0c51a74623f5da10e1c8d256bfa90a1b472ee73f69262e3853ed565f"
         }
       }
+    },
+    "aarch64-apple-darwin": {
+      "job_id": 124471467446,
+      "job_name": "macos-arm64",
+      "job_conclusion": "failure",
+      "required_steps": {
+        "Build the pinned native package": "success",
+        "Qualify actual Guardian provider transport and cancellation": "success",
+        "Run real native payload and recovery fixtures": "success",
+        "Check adapter and platform regressions": "failure",
+        "Retain package provenance and original failures": "success",
+        "Upload bounded qualification artifacts": "success"
+      },
+      "artifact_id": 13039727032,
+      "artifact_name": "cds-macos-arm64-49da17e1f72c1effde8aeb6c4f3432ca50eab2a5-1",
+      "zip_bytes": 158399862,
+      "zip_sha256": "b31a2e4c84e1d7f3aef623129029f48807ec5c7acca93da95693ede406ac52d8",
+      "expires_at": "2026-11-07T10:30:52Z",
+      "archive_bytes": 143585544,
+      "archive_sha256": "24ece777f42daad67f0f0925803b3f4bf5caaafda7f1090e19e6fcd4a07661bb",
+      "receipt_sha256": "06669d95e8fe91890221e413cd45e493632760add0061a0ebb11a97926187621",
+      "cli_sha256": "55441312b4efbf40eb92cc05374555568069827a08fed476427f20cdc5e49546",
+      "helper_sha256": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
+      "recipe_id": "e6a502256bcb9b510e7db020dd6d9679d5d2f5f436937f374ea430f0e03c3a14",
+      "checkpoint_member": "compile-checkpoints/b-86933de3/compile-checkpoint.json",
+      "members": {
+        "guardian-pool/qualification.json": {
+          "bytes": 2623359,
+          "sha256": "00fe4775bf7f361ce4206bcda7cfa6b4b140922854d481637924b95380dba2aa"
+        },
+        "guardian-pool/native-pool.log": {
+          "bytes": 106545,
+          "sha256": "6601ff080db11280d6606c439bb6cd175edc20e3733cc38f3c241d44d84f063a"
+        },
+        "native-qualification/qualification.json": {
+          "bytes": 136731,
+          "sha256": "ffbd513d8eb8a04370c8cf3b8018eeaab0204a87726b6ae1b8d47c7bb71ab9be"
+        },
+        "native-qualification/native.xml": {
+          "bytes": 3397,
+          "sha256": "3b5ef6e298ffb4aafbd4b1e63f121c37a563796d7b1011779030b431074d2c38"
+        },
+        "compile-checkpoints/b-86933de3/compile-checkpoint.json": {
+          "bytes": 1312774,
+          "sha256": "295b7dd5d43d7f9c32abb97ebae59fbd577a5e826299d9ed6c90427ed5cbf252"
+        },
+        "retained-build-scope.json": {
+          "bytes": 1344,
+          "sha256": "ec4df536b207bc4b25ca1f476f8ae932fb8d9120249780ca7e8caa7cf2f1eb62"
+        }
+      }
     }
   }
 }

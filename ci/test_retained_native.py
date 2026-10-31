@@ -17,9 +17,9 @@ spec=importlib.util.spec_from_file_location("retained_native_test",ROOT/"ci/reus
 reuse=importlib.util.module_from_spec(spec);spec.loader.exec_module(reuse)
 
 
-def metadata_fixture():
+def metadata_fixture(target="x86_64-unknown-linux-gnu"):
     pins=json.loads((ROOT/"ci/retained-native-build-49da.json").read_bytes())
-    pin=deepcopy(pins["targets"]["x86_64-unknown-linux-gnu"])
+    pin=deepcopy(pins["targets"][target])
     run={"id":pins["run_id"],"run_attempt":1,"head_sha":pins["producer_commit"],
          "path":pins["workflow_path"],"repository":{"id":pins["repository_id"],"full_name":pins["repository"]},
          "status":"in_progress","conclusion":None}
@@ -39,8 +39,9 @@ def metadata_fixture():
 @pytest.mark.parametrize("bad",[None,"run","source","repo","job","job-incomplete","step",
                                  "missing-step","duplicate-step","adapter-greenwash",
                                  "overall-greenwash","expired","expiry-time","digest","target"])
-def test_live_metadata_scope_preserves_failed_full_run_and_exact_native_steps(bad):
-    pins,pin,run,job,artifact=metadata_fixture()
+@pytest.mark.parametrize("target",["x86_64-unknown-linux-gnu","aarch64-apple-darwin"])
+def test_live_metadata_scope_preserves_failed_full_run_and_exact_native_steps(bad,target):
+    pins,pin,run,job,artifact=metadata_fixture(target)
     now=datetime(2026,11,1,tzinfo=timezone.utc)
     if bad=="run":run["id"]+=1
     elif bad=="source":run["head_sha"]="0"*40
@@ -56,7 +57,7 @@ def test_live_metadata_scope_preserves_failed_full_run_and_exact_native_steps(ba
     elif bad=="expired":artifact["expired"]=True
     elif bad=="expiry-time":now=datetime(2026,11,8,tzinfo=timezone.utc)
     elif bad=="digest":artifact["digest"]="sha256:"+"0"*64
-    elif bad=="target":job["name"]="macos-arm64"
+    elif bad=="target":job["name"]="linux-x64" if target=="aarch64-apple-darwin" else "macos-arm64"
     if bad is None:
         reuse.validate_scope(run,job,artifact,pins,pin,now=now)
         run.update(status="completed",conclusion="failure")
@@ -66,8 +67,8 @@ def test_live_metadata_scope_preserves_failed_full_run_and_exact_native_steps(ba
             reuse.validate_scope(run,job,artifact,pins,pin,now=now)
 
 
-def carry_fixture():
-    identity={"target":"x86_64-unknown-linux-gnu","recipe_id":"recipe","upstream_commit":"commit",
+def carry_fixture(target="x86_64-unknown-linux-gnu"):
+    identity={"target":target,"recipe_id":"recipe","upstream_commit":"commit",
               "compiler":"rustc 1.99.1 fixture","cli_sha256":"c","helper_sha256":"h",
               "build_receipt_sha256":"r","files":3}
     files={"codex-rs/Cargo.lock":"lock","codex-rs/pool.rs":"pool","codex-rs/pool_tests.rs":"tests"}
@@ -196,4 +197,26 @@ def test_prior_scope_also_binds_exact_controller_process_and_22test_sources(path
     elif kind=="pool-missing":values[0]["source_sha256"].pop(path)
     else:values[1]["source_sha256"].pop(path)
     with pytest.raises(ValueError,match="inputs differ"):
+        reuse.validate_carry(*values)
+
+
+@pytest.mark.parametrize("target",["x86_64-unknown-linux-gnu","aarch64-apple-darwin"])
+@pytest.mark.parametrize("kind",["other-job","other-artifact"])
+def test_same_run_other_platform_evidence_is_not_interchangeable(target,kind):
+    pins,pin,run,job,artifact=metadata_fixture(target)
+    other="x86_64-unknown-linux-gnu" if target=="aarch64-apple-darwin" else "aarch64-apple-darwin"
+    _,_,_,other_job,other_artifact=metadata_fixture(other)
+    if kind=="other-job":job=other_job
+    else:artifact=other_artifact
+    with pytest.raises(ValueError):
+        reuse.validate_scope(run,job,artifact,pins,pin,now=datetime(2026,11,1,tzinfo=timezone.utc))
+
+
+@pytest.mark.parametrize("target",["x86_64-unknown-linux-gnu","aarch64-apple-darwin"])
+def test_original_compiled_scope_target_is_not_interchangeable(target):
+    values=list(carry_fixture(target))
+    # Byte hashes alone do not authorize a different native target.
+    values[0]["package"]["target"]=(
+        "x86_64-unknown-linux-gnu" if target=="aarch64-apple-darwin" else "aarch64-apple-darwin")
+    with pytest.raises(ValueError,match="compiled package bytes"):
         reuse.validate_carry(*values)

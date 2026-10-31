@@ -58,7 +58,7 @@ It does not run Cargo or recompile Rust. It carries only the original unchanged
 Rust component scope, then reruns the current-source native22 partition and full
 installed-adapter offline collection. An old summary, skipped test, changed
 native input or expired artifact is rejected. No ready manifest is fabricated.
-Linux may be dispatched independently; an unavailable Mac pin fails closed.
+Each reviewed target may be dispatched independently; an unlisted or expired target fails closed.
 
 These Actions artifacts expire. This explicit diagnostic path is **not a stable
 installer/default dependency** and has no fallback to another build. Once the
@@ -66,3 +66,37 @@ new native release is fully qualified, publish permanent versioned native
 archives/receipts and use their reviewed immutable release-asset pins for normal
 long-term qualification. Keep the expiring input only as historical provenance;
 do not make users rely on a seven-day CI download.
+
+### Reviewed 49da inputs and expiry
+
+Both entries below belong to original run **41178694277**, producer commit
+**49da17e1f72c1effde8aeb6c4f3432ca50eab2a5**, attempt **1**. The original
+overall workflow and both adapter jobs failed; only their exact successful
+build, Guardian-pool10 and native22 scopes are eligible for carry.
+
+| Target | Original job | Artifact | Expires (UTC) |
+| --- | --- | --- | --- |
+| Linux x64 | 124471467160 | 13036790418 | 2026-11-07 08:18:40 |
+| macOS ARM64 | 124471467446 | 13039727032 | 2026-11-07 10:30:52 |
+
+The Mac artifact was checked independently against the official completed job
+and artifact metadata, its complete package inventory, original receipt and
+the unchanged current native source/controller/test inputs. Its original
+adapter run reported **1 failed, 2441 passed, 45 skipped**: an unclosed
+SQLite connection surfaced as an unraisable resource warning during the
+malformed-SSE case. The failure remains a failure. Closing the known legacy
+fixture connection in current source does not itself establish that the new
+Mac run passed.
+
+Select the registered **native-platform-qualification.yml** entry with
+retained_mode=true and retained_target=macos-arm64 for a bounded current
+qualification without Cargo. The new workflow must execute the actual
+current native22 partition and the remaining complete installed-adapter
+collection. Adding this pin neither reruns those cases nor extends the
+separately observed Linux qualification to Mac.
+
+These exact expiry dates are availability limits, not permission to weaken
+live metadata/digest checks. On expiry or any origin/content mismatch,
+acquisition fails and retains evidence. Normal stable installation must use
+reviewed permanent release assets after complete qualification; it must never
+depend on the expiring artifacts or automatically rebuild as a fallback.
