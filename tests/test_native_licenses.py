@@ -152,7 +152,7 @@ def test_redirected_vendor_directory_never_exports_outside_crate(tmp_path):
     link = Path(package["manifest_path"]).parent / "vendor"
     if os.name == "nt":
         command = subprocess.run(["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(outside)],
-                                 capture_output=True, text=True)
+                                 capture_output=True)
         assert command.returncode == 0, command.stderr
     else:
         link.symlink_to(outside, target_is_directory=True)

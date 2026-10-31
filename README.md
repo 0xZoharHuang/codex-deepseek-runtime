@@ -1,14 +1,6 @@
 # Codex CLI + DeepSeek
 
-> **Development candidate:** this branch promotes the Guardian provider transport
-> source recipe for new three-platform builds. Its active recipe is
-> [runtime-overlays.json](native/runtime-overlays.json), SHA256
-> 29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca.
-> No new binary, installation or stable release is claimed by this source change.
-> Existing 0.6.7 manifests/assets below remain the original rollback baseline;
-> they do not match this candidate recipe and must not be installed using this
-> development checkout. Use the matching 0.6.7 tag for that baseline. See the
-> [candidate qualification plan](native/guardian-provider-transport-0164-plan.md).
+> **0.6.8可审发布候选，尚未发布。** 当前公开稳定版仍v0.6.7。三平台guarded native、真实模型工程和范围证据分别见[0.6.8资格索引](reports/releases/0.6.8/README.md)，安装/升级/回滚见[操作草案](docs/release-0.6.8.zh-CN.md)。ready是本地artifact契约，不证明未来URL已上线。
 
 **保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**
 
@@ -18,22 +10,11 @@
 
 需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
 
-> **当前开发分支是 0.6.8 候选，尚未发布。** 候选保留原生工具循环与审批，修正严格 JSON 任务中的自动工具选择，并补齐 Guardian V2 对 HTTP-only provider 的传输设置。Python adapter 使用 0.6.8，原生基础保持固定 0.164；原生最小修复、安装版和真实 CLI 验收仍在进行。具体机制与发布门槛见[候选报告](reports/releases/0.6.8/README.md)。
+> **候选修正严格最终JSON+auto工具选择及Guardian HTTP-only传输，保留原生执行机制。** 本轮Windows已知Jinja工程独立930项通过；当前850 Linux/macOS各22native+249controller，offline分别2457+44skip/2456+45skip。Windows当前完整software2560已实测2556通过、4项原source条件skip；原native22单列沿用，旧数字不代替。10054 cleanup分支的必要process-local fix仍待独立资格，不能据此宣布最终稳定发布。模型质量、云权益、平台条件和原始失败见本版索引。
 >
-> **当前正式下载仍是 v0.6.7。** 下方发布链接、安装命令和既有验收数字继续属于该已发布版本，不代表候选已经通过。
+> **下方v0.6.7段落和安装命令是当前公开稳定/回滚基线，不是0.6.8资格。** 候选未发布前不自动切换日常入口。
 
-**0.6.7 修复了严格 JSON 输出与工具搜索的组合，以及压缩历史连续冷恢复时的容量检查点匹配。** 工具仍由原生 runtime 调度，最终 JSON 仍按原 Schema 验证。下载与摘要以 [v0.6.7 发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.7)为准；范围与保留失败见[本版报告](reports/releases/0.6.7/README.md)。
-
-**v0.6.7 许可证声明补充：** 原生归档里的 crate 根目录声明已保留，但打包器漏收了部分嵌套 vendor 目录中的原始 LICENSE／NOTICE。请将[声明补充包](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz)与现有原生归档一起留存或分发，并核对[独立 SHA-256](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.7/codex-deepseek-native-0.6.7-attribution-supplement.tar.gz.sha256)。补充包按三个已发布归档及其 manifest 的精确摘要绑定，记录原始文件名、来源和逐文件校验；不替换原归档、二进制或既有验收身份，已有安装无需重装。修正范围和验证见[声明补充报告](reports/releases/0.6.7/attribution-correction.json)。
-
-- Windows：新 CLI 的22项普通权限传输／恢复验收通过；安装版完整离线套件为2384通过、4个既定系统不适用项。对抗 fixture 使用已有管理员测试 token，实际 runtime 和模型任务另以普通权限验证。
-- 真实 DeepSeek：同一旧会话分别完成顶层工具搜索和默认 Code Mode 冷续跑，两条路径都实际调用 MCP 并给出合规 JSON。默认路径一次模型 JavaScript 错误由原生返回后在同一 turn 自行修复，原错误保留。
-- Linux/macOS：两份新 native 在固定 GitHub runner 构建，各通过22项原生验收及完整离线 adapter 回归，没有在本机 Mac 测试。
-- 复杂工程基线：0.6.6 的真实 Jinja 修复、915个工程测试、908个独立检查与子智能体审查仍保留为各自版本证据，本轮仅按未变组件明确沿用。
-
-项目不另建 agent loop、工具调度器、审批器或子智能体系统。容量处理包含原生 runtime 内的检查点、持久 fence 与恢复扩展，并调用原有 compactor；它不只是字段改名。0.6.7 的小补丁修正 metadata 哈希表示，严格验证两种旧表示，不为匹配而改写非默认字段、历史内容或调用 ID。
-
-原始失败、模型错误、取消和补测分别记录，没有把整段历史改成一次全绿。旧 runtime 不能读取新 v3 容量检查点，降级前请读[恢复与兼容说明](docs/capacity-replay-source.md)。
+[v0.6.7公开基线与完整许可证补充](reports/releases/0.6.7/README.md)保留原版本身份。0.6.8的范围、原始失败与待关闭事项集中于本版资格索引；当前未发布，不把未来资产URL当可用下载。
 
 ## 它怎样工作
 
@@ -65,21 +46,19 @@
 
 ## 支持范围与验收状态
 
-0.6.7 为以下三个目标提供新原生资产。Windows 只重新编译 CLI，复用 helper 保留原 producer 与字节；Linux/macOS 本轮完整构建。源码检查、离线测试、实际 native 调用和真实模型任务分别记录。
+0.6.8候选使用三份新guarded native原始归档，完整receipt、recipe与许可证随包保留；没有在Mac主机运行测试。源码/资产、安装、实际native调用、模型工程结果分别给证据，不相互替代。
 
-| 平台 | 本版原生资产 | 验收范围 |
-| --- | --- | --- |
-| Windows x86_64 | 0.6.7 CLI + 明确 attested 的既有 helper | Windows 10 19045；22项普通权限原生验收、2388项安装版完整套件、真实 DeepSeek 两种工具模式冷续跑；既有权限与复杂任务按组件沿用 |
-| Linux x86_64 GNU | 0.6.7 完整新构建 | Ubuntu 24.04 GitHub runner：22项原生验收，2366个 adapter 用例中2322通过、44系统不适用；需要 glibc、OpenSSL 3 和 libcap |
-| macOS Apple Silicon | 0.6.7 完整新构建 | macOS 15 GitHub runner：22项原生验收，2366个 adapter 用例中2321通过、45系统不适用 |
+| 平台 | 已有资格与范围 |
+| --- | --- |
+| Windows x86_64 | 普通权限原native22；installed850真实schema/tool/Guardian/front；当前software2556通过+4实际平台skip，原native22分区独立；已知Jinja工程独立930全过。 |
+| Linux x86_64 GNU | current850实际22native+249controller；offline2457通过+44平台skip，glibc/OpenSSL3/libcap条件。 |
+| macOS Apple Silicon | current850实际22native+249controller；offline2456通过+45平台skip。 |
+
+这些数字不证明所有177 RPC在每OS逐项fresh实测，也不覆盖CAG App。10054的cleanup分支缺陷已确认，最小process-local修复尚待独立资格；发布owner必须先关闭该gate。详见[本版索引](reports/releases/0.6.8/README.md)。
 
 原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
 
-v0.5.0 的验收报告分别记录源码与原生产物身份、真实操作效果、原生接口及复杂开发流程。该版本的 Windows Jinja 与 HTTPcore 任务均通过独立业务验收。Jinja 任务通过；Mac/Linux 的 HTTPcore 流程验证了 runtime 的工具、错误传递、审查和恢复机制，但模型改动仍有 held-out 业务测试失败，报告保留 `application_task_passed=false`。**runtime 通过不代表模型生成的代码全部正确。**
-
-上述 v0.5.0 验收保留原始失败与补测身份：Windows 的 Guardian 初次夹具未触发审批，修正受限权限夹具后单独验证；Linux memory-v1 曾遇到提供方临时失败，另有完整成功运行。报告明确标记组合验收，不把原始失败改写成一次全绿。macOS 凭据部分复用同字节组件的既有真实证据，避免再次触发系统钥匙串提示。
-
-## 安装并运行
+## 当前公开稳定版安装（v0.6.7）
 
 以下命令固定到 v0.6.7，三平台归档均为0.6.7，必须匹配该 tag 随附的 manifest 和摘要。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
 
@@ -266,7 +245,8 @@ enabled = false
 | 请求条件 | 提供方 | 回执原因 |
 | --- | --- | --- |
 | 有工具，且明确要求 `parallel_tool_calls=false` | `primeintellect` | `explicit_serial_tools` |
-| JSON Schema 结构化输出 | `morph/fp8` | `strict_json_schema` |
+| strict=true + auto + 有效工具的最终Schema | 保留serial/peer/default既有路由；官方object/array用JSON语法模式，其余完整schema指令+原校验 | `auto_tools_final_schema_validation/...`，回执明示策略 |
+| 其余 JSON Schema 结构化输出 | `morph/fp8` | `strict_json_schema` |
 | 同时包含思考、托管网页搜索，以及原生 peer/未完成续接/缺少完成证明的模型历史 | `morph/fp8` | `native_peer_or_continuation_with_hosted_tools` 或 `unattested_native_history_with_hosted_tools` |
 | 其余普通请求 | **官方 `deepseek`** | `official_default` |
 

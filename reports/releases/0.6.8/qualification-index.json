@@ -1,0 +1,251 @@
+{
+  "schema": "CDS068-scoped-local-runtime-release-index/v1",
+  "status": "reviewable_candidate_not_published",
+  "published": false,
+  "public_release_ready": false,
+  "version": "0.6.8",
+  "qualified_product_source": "8508949739bcb438e57518b4bef5608abad11584",
+  "release_preparation_base": "8571a28cb1cb02b1c9bbdf734fc5f191f1b0823f",
+  "final_release_commit": null,
+  "native": {
+    "version": "0.164.0-alpha.7",
+    "upstream": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "recipe_sha256": "29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca"
+  },
+  "assets": [
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "manifest": "native/runtime-x86_64-unknown-linux-gnu.json",
+      "manifest_sha256": "75661bd73320c2adffed2dbf7d5b5e75b410bb48a647750f5a1291d882662c06",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.8-x86_64-unknown-linux-gnu.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.8/codex-deepseek-native-0.6.8-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "2c6ef1241c20b741a3d76037c09ebe3ed7d15ac60c59f55743e218603ce59d38"
+      },
+      "files": 3074,
+      "recipe_id": "11b02e3e34e52e7b339cb0f34cd25658c6c00f09293446394041c51a9020c053",
+      "URL_status": "future_not_published"
+    },
+    {
+      "target": "aarch64-apple-darwin",
+      "manifest": "native/runtime.json",
+      "manifest_sha256": "d6fdc959ab0b254273e05dce511e862afec392b3cacb4eacc0151c956d5eef09",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.8-aarch64-apple-darwin.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.8/codex-deepseek-native-0.6.8-aarch64-apple-darwin.tar.gz",
+        "sha256": "24ece777f42daad67f0f0925803b3f4bf5caaafda7f1090e19e6fcd4a07661bb"
+      },
+      "files": 2973,
+      "recipe_id": "e6a502256bcb9b510e7db020dd6d9679d5d2f5f436937f374ea430f0e03c3a14",
+      "URL_status": "future_not_published"
+    },
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "manifest": "native/runtime-x86_64-pc-windows-msvc.json",
+      "manifest_sha256": "a300800e4acd6822c8fe9441a5be02ac4c760af183aa16edb4724430cfe598bd",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.8-x86_64-pc-windows-msvc.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.8/codex-deepseek-native-0.6.8-x86_64-pc-windows-msvc.tar.gz",
+        "sha256": "41657d8eeb2bfb07f9e2f8ddb881910e8722fbeda0e52352897f81dcb346bbda"
+      },
+      "files": 3020,
+      "recipe_id": "fe2cbc07d60b223769b26e2af7444a752b8f51a0115f1cf3b877322e8c558b8f",
+      "URL_status": "future_not_published"
+    }
+  ],
+  "rollback067": {
+    "x86_64-unknown-linux-gnu": {
+      "path": "native/rollback/0.6.7/runtime-x86_64-unknown-linux-gnu.json",
+      "manifest_sha256": "25f0e51aa123ee321e4e5e9776de6a45312cdad3dbca4d519ada7787bb301eba",
+      "archive_sha256": "01f501fc9ef0876449457bd5416b71b43328a2cf1292062bbecf102e99125ac6",
+      "native_recipe_id": "2ce6b6cf6d960f3250bb8d3cfa74e7c8a86e98d99cc4b295f276d2f3cb44b100"
+    },
+    "aarch64-apple-darwin": {
+      "path": "native/rollback/0.6.7/runtime.json",
+      "manifest_sha256": "7dadb8060ca0ab2dce7b70e966b0763ea0621bccf698314a15c701d1de46ae5c",
+      "archive_sha256": "452e387648d5b88f036daf6d1be304bc2deeac23763e65ecfdf84b22d5e41b9f",
+      "native_recipe_id": "61d852ba54f522b90a40e5bf6e698a8345ea03bfb95903979654851fcb60e0b3"
+    },
+    "x86_64-pc-windows-msvc": {
+      "path": "native/rollback/0.6.7/runtime-x86_64-pc-windows-msvc.json",
+      "manifest_sha256": "f4c81428bd85429bed3199ce1eb5ad8e99c10ebb29a4c375e303762357019e40",
+      "archive_sha256": "985575c3fd371b31ad13242f8fa8dd3877142f5a2b10dedd2f00a17c84499bd1",
+      "native_recipe_id": "15c906cca6c2b9cc9b8761fed6e999a6d751e54e06a371a37fd6db1ff06714f9"
+    }
+  },
+  "evidence": [
+    {
+      "id": "850frontHTTP",
+      "original_raw_sha256": "b2649fa3dfa095619f6b6bea5f56ede5ffa51da4508d3323868c84d212c87a9a",
+      "bytes": 30359
+    },
+    {
+      "id": "850installedWindows",
+      "original_raw_sha256": "065ed83cfe0864abc29d8c4f9fee4f3df71f94903fa8d8dae9eebb291ab32d8e",
+      "bytes": 3254
+    },
+    {
+      "id": "WindowsNative22",
+      "original_raw_sha256": "7b35580689306c09167a9da30394db9cf22fbc352bb0c15de5fa742955db8c66",
+      "bytes": 49354
+    },
+    {
+      "id": "complex930",
+      "original_raw_sha256": "5a535dd53422ddced74d00c54febd4e1623570403d02eb83a172b97981caa53c",
+      "bytes": 2166
+    },
+    {
+      "id": "current850crossplatform",
+      "original_raw_sha256": "fd5ff9eea988e67e63d5650f1e628022d7a3946663cb33bbc13bd25806dbee01",
+      "bytes": 4108
+    },
+    {
+      "id": "legacy3Actual",
+      "original_raw_sha256": "d046c2b42efe6a250cb3fe36c435fd45242801045c03e94654317fa1f3ba7262",
+      "bytes": 4036
+    },
+    {
+      "id": "method177delta",
+      "original_raw_sha256": "38266d0dc5d28275926bc8b496b9e49fb738ed3d5eb59fec6354394633c341c6",
+      "bytes": 11919
+    },
+    {
+      "id": "observedResiduals",
+      "original_raw_sha256": "6262b22469ca7aa039c28c4400f840e5110f2239398c4009a86bea0deb502c8e",
+      "bytes": 6032
+    },
+    {
+      "id": "officialSchemaActual",
+      "original_raw_sha256": "032b400f58fca5b8431065d673f18d5755f71dd79069a454d6a1650b025523ac",
+      "bytes": 9230
+    },
+    {
+      "id": "realComplexNative",
+      "original_raw_sha256": "ff71752a93d27f326ca63f5db1f25483912c868ba5cfcb4d8a52a15e70668c35",
+      "bytes": 8403
+    },
+    {
+      "id": "schemaControls30",
+      "original_raw_sha256": "ba011f5a858f9ba0cc87632907a01de357cf5e629ab9f1f05f466184738d15cb",
+      "bytes": 4558
+    },
+    {
+      "id": "Windows-current-full-r228",
+      "original_raw_sha256": "3ab3ef99b27abce6df53930ba5b7adae30aae695e2857ebc1c9288dbc6afa8ec",
+      "bytes": 4401,
+      "scope": "Installed850 runtime product29 plus current native manifests/packaging/release helper tests; exact software2560/native22 partition"
+    },
+    {
+      "id": "CPython10054-causal-audit-r227",
+      "original_raw_sha256": "b4b386899491ee19d3b736270509b6c465e03825f8272011af2dc56f7af5acc2",
+      "bytes": 7084,
+      "scope": "Seven historical shutdown10054 stacks match the actual stdlib branch that deterministically skips close/detach/state. Individual historical timing/FD/receipt and actual resource leaks not proven; bounded real3RST did not reproduce. Backport implementation/qualification pending."
+    }
+  ],
+  "qualified_facts_with_scope": {
+    "CDS_native": "fe136/0.164.0-alpha.7/177declared source methods; notCAG0.165/179",
+    "legacy3": "getAuthStatus(false,false),getConversationSummary,pathidentity+negative,gitDiffToRemote exactbinarypatch/indexunchanged actual",
+    "current850": "Linux/Mac actualnative22+249controls zeroerrors/skips, offline2501=2457+44Linux/2456+45Mac",
+    "Windowsnative22": "normalisolatedinstalled49da, importorigin2guards; native samecc3a under850",
+    "complex": "actualDS main-child-grandchild+websearch2/open7/find20/click5+Stop/warm/cold; truebaseline6fail902; independent930zero, 120protected+4237deps+originalindexmetadata unchanged",
+    "schema": "ActualofficialDeepSeek request+realtool+unphasedvalidJSON;30positive_negativecontrols not30allnegative",
+    "front": "8502taskwindows5POST0Upgrade,4officialonlydeclared+1explicitMorphGuardian,notgenerationattestation",
+    "V2close": "Currentactualcatalog lacksclose_agent; specv1only andv2handlers6; do not inventmandatoryV2close API",
+    "Windowsrestricted3": "old131localmatrix 128positive+3nativeplatformrestricted commandwrite/terminate/resize withofficialcomparison, notmissingunsupportedpositive",
+    "remaining": "7CPython10054callbacks preserve/attributionnotproven; no assertedproductdefect yet. Permanentassets/publicationpending. CAGnotcomplete.",
+    "web": "CDShostedExasearch+MCPreaderopen/find/click/PDFtext; notfullstandaloneweb.run; Exacached/index/location/imageexplicitunsupportednotpassed"
+  },
+  "Windows_current_complete_software": {
+    "status": "passed_installed850_with_release_preparation_tests",
+    "complete_collection": 2582,
+    "software_collection": 2560,
+    "passed": 2556,
+    "failed": 0,
+    "error": 0,
+    "deselected": 0,
+    "skipped": [
+      {
+        "classname": "tests.test_cds_skill_inspect",
+        "name": "test_posix_actual_space_path_and_exact_version_argument",
+        "message": "POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check"
+      },
+      {
+        "classname": "tests.test_cds_skill_inspect",
+        "name": "test_posix_actual_offline_timeout_is_bounded",
+        "message": "POSIX shell/shebang timeout fixture; not Windows process execution evidence"
+      },
+      {
+        "classname": "tests.test_native_source_extraction",
+        "name": "test_unix_extracts_real_symlink_target_and_bytes",
+        "message": "Requires native Unix symlink extraction"
+      },
+      {
+        "classname": "tests.test_platforms",
+        "name": "test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+        "message": "Native Linux daemon process identity contract"
+      }
+    ],
+    "skips_source_markers": [
+      {
+        "nodeid": "tests/test_cds_skill_inspect.py::test_posix_actual_space_path_and_exact_version_argument",
+        "source_line": 282,
+        "condition_source": "WINDOWS",
+        "reason": "POSIX shell/shebang fixture; real Windows native execution is a separate acceptance check"
+      },
+      {
+        "nodeid": "tests/test_cds_skill_inspect.py::test_posix_actual_offline_timeout_is_bounded",
+        "source_line": 291,
+        "condition_source": "WINDOWS",
+        "reason": "POSIX shell/shebang timeout fixture; not Windows process execution evidence"
+      },
+      {
+        "nodeid": "tests/test_native_source_extraction.py::test_unix_extracts_real_symlink_target_and_bytes",
+        "source_line": 118,
+        "condition_source": "os.name == 'nt'",
+        "reason": "Requires native Unix symlink extraction"
+      },
+      {
+        "nodeid": "tests/test_platforms.py::test_live_linux_daemon_retains_provider_service_and_rejects_stale_boot",
+        "source_line": 60,
+        "condition_source": "not sys.platform.startswith('linux')",
+        "reason": "Native Linux daemon process identity contract"
+      }
+    ],
+    "software_XML_sha256": "1a11b78239b49e84f5ae018f4a5bc7461d4b7d4dd892ea27bc782c45c1e01f37",
+    "independent_proof_sha256": "3ab3ef99b27abce6df53930ba5b7adae30aae695e2857ebc1c9288dbc6afa8ec",
+    "native22_partition": "Original installed49da exact22 names, same native cc3/archive41657 and five native test/controller/process/http inputs; component carry, not fresh rerun.",
+    "actual_prefix_original_files_restored_exact": 5042,
+    "QA_pth_removed_by_exact_byte_CAS": true,
+    "old_production_files_unchanged": true,
+    "first_failure_preserved": "First run2550pass6fail4skip; five isolated child pytest prerequisites and one GBK junction-fixture decode corrected without product/qualifier/permission change. Six targeted originals pass before full rerun.",
+    "not_qualification_of_pending_process_cleanup_backport": true
+  },
+  "release_owner_remaining": [
+    "Qualify/merge approved process-local10054cleanup backport and bind resulting product/source proofs",
+    "Final clean source/package/secret scan",
+    "Publish exact original native assets and recipe only after CDS gates",
+    "Independent downloaded asset SHA readback, then tag/main decision; CAG remains independent"
+  ],
+  "cloud_and_model_exclusions": [
+    "OpenAI private financial/sports data and account entitlements",
+    "Model quality or absent modalities",
+    "Full private hosted web.run service implementation is not claimed; Exa cached/index/location/image unsupported errors stay explicit"
+  ],
+  "not_claimed": [
+    "all177 fresh RPC on each OS",
+    "CAG App acceptance",
+    "all historical failures erased",
+    "URL availability or stable publication",
+    "Approved10054cleanup backport is not yet merged/qualified; present software results do not prove that fix"
+  ],
+  "known_runtime_cleanup_gate": {
+    "status": "necessary_process_local_guarded_backport_pending_qualification",
+    "CDS_old_seven_stack_signature_matches": true,
+    "deterministic_actual_stdlib_branch_skips_cleanup_proven": true,
+    "individual_history_attribution_or_benignness_or_real_leak_claimed": false,
+    "real3RST_reproduction": false,
+    "Selector_loop_replacement_rejected": true,
+    "source_implementation_outside_this_candidate_branch": true,
+    "required_before_stable_release": "Approved minimal process-local single-method cleanup backport and idempotent NativeTransport entry, with actual qualification; never sharedPython/loop-policy/global change."
+  }
+}

@@ -26,10 +26,14 @@ def test_candidate_changes_all_target_recipe_ids_without_relabeling_ready_assets
     assert set(entry["changes_by_target"])==set(build.PLATFORM_ASSETS)
     for target in build.PLATFORM_ASSETS:
         manifest_name="runtime.json"if target=="aarch64-apple-darwin"else"runtime-"+target+".json"
-        manifest=json.loads((ROOT/"native"/manifest_name).read_text(encoding="utf-8"))
+        manifest=json.loads((ROOT/"native/rollback/0.6.7"/manifest_name).read_text(encoding="utf-8"))
         assert manifest["distribution_version"]=="0.6.7"
         assert build.native_recipe_identity(target,stable)==manifest["native_recipe_id"]
         assert build.native_recipe_identity(target,candidate)!=manifest["native_recipe_id"]
+        current=json.loads((ROOT/"native"/manifest_name).read_bytes())
+        assert current["status"]=="ready" and current["distribution_version"]=="0.6.8"
+        assert current["native_recipe_id"]==build.native_recipe_identity(target,candidate)
+        assert current["archive"]["sha256"]!=manifest["archive"]["sha256"]
         changes=entry["changes_by_target"][target]
         assert [row["path"]for row in changes]==[
             "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool.rs",
@@ -96,7 +100,7 @@ def test_067_ready_manifest_identity_cannot_qualify_as_guarded_package(tmp_path,
     qualification_spec=importlib.util.spec_from_file_location("guardian_old_package_qualification",ROOT/"ci/qualify_native.py")
     native=importlib.util.module_from_spec(qualification_spec);qualification_spec.loader.exec_module(native)
     name="runtime.json" if target=="aarch64-apple-darwin" else "runtime-"+target+".json"
-    old=json.loads((ROOT/"native"/name).read_bytes())
+    old=json.loads((ROOT/"native/rollback/0.6.7"/name).read_bytes())
     assert old["status"]=="ready" and old["distribution_version"]=="0.6.7"
     assert old["native_recipe_id"]!=build.native_recipe_identity(target)
     package=tmp_path/"old-package";package.mkdir()
