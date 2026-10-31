@@ -454,6 +454,20 @@ def expected_offline_skips(target):
                      'test_cleanup_error_cannot_be_a_successful_shutdown',
                      'test_main_retains_failure_receipt_when_final_cleanup_also_raises']:
             result['test_windows_sandbox_admission::'+name]='Windows-only lifecycle admission contract'
+        for name in [
+            'test_real_stdlib_installer_and_second_install_are_exact_identity',
+            'test_unknown_wrapper_is_not_overwritten_and_warns_once',
+            'test_unknown_or_unavailable_source_remains_original[False]',
+            'test_unknown_or_unavailable_source_remains_original[True]',
+            'test_callback_error_is_still_delivered_to_default_handler',
+            'test_original_stdlib_counterexample_requires_the_backport',
+            'test_missing_private_target_is_diagnosed_not_assumed_repaired',
+            'test_invalid_signature_metadata_is_diagnosed_not_raised',
+        ]:
+            result['test_windows_asyncio::'+name]='Windows stdlib Proactor is not available/imported on Unix'
+        result['test_windows_asyncio::test_real_native_http_ipc_keeps_proactor_pipes_eof_and_cleanup']='Actual Windows Proactor/native IPC qualification'
+        for mode in ['FIN','RST']:
+            result['test_windows_asyncio::test_actual_aiohttp_connection_reaches_clean_state['+mode+']']='Actual Windows Proactor HTTP transport qualification'
     return result
 
 

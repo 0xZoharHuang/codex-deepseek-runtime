@@ -219,6 +219,61 @@
       "classname": "tests.test_runtime_home_owner",
       "name": "test_windows_system_owned_profile_is_rejected_without_owner_or_acl_changes",
       "message": "Windows protected legacy-BA native profile DACL contract"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_real_stdlib_installer_and_second_install_are_exact_identity",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_unknown_wrapper_is_not_overwritten_and_warns_once",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_unknown_or_unavailable_source_remains_original[False]",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_unknown_or_unavailable_source_remains_original[True]",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_callback_error_is_still_delivered_to_default_handler",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_real_native_http_ipc_keeps_proactor_pipes_eof_and_cleanup",
+      "message": "Actual Windows Proactor/native IPC qualification"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_original_stdlib_counterexample_requires_the_backport",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_missing_private_target_is_diagnosed_not_assumed_repaired",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_invalid_signature_metadata_is_diagnosed_not_raised",
+      "message": "Windows stdlib Proactor is not available/imported on Unix"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_actual_aiohttp_connection_reaches_clean_state[FIN]",
+      "message": "Actual Windows Proactor HTTP transport qualification"
+    },
+    {
+      "classname": "tests.test_windows_asyncio",
+      "name": "test_actual_aiohttp_connection_reaches_clean_state[RST]",
+      "message": "Actual Windows Proactor HTTP transport qualification"
     }
   ],
   "linux": [],
