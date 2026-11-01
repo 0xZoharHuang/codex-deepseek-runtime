@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -36,6 +37,22 @@ def unique_json(data):
     return json.loads(data, object_pairs_hook=unique)
 
 
+def release_spec(pins):
+    """Only the two explicitly reviewed native release generations, never latest."""
+    if "release" not in pins:
+        return "0.6.2", RELEASE_TAG, RELEASE_BASE, RECIPE_ASSET
+    release = pins["release"]
+    if not isinstance(release, dict) or not isinstance(release.get("recipe_asset"), dict):
+        raise ValueError("Explicit permanent release requires its reviewed descriptor")
+    version, tag = release.get("version"), release.get("tag")
+    recipe = release["recipe_asset"].get("name")
+    if ((version, tag) not in {("0.6.2", "v0.6.2"), ("0.6.9", "v0.6.9")}
+            or not isinstance(recipe, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json", recipe)):
+        raise ValueError("Unreviewed permanent native release selection")
+    return version, tag, "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/" + tag, recipe
+
+
 def selected_pin(pins, target):
     if pins.get("schema") != 1 or pins.get("repository") != "0xZoharHuang/codex-deepseek-runtime":
         raise ValueError("Unknown qualified build repository/schema")
@@ -56,7 +73,7 @@ def selected_pin(pins, target):
         raise ValueError("Current target manifest differs from the reviewed candidate")
     manifest = unique_json(manifest_path.read_bytes())
     archive = manifest.get("archive", {})
-    if (manifest.get("target") != target or manifest.get("distribution_version") != "0.6.2"
+    if (manifest.get("target") != target or manifest.get("distribution_version") != release_spec(pins)[0]
             or manifest.get("status") != "ready"
             or archive.get("sha256") != pin["archive_sha256"]
             or len(manifest.get("files", {})) != pin["file_count"]
@@ -121,7 +138,13 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def api_get(path, token, *, redirect=False):
-    if not path.startswith("repos/0xZoharHuang/codex-deepseek-runtime/actions/"):
+    prefix = "repos/0xZoharHuang/codex-deepseek-runtime/"
+    relative = path.removeprefix(prefix)
+    allowed = (path.startswith(prefix) and (
+        relative.startswith("actions/") or re.fullmatch(r"releases/(?:[0-9]+|assets/[0-9]+)", relative)
+        or re.fullmatch(r"git/ref/tags/v0\.6\.(?:2|9)", relative)
+        or re.fullmatch(r"git/tags/[0-9a-f]{40}", relative)))
+    if not allowed or (redirect and not relative.startswith("actions/")):
         raise ValueError("Unexpected GitHub API path")
     request = urllib.request.Request(API+path, headers={
         "Accept": "application/vnd.github+json", "Authorization": "Bearer "+token,
@@ -192,21 +215,22 @@ def zip_inputs(path, pin, pins, directory):
 
 
 def release_inputs(pins, pin, manifest):
-    """The stable route accepts only the same v0.6.2 package and original recipe."""
+    """The stable route accepts only an explicitly pinned known release generation."""
     if pins.get("source") != "release-asset":
         raise ValueError("Release assets require an explicit acquisition source")
     target=manifest.get("target")
     if target not in {"x86_64-unknown-linux-gnu","aarch64-apple-darwin"}:
         raise ValueError("Unsupported stable reuse target")
-    filename="codex-deepseek-native-0.6.2-"+target+".tar.gz"
-    expected_url=RELEASE_BASE+"/"+filename
+    version, tag, release_base, recipe_asset = release_spec(pins)
+    filename="codex-deepseek-native-"+version+"-"+target+".tar.gz"
+    expected_url=release_base+"/"+filename
     archive=manifest.get("archive",{})
-    if (manifest.get("distribution_version")!="0.6.2" or manifest.get("status")!="ready"
+    if (manifest.get("distribution_version")!=version or manifest.get("status")!="ready"
             or archive.get("filename")!=filename or archive.get("url")!=expected_url
             or archive.get("sha256")!=pin["archive_sha256"]):
-        raise ValueError("Stable manifest must select the exact official v0.6.2 asset")
+        raise ValueError("Stable manifest must select the exact reviewed versioned asset")
     return {"archive":{"url":expected_url,"sha256":pin["archive_sha256"],"bytes":pin["archive_bytes"]},
-            "recipe":{"url":RELEASE_BASE+"/"+RECIPE_ASSET,"sha256":pins["recipe_sha256"],"bytes":pins["recipe_bytes"]}}
+            "recipe":{"url":release_base+"/"+recipe_asset,"sha256":pins["recipe_sha256"],"bytes":pins["recipe_bytes"]}}
 
 
 def acquire_inputs(pins, pin, manifest, directory):
@@ -217,7 +241,7 @@ def acquire_inputs(pins, pin, manifest, directory):
         archive=directory/"native-package.tar.gz";recipe=directory/"runtime-overlays.json"
         for item,path in [(inputs["archive"],archive),(inputs["recipe"],recipe)]:
             download(item["url"],path,item["sha256"],exact_bytes=item["bytes"])
-        return archive,recipe,{"acquisition":"pinned_public_release_assets","release_tag":RELEASE_TAG,
+        return archive,recipe,{"acquisition":"pinned_public_release_assets","release_tag":release_spec(pins)[1],
                               "original_build_metadata_checked_live":False,"release_downloads":inputs}
     if mode!="actions-artifact":
         raise ValueError("Unknown acquisition source; no automatic fallback")

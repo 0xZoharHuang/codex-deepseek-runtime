@@ -1,4 +1,4 @@
-name: Current source with qualified 0.6.2 native build
+name: Current source with selected qualified native build
 
 on:
   workflow_dispatch:
@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I -B ci/reuse_qualified_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
+          python -I -B ci/reuse_retained_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
       - name: Run the complete declared native transport cases
         shell: bash
         run: |

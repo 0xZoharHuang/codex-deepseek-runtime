@@ -115,3 +115,54 @@ python package_native.py --existing-archive ORIGINAL.tar.gz \
 This mode is mutually exclusive with the existing `--package ... --archive ...` fresh-packaging path. Supply the independently reviewed archive SHA256, byte size and target. The utility reads but never extracts or rewrites the input archive. It verifies every regular file against the original build receipt, metadata, current full recipe and toolchain, canonical resource layout, and target-specific executable modes. It permits the original root/parent directories and the canonical empty resource directories; it rejects redirected/special members, duplicate or unsafe paths, unknown PAX semantics, privileged or inappropriate modes, incomplete TAR/gzip endings, missing or unattested files and mismatched targets/receipts/recipes. Output must be fresh and is UTF-8 with LF newlines.
 
 The standard manifest's `status: ready` means only that this local artifact meets the existing installer artifact contract. It does not publish it, prove that the declared URL exists, establish model/runtime acceptance, or approve a stable release. The archive-input CLI reports `public_release_asserted: false`. Keep candidates outside tracked `native/runtime-*.json` files until all required qualification is complete. A release owner then publishes the exact original bytes and performs independent asset download/hash verification before promoting permanent release-asset pins. The default fresh-package path and standard installer manifest schema remain unchanged.
+
+
+## Prepared permanent P27 source support (not yet selected)
+
+The registered retained controller now supports an explicitly selected
+`source=release-asset` dataset in addition to its existing Actions source. Its
+current `PINS` constant remains the reviewed temporary a585 dataset. No permanent
+0.6.9 dataset or placeholder asset IDs are shipped by this source preparation.
+After actual release assets exist, the release owner creates reviewed real pins
+and explicitly switches that same default `PINS` selection. The workflow reads
+and preserves the controller's selected dataset; it does not keep a stale
+hardcoded copy or select a file merely because it exists.
+
+The permanent dataset records the real release ID, known version/tag pair
+0.6.9/v0.6.9, resolved publication commit, and exact recipe asset. Each target
+records the actual native archive and small scope-bundle asset ID/name/byte
+size/SHA256, the ready manifest identity, and all original compiled/carry fields.
+The recipe uses the same descriptor. `release_archive`, `release_scope`, and
+`release.recipe_asset` descriptors contain `id`, `name`, `bytes`, and `sha256`.
+Versioned URLs are constructed only under this repository and the explicit tag.
+No arbitrary base URL, latest release, model, runtime source or native recipe is
+introduced. The old 0.6.2 pins and historical failed49da records stay unchanged.
+
+Permanent acquisition checks live release metadata, uploaded asset identities,
+resolved lightweight or annotated tag commit, exact size/digest when provided,
+and independently downloaded bytes. The API token is used only for repository
+metadata, never in argv or sent to release storage. Public asset redirects are
+restricted to the official release storage host, not arbitrary URLs.
+
+A small bundle contains the original eight native scope records, original full
+recipe/source-commit bytes, and original raw terminal run/jobs/artifacts JSON in
+`producer/`. Exactly those 13 regular-file members are admitted. No native tar,
+binary, cache, live model context or credential enters the scope bundle. A bundle
+container is an explicit byte-preserving packaging derivation, not a new native
+build or new Rust test run. Mac's raw receipt identity remains the hash of the
+original TAR member; a parsed-and-reserialized audit copy is not raw evidence.
+
+The controller separates historical qualification identity from current delivery
+liveness. Actions acquisition still requires a currently unexpired artifact.
+Permanent acquisition instead validates the current published assets and the
+byte-pinned historical snapshot, preserving its original expiry fact without
+claiming the old Actions artifact is currently available. There is no CLI
+ignore-expiry flag and no fallback between sources. Complete source/recipe/
+compiler/checkpoint/State22/Guardian10 carry checks and fresh current-source
+native22 plus installed offline qualification remain mandatory.
+
+After publication and dataset promotion, execute both hosted targets through
+that actual permanent path. A successful temporary-source run is not evidence
+that permanent downloads work. Keep the original producer a585 and the later
+publication/Python commits distinct; publishing unchanged tarballs never changes
+their build receipts or original qualification limits.

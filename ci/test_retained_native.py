@@ -358,7 +358,8 @@ def test_artifact_download_uses_no_API_headers_and_never_follows_secondary_redir
 def test_registered_retained_mode_selects_p27_and_keeps_target_dispatches_separate():
     registered = (ROOT/".github/workflows/native-platform-qualification.yml").read_text()
     helper = (ROOT/".github/workflows/retained-native-qualification.yml").read_text()
-    assert "ci/retained-native-build-p27-a585.json" in helper
+    assert helper.count("from ci.reuse_retained_native import PINS") == 2
+    assert "shutil.copyfile(PINS" in helper
     assert "retained-native-build-49da.json" not in helper
     assert "inputs.retained_mode && inputs.retained_target || 'fresh'" in registered
     assert "group: cds-retained-native-${{ github.ref }}-${{ inputs.platform }}" in helper
@@ -366,3 +367,183 @@ def test_registered_retained_mode_selects_p27_and_keeps_target_dispatches_separa
     assert "contents: read" in helper and "actions: read" in helper
     assert "ci/qualify_native.py" in helper and "ci/qualify_adapter.py" in helper
     assert "cargo " not in helper and "build_native.py" not in helper
+
+
+
+def permanent_fixture(tmp_path, monkeypatch, bad=None):
+    # Synthetic metadata IDs exist only inside this test fixture, never formal pins.
+    pins, pin, run, job, artifact = metadata_fixture(qualified=True)
+    pins = deepcopy(pins)
+    pin = deepcopy(pin)
+    pins["source"] = "release-asset"
+    pins["current_recipe_sha256"] = pins["recipe_sha256"]
+    pins["targets"]["x86_64-unknown-linux-gnu"] = pin
+    data = {"native-package.tar.gz": b"unchanged native original bytes",
+            "runtime-overlays.json": (ROOT/"native/runtime-overlays.json").read_bytes()}
+    pin["archive_bytes"] = len(data["native-package.tar.gz"])
+    pin["archive_sha256"] = hashlib.sha256(data["native-package.tar.gz"]).hexdigest()
+    tag, version, commit = "v0.6.9", "0.6.9", "b"*40
+    base = "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/"+tag
+    archive_name = "codex-deepseek-native-0.6.9-x86_64-unknown-linux-gnu.tar.gz"
+    pins["release"] = {"id": 9001, "tag": tag, "version": version, "commit": commit,
+                       "recipe_asset": {"id": 9003, "name": "native-build-recipe-"+pins["recipe_sha256"][:8]+".json",
+                                        "bytes": pins["recipe_bytes"], "sha256": pins["recipe_sha256"]}}
+    pin["release_archive"] = {"id": 9002, "name": archive_name, "bytes": pin["archive_bytes"], "sha256": pin["archive_sha256"]}
+    if bad == "origin-source": run["head_sha"] = "0"*40
+    members = {name: b"{}" for name in pin["members"]}
+    members.update({"runtime-overlays.json": data["runtime-overlays.json"],
+                    "source-commit.txt": (pins["producer_commit"]+"\n").encode(),
+                    "producer/run.json": json.dumps(run).encode(),
+                    "producer/jobs.json": json.dumps({"jobs": [job]}).encode(),
+                    "producer/artifacts.json": json.dumps({"artifacts": [artifact]}).encode()})
+    pin["members"] = {name: {"bytes":len(body),"sha256":hashlib.sha256(body).hexdigest()}
+                      for name,body in members.items()}
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as z:
+        for name, body in members.items(): z.writestr(name, body)
+        if bad == "extra-binary": z.writestr("bin/unreviewed", b"MZ")
+    data["qualification-scope.zip"] = output.getvalue()
+    pin["release_scope"] = {"id": 9004, "name": "native-scope-0.6.9-linux.zip",
+                            "bytes":len(output.getvalue()),"sha256":hashlib.sha256(output.getvalue()).hexdigest()}
+    manifest = {"target":"x86_64-unknown-linux-gnu", "distribution_version":version, "status":"ready",
+                "archive":{"filename":archive_name,"url":base+"/"+archive_name,"sha256":pin["archive_sha256"]}}
+    metadata = {"id":9001,"tag_name":tag,"draft":False,"published_at":"2026-11-02T00:00:00Z",
+                "html_url":base.replace("/download/", "/tag/")}
+    tagref = {"ref":"refs/tags/"+tag,"object":{"type":"commit","sha":commit}}
+    if bad == "annotated": tagref["object"] = {"type":"tag","sha":"e"*40}
+    assets = {}
+    for d in [pin["release_archive"],pins["release"]["recipe_asset"],pin["release_scope"]]:
+        assets[d["id"]] = {"id":d["id"],"name":d["name"],"state":"uploaded","size":d["bytes"],
+                            "url":reuse.legacy.API+"repos/"+pins["repository"]+"/releases/assets/"+str(d["id"]),
+                            "browser_download_url":base+"/"+d["name"],"digest":"sha256:"+d["sha256"]}
+    if bad == "draft": metadata["draft"] = True
+    elif bad == "release-id": metadata["id"] += 1
+    elif bad == "release-tag": metadata["tag_name"] = "v0.6.2"
+    elif bad == "tag-commit": tagref["object"]["sha"] = "c"*40
+    elif bad == "asset-id": assets[9002]["id"] += 1
+    elif bad == "asset-size": assets[9002]["size"] += 1
+    elif bad == "asset-digest": assets[9002]["digest"] = "sha256:"+"0"*64
+    elif bad == "asset-url": assets[9002]["browser_download_url"] = "https://unreviewed.invalid/file"
+    elif bad == "missing-state": pin["members"].pop("state-migrations/qualification.json")
+    elif bad == "bundle-hash": pin["release_scope"]["sha256"] = "0"*64
+    elif bad == "recipe-asset": pins["release"]["recipe_asset"]["name"] = "../bad.json"
+    api_calls, downloads = [], []
+    def api(path, token, *, redirect=False):
+        assert token == "synthetic-token" and not redirect and "/actions/" not in path
+        api_calls.append(path)
+        if "/releases/assets/" in path: return assets[int(path.rsplit("/",1)[1])]
+        if "/git/ref/" in path: return tagref
+        if "/git/tags/" in path: return {"tag":tag,"object":{"type":"commit","sha":commit}}
+        if "/releases/" in path: return metadata
+        raise AssertionError("Unexpected API endpoint")
+    def download(url, destination, digest, size, release_base):
+        assert release_base == base
+        name = destination.name
+        body = data[name]
+        if len(body) != size or hashlib.sha256(body).hexdigest() != digest:
+            raise ValueError("Exact permanent asset bytes differ")
+        destination.write_bytes(body)
+        downloads.append(name)
+    monkeypatch.setattr(reuse.legacy, "selected_pin", lambda *_: (pin, manifest))
+    monkeypatch.setattr(reuse.legacy, "api_get", api)
+    monkeypatch.setattr(reuse, "release_download", download)
+    return pins, pin, api_calls, downloads, run, job, artifact
+
+
+@pytest.mark.parametrize("bad", [None,"annotated","draft","release-id","release-tag","tag-commit","asset-id",
+                                 "asset-size","asset-digest","asset-url","origin-source","extra-binary",
+                                 "missing-state","bundle-hash","recipe-asset"])
+def test_permanent_delivery_uses_release_assets_not_expiring_Actions(tmp_path, monkeypatch, bad):
+    pins, pin, calls, downloads, run, job, artifact = permanent_fixture(tmp_path, monkeypatch, bad)
+    if bad in (None, "annotated"):
+        archive, recipe, oldrun, oldjob, oldartifact, provenance = reuse.acquire_permanent(
+            pins, pin, "x86_64-unknown-linux-gnu", tmp_path, "synthetic-token")
+        assert archive.is_file() and recipe.is_file() and len(downloads) == 3
+        assert oldrun == run and oldjob == job and oldartifact == artifact
+        assert provenance["source"] == "permanent_release_assets"
+        assert provenance["historical_Actions_metadata_only"] is True
+        assert provenance["historical_artifact_current_availability_checked"] is False
+        # The historical snapshot remains unchanged; current Actions delivery
+        # after that expiry would still be rejected by the existing gate.
+        with pytest.raises(ValueError, match="expired"):
+            reuse.validate_scope(run, job, artifact, pins, pin,
+                                 now=datetime(2030,1,1,tzinfo=timezone.utc))
+        assert all("/actions/" not in path for path in calls)
+    else:
+        with pytest.raises((ValueError, KeyError)):
+            reuse.acquire_permanent(pins, pin, "x86_64-unknown-linux-gnu", tmp_path, "synthetic-token")
+
+
+@pytest.mark.parametrize("url", ["https://evil.invalid/file", "https://github.com/other/repo/releases/download/v0.6.9/a.zip",
+                                 "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.9/../a.zip",
+                                 "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.9/a.zip?token=synthetic"])
+def test_permanent_download_refuses_arbitrary_URL_before_request(tmp_path, monkeypatch, url):
+    calls=[]
+    monkeypatch.setattr(reuse.legacy,"download",lambda *a,**kw:calls.append(a))
+    base="https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.9"
+    with pytest.raises(ValueError):reuse.release_download(url,tmp_path/"out","0"*64,10,base)
+    assert not calls
+
+
+def test_permanent_versions_are_explicit_and_legacy02_is_not_rewritten():
+    old=json.loads((ROOT/"ci/qualified-native-build.json").read_bytes())
+    assert reuse.legacy.release_spec(old)[0:2] == ("0.6.2","v0.6.2")
+    new=deepcopy(old);new["release"]={"version":"0.6.9","tag":"v0.6.9",
+          "recipe_asset":{"name":"native-build-recipe-812c04d1.json"}}
+    assert reuse.legacy.release_spec(new)[0:2] == ("0.6.9","v0.6.9")
+    new["release"]["tag"]="latest"
+    with pytest.raises(ValueError):reuse.legacy.release_spec(new)
+    assert reuse.PINS.name == "retained-native-build-p27-a585.json"
+    assert not (ROOT/"ci/qualified-native-build-0.6.9.json").exists()
+
+
+@pytest.mark.parametrize("redirect", ["good", "evil", "http", "userinfo", "port", "path", "fragment"])
+def test_permanent_public_redirect_restricts_storage_and_carries_no_API_token(tmp_path, monkeypatch, redirect):
+    import urllib.request
+    body = b"original reviewed public asset"
+    base = "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.9"
+    url = base + "/native-scope.zip"
+    good = "https://release-assets.githubusercontent.com/github-production-release-asset/1427487253/fixture?sig=synthetic"
+    locations = {"good":good, "evil":good.replace("release-assets.githubusercontent.com","evil.invalid"),
+                 "http":good.replace("https:","http:"), "userinfo":good.replace("//release-assets","//user:secret@release-assets"),
+                 "port":good.replace(".com/", ".com:444/"), "path":good.replace("/github-production-release-asset/","/unreviewed/"),
+                 "fragment":good+"#fragment"}
+    calls=[]
+    class Opener:
+        def __init__(self, handler): self.handler=handler
+        def open(self, actual, *, timeout):
+            assert actual == url and isinstance(actual,str)
+            request=urllib.request.Request(actual)
+            assert not request.has_header("Authorization")
+            result=self.handler.redirect_request(request,io.BytesIO(),302,"Found",{},locations[redirect])
+            assert not result.has_header("Authorization")
+            calls.append(actual)
+            return io.BytesIO(body)
+    monkeypatch.setenv("GITHUB_TOKEN","synthetic-api-token-not-storage")
+    monkeypatch.setattr(reuse.urllib.request,"build_opener",lambda handler:Opener(handler()))
+    output=tmp_path/"asset"
+    if redirect == "good":
+        assert reuse.release_download(url,output,hashlib.sha256(body).hexdigest(),len(body),base) == len(body)
+        assert output.read_bytes()==body and calls==[url]
+    else:
+        with pytest.raises(ValueError):reuse.release_download(url,output,hashlib.sha256(body).hexdigest(),len(body),base)
+        assert calls==[] and not output.exists()
+
+
+
+def test_both_registered_reuse_entries_select_the_same_explicit_dataset():
+    workflow=(ROOT/".github/workflows/native-platform-reuse.yml").read_text()
+    retained=(ROOT/".github/workflows/retained-native-qualification.yml").read_text()
+    assert "ci/reuse_retained_native.py --download" in workflow
+    assert "ci/reuse_retained_native.py --download" in retained
+    assert "ci/reuse_qualified_native.py --download" not in workflow
+    assert "Current source with qualified 0.6.2" not in workflow
+    assert "cargo " not in workflow and "build_native.py" not in workflow
+
+
+@pytest.mark.parametrize("release", [None, {}, {"version":"0.6.9","tag":"v0.6.9"},
+                                      {"version":"0.6.9","tag":"v0.6.9","recipe_asset":{}},
+                                      {"version":"0.6.9","tag":"v0.6.9","recipe_asset":{"name":"../recipe.json"}}])
+def test_explicit_release_never_inherits_missing_legacy_selection(release):
+    pins={"source":"release-asset","release":release}
+    with pytest.raises(ValueError):reuse.legacy.release_spec(pins)

@@ -36,7 +36,7 @@ def need(ok, message):
         raise ValueError(message)
 
 
-def validate_scope(run, job, artifact, pins, pin, *, now=None):
+def validate_original_scope(run, job, artifact, pins, pin):
     scope = pins.get("scope")
     need(pins.get("schema") == 1 and scope in {LEGACY_SCOPE, QUALIFIED_SCOPE},
          "Not a reviewed retained native-only scope")
@@ -65,7 +65,10 @@ def validate_scope(run, job, artifact, pins, pin, *, now=None):
                  "state-migrations/qualification.json", "state-migrations/native-state.log",
                  "guardian-pool/qualification.json", "guardian-pool/native-pool.log",
                  "native-qualification/qualification.json", "native-qualification/native.xml",
-                 checkpoint, "retained-build-scope.json"},
+                 checkpoint, "retained-build-scope.json"} | (
+                    {"runtime-overlays.json", "source-commit.txt", "producer/run.json",
+                     "producer/jobs.json", "producer/artifacts.json"}
+                    if pins.get("source") == "release-asset" else set()),
              "P27 requires all exact original State/pool/native/checkpoint records")
         need(native.sha(ROOT/"native/runtime-overlays.json") == pins.get("recipe_sha256"),
              "Current full P27 recipe differs from its compiled pin")
@@ -89,6 +92,12 @@ def validate_scope(run, job, artifact, pins, pin, *, now=None):
              and steps[name].get("conclusion") == conclusion,
              "Original concrete step did not meet its declared scope: " + name)
     legacy.validate_artifact(artifact, pins, pin)
+    need(artifact["expires_at"] == pin["expires_at"], "Original artifact expiry fact changed")
+
+
+def validate_scope(run, job, artifact, pins, pin, *, now=None):
+    """Current Actions delivery must still be live; no expiry bypass option."""
+    validate_original_scope(run, job, artifact, pins, pin)
     expires = datetime.fromisoformat(artifact["expires_at"].replace("Z", "+00:00"))
     need(artifact["expires_at"] == pin["expires_at"]
          and expires > (now or datetime.now(timezone.utc)),
@@ -116,11 +125,13 @@ def download_artifact(location, destination, digest, size):
         raise
 
 
-def extract_scope_members(zip_path, pin, directory):
+def extract_scope_members(zip_path, pin, directory, *, exact=False):
     """Only reviewed small records, in addition to legacy exact package/recipe extraction."""
     with zipfile.ZipFile(zip_path) as archive:
         names = archive.namelist()
         need(len(names) == len(set(names)), "Duplicate artifact member")
+        if exact:
+            need(set(names) == set(pin["members"]), "Unexpected permanent scope bundle member")
         for name, descriptor in pin["members"].items():
             path = PurePosixPath(name)
             need(not path.is_absolute() and ".." not in path.parts and "\\" not in name and ":" not in name,
@@ -248,6 +259,89 @@ def validate_carry(pool_record, native_record, checkpoint, identity, contract,
     return result
 
 
+def release_download(url, destination, digest, size, release_base):
+    """Public versioned asset only; the API credential never reaches storage."""
+    class Redirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, fp, code, msg, headers, newurl):
+            value = urllib.parse.urlsplit(newurl)
+            need(value.scheme == "https" and value.hostname == "release-assets.githubusercontent.com"
+                 and value.port in (None, 443) and not value.username and not value.password
+                 and value.path.startswith("/github-production-release-asset/") and not value.fragment,
+                 "Unreviewed permanent asset storage redirect")
+            return super().redirect_request(request, fp, code, msg, headers, newurl)
+    prefix = "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/"
+    need(release_base in {prefix+"v0.6.2", prefix+"v0.6.9"}
+         and url.startswith(release_base + "/")
+         and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}", url[len(release_base)+1:]),
+         "Unreviewed versioned asset URL")
+    return legacy.download(url, destination, digest, exact_bytes=size,
+                           opener=urllib.request.build_opener(Redirect))
+
+
+def acquire_permanent(pins, pin, target, directory, token):
+    """Validate current release delivery separately from historical Actions identity."""
+    need(pins.get("scope") == QUALIFIED_SCOPE and pins.get("source") == "release-asset",
+         "Permanent P27 scope must be explicitly selected")
+    _, manifest = legacy.selected_pin(pins, target)
+    inputs = legacy.release_inputs(pins, pin, manifest)
+    version, tag, release_base, _ = legacy.release_spec(pins)
+    need(version == "0.6.9", "Permanent State/pool carry requires the reviewed P27 release")
+    release = pins["release"]
+    need(type(release.get("id")) is int and release["id"] > 0
+         and re.fullmatch(r"[0-9a-f]{40}", release.get("commit", "")), "Real release identity required")
+    base = "repos/" + pins["repository"] + "/"
+    metadata = legacy.api_get(base + "releases/" + str(release["id"]), token)
+    need(metadata.get("id") == release["id"] and metadata.get("tag_name") == tag
+         and metadata.get("draft") is False and bool(metadata.get("published_at"))
+         and metadata.get("html_url") == release_base.replace("/download/", "/tag/"),
+         "Permanent release is not the exact published tag")
+    ref = legacy.api_get(base + "git/ref/tags/" + tag, token)
+    need(ref.get("ref") == "refs/tags/" + tag, "Release tag ref differs")
+    obj = ref["object"]
+    if obj.get("type") == "tag":
+        annotated = legacy.api_get(base + "git/tags/" + obj["sha"], token)
+        need(annotated.get("tag") == tag, "Annotated release tag differs")
+        obj = annotated["object"]
+    need(obj.get("type") == "commit" and obj.get("sha") == release["commit"],
+         "Resolved release commit differs from reviewed publication")
+    descriptors = [(pin["release_archive"], inputs["archive"], directory/"native-package.tar.gz"),
+                   (release["recipe_asset"], inputs["recipe"], directory/"runtime-overlays.json"),
+                   (pin["release_scope"], None, directory/"qualification-scope.zip")]
+    delivered = []
+    for descriptor, expected, path in descriptors:
+        name = descriptor.get("name", "")
+        need(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}", name)
+             and type(descriptor.get("id")) is int and descriptor["id"] > 0
+             and type(descriptor.get("bytes")) is int and 0 < descriptor["bytes"] <= legacy.MAX_SOURCE_BYTES
+             and re.fullmatch(r"[0-9a-f]{64}", descriptor.get("sha256", "")), "Real exact asset descriptor required")
+        url = release_base + "/" + name
+        if expected is not None:
+            need(expected == {"url":url,"sha256":descriptor["sha256"],"bytes":descriptor["bytes"]},
+                 "Permanent asset and compiled input disagree")
+        asset = legacy.api_get(base + "releases/assets/" + str(descriptor["id"]), token)
+        need(asset.get("id") == descriptor["id"] and asset.get("name") == name
+             and asset.get("state") == "uploaded" and asset.get("size") == descriptor["bytes"]
+             and asset.get("browser_download_url") == url
+             and asset.get("url") == legacy.API + base + "releases/assets/" + str(descriptor["id"])
+             and asset.get("digest") in (None, "sha256:" + descriptor["sha256"]), "Permanent asset metadata differs")
+        release_download(url, path, descriptor["sha256"], descriptor["bytes"], release_base)
+        delivered.append(asset)
+    scope = directory/"scope"
+    extract_scope_members(directory/"qualification-scope.zip", pin, scope, exact=True)
+    need(native.sha(scope/"runtime-overlays.json") == pins["recipe_sha256"]
+         and (scope/"source-commit.txt").read_bytes() == (pins["producer_commit"]+"\n").encode(),
+         "Permanent scope recipe/producer bytes differ")
+    load = lambda name: legacy.unique_json((scope/name).read_bytes())
+    run = load("producer/run.json")
+    job = next(j for j in load("producer/jobs.json")["jobs"] if j["id"] == pin["job_id"])
+    artifact = next(a for a in load("producer/artifacts.json")["artifacts"] if a["id"] == pin["artifact_id"])
+    validate_original_scope(run, job, artifact, pins, pin)
+    return directory/"native-package.tar.gz", directory/"runtime-overlays.json", run, job, artifact, {
+        "source":"permanent_release_assets", "release_metadata":metadata, "resolved_release_commit":obj["sha"],
+        "assets":delivered, "historical_Actions_metadata_only":True,
+        "historical_artifact_current_availability_checked":False}
+
+
 def main():
     parser = argparse.ArgumentParser()
     for name in ("download", "package", "evidence", "source-archive"):
@@ -267,17 +361,25 @@ def main():
              "Fresh acquisition outputs outside checkout required")
     args.download.mkdir(parents=True); args.evidence.mkdir(parents=True)
     token = os.environ.get("GITHUB_TOKEN", "")
-    need(bool(token), "Read-only Actions token required")
-    base = "repos/"+pins["repository"]+"/actions/"
-    run = legacy.api_get(base+"runs/"+str(pins["run_id"]), token)
-    job = legacy.api_get(base+"jobs/"+str(pin["job_id"]), token)
-    artifact = legacy.api_get(base+"artifacts/"+str(pin["artifact_id"]), token)
-    validate_scope(run, job, artifact, pins, pin)
-    location = legacy.api_get(base+"artifacts/"+str(pin["artifact_id"])+"/zip", token, redirect=True)
-    zip_path = args.download/"artifact.zip"
-    download_artifact(location, zip_path, pin["zip_sha256"], pin["zip_bytes"])
-    archive, recipe = legacy.zip_inputs(zip_path, pin, pins, args.download)
-    extract_scope_members(zip_path, pin, args.download/"scope")
+    need(bool(token), "Read-only GitHub metadata token required")
+    mode = pins.get("source", "actions-artifact")
+    provenance = {"source":"temporary_expiring_Actions_artifact"}
+    if mode == "release-asset":
+        archive, recipe, run, job, artifact, provenance = acquire_permanent(
+            pins, pin, target, args.download, token)
+    elif mode == "actions-artifact":
+        base = "repos/"+pins["repository"]+"/actions/"
+        run = legacy.api_get(base+"runs/"+str(pins["run_id"]), token)
+        job = legacy.api_get(base+"jobs/"+str(pin["job_id"]), token)
+        artifact = legacy.api_get(base+"artifacts/"+str(pin["artifact_id"]), token)
+        validate_scope(run, job, artifact, pins, pin)
+        location = legacy.api_get(base+"artifacts/"+str(pin["artifact_id"])+"/zip", token, redirect=True)
+        zip_path = args.download/"artifact.zip"
+        download_artifact(location, zip_path, pin["zip_sha256"], pin["zip_bytes"])
+        archive, recipe = legacy.zip_inputs(zip_path, pin, pins, args.download)
+        extract_scope_members(zip_path, pin, args.download/"scope")
+    else:
+        raise ValueError("Unknown explicit native acquisition source; no fallback")
     receipt = receipt_from_archive(archive, pin["receipt_sha256"])
     manifest = {"target": target, "archive": {"sha256": pin["archive_sha256"]},
                 "files": {**receipt["files"], "build-receipt.json": pin["receipt_sha256"]}}
@@ -312,7 +414,7 @@ def main():
         need(native.sha(args.package/name) == record["sha256"],
              "Compile checkpoint output changed: "+name)
     record = {"status": "acquired_exact_prior_native_scope_not_current_adapter_qualified",
-              "source": "temporary_expiring_Actions_artifact", "ready": False,
+              **provenance, "ready": False,
               "original_run": run, "original_job": job, "original_artifact": artifact,
               "current_source_sha256": native.source_identity(), "package": identity,
               "pins_sha256": native.sha(PINS), "source_archive_sha256": native.sha(args.source_archive),
