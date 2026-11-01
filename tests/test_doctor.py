@@ -86,13 +86,17 @@ def doctor_probe(monkeypatch,tmp_path):
         return state.metadata,[{'http_status':200}]
     def forbidden_native():raise AssertionError('Doctor revalidated the same immutable package')
     store=SimpleNamespace(db=db)
+    from codex_deepseek import provider_config
+    admitted=provider_config.default()
+    gateway=SimpleNamespace(metadata={'ordinary_default_provider':admitted['ordinary_default_provider'],
+                                      'provider_config_sha256':provider_config.digest(admitted)})
     monkeypatch.setattr(cli,'native',forbidden_native)
     monkeypatch.setattr(cli,'adapter_command',lambda:['fixture-isolated-entry'])
     monkeypatch.setattr(cli.asyncio,'create_subprocess_exec',launch)
     monkeypatch.setattr(cli,'NativeTransport',Transport)
     monkeypatch.setattr(cli,'generation_receipt',receipt)
     monkeypatch.setattr(cli,'data_root',lambda:tmp_path)
-    async def run():return await cli.doctor('NONFUNCTIONAL_FIXTURE',None,store,home,native_binary=binary)
+    async def run():return await cli.doctor('NONFUNCTIONAL_FIXTURE',gateway,store,home,native_binary=binary)
     state.run=run;state.result=lambda:json.loads((tmp_path/'last-doctor.json').read_text())
     try:yield state
     finally:db.close()

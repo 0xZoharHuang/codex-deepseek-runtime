@@ -115,7 +115,12 @@ def isolated_run(native_package,monkeypatch):
         def __init__(self,home,catalog,*,native_binary,owner):
             assert stores and owner==stores[-1].owner
             consumers.append(native_binary)
-        async def __aenter__(self):return SimpleNamespace(port=1234,token='fixture-token')
+        async def __aenter__(self):
+            from codex_deepseek import provider_config
+            admitted=provider_config.default()
+            return SimpleNamespace(port=1234,token='fixture-token',metadata={
+                'ordinary_default_provider':admitted['ordinary_default_provider'],
+                'provider_config_sha256':provider_config.digest(admitted)})
         async def __aexit__(self,*args):pass
     class Process:
         returncode=None

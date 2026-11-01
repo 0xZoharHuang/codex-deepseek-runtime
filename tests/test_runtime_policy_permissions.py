@@ -16,7 +16,12 @@ def policy_run(tmp_path, monkeypatch):
     # Only exercise the actual startup filesystem path, never network or a native process.
     class Service:
         def __init__(self,*args,**kwargs):pass
-        async def __aenter__(self):return SimpleNamespace(port=32123,token='NONFUNCTIONAL_FIXTURE')
+        async def __aenter__(self):
+            from codex_deepseek import provider_config
+            admitted=provider_config.default()
+            return SimpleNamespace(port=32123,token='NONFUNCTIONAL_FIXTURE',metadata={
+                'ordinary_default_provider':admitted['ordinary_default_provider'],
+                'provider_config_sha256':provider_config.digest(admitted)})
         async def __aexit__(self,*args):pass
     monkeypatch.setattr(cli,'ProviderService',Service)
     monkeypatch.setattr(cli,'WINDOWS',True)
