@@ -99,3 +99,25 @@ async def test_cancelled_explicit_route_closes_upstream_without_switch(tmp_path,
             r=await client.post(f'http://127.0.0.1:{g.port}/v1/responses',json={'model':MODEL,'stream':True},headers={'Authorization':'Bearer LOCAL'});await asyncio.wait_for(started.wait(),3);await r.content.read(10);r.close();await asyncio.wait_for(closed.wait(),3)
         assert len(payloads)==1 and payloads[0]['provider']['only']==['morph/fp8']
     finally:store.close();await runner.cleanup()
+
+
+@pytest.mark.parametrize('ordinary,actual',[('deepseek','DeepSeek'),('morph/fp8','Morph')])
+@pytest.mark.parametrize('field',['model','provider_name'])
+@pytest.mark.parametrize('bad',['missing',None,'','   ',42,False,{},[]])
+def test_doctor_requires_actual_billed_identity_fields(ordinary,actual,field,bad):
+    generation={'id':'response1','model':MODEL,'provider_name':actual}
+    if bad=='missing':generation.pop(field)
+    else:generation[field]=bad
+    assert cli._verified_generation(generation,'response1',ordinary,ordinary) is False
+
+
+@pytest.mark.parametrize('recorded',[None,'','   ',42,False,{},[]])
+def test_doctor_requires_nonempty_recorded_response_id(recorded):
+    generation={'id':recorded,'model':MODEL,'provider_name':'DeepSeek'}
+    assert cli._verified_generation(generation,recorded,'deepseek','deepseek') is False
+
+
+def test_doctor_does_not_reuse_stream_optional_identity_semantics():
+    # Unknown SSE identity is intentionally valid; the billed generation is not.
+    module.validate_observed_identity({'model':None,'provider':None},'deepseek')
+    assert cli._verified_generation({'id':'response1'},'response1','deepseek','deepseek') is False

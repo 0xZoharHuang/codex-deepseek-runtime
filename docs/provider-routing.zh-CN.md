@@ -18,7 +18,7 @@ cds runtime provider status
 正在运行时另列实际已采用的 `admitted_provider` / `admitted_config_sha256`。
 缺少旧版服务的证明字段会显示未知，不推测成官方提供方。
 
-在没有原生任务、网关监督进程或服务 lease 的情况下修改：
+在没有原生任务、网关监督进程、遗留 worker 或服务 lease 的情况下修改：
 
 ```powershell
 cds runtime provider set morph/fp8 --if-match absent

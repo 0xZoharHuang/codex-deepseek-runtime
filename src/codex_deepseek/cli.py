@@ -19,7 +19,7 @@ import aiohttp
 
 from .gateway import Gateway, Store
 from .state import migrate_searches
-from .protocol import MODEL, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER
+from .protocol import MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER
 from .policy import bindings, check_cli, isolated_path
 from .bootstrap import module_command, module_environment
 from .service import ProviderService
@@ -207,7 +207,11 @@ async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
 
 def _verified_generation(generation, response_id, selected, ordinary_provider):
     from .gateway import validate_observed_identity
-    if generation.get('id')!=response_id or selected!=ordinary_provider:
+    if (not isinstance(generation,dict) or not isinstance(response_id,str) or not response_id.strip()
+            or not isinstance(generation.get('id'),str) or generation['id']!=response_id
+            or ordinary_provider not in {PROVIDER,STRUCTURED_PROVIDER} or selected!=ordinary_provider
+            or any(not isinstance(generation.get(field),str) or not generation[field].strip()
+                   for field in ('model','provider_name'))):
         return False
     try:
         validate_observed_identity({'model':generation.get('model'),'provider':generation.get('provider_name')},ordinary_provider)

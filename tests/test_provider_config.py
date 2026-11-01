@@ -228,3 +228,15 @@ def test_writer_never_touches_external_service_lease_alias(tmp_path,kind):
     before=(state/policy.FILENAME).read_bytes()
     with pytest.raises((ValueError,RuntimeError)):policy.set_provider(home,'morph/fp8')
     assert outside.read_bytes()==b'never modify this' and (state/policy.FILENAME).read_bytes()==before
+
+
+
+def test_dead_supervisor_live_recorded_worker_still_rejects_policy_change(tmp_path,monkeypatch):
+    home=tmp_path/'home';policy.set_provider(home,'deepseek');path=home/'provider-state'/policy.FILENAME;original=path.read_bytes()
+    monkeypatch.setattr(service,'read_descriptor',lambda h:{'pid':101,'birth':'dead-parent','worker_pid':202,'worker_birth':'living-worker'})
+    monkeypatch.setattr(service,'native_active',lambda h:False)
+    monkeypatch.setattr('codex_deepseek.processes.matches',lambda pid,birth:pid==202 and birth=='living-worker')
+    assert service.lease_held(home/'provider-state') is False
+    with pytest.raises(RuntimeError,match='still admitted'):policy.set_provider(home,'morph/fp8')
+    assert path.read_bytes()==original
+    status=policy.status(home);assert status['service_running'] and status['admitted_provider'] is None

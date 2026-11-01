@@ -89,7 +89,8 @@ def _status_locked(home, loaded):
     from .service import read_descriptor, native_active, _admitted_provider
     from .processes import matches
     admitted = read_descriptor(home)
-    running = matches(admitted.get("pid"), admitted.get("birth"))
+    running = (matches(admitted.get("pid"), admitted.get("birth"))
+               or matches(admitted.get("worker_pid"), admitted.get("worker_birth")))
     if running and any(key in admitted for key in ("provider_config", "provider_config_sha256", "ordinary_default_provider")):
         _admitted_provider(admitted)
     return {"configured_provider": loaded["policy"]["ordinary_default_provider"],
@@ -132,7 +133,9 @@ def set_provider(home, provider, *, expected_revision=None):
         if native_active(home):
             raise RuntimeError("Provider policy cannot change while this home has active native owners; wait for natural retirement")
         admitted = read_descriptor(home)
-        if matches(admitted.get("pid"), admitted.get("birth")) or _service_lease_held(state):
+        if (matches(admitted.get("pid"), admitted.get("birth"))
+                or matches(admitted.get("worker_pid"), admitted.get("worker_birth"))
+                or _service_lease_held(state)):
             raise RuntimeError("Provider service is still admitted for this home; wait for its natural idle retirement before changing policy")
         path = state / FILENAME
         temporary = None
