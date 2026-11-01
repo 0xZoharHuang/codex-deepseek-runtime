@@ -30,7 +30,7 @@ def test_candidate_changes_all_target_recipe_ids_without_relabeling_ready_assets
         assert manifest["distribution_version"]=="0.6.7"
         assert build.native_recipe_identity(target,stable)==manifest["native_recipe_id"]
         assert build.native_recipe_identity(target,candidate)!=manifest["native_recipe_id"]
-        current=json.loads((ROOT/"native"/manifest_name).read_bytes())
+        current=json.loads((ROOT/"native/rollback/0.6.8"/manifest_name).read_bytes())
         assert current["status"]=="ready" and current["distribution_version"]=="0.6.8"
         assert current["native_recipe_id"]==build.native_recipe_identity(target,candidate)
         assert current["archive"]["sha256"]!=manifest["archive"]["sha256"]

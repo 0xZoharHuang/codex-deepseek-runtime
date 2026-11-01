@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -44,7 +45,7 @@ def test_shared_eol_source_promotion_preserves_exact_068_recipe_and_assets():
         assert {row["path"] for row in leaf["changes_by_target"][target]} == PATHS
         assert all(row["before_sha256"] != row["after_sha256"] for row in leaf["changes_by_target"][target])
         name = "runtime.json" if target == "aarch64-apple-darwin" else "runtime-" + target + ".json"
-        historical = json.loads((ROOT / "native" / name).read_bytes())
+        historical = json.loads((ROOT / "native/rollback/0.6.8" / name).read_bytes())
         assert historical["distribution_version"] == "0.6.8" and historical["status"] == "ready"
         assert historical["native_recipe_id"] == build.native_recipe_identity(target, old)
         assert historical["native_recipe_id"] != build.native_recipe_identity(target, current)
@@ -77,12 +78,42 @@ def test_published_068_binary_cannot_be_qualified_as_eol_fixed_package(tmp_path,
     native = importlib.util.module_from_spec(qualification_spec)
     qualification_spec.loader.exec_module(native)
     name = "runtime.json" if target == "aarch64-apple-darwin" else "runtime-" + target + ".json"
-    old = json.loads((ROOT / "native" / name).read_bytes())
+    old = json.loads((ROOT / "native/rollback/0.6.8" / name).read_bytes())
+    current_recipe_id = build.native_recipe_identity(target)
+    assert old["native_recipe_id"] != current_recipe_id
+    # A test-only same-distribution-version relabel must still fail the actual
+    # installer's recipe guard. The immutable original archive/manifest is untouched.
+    installer_spec = importlib.util.spec_from_file_location("migration_old_manifest_installer", ROOT / "install.py")
+    installer = importlib.util.module_from_spec(installer_spec)
+    installer_spec.loader.exec_module(installer)
+    current_version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    same_version = {**old, "distribution_version": current_version}
+    assert same_version["distribution_version"] == current_version
+    assert same_version["native_recipe_id"] == old["native_recipe_id"]
+    manifest_path = tmp_path / "same-version-negative-fixture.json"
+    manifest_path.write_bytes(json.dumps(same_version).encode())
+    system, machine = {
+        "aarch64-apple-darwin": ("Darwin", "arm64"),
+        "x86_64-unknown-linux-gnu": ("Linux", "x86_64"),
+        "x86_64-pc-windows-msvc": ("Windows", "amd64"),
+    }[target]
+    monkeypatch.setattr(installer.platform, "system", lambda: system)
+    monkeypatch.setattr(installer.platform, "machine", lambda: machine)
+    with pytest.raises(SystemExit) as rejected_manifest:
+        installer.runtime_manifest(manifest_path)
+    assert str(rejected_manifest.value) == (
+        "The " + target + " native manifest is not qualified for this source/toolchain/patch combination. "
+        "Existing immutable stable releases remain usable; finish target qualification before installing this candidate."
+    )
     package = tmp_path / "published-068-package"
     package.mkdir()
-    (package / "codex-package.json").write_bytes(json.dumps({"target": target, "recipeId": old["native_recipe_id"]}).encode())
+    (package / "codex-package.json").write_bytes(json.dumps({
+        "target": target, "recipeId": old["native_recipe_id"],
+        "version": build.VERSION, "upstreamCommit": build.COMMIT,
+    }).encode())
     (package / "build-receipt.json").write_bytes(b"{}")
     monkeypatch.setitem(sys.modules, "build_native", build)
     monkeypatch.setattr(build, "build_target", lambda: target)
-    with pytest.raises(ValueError, match="Package target or recipe"):
+    with pytest.raises(ValueError) as rejected_package:
         native.package_identity(package)
+    assert str(rejected_package.value) == "Package target or recipe does not match this host and checkout"
