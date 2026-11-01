@@ -22,7 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
-    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file']!='guardian-provider-transport-0164.patch']}
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch'}]}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -121,6 +121,11 @@ def test_verified_upstream_modified_sources_accept_exact_target_stack(tmp_path,m
         assert 'provider_without_websockets_scores_over_http_without_opening_pool' in diff
     else:
         assert 'provider_without_websockets_scores_over_http_without_opening_pool' not in diff
+    if recipe_selection=='active':
+        assert 'profile_migration_eol' in diff
+        assert 'eol_crlf_prefix_pending_stays_crlf_on_every_platform' in diff
+    else:
+        assert 'profile_migration_eol' not in diff
     assert 'raw_protocol_version' in diff and 'StatusCode::PAYLOAD_TOO_LARGE' in diff
     if target==WIN:
         assert 'Remove this isolated Codex home' in diff

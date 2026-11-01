@@ -11,10 +11,10 @@ PATCH="guardian-provider-transport-0164.patch"
 
 def test_candidate_changes_all_target_recipe_ids_without_relabeling_ready_assets():
     stable=json.loads((ROOT/"native/runtime-overlays-0.6.7-acc16483.json").read_bytes())
-    candidate=build.runtime_recipe()
+    candidate=build.runtime_recipe(CANDIDATE)
     assert candidate==build.runtime_recipe(CANDIDATE)
-    assert build.sha(ROOT/"native/runtime-overlays.json")=="29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca"
-    assert (ROOT/"native/runtime-overlays.json").read_bytes()==CANDIDATE.read_bytes()
+    assert build.sha(ROOT/"native/runtime-overlays-0.6.8-29ffae4e.json")=="29ffae4eeae3733592626ea1cc0c8154867006af4e761f61cb3f03e17dac9fca"
+    assert (ROOT/"native/runtime-overlays-0.6.8-29ffae4e.json").read_bytes()==CANDIDATE.read_bytes()
     assert hashlib.sha256((ROOT/"native/runtime-overlays-0.6.7-acc16483.json").read_bytes()).hexdigest()=="acc164834bdf4bc3be257156ed82917eda3e81720a5ed6b7008be24c83f7f6db"
     assert candidate["upstream_commit"]==stable["upstream_commit"]=="fe136d4e70ef2b5bbed40a2d22b3aabf267796d3"
     assert candidate["build_toolchain"]==stable["build_toolchain"]
@@ -44,13 +44,14 @@ def test_candidate_changes_all_target_recipe_ids_without_relabeling_ready_assets
 @pytest.mark.parametrize("selection",["runtime-overlays.json",CANDIDATE.name])
 @pytest.mark.parametrize("problem",["omitted_guard","wrong_order","windows_only","extra_patch"])
 def test_active_and_candidate_cannot_omit_or_weaken_shared_guard(tmp_path,monkeypatch,problem,selection):
-    value=copy.deepcopy(build.runtime_recipe(CANDIDATE))
-    if problem=="omitted_guard":value["overlays"].pop()
-    elif problem=="wrong_order":value["overlays"][-2:]=reversed(value["overlays"][-2:])
+    value=copy.deepcopy(build.runtime_recipe(ROOT/"native"/selection))
+    index=next(i for i,entry in enumerate(value["overlays"]) if entry["file"]==PATCH)
+    if problem=="omitted_guard":value["overlays"].pop(index)
+    elif problem=="wrong_order":value["overlays"][index-1:index+1]=reversed(value["overlays"][index-1:index+1])
     elif problem=="windows_only":
-        entry=value["overlays"][-1]
+        entry=value["overlays"][index]
         entry["changes_by_target"]={"x86_64-pc-windows-msvc":entry["changes_by_target"]["x86_64-pc-windows-msvc"]}
-    else:value["overlays"].append(copy.deepcopy(value["overlays"][-1]))
+    else:value["overlays"].append(copy.deepcopy(value["overlays"][index]))
     source=tmp_path/"source";(source/"native").mkdir(parents=True)
     path=source/"native"/selection;path.write_bytes(json.dumps(value).encode())
     monkeypatch.setattr(build,"SOURCE",source)

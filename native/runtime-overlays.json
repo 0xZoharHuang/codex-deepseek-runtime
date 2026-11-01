@@ -1205,6 +1205,63 @@
           }
         ]
       }
+    },
+    {
+      "file": "migration-checksum-eol-0164.patch",
+      "sha256": "9d962c36654896eaa65d84654c1ff05a3a78a2d8fc8be8f72c78fd0a19f89dba",
+      "changes_by_target": {
+        "aarch64-apple-darwin": [
+          {
+            "path": "codex-rs/state/src/migrations.rs",
+            "before_sha256": "51abd3cc4369b5c410cee0989fc2ae1559dc4879e77f67cb2898c8b6aca0022e",
+            "after_sha256": "022a59b8fe271bf25d4cacf0e522b7d5f3d5888f0cfaca39c2fe14e58a60a431"
+          },
+          {
+            "path": "codex-rs/state/src/sqlite.rs",
+            "before_sha256": "d196a8a09a72bed7119f52b24576e4e247ef30c4f183cbd22ffab52f101582ef",
+            "after_sha256": "20f29657713b7d29fc882774fd364a2209aa09744eb7f8b826fd6f959415789e"
+          },
+          {
+            "path": "codex-rs/state/src/migrations_tests.rs",
+            "before_sha256": "382b571e4580df4f31bcdfbee862777b671a1b1f6d35edd76f04e9c467f52207",
+            "after_sha256": "972b560040fc671cd9c32eab5f5af0e7aa24dd61b8eeb7f08c8a323f7aa47fae"
+          }
+        ],
+        "x86_64-unknown-linux-gnu": [
+          {
+            "path": "codex-rs/state/src/migrations.rs",
+            "before_sha256": "51abd3cc4369b5c410cee0989fc2ae1559dc4879e77f67cb2898c8b6aca0022e",
+            "after_sha256": "022a59b8fe271bf25d4cacf0e522b7d5f3d5888f0cfaca39c2fe14e58a60a431"
+          },
+          {
+            "path": "codex-rs/state/src/sqlite.rs",
+            "before_sha256": "d196a8a09a72bed7119f52b24576e4e247ef30c4f183cbd22ffab52f101582ef",
+            "after_sha256": "20f29657713b7d29fc882774fd364a2209aa09744eb7f8b826fd6f959415789e"
+          },
+          {
+            "path": "codex-rs/state/src/migrations_tests.rs",
+            "before_sha256": "382b571e4580df4f31bcdfbee862777b671a1b1f6d35edd76f04e9c467f52207",
+            "after_sha256": "972b560040fc671cd9c32eab5f5af0e7aa24dd61b8eeb7f08c8a323f7aa47fae"
+          }
+        ],
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/state/src/migrations.rs",
+            "before_sha256": "51abd3cc4369b5c410cee0989fc2ae1559dc4879e77f67cb2898c8b6aca0022e",
+            "after_sha256": "022a59b8fe271bf25d4cacf0e522b7d5f3d5888f0cfaca39c2fe14e58a60a431"
+          },
+          {
+            "path": "codex-rs/state/src/sqlite.rs",
+            "before_sha256": "d196a8a09a72bed7119f52b24576e4e247ef30c4f183cbd22ffab52f101582ef",
+            "after_sha256": "20f29657713b7d29fc882774fd364a2209aa09744eb7f8b826fd6f959415789e"
+          },
+          {
+            "path": "codex-rs/state/src/migrations_tests.rs",
+            "before_sha256": "382b571e4580df4f31bcdfbee862777b671a1b1f6d35edd76f04e9c467f52207",
+            "after_sha256": "972b560040fc671cd9c32eab5f5af0e7aa24dd61b8eeb7f08c8a323f7aa47fae"
+          }
+        ]
+      }
     }
   ]
 }
