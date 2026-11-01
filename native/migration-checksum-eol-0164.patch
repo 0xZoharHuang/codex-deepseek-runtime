@@ -269,7 +269,41 @@
          }
 --- a/codex-rs/state/src/migrations_tests.rs
 +++ b/codex-rs/state/src/migrations_tests.rs
-@@ -1106,3 +1106,689 @@
+@@ -552,10 +552,14 @@
+     .execute(&pool)
+     .await
+     .expect("pre-migration items should be inserted");
+-    THREAD_HISTORY_MIGRATOR
+-        .run(&pool)
++    let upgraded = sqlite
++        .open_thread_history_db(
++            &super::runtime_thread_history_migrator(),
++            /*telemetry_override*/ None,
++        )
+         .await
+         .expect("update-ordinal migration should apply");
++    upgraded.close().await;
+     sqlx::query(
+         r#"
+ INSERT INTO thread_items (thread_id, turn_id, item_id, rollout_ordinal, created_at_ms, item_type, item_json) VALUES
+@@ -623,10 +627,14 @@
+         .await
+         .expect("insert an existing projection checkpoint");
+ 
+-    THREAD_HISTORY_MIGRATOR
+-        .run(&pool)
++    let upgraded = sqlite
++        .open_thread_history_db(
++            &super::runtime_thread_history_migrator(),
++            /*telemetry_override*/ None,
++        )
+         .await
+         .expect("realtime item migration should apply");
++    upgraded.close().await;
+     let turn_id_not_null = sqlx::query_scalar::<_, i64>(
+         "SELECT \"notnull\" FROM pragma_table_info('thread_items') WHERE name = 'turn_id'",
+     )
+@@ -1106,3 +1114,689 @@
          );
      }
  }
