@@ -361,6 +361,7 @@ def test_registered_retained_mode_selects_p27_and_keeps_target_dispatches_separa
     assert "ci/retained-native-build-p27-a585.json" in helper
     assert "retained-native-build-49da.json" not in helper
     assert "inputs.retained_mode && inputs.retained_target || 'fresh'" in registered
+    assert "group: cds-retained-native-${{ github.ref }}-${{ inputs.platform }}" in helper
     assert "GITHUB_TOKEN: ${{ github.token }}" in helper
     assert "contents: read" in helper and "actions: read" in helper
     assert "ci/qualify_native.py" in helper and "ci/qualify_adapter.py" in helper

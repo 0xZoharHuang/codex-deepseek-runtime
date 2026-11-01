@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: cds-retained-native-${{ github.ref }}
+  group: cds-retained-native-${{ github.ref }}-${{ inputs.platform }}
   cancel-in-progress: false
 
 jobs:
