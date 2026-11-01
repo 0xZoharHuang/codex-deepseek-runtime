@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cds-native-platform-${{ github.ref }}
+  group: cds-native-platform-${{ github.ref }}-${{ inputs.retained_mode && inputs.retained_target || 'fresh' }}
   cancel-in-progress: false
 
 jobs:

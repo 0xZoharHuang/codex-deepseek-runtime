@@ -17,15 +17,17 @@ spec=importlib.util.spec_from_file_location("retained_native_test",ROOT/"ci/reus
 reuse=importlib.util.module_from_spec(spec);spec.loader.exec_module(reuse)
 
 
-def metadata_fixture(target="x86_64-unknown-linux-gnu"):
-    pins=json.loads((ROOT/"ci/retained-native-build-49da.json").read_bytes())
+def metadata_fixture(target="x86_64-unknown-linux-gnu", *, qualified=False):
+    path = reuse.PINS if qualified else ROOT/"ci/retained-native-build-49da.json"
+    pins=json.loads(path.read_bytes())
     pin=deepcopy(pins["targets"][target])
     run={"id":pins["run_id"],"run_attempt":1,"head_sha":pins["producer_commit"],
          "path":pins["workflow_path"],"repository":{"id":pins["repository_id"],"full_name":pins["repository"]},
-         "status":"in_progress","conclusion":None}
+         "status":"completed" if qualified else "in_progress",
+         "conclusion":"success" if qualified else None}
     job={"id":pin["job_id"],"run_id":pins["run_id"],"run_attempt":1,
          "head_sha":pins["producer_commit"],"name":pin["job_name"],
-         "status":"completed","conclusion":"failure",
+         "status":"completed","conclusion":pin["job_conclusion"],
          "steps":[{"name":name,"status":"completed","conclusion":state}
                   for name,state in pin["required_steps"].items()]}
     artifact={"id":pin["artifact_id"],"name":pin["artifact_name"],"expired":False,
@@ -220,3 +222,146 @@ def test_original_compiled_scope_target_is_not_interchangeable(target):
         "x86_64-unknown-linux-gnu" if target=="aarch64-apple-darwin" else "aarch64-apple-darwin")
     with pytest.raises(ValueError,match="compiled package bytes"):
         reuse.validate_carry(*values)
+
+
+@pytest.mark.parametrize("target", ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin"])
+@pytest.mark.parametrize("bad", [None, "run-in-progress", "run-failure", "job-failure",
+                                 "state-step", "missing-state-step", "missing-state-record",
+                                 "missing-state-log", "legacy-scope", "recipe", "other-target"])
+def test_new_p27_reuse_requires_exact_successful_scope_and_state_evidence(target, bad):
+    pins, pin, run, job, artifact = metadata_fixture(target, qualified=True)
+    if bad == "run-in-progress": run.update(status="in_progress", conclusion=None)
+    elif bad == "run-failure": run["conclusion"] = "failure"
+    elif bad == "job-failure": job["conclusion"] = "failure"
+    elif bad == "state-step":
+        next(s for s in job["steps"] if "State migration" in s["name"])["conclusion"] = "failure"
+    elif bad == "missing-state-step": pin["required_steps"].pop("Qualify actual State migration EOL compatibility")
+    elif bad == "missing-state-record": pin["members"].pop("state-migrations/qualification.json")
+    elif bad == "missing-state-log": pin["members"].pop("state-migrations/native-state.log")
+    elif bad == "legacy-scope": pins["scope"] = reuse.LEGACY_SCOPE
+    elif bad == "recipe": pins["recipe_sha256"] = "0"*64
+    elif bad == "other-target":
+        other = "aarch64-apple-darwin" if target.startswith("x86_64") else "x86_64-unknown-linux-gnu"
+        job = metadata_fixture(other, qualified=True)[3]
+    if bad is None:
+        reuse.validate_scope(run, job, artifact, pins, pin,
+                             now=datetime(2026, 11, 2, tzinfo=timezone.utc))
+        assert pins["producer_commit"] == "a5853bf6c3468af3a93bc0094bf09d1df4158693"
+        assert len(pin["required_steps"]) == 7
+    else:
+        with pytest.raises(ValueError):
+            reuse.validate_scope(run, job, artifact, pins, pin,
+                                 now=datetime(2026, 11, 2, tzinfo=timezone.utc))
+
+
+def state_carry_fixture():
+    values = list(carry_fixture())
+    pool, native, checkpoint, identity, contract, inputs, parsed, junit = values
+    state_files = {"codex-rs/state/src/migrations.rs": "exact-eol-reader",
+                   "codex-rs/state/src/migrations_tests.rs": "exact22-source"}
+    contract["final"].update(state_files)
+    contract["before"].update(state_files)
+    digest = reuse.sources.inventory_digest(contract["final"])
+    pool["producer"] = {"full_source_inventory": deepcopy(contract["final"]),
+                        "full_source_inventory_sha256": digest,
+                        "full_source_file_count": len(contract["final"])}
+    checkpoint["full_source_inventory"] = {"files": deepcopy(contract["final"]), "sha256": digest}
+    state_log = {"executed": 22, "failed": 0, "ignored": 0,
+                 "filtered_out_not_executed": 222, "tests": list(reuse.pool.STATE_TESTS)}
+    state = {**deepcopy(native), "status": "passed_native_state_migrations_scope",
+             "suite": "state-migrations", "tests": deepcopy(state_log),
+             "producer": deepcopy(pool["producer"])}
+    state["processes"]["returncode"] = 0
+    return values, state, state_log
+
+
+@pytest.mark.parametrize("bad", [None, "record-missing", "log-missing", "status", "process",
+                                 "nonzero-exit", "case", "ignored", "failed", "count",
+                                 "package", "source-input", "source-inventory"])
+def test_p27_state22_carry_is_exact_and_does_not_claim_a_new_Rust_run(bad):
+    values, state, parsed = state_carry_fixture()
+    if bad == "record-missing": state = None
+    elif bad == "log-missing": parsed = None
+    elif bad == "status": state["status"] = "failed"
+    elif bad == "process": state["processes"]["passed"] = False
+    elif bad == "nonzero-exit": state["processes"]["returncode"] = 1
+    elif bad == "case": state["tests"]["tests"][0] = "wrong::same_count"
+    elif bad in {"ignored", "failed", "count"}:
+        key = "executed" if bad == "count" else bad
+        parsed[key] = 21 if bad == "count" else 1
+        state["tests"] = deepcopy(parsed)
+    elif bad == "package": state["package"]["cli_sha256"] = "different-native"
+    elif bad == "source-input": state["source_sha256"]["ci/qualify_guardian_pool.py"] = "different-controller"
+    elif bad == "source-inventory": state["producer"]["full_source_inventory"].pop("codex-rs/state/src/migrations_tests.rs")
+    if bad is None:
+        result = reuse.validate_carry(*values, state_record=state, parsed_state_log=parsed)
+        assert result["current_Rust_tests_executed"] == 0
+        assert result["carried_State_tests"]["executed"] == 22
+        assert result["original_workflow_status_preserved"] is True
+        assert "original_adapter_failure_preserved" not in result
+        assert len(result["carried_Rust_test_names"]) == 32
+        assert result["current_offline_qualification_claimed"] is False
+    else:
+        with pytest.raises((ValueError, KeyError)):
+            reuse.validate_carry(*values, state_record=state, parsed_state_log=parsed)
+
+
+@pytest.mark.parametrize("location", [
+    "http://productionresultssa1.blob.core.windows.net/actions-results/one?sig=fake",
+    "https://127.0.0.1/actions-results/one", "https://localhost/actions-results/one",
+    "https://unrelated.blob.core.windows.net/actions-results/one",
+    "https://productionresultssa1.blob.core.windows.net.evil.invalid/actions-results/one",
+    "https://user:secret@productionresultssa1.blob.core.windows.net/actions-results/one",
+    "https://productionresultssa1.blob.core.windows.net:444/actions-results/one",
+    "https://productionresultssa1.blob.core.windows.net/not-artifact/one",
+    "https://productionresultssa1.blob.core.windows.net/actions-results/one#fragment",
+])
+def test_new_artifact_path_refuses_unreviewed_hosts_before_any_download(tmp_path, monkeypatch, location):
+    calls = []
+    monkeypatch.setattr(reuse.legacy, "download", lambda *a, **kw: calls.append((a, kw)))
+    with pytest.raises(ValueError):
+        reuse.download_artifact(location, tmp_path/"artifact.zip", "0"*64, 100)
+    assert calls == [] and not (tmp_path/"artifact.zip").exists()
+
+
+@pytest.mark.parametrize("redirect", [False, True])
+def test_artifact_download_uses_no_API_headers_and_never_follows_secondary_redirect(tmp_path, monkeypatch, redirect):
+    import urllib.error
+    body = b"exact reviewed zip bytes"
+    location = "https://productionresultssa1.blob.core.windows.net/actions-results/one?sig=synthetic"
+    calls = []
+
+    class Opener:
+        def open(self, url, *, timeout):
+            calls.append((url, timeout))
+            if redirect:
+                raise urllib.error.HTTPError(url, 302, "redirect", {}, None)
+            return io.BytesIO(body)
+
+    def opener_factory(handler):
+        assert handler is reuse.legacy.NoRedirect
+        return Opener()
+
+    monkeypatch.setenv("GITHUB_TOKEN", "synthetic-not-a-real-token")
+    monkeypatch.setattr(reuse.urllib.request, "build_opener", opener_factory)
+    target = tmp_path/"artifact.zip"
+    if redirect:
+        with pytest.raises(ValueError, match="Unexpected Actions storage redirect"):
+            reuse.download_artifact(location, target, hashlib.sha256(body).hexdigest(), len(body))
+        assert not target.exists()
+    else:
+        assert reuse.download_artifact(location, target, hashlib.sha256(body).hexdigest(), len(body)) == len(body)
+        assert target.read_bytes() == body
+    assert calls == [(location, 90)]
+
+
+def test_registered_retained_mode_selects_p27_and_keeps_target_dispatches_separate():
+    registered = (ROOT/".github/workflows/native-platform-qualification.yml").read_text()
+    helper = (ROOT/".github/workflows/retained-native-qualification.yml").read_text()
+    assert "ci/retained-native-build-p27-a585.json" in helper
+    assert "retained-native-build-49da.json" not in helper
+    assert "inputs.retained_mode && inputs.retained_target || 'fresh'" in registered
+    assert "GITHUB_TOKEN: ${{ github.token }}" in helper
+    assert "contents: read" in helper and "actions: read" in helper
+    assert "ci/qualify_native.py" in helper and "ci/qualify_adapter.py" in helper
+    assert "cargo " not in helper and "build_native.py" not in helper

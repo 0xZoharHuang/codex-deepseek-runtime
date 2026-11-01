@@ -1,4 +1,4 @@
-"""Acquire one pinned native-build scope; never relabel a failed full workflow."""
+"""Acquire one exact native build scope without Rust or relabeling old failures."""
 from __future__ import annotations
 import argparse
 from collections import Counter
@@ -11,6 +11,10 @@ from pathlib import Path, PurePosixPath
 import sys
 import tarfile
 import time
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +26,9 @@ from ci import qualify_guardian_pool as pool
 import build_native as build
 import verify_native_source as sources
 
-PINS = ROOT/"ci/retained-native-build-49da.json"
+PINS = ROOT/"ci/retained-native-build-p27-a585.json"
+LEGACY_SCOPE = "retained-native-build-and-transport-only"
+QUALIFIED_SCOPE = "qualified-native-build-state-and-transport-only"
 
 
 def need(ok, message):
@@ -31,18 +37,42 @@ def need(ok, message):
 
 
 def validate_scope(run, job, artifact, pins, pin, *, now=None):
-    need(pins.get("scope") == "retained-native-build-and-transport-only",
-         "Not a retained native-only scope")
+    scope = pins.get("scope")
+    need(pins.get("schema") == 1 and scope in {LEGACY_SCOPE, QUALIFIED_SCOPE},
+         "Not a reviewed retained native-only scope")
     need(run.get("id") == pins["run_id"] and run.get("run_attempt") == pins["run_attempt"]
          and run.get("head_sha") == pins["producer_commit"]
          and run.get("path") == pins["workflow_path"]
          and run.get("repository", {}).get("id") == pins["repository_id"]
          and run.get("repository", {}).get("full_name") == pins["repository"],
          "Original run/source/repository differs")
-    # Another matrix job may still run. This never turns adapter failure into success.
-    need((run.get("status"), run.get("conclusion")) in
-         {("in_progress", None), ("completed", "failure")},
-         "Original failed-scope run has an unexpected status")
+    # Historical failed scope is never upgraded to success. New P27 scope requires
+    # the exact completed successful producer, including all concrete steps below.
+    if scope == QUALIFIED_SCOPE:
+        required = {name: "success" for name in (
+            "Build the pinned native package",
+            "Qualify actual State migration EOL compatibility",
+            "Qualify actual Guardian provider transport and cancellation",
+            "Run real native payload and recovery fixtures",
+            "Check adapter and platform regressions",
+            "Retain package provenance and original failures",
+            "Upload bounded qualification artifacts")}
+        need(pin.get("job_conclusion") == "success" and pin.get("required_steps") == required,
+             "P27 requires the complete exact successful original step scope")
+        checkpoint = pin.get("checkpoint_member", "")
+        need(re.fullmatch(r"compile-checkpoints/b-[0-9a-f]{8}/compile-checkpoint\.json", checkpoint)
+             and set(pin.get("members", {})) == {
+                 "state-migrations/qualification.json", "state-migrations/native-state.log",
+                 "guardian-pool/qualification.json", "guardian-pool/native-pool.log",
+                 "native-qualification/qualification.json", "native-qualification/native.xml",
+                 checkpoint, "retained-build-scope.json"},
+             "P27 requires all exact original State/pool/native/checkpoint records")
+        need(native.sha(ROOT/"native/runtime-overlays.json") == pins.get("recipe_sha256"),
+             "Current full P27 recipe differs from its compiled pin")
+    expected = ({("completed", "success")} if scope == QUALIFIED_SCOPE else
+                {("in_progress", None), ("completed", "failure")})
+    need((run.get("status"), run.get("conclusion")) in expected,
+         "Original declared-scope run has an unexpected status")
     need(job.get("id") == pin["job_id"] and job.get("run_id") == pins["run_id"]
          and job.get("run_attempt") == pins["run_attempt"]
          and job.get("head_sha") == pins["producer_commit"]
@@ -63,6 +93,27 @@ def validate_scope(run, job, artifact, pins, pin, *, now=None):
     need(artifact["expires_at"] == pin["expires_at"]
          and expires > (now or datetime.now(timezone.utc)),
          "Retained artifact has expired or its expiry changed")
+
+
+def download_artifact(location, destination, digest, size):
+    """Accept only the official Actions storage location, without API credentials."""
+    need(type(size) is int and 0 < size <= legacy.MAX_SOURCE_BYTES,
+         "Artifact size must be an exact bounded byte count")
+    value = urllib.parse.urlsplit(location)
+    need(value.scheme == "https" and value.hostname is not None
+         and re.fullmatch(r"productionresultssa[0-9]+\.blob\.core\.windows\.net", value.hostname)
+         and value.port in (None, 443) and not value.username and not value.password
+         and value.path.startswith("/actions-results/") and not value.fragment,
+         "Unreviewed Actions artifact storage location")
+    # The API gives a final signed storage URL. Do not follow a second redirect,
+    # forward its token, or record the signed query in evidence/errors.
+    opener = urllib.request.build_opener(legacy.NoRedirect)
+    try:
+        return legacy.download(location, destination, digest, exact_bytes=size, opener=opener)
+    except urllib.error.HTTPError as error:
+        if error.code in {301, 302, 303, 307, 308}:
+            raise ValueError("Unexpected Actions storage redirect") from None
+        raise
 
 
 def extract_scope_members(zip_path, pin, directory):
@@ -131,7 +182,8 @@ def package_invariants(identity):
 
 
 def validate_carry(pool_record, native_record, checkpoint, identity, contract,
-                   input_hashes, parsed_pool_log, parsed_native_junit):
+                   input_hashes, parsed_pool_log, parsed_native_junit, *,
+                   state_record=None, parsed_state_log=None):
     """Exact old Rust scope carry; no current-source software success is inferred."""
     need(pool_record.get("status") == "passed_native_guardian_pool_scope"
          and pool_record.get("processes", {}).get("passed") is True,
@@ -140,8 +192,25 @@ def validate_carry(pool_record, native_record, checkpoint, identity, contract,
          and Counter(parsed_pool_log["tests"]) == Counter(pool.EXPECTED_TESTS)
          and parsed_pool_log["executed"] == 10 and parsed_pool_log["ignored"] == 0,
          "Original pool executions differ from exact declared tests")
+    records = [pool_record, native_record]
+    rust_records = [pool_record]
+    if state_record is not None or parsed_state_log is not None:
+        need(isinstance(state_record, dict) and isinstance(parsed_state_log, dict),
+             "Original State qualification/log pair is required")
+        need(state_record.get("status") == "passed_native_state_migrations_scope"
+             and state_record.get("suite") == "state-migrations"
+             and state_record.get("processes", {}).get("passed") is True
+             and state_record.get("processes", {}).get("returncode") == 0,
+             "Original State qualification did not pass")
+        need(state_record.get("tests") == parsed_state_log
+             and Counter(parsed_state_log["tests"]) == Counter(pool.STATE_TESTS)
+             and parsed_state_log["executed"] == 22 and parsed_state_log["failed"] == 0
+             and parsed_state_log["ignored"] == 0,
+             "Original State executions differ from exact declared tests")
+        records.append(state_record)
+        rust_records.append(state_record)
     wanted = package_invariants(identity)
-    for record in (pool_record, native_record):
+    for record in records:
         need(package_invariants(record["package"]) == wanted,
              "Prior evidence refers to different compiled package bytes")
         need(all(record["source_sha256"].get(name) == digest
@@ -153,11 +222,12 @@ def validate_carry(pool_record, native_record, checkpoint, identity, contract,
          "Original native22 scope did not pass its exact identities")
     expected = expected_full_source(contract)
     expected_digest = sources.inventory_digest(expected)
-    producer = pool_record["producer"]
-    need(producer.get("full_source_inventory") == expected
-         and producer.get("full_source_inventory_sha256") == expected_digest
-         and producer.get("full_source_file_count") == len(expected),
-         "Full original native source/lock/test inventory differs")
+    for record in rust_records:
+        producer = record["producer"]
+        need(producer.get("full_source_inventory") == expected
+             and producer.get("full_source_inventory_sha256") == expected_digest
+             and producer.get("full_source_file_count") == len(expected),
+             "Full original native source/lock/test inventory differs")
     need(checkpoint.get("status") == "compiled-not-qualified" and checkpoint.get("ready") is False
          and checkpoint.get("source_unchanged_through_compile") is True
          and checkpoint.get("full_source_inventory") == {"files": expected, "sha256": expected_digest}
@@ -166,10 +236,16 @@ def validate_carry(pool_record, native_record, checkpoint, identity, contract,
     need(all(checkpoint.get("compiler_driver_inputs", {}).get(name) == input_hashes[name]
              for name in ("build_native.py", "native_licenses.py", "verify_native_source.py")),
          "Original compiler-driver bytes differ")
-    return {"scope": "exact original native build, pool10 and transport22 only",
-            "current_Rust_tests_executed": 0, "carried_Rust_test_names": parsed_pool_log["tests"],
+    result = {"scope": "exact original native build, " + ("state22, " if state_record is not None else "") + "pool10 and transport22 only",
+            "current_Rust_tests_executed": 0,
+            "carried_State_tests": parsed_state_log if state_record is not None else None,
+            "carried_Rust_test_names": parsed_pool_log["tests"] + (parsed_state_log["tests"] if state_record is not None else []),
             "full_native_source_count": len(expected), "full_native_source_sha256": expected_digest,
-            "original_adapter_failure_preserved": True, "current_offline_qualification_claimed": False}
+            "original_workflow_status_preserved": True, "current_offline_qualification_claimed": False,
+            "coverage_limit": "The named pool10 carry does not independently prove cancellation with an explicitly false provider config."}
+    if state_record is None:
+        result["original_adapter_failure_preserved"] = True
+    return result
 
 
 def main():
@@ -199,7 +275,7 @@ def main():
     validate_scope(run, job, artifact, pins, pin)
     location = legacy.api_get(base+"artifacts/"+str(pin["artifact_id"])+"/zip", token, redirect=True)
     zip_path = args.download/"artifact.zip"
-    legacy.download(location, zip_path, pin["zip_sha256"], exact_bytes=pin["zip_bytes"])
+    download_artifact(location, zip_path, pin["zip_sha256"], pin["zip_bytes"])
     archive, recipe = legacy.zip_inputs(zip_path, pin, pins, args.download)
     extract_scope_members(zip_path, pin, args.download/"scope")
     receipt = receipt_from_archive(archive, pin["receipt_sha256"])
@@ -223,8 +299,14 @@ def main():
     parsed_pool = pool.test_result((scope/"guardian-pool/native-pool.log").read_text())
     parsed_native = native.junit_result(scope/"native-qualification/native.xml",
                                        native_record.get("collected_case_names"))
+    state_args = {}
+    if pins["scope"] == QUALIFIED_SCOPE:
+        # Missing records/logs are errors; never silently downgrade P27 to old pool-only carry.
+        state_args = {"state_record": load("state-migrations/qualification.json"),
+                      "parsed_state_log": pool.test_result(
+                          (scope/"state-migrations/native-state.log").read_text(), "state-migrations")}
     carry = validate_carry(pool_record, native_record, checkpoint, identity, contract,
-                           native_input_hashes(contract), parsed_pool, parsed_native)
+                           native_input_hashes(contract), parsed_pool, parsed_native, **state_args)
     # Check all compiled pre-license output bytes captured by the real checkpoint.
     for name, record in checkpoint["output_files"].items():
         need(native.sha(args.package/name) == record["sha256"],

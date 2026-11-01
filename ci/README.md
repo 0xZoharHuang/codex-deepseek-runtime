@@ -118,3 +118,36 @@ admitted crate or its exact Cargo-pinned Git checkout. Git HEAD, tree/index mode
 alias text and full target content must match the locked Git objects. This also
 handles Windows checkout materialization; arbitrary short strings are not paths.
 Logical source, alias chain, resolved target and content SHA remain attributed.
+
+
+## Requalify Python changes with the exact P27 native build
+
+The registered fresh workflow's explicit `retained_mode=true` uses the reviewed
+`retained-native-build-p27-a585.json` inputs from successful run 41308737962.
+Select `retained_target=linux-x64` and `retained_target=macos-arm64` in separate
+manual dispatches of the same reviewed current candidate ref. Their concurrency
+keys are target-specific, so both may run without canceling another target.
+This path never invokes Cargo. The source/Python candidate remains distinct from
+the original native producer a5853bf6c3468af3a93bc0094bf09d1df4158693.
+
+Acquisition verifies the exact repository, producer commit/run/attempt/job and all
+required original successful steps; artifact identity/expiry/size/digest; full
+original package and receipt; complete native source, compiler and patch recipe.
+State22 and Guardian10 are explicitly carried from their exact original logs and
+source-bound receipts, with zero Rust tests executed in this new run. The named
+Guardian scope does not independently prove cancellation under an explicitly
+false provider configuration. Its original scope limits are preserved.
+
+The current candidate then actually reruns native CLI/helper22 and the complete
+installed Python offline collection against those same unchanged binaries.
+These are new current-source results, not a relabeling of the original run.
+The API token is supplied only in the dedicated acquisition environment, never
+as an argument or printed value; it is not forwarded to the signed storage URL.
+Only the official Actions storage host/path is accepted and secondary redirects
+are refused. The downloaded bytes must match the exact pinned ZIP SHA and size.
+
+These Actions inputs expire and are not a permanent stable distribution channel.
+Missing/expired records, changed native sources/recipe/test drivers, unknown
+skips or metadata mismatches fail closed. There is no old26, release-asset or
+fresh-build fallback. The historical49da pins and their original failed full
+workflow status remain immutable records, not the current selection.

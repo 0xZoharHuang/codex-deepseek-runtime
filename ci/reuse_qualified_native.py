@@ -148,13 +148,14 @@ def api_get(path, token, *, redirect=False):
         return location
 
 
-def download(url, path, expected_hash, *, exact_bytes=None, maximum=MAX_SOURCE_BYTES):
+def download(url, path, expected_hash, *, exact_bytes=None, maximum=MAX_SOURCE_BYTES, opener=None):
     path = Path(path)
     if path.exists() or path.is_symlink():
         raise ValueError("Download output must be fresh")
     limit = exact_bytes if exact_bytes is not None else maximum
     received = 0
-    with urllib.request.urlopen(url, timeout=90) as source, path.open("xb") as target:
+    open_url = urllib.request.urlopen if opener is None else opener.open
+    with open_url(url, timeout=90) as source, path.open("xb") as target:
         while chunk := source.read(min(1024*1024, limit+1-received)):
             received += len(chunk)
             if received > limit:
