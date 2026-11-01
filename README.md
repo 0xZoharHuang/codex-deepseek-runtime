@@ -1,5 +1,7 @@
 # Codex CLI + DeepSeek
 
+
+独立 home 的显式提供方选择与恢复方法见 [提供方配置](docs/provider-routing.zh-CN.md)。默认仍为官方 DeepSeek，无自动回退。
 **CDS 0.6.8：原生 Codex CLI runtime + 固定 DeepSeek 模型。** 下载与可用资产以[v0.6.8发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.8)及其摘要/回执为准，不能因清单有URL就跳过下载校验。本版范围见[资格索引](reports/releases/0.6.8/README.md)，稳定安装、升级和回滚见[操作方案](docs/release-0.6.8.zh-CN.md)。
 
 **保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**

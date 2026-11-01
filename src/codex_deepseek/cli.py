@@ -205,6 +205,17 @@ async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
     return generation,rows
 
 
+def _verified_generation(generation, response_id, selected, ordinary_provider):
+    from .gateway import validate_observed_identity
+    if generation.get('id')!=response_id or selected!=ordinary_provider:
+        return False
+    try:
+        validate_observed_identity({'model':generation.get('model'),'provider':generation.get('provider_name')},ordinary_provider)
+    except ValueError:
+        return False
+    return True
+
+
 async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
     """Probe the actual native runtime, then verify its billed provider receipt."""
     work=home/'provider-state/doctor-work'
@@ -238,14 +249,14 @@ async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
     finally:await transport.close()
     provider=generation.get('provider_name')
     generation_id=generation.get('id');generation_model=generation.get('model')
-    verified=(generation_id==response_id
-              and generation_model in (MODEL,'deepseek/deepseek-v4.1-flash-20261017')
-              and provider=='DeepSeek' and selected=='deepseek')
+    ordinary_provider=gateway.metadata['ordinary_default_provider']
+    verified=_verified_generation(generation,response_id,selected,ordinary_provider)
     result={'status':'connected' if verified else 'provider_verification_failed',
             'model':MODEL,'provider':provider,'fallbacks':False,'response_id':response_id,'native_version':NATIVE_VERSION,
             'generation_id':generation_id,'generation_model':generation_model,'selected_provider':selected,
             'native_thread':thread,'network_policy':policy,'text':answer,'echo_expected':'CONNECTED','echo_exact_match':answer.strip()=='CONNECTED',
-            'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER}
+            'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER,
+            'ordinary_default_provider':ordinary_provider,'provider_config_sha256':gateway.metadata['provider_config_sha256']}
     (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2), encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if result['status']=='connected' else 1
@@ -257,12 +268,16 @@ async def run(arguments: list[str]) -> int:
         from .image_budget import image_budget_command
         return image_budget_command(arguments[2:])
     if arguments==['status']:arguments=['runtime','status']
+    if arguments[:2]==['runtime','provider']:
+        from .provider_config import command
+        home=isolated_path(Path(os.environ.get('CODEX_DEEPSEEK_HOME',str(data_root()/'codex-home'))))
+        return await asyncio.to_thread(command,home,arguments[2:])
     image_operations={'image-status':'status','image-cleanup':'cleanup','image-reconcile-uploads':'reconcile-uploads','image-reconcile-calls':'reconcile-calls'}
     is_image_command=len(arguments)>=2 and arguments[0]=='runtime' and arguments[1] in image_operations
     if is_image_command and arguments[2:] not in ([],['--all-unpinned']):raise RuntimeError('Unknown image maintenance arguments')
     if is_image_command and arguments[2:] and arguments[1]!='image-cleanup':raise RuntimeError('--all-unpinned is only for image-cleanup')
     if arguments[:1]==['runtime'] and not is_image_command and arguments[1:] not in (['status'],['doctor']):
-        raise RuntimeError('Runtime management commands: runtime status, runtime doctor, runtime setup-key, runtime image-budget. Native doctor remains available as doctor.')
+        raise RuntimeError('Runtime management commands: runtime status, runtime doctor, runtime setup-key, runtime provider status/set, runtime image-budget. Native doctor remains available as doctor.')
     root = data_root()
     runtime_home = isolated_path(Path(os.environ.get("CODEX_DEEPSEEK_HOME", str(root / "codex-home"))))
     if is_image_command:
@@ -318,7 +333,8 @@ async def run(arguments: list[str]) -> int:
                 return await doctor(credential(), gateway, store, runtime_home,native_binary=binary)
             if arguments == ["runtime","status"]:
                 print(json.dumps({"native": str(binary), "version": NATIVE_VERSION, "model": MODEL,
-                                  "provider": "deepseek", "structured_provider": STRUCTURED_PROVIDER,
+                                  "provider": gateway.metadata["ordinary_default_provider"],
+                                  "provider_config_sha256": gateway.metadata["provider_config_sha256"], "structured_provider": STRUCTURED_PROVIDER,
                                   "serial_provider": SERIAL_PROVIDER,
                                   "peer_hosted_provider": PEER_HOSTED_PROVIDER,
                                   "fallbacks": False, "state": str(store.path), "runtime_home":str(runtime_home),

@@ -24,6 +24,7 @@ import urllib.request
 from .processes import identity,matches,terminate
 from .state import SERVICE_CLIENT_PREFIX
 from .bootstrap import module_command, module_environment
+from . import provider_config
 
 # Windows can cold-load both supervisor and worker from a newly installed
 # environment. Keep the outer deadline longer than the worker's handshake;
@@ -32,10 +33,13 @@ STARTUP_SECONDS = 180 if WINDOWS else 20
 RECOVERY_SECONDS = 120 if WINDOWS else 10
 
 
-def code_id(catalog,native_binary=None,home=None):
+def code_id(catalog,native_binary=None,home=None,provider_snapshot=None):
     digest=hashlib.sha256((sys.prefix+'\0'+sys.version).encode())
     for path in sorted(Path(__file__).parent.glob('*.py')):digest.update(path.name.encode()+b'\0'+path.read_bytes())
     digest.update(Path(catalog).read_bytes())
+    policy=provider_config.validate(provider_snapshot if provider_snapshot is not None else
+                                    provider_config.load(home)['policy'] if home is not None else provider_config.default())
+    digest.update(b'ordinary-provider-policy\0'+provider_config.digest(policy).encode())
     if home is not None:
         image_config=Path(home)/'provider-state/image-transport.json'
         digest.update(b'image-transport-config\0'+(image_config.read_bytes() if image_config.exists() else b'disabled'))
@@ -130,7 +134,13 @@ def healthy(value):
     if not matches(value.get('pid'),value.get('birth')):return False
     request=urllib.request.Request(f'http://127.0.0.1:{value["port"]}/health',headers={'Authorization':'Bearer '+value['token']})
     try:
-        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=.5) as response:return response.status==200
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=.5) as response:
+            if response.status!=200:return False
+            if 'provider_config_sha256' in value:
+                health=json.load(response)
+                return (health.get('provider')==value.get('ordinary_default_provider')
+                        and health.get('provider_config_sha256')==value['provider_config_sha256'])
+            return True
     except (OSError,ValueError):return False
 
 
@@ -149,13 +159,14 @@ def _stop_created_process(process,birth):
 def ensure(home,catalog,native_binary=None,owner=None):
     from .policy import isolated_path
     home=isolated_path(Path(home));private_runtime_home(home);state=home/'provider-state';private_directory(state)
-    expected=code_id(catalog,native_binary,home)
     def retained(value):
         if owner is not None:
             from .state import Store
             Store.retain_service(state/'adapter.sqlite',owner)
         return value
     with (state/'gateway.lock').open('a') as lock, file_lock(lock):
+        provider_snapshot=provider_config.load(home)['policy']
+        expected=code_id(catalog,native_binary,home,provider_snapshot)
         trace=os.environ.get('CODEX_DEEPSEEK_TRACE_DIR')
         # A daemon keeps operating after its launcher exits. An unrelated
         # maintenance command must not silently disable that profile's tracing.
@@ -170,6 +181,7 @@ def ensure(home,catalog,native_binary=None,owner=None):
                 if native_active(home):raise RuntimeError('The provider runtime or its network/credential environment changed. Close native sessions and stop this profile daemon, or use a separate isolated home')
                 terminate(old['pid'],old['birth'])
             else:
+                if _admitted_provider(old)!=provider_snapshot:raise RuntimeError('Shared home provider snapshot differs from the admitted configuration')
                 end=time.monotonic()+RECOVERY_SECONDS
                 while time.monotonic()<end:
                     if healthy(old):
@@ -183,7 +195,7 @@ def ensure(home,catalog,native_binary=None,owner=None):
         with open(log_path,'a',opener=lambda name,flags:os.open(name,flags,0o600)) as log:
             environment=dict(os.environ)
             for name in ['CODEX_HOME','CODEX_DEEPSEEK_BRIDGE_TOKEN','CODEX_DEEPSEEK_TRACE_DIR']:environment.pop(name,None)
-            process=subprocess.Popen(module_command('codex_deepseek.service',home,catalog,str(native_binary) if native_binary else ''),
+            process=subprocess.Popen(module_command('codex_deepseek.service',home,catalog,str(native_binary) if native_binary else '',json.dumps(provider_snapshot,sort_keys=True,separators=(',',':'))),
                 stdin=subprocess.DEVNULL,stdout=log,stderr=log,env=module_environment(environment),**({'creationflags':subprocess.CREATE_NEW_PROCESS_GROUP|subprocess.DETACHED_PROCESS} if WINDOWS else {'start_new_session':True}))
         birth=None
         try:
@@ -215,6 +227,14 @@ class ProviderService:
     async def __aexit__(self,*exc):pass
 
 
+def _admitted_provider(value):
+    policy=provider_config.validate(value.get('provider_config'))
+    if (provider_config.digest(policy)!=value.get('provider_config_sha256')
+            or policy['ordinary_default_provider']!=value.get('ordinary_default_provider')):
+        raise RuntimeError('Admitted provider policy metadata is inconsistent')
+    return policy
+
+
 async def worker(home,catalog,fd):
     from .cli import credential
     from .gateway import Gateway
@@ -222,7 +242,8 @@ async def worker(home,catalog,fd):
     value=read_descriptor(home)
     sock=None if WINDOWS else socket.socket(fileno=fd)
     if sock:sock.setblocking(False)
-    if code_id(catalog,value.get('native_binary'),home)!=value['code_id']:raise RuntimeError('Provider service code changed; restart from an immutable release')
+    provider_snapshot=_admitted_provider(value)
+    if code_id(catalog,value.get('native_binary'),home,provider_snapshot)!=value['code_id']:raise RuntimeError('Provider service code changed; restart from an immutable release')
     store=Store(Path(home)/'provider-state/adapter.sqlite');stopped=asyncio.Event();loop=asyncio.get_running_loop()
     restore_signals=install_signals(loop,{signal.SIGTERM:stopped.set,signal.SIGINT:stopped.set})
     async def watch_owner():
@@ -232,7 +253,7 @@ async def worker(home,catalog,fd):
     watcher=asyncio.create_task(watch_owner())
     try:
         def trace_source():return json.loads((Path(home)/'provider-state/trace.json').read_text(encoding='utf-8')).get('directory')
-        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None) as gateway:
+        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None,ordinary_default_provider=provider_snapshot['ordinary_default_provider'],provider_config_sha256=value['provider_config_sha256']) as gateway:
             if WINDOWS:
                 from .windows_sockets import Receiver
                 receiver=Receiver(gateway,stopped);receiver.start()
@@ -243,13 +264,15 @@ async def worker(home,catalog,fd):
         restore_signals();watcher.cancel();await asyncio.gather(watcher,return_exceptions=True);store.close()
 
 
-def supervise(home,catalog,native_binary=None):
+def supervise(home,catalog,native_binary=None,provider_snapshot=None):
     # Startup serialization alone cannot prevent two watchdogs after damaged
     # metadata or an interrupted launch. Hold this kernel lease for our lifetime.
     state=Path(home)/'provider-state'
     with (state/'gateway.lease').open('a') as lease:
         try:
-            with file_lock(lease,blocking=False):_supervise(home,catalog,native_binary)
+            with file_lock(lease,blocking=False):
+                if provider_snapshot is None:_supervise(home,catalog,native_binary)
+                else:_supervise(home,catalog,native_binary,provider_snapshot)
         except BlockingIOError:raise RuntimeError('This profile already has a provider service owner')
 
 
@@ -272,8 +295,12 @@ def idle_retirement(home):
         raise
 
 
-def _supervise(home,catalog,native_binary):
-    home=Path(home);path=descriptor_path(home);previous=read_descriptor(home)
+def _supervise(home,catalog,native_binary,provider_snapshot=None):
+    home=Path(home)
+    if provider_snapshot is None:
+        with provider_config.locked(home):provider_snapshot=provider_config.load(home)['policy']
+    provider_snapshot=provider_config.validate(provider_snapshot)
+    path=descriptor_path(home);previous=read_descriptor(home)
     sock=socket.socket();sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE if WINDOWS else socket.SO_REUSEADDR,1)
     # A just-killed watchdog's old worker may retain the inherited socket until
     # its identity watcher runs. Preserve the port while that owner exits.
@@ -289,8 +316,10 @@ def _supervise(home,catalog,native_binary):
         sock.bind(('127.0.0.1',0))
     sock.listen(128)
     value={'schema':1,'pid':os.getpid(),'birth':identity(os.getpid()),'port':sock.getsockname()[1],
-           'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary,home),'native_binary':str(native_binary) if native_binary else None,
-           'environment':sys.prefix,'started':time.time(),'worker_pid':None,'worker_birth':None,'restarts':0}
+           'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary,home,provider_snapshot),'native_binary':str(native_binary) if native_binary else None,
+           'environment':sys.prefix,'started':time.time(),'worker_pid':None,'worker_birth':None,'restarts':0,
+           'provider_config':provider_snapshot,'provider_config_sha256':provider_config.digest(provider_snapshot),
+           'ordinary_default_provider':provider_snapshot['ordinary_default_provider']}
     atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[];retirement=None
     def stop(signum,frame):
         nonlocal stopped
@@ -334,4 +363,4 @@ def _supervise(home,catalog,native_binary):
 
 if __name__=='__main__':
     if sys.argv[1]=='--worker':asyncio.run(worker(Path(sys.argv[2]),Path(sys.argv[3]),int(sys.argv[4])))
-    else:supervise(Path(sys.argv[1]),Path(sys.argv[2]),sys.argv[3] if len(sys.argv)>3 and sys.argv[3] else None)
+    else:supervise(Path(sys.argv[1]),Path(sys.argv[2]),sys.argv[3] if len(sys.argv)>3 and sys.argv[3] else None,json.loads(sys.argv[4]) if len(sys.argv)>4 else None)

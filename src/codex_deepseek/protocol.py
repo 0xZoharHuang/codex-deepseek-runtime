@@ -384,8 +384,10 @@ def validate_response(response, expected=None):
         raise ProtocolError('Provider completed response contains a contradictory error')
 
 
-def prepare(body: dict, search_store: Any = None) -> tuple[dict, Registry]:
+def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER) -> tuple[dict, Registry]:
     """Pin the model/provider and convert tool schemas and retained tool history together."""
+    if not isinstance(ordinary_default_provider, str) or ordinary_default_provider not in {PROVIDER, STRUCTURED_PROVIDER}:
+        raise ProtocolError("Unsupported ordinary default provider")
     if not isinstance(body, dict):
         raise ProtocolError("Responses request must be an object")
     if body.get("model") != MODEL:
@@ -480,10 +482,11 @@ def prepare(body: dict, search_store: Any = None) -> tuple[dict, Registry]:
     # or reasoning, and never retry a failed request on a different provider.
     peer_hosted = (registry.peer_context or registry.continuation_context or registry.unattested_history) and mapping[effort]!='none' and any(
         tool.get('type')=='openrouter:web_search' for tool in result['tools'])
-    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else PEER_HOSTED_PROVIDER if peer_hosted else PROVIDER
+    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else PEER_HOSTED_PROVIDER if peer_hosted else ordinary_default_provider
     registry.route_reason = ('explicit_serial_tools' if serial else 'strict_json_schema' if upstream_structured else
                              'unattested_native_history_with_hosted_tools' if peer_hosted and registry.unattested_history else
-                             'native_peer_or_continuation_with_hosted_tools' if peer_hosted else 'official_default')
+                             'native_peer_or_continuation_with_hosted_tools' if peer_hosted else
+                             'operator_default/'+ordinary_default_provider if ordinary_default_provider!=PROVIDER else 'official_default')
     if local_schema:
         # Only the official route passed automatic tools with JSON mode.
         # Serial and peer-hosted routes retain their provider/parallel contract

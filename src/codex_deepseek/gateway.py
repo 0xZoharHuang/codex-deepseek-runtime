@@ -179,7 +179,13 @@ class _DownstreamDisconnected(ConnectionError):
 
 
 class Gateway:
-    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None):
+    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None, ordinary_default_provider=PROVIDER, provider_config_sha256=None):
+        from .provider_config import validate, digest
+        policy=validate({"schema":1,"ordinary_default_provider":ordinary_default_provider})
+        expected=digest(policy)
+        if provider_config_sha256 is not None and provider_config_sha256!=expected:raise ValueError("Provider snapshot hash mismatch")
+        self.ordinary_default_provider=ordinary_default_provider
+        self.provider_config_sha256=expected
         self.key = key if isinstance(key,str) else None
         self.credential_source = key
         self.token = token
@@ -242,7 +248,8 @@ class Gateway:
     async def health(self, request):
         if not self.authorized(request):
             return error_response("Unauthorized", 401)
-        return web.json_response({"status": "ready", "model": MODEL, "provider": PROVIDER,
+        return web.json_response({"status": "ready", "model": MODEL, "provider": self.ordinary_default_provider,
+                                  "provider_config_sha256": self.provider_config_sha256,
                                   "structured_provider": STRUCTURED_PROVIDER, "serial_provider": SERIAL_PROVIDER,
                                   "peer_hosted_provider": PEER_HOSTED_PROVIDER,"fallbacks": False,
                                   "image_maintenance":self.image_gc.snapshot() if self.image_gc else {"enabled":False}})
@@ -257,7 +264,7 @@ class Gateway:
             return error_response("Unauthorized", 401)
         try:
             body = await request.json()
-            payload, registry = prepare(body, self.store)
+            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider)
             structured = StructuredOutput(body)
             transport_policy=network_policy(request.headers)
         except (ValueError, KeyError, TypeError) as exc:
