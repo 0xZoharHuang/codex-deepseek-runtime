@@ -9,7 +9,7 @@ DeepSeek 模型，只为普通请求显式选择已资格的 OpenRouter 提供�
 
 ```powershell
 $env:CODEX_DEEPSEEK_HOME = "D:\OwnedProfiles\deepseek-work"
-cds runtime provider status
+codex-deepseek.exe runtime provider status
 ```
 
 输出中 `configured_provider` 是文件中的选择，`configured_config_sha256` 是
@@ -21,7 +21,7 @@ cds runtime provider status
 在没有原生任务、网关监督进程、遗留 worker 或服务 lease 的情况下修改：
 
 ```powershell
-cds runtime provider set morph/fp8 --if-match absent
+codex-deepseek.exe runtime provider set morph/fp8 --if-match absent
 ```
 
 已有配置时，把 `absent` 换成刚查看的 `configured_revision`。也可省略
@@ -58,8 +58,8 @@ doctor 同时强校验真实 generation ID、固定模型及对应已资格的 b
 恢复官方提供方同样等待该 home 完全退役，再使用当前 revision：
 
 ```powershell
-cds runtime provider status
-cds runtime provider set deepseek --if-match <configured_revision>
+$snapshot = codex-deepseek.exe runtime provider status | ConvertFrom-Json
+codex-deepseek.exe runtime provider set deepseek --if-match $snapshot.configured_revision
 ```
 
 失败的修改不会改写原配置。切换不会迁移、清空或合并原生线程及数据库，
