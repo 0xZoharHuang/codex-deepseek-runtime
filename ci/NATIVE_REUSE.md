@@ -1,5 +1,25 @@
 # Current-source qualification with pinned native release assets
 
+## Current default: permanent v0.6.9 P27 assets
+
+Both registered reuse entries now explicitly select
+`ci/qualified-native-build-0.6.9.json` through the single controller `PINS` value.
+It records real release 430798112, the published annotated v0.6.9 tag resolving
+to a70417460d823a906ebc7274834e2412be1ebe53, and actual asset IDs, sizes and hashes.
+The original native producer remains a5853bf6c3468af3a93bc0094bf09d1df4158693.
+The temporary a585 and historical0.6.2/49da input files stay unchanged; they are
+not the current default and there is no fallback to them.
+
+All ten public fixed-URL asset bodies have joint exact SHA/size readback evidence:
+nine on Windows and the Linux archive on macOS, without authentication or cookies.
+The Windows Linux-archive GET/reset/timeout and HEAD failure remain failures.
+This does not replace Linux's own permanent-download CI, native22 or software
+qualification. The newly selected permanent path must still be run on both hosted
+targets; dataset creation and local guards alone do not declare that run passed.
+
+The older version-specific narratives below are retained historical provenance,
+not instructions to select their original assets for the current release.
+
 
 > Current source candidate: the shared Guardian provider transport guard changes
 > both Unix recipe identities. Run native-platform-qualification.yml for a fresh
@@ -117,16 +137,15 @@ This mode is mutually exclusive with the existing `--package ... --archive ...` 
 The standard manifest's `status: ready` means only that this local artifact meets the existing installer artifact contract. It does not publish it, prove that the declared URL exists, establish model/runtime acceptance, or approve a stable release. The archive-input CLI reports `public_release_asserted: false`. Keep candidates outside tracked `native/runtime-*.json` files until all required qualification is complete. A release owner then publishes the exact original bytes and performs independent asset download/hash verification before promoting permanent release-asset pins. The default fresh-package path and standard installer manifest schema remain unchanged.
 
 
-## Prepared permanent P27 source support (not yet selected)
+## Permanent P27 source contract
 
 The registered retained controller now supports an explicitly selected
 `source=release-asset` dataset in addition to its existing Actions source. Its
-current `PINS` constant remains the reviewed temporary a585 dataset. No permanent
-0.6.9 dataset or placeholder asset IDs are shipped by this source preparation.
-After actual release assets exist, the release owner creates reviewed real pins
-and explicitly switches that same default `PINS` selection. The workflow reads
-and preserves the controller's selected dataset; it does not keep a stale
-hardcoded copy or select a file merely because it exists.
+current `PINS` constant selects the real permanent0.6.9 dataset described above.
+Its descriptors came from actual published metadata and exact public byte
+readbacks, with no placeholder IDs. The workflow reads and preserves the
+controller's selected dataset; it does not keep a stale hardcoded copy or select
+a file merely because it exists.
 
 The permanent dataset records the real release ID, known version/tag pair
 0.6.9/v0.6.9, resolved publication commit, and exact recipe asset. Each target

@@ -493,8 +493,9 @@ def test_permanent_versions_are_explicit_and_legacy02_is_not_rewritten():
     assert reuse.legacy.release_spec(new)[0:2] == ("0.6.9","v0.6.9")
     new["release"]["tag"]="latest"
     with pytest.raises(ValueError):reuse.legacy.release_spec(new)
-    assert reuse.PINS.name == "retained-native-build-p27-a585.json"
-    assert not (ROOT/"ci/qualified-native-build-0.6.9.json").exists()
+    assert reuse.PINS.name == "qualified-native-build-0.6.9.json"
+    selected=json.loads(reuse.PINS.read_bytes())
+    assert selected["source"] == "release-asset" and reuse.legacy.release_spec(selected)[0:2] == ("0.6.9","v0.6.9")
 
 
 @pytest.mark.parametrize("redirect", ["good", "evil", "http", "userinfo", "port", "path", "fragment"])

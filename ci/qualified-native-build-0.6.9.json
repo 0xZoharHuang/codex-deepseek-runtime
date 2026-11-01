@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "scope": "qualified-native-build-state-and-transport-only",
+  "repository": "0xZoharHuang/codex-deepseek-runtime",
+  "repository_id": 1427487253,
+  "producer_commit": "a5853bf6c3468af3a93bc0094bf09d1df4158693",
+  "run_id": 41308737962,
+  "run_attempt": 1,
+  "workflow_path": ".github/workflows/native-platform-qualification.yml",
+  "recipe_sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba",
+  "recipe_bytes": 63396,
+  "temporary_expiring_input": false,
+  "stable_release_policy": "Current delivery uses exact versioned v0.6.9 release assets, never historical Actions availability or automatic fallback. Original native producer and qualification remain unchanged.",
+  "targets": {
+    "x86_64-unknown-linux-gnu": {
+      "job_id": 124854483226,
+      "job_name": "linux-x64",
+      "job_conclusion": "success",
+      "required_steps": {
+        "Build the pinned native package": "success",
+        "Qualify actual State migration EOL compatibility": "success",
+        "Qualify actual Guardian provider transport and cancellation": "success",
+        "Run real native payload and recovery fixtures": "success",
+        "Check adapter and platform regressions": "success",
+        "Retain package provenance and original failures": "success",
+        "Upload bounded qualification artifacts": "success"
+      },
+      "artifact_id": 13086154900,
+      "artifact_name": "cds-linux-x64-a5853bf6c3468af3a93bc0094bf09d1df4158693-1",
+      "zip_bytes": 176989198,
+      "zip_sha256": "3adf03756bca2f358591339ac42db72375a2a0f3deeabcf6fdcd7402a720640a",
+      "expires_at": "2026-11-08T14:02:35Z",
+      "archive_bytes": 159717892,
+      "archive_sha256": "fc8a9027602b88e9628bb30a80c25190d7319c85b85d91d87432dfbdc04f61f2",
+      "receipt_sha256": "1e290a7d4b862acf88963406d40353d84518d41218a73c3c5f8e05224403fc3c",
+      "cli_sha256": "7a3d482b3452398db02f09169087e964e774f93a275cf65c9210cc9fa841a16b",
+      "helper_sha256": "5d62deeac5422af404d1e2292ea9867b00b916579b76e0346dc9e93c6c57e7c9",
+      "recipe_id": "bae4a0c7c1d44a15e2a719a9e20fd72ff2432d74d66a7f7fafcc360b4e1e37b4",
+      "checkpoint_member": "compile-checkpoints/b-f1f0d2f4/compile-checkpoint.json",
+      "members": {
+        "state-migrations/qualification.json": {
+          "bytes": 2187149,
+          "sha256": "7a7eae4ab4e30b44c34c550e2ae82698839761ad2c24f491286e835c0c63b8bf"
+        },
+        "state-migrations/native-state.log": {
+          "bytes": 11736,
+          "sha256": "f34189f93baba7ac36576c30cef8243942259dc39f1a6c4dfd373f165a9b40d2"
+        },
+        "guardian-pool/qualification.json": {
+          "bytes": 2841730,
+          "sha256": "c6eb526932d1d68b91d7b1ec57234662dd28d84e8620914dbdf9545cdc0d5a86"
+        },
+        "guardian-pool/native-pool.log": {
+          "bytes": 107208,
+          "sha256": "b1a19aa4d56a1716ffda316c19fe188f6bbc2ba25f37654af4735acc453c6734"
+        },
+        "native-qualification/qualification.json": {
+          "bytes": 131087,
+          "sha256": "8eb0a4c395667a2cdf144a63428307fd6d27260d8961add823da008da11b184f"
+        },
+        "native-qualification/native.xml": {
+          "bytes": 3343,
+          "sha256": "2959165b58c3a259b8b779898f720bf3fe77b9e8a31c8ecbc347e487a843bb8e"
+        },
+        "compile-checkpoints/b-f1f0d2f4/compile-checkpoint.json": {
+          "bytes": 1313690,
+          "sha256": "09e3700b55f552195ca183a25bcabebf6b28435e0a4c305cc8f6cd4ca1650a22"
+        },
+        "retained-build-scope.json": {
+          "bytes": 1344,
+          "sha256": "826ca7f22195931ff5cf5259cad70889e161d7154530cd7acf3486942131731c"
+        },
+        "runtime-overlays.json": {
+          "bytes": 63396,
+          "sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba"
+        },
+        "source-commit.txt": {
+          "bytes": 41,
+          "sha256": "6c50499bbeac8531869f0661cf90af724d1f378dc67a00a8cfaaabbd7ee089bd"
+        },
+        "producer/run.json": {
+          "bytes": 14100,
+          "sha256": "8058041fe3a73501dfa02dfe6d6bc1c910fe85f01131e08d08eb8b8a0ce27a1f"
+        },
+        "producer/jobs.json": {
+          "bytes": 8956,
+          "sha256": "8dd6399a132908d3cdfc9cbeb7f3505e03c95b9f3f905c49b497fcb260b389d5"
+        },
+        "producer/artifacts.json": {
+          "bytes": 1583,
+          "sha256": "39dd1b73732a70dbdef67e71f6944f332ed52b64e84e5b1537ccc55e8c9658b2"
+        }
+      },
+      "manifest": "runtime-x86_64-unknown-linux-gnu.json",
+      "manifest_sha256": "87e494e74cba4885b44ea2e04624fe839631ef45031a130b1696c5523e1099aa",
+      "file_count": 3074,
+      "release_archive": {
+        "id": 699273400,
+        "name": "codex-deepseek-native-0.6.9-x86_64-unknown-linux-gnu.tar.gz",
+        "bytes": 159717892,
+        "sha256": "fc8a9027602b88e9628bb30a80c25190d7319c85b85d91d87432dfbdc04f61f2"
+      },
+      "release_scope": {
+        "id": 699279340,
+        "name": "codex-deepseek-native-scope-0.6.9-x86_64-unknown-linux-gnu.zip",
+        "bytes": 1718580,
+        "sha256": "3ac55aef8bbd4bb8ed7920ec5ca913dafd591d25ca3b50491dfb3b03cec3e9c7"
+      }
+    },
+    "aarch64-apple-darwin": {
+      "job_id": 124854483038,
+      "job_name": "macos-arm64",
+      "job_conclusion": "success",
+      "required_steps": {
+        "Build the pinned native package": "success",
+        "Qualify actual State migration EOL compatibility": "success",
+        "Qualify actual Guardian provider transport and cancellation": "success",
+        "Run real native payload and recovery fixtures": "success",
+        "Check adapter and platform regressions": "success",
+        "Retain package provenance and original failures": "success",
+        "Upload bounded qualification artifacts": "success"
+      },
+      "artifact_id": 13091557470,
+      "artifact_name": "cds-macos-arm64-a5853bf6c3468af3a93bc0094bf09d1df4158693-1",
+      "zip_bytes": 160587417,
+      "zip_sha256": "b7aac38e7cc9f30f95d30516b1290892999d929f73d69be05dec45bf7627e2a3",
+      "expires_at": "2026-11-08T16:32:57Z",
+      "archive_bytes": 143617206,
+      "archive_sha256": "778039b721f43c3d5d6ed89eba4461a8f43e7d3f7ef08d48bdeabcc146f8e7df",
+      "receipt_sha256": "886c7a8aa51a7f33915f509b8e1ae47cceb3f6a3bf66e6f2998b19cb8a2080ad",
+      "cli_sha256": "9e2d2ab656fbbe8cd9f52b08629fb9ffa693f1333c1bf56425fca319b9e32270",
+      "helper_sha256": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
+      "recipe_id": "6746f29dd7191cb23a9b42c82ca7c684f3aa572210305f937356cf8d8738ea0a",
+      "checkpoint_member": "compile-checkpoints/b-21f5d67c/compile-checkpoint.json",
+      "members": {
+        "state-migrations/qualification.json": {
+          "bytes": 2096057,
+          "sha256": "147ff0bc8c7947c977ceddfdf4dbd01d0ff4203585d92f339544ae2e49b55a97"
+        },
+        "state-migrations/native-state.log": {
+          "bytes": 11735,
+          "sha256": "4619e691ea0864fb2256e97f3e41fa7836a95ee0dbfc22d8a0b9358968f1c308"
+        },
+        "guardian-pool/qualification.json": {
+          "bytes": 2589274,
+          "sha256": "01e844604527fdb98668d60f543379742d27428b22b484bbc150d8a446cf3ae3"
+        },
+        "guardian-pool/native-pool.log": {
+          "bytes": 105932,
+          "sha256": "b9e6c2ff5878ee623b0caa8988de2be7d7b72f0b3df238a94addfa8420f7d448"
+        },
+        "native-qualification/qualification.json": {
+          "bytes": 128753,
+          "sha256": "f6bf8bab17acbdd4e01dc97140784a48f4ac7e7dec9e26168f1d00ce40b9dca0"
+        },
+        "native-qualification/native.xml": {
+          "bytes": 3397,
+          "sha256": "9105c1275152c4a018eaec1237cc009c405d71e133b346d4d63097337bcfcc89"
+        },
+        "compile-checkpoints/b-21f5d67c/compile-checkpoint.json": {
+          "bytes": 1312921,
+          "sha256": "52d23ab7a67ab73b3daafca8f2a357781be9fe7a875a8114027e16fe5066f0b0"
+        },
+        "retained-build-scope.json": {
+          "bytes": 1344,
+          "sha256": "ccb82ccca0592372a7bd2c96f3f3af09b946a724c0563b340ffdd38efb7c0794"
+        },
+        "runtime-overlays.json": {
+          "bytes": 63396,
+          "sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba"
+        },
+        "source-commit.txt": {
+          "bytes": 41,
+          "sha256": "6c50499bbeac8531869f0661cf90af724d1f378dc67a00a8cfaaabbd7ee089bd"
+        },
+        "producer/run.json": {
+          "bytes": 14100,
+          "sha256": "8058041fe3a73501dfa02dfe6d6bc1c910fe85f01131e08d08eb8b8a0ce27a1f"
+        },
+        "producer/jobs.json": {
+          "bytes": 8956,
+          "sha256": "8dd6399a132908d3cdfc9cbeb7f3505e03c95b9f3f905c49b497fcb260b389d5"
+        },
+        "producer/artifacts.json": {
+          "bytes": 1583,
+          "sha256": "39dd1b73732a70dbdef67e71f6944f332ed52b64e84e5b1537ccc55e8c9658b2"
+        }
+      },
+      "manifest": "runtime.json",
+      "manifest_sha256": "764efc02eb5e12e3314d3ddd7d8f86f333a657d697cdcbe3b419d06468287dff",
+      "file_count": 2973,
+      "release_archive": {
+        "id": 699276126,
+        "name": "codex-deepseek-native-0.6.9-aarch64-apple-darwin.tar.gz",
+        "bytes": 143617206,
+        "sha256": "778039b721f43c3d5d6ed89eba4461a8f43e7d3f7ef08d48bdeabcc146f8e7df"
+      },
+      "release_scope": {
+        "id": 699279630,
+        "name": "codex-deepseek-native-scope-0.6.9-aarch64-apple-darwin.zip",
+        "bytes": 1683628,
+        "sha256": "dc62f2e4bde03de249879fb0e1561b3d3ba4b2d0c7b9cff7fab60f805c02691b"
+      }
+    }
+  },
+  "source": "release-asset",
+  "current_recipe_sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba",
+  "release": {
+    "id": 430798112,
+    "tag": "v0.6.9",
+    "version": "0.6.9",
+    "commit": "a70417460d823a906ebc7274834e2412be1ebe53",
+    "recipe_asset": {
+      "id": 699279059,
+      "name": "runtime-overlays-0.6.9.json",
+      "bytes": 63396,
+      "sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba"
+    }
+  }
+}

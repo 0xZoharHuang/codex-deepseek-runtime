@@ -26,7 +26,7 @@ from ci import qualify_guardian_pool as pool
 import build_native as build
 import verify_native_source as sources
 
-PINS = ROOT/"ci/retained-native-build-p27-a585.json"
+PINS = ROOT/"ci/qualified-native-build-0.6.9.json"
 LEGACY_SCOPE = "retained-native-build-and-transport-only"
 QUALIFIED_SCOPE = "qualified-native-build-state-and-transport-only"
 
