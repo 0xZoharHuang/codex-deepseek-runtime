@@ -1,34 +1,233 @@
 {
   "schema": 1,
-  "status": "candidate_native_and_base_install_qualified_new_provider_runtime_pending",
+  "status": "runtime_candidate_qualified_delivery_pending",
+  "runtime_candidate_qualified": true,
   "product_release_ready": false,
-  "native_producer_commit": "a5853bf6c3468af3a93bc0094bf09d1df4158693",
-  "provider_source_commit": "0167fb20640a01e42522ec9021adb5ee28a64d7d",
+  "version": "0.6.9",
+  "product_identity": {
+    "source_id": "8e26c81c987b7502ac96",
+    "product_modules": 31,
+    "installer_identity_inputs": 113,
+    "product_source_commit": "f4808831605f0232bf0dc5decbbbbdf02d47f151",
+    "fixture_only_successor": "d6bc7d6d167efee5e65a37a2eddcc1007faba930",
+    "Unix_qualified_source_commit": "3e9712e27d9c0950afd7fe4f300a288adc157913",
+    "delivery_preparation_base_commit": "ff4d9ed29893fd69709edb4f0aad64efc2ac6e98",
+    "all31_and113_inputs_exact_across_these_successors": true
+  },
   "model": "deepseek/deepseek-v4.1-flash-1017",
-  "original_failed_turn_preserved": true,
+  "native": {
+    "version": "0.164.0-alpha.7",
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "producer_commit": "a5853bf6c3468af3a93bc0094bf09d1df4158693",
+    "overlays": 27,
+    "full_recipe_sha256": "812c04d17042896df6ef14376c9b172c7cf0c107cb2758e13b77471999c636ba",
+    "targets": {
+      "windows-x64": {
+        "archive_sha256": "99f797ff10520b65db8a5b0d19eee612b0123ee5bd60a8900190fe60e4775022",
+        "CLI_sha256": "2454bb1dac7e2153d07c04c3ebd2bf07a1c170ba451e12cd9712dc2254816a86",
+        "raw_receipt_sha256": "05a55efb155e02ffbb6a11e2edd7d8611209f1cc788abff64d002a48a4cc898e",
+        "package_regular_files_including_receipt": 3018
+      },
+      "linux-x64": {
+        "archive_sha256": "fc8a9027602b88e9628bb30a80c25190d7319c85b85d91d87432dfbdc04f61f2",
+        "CLI_sha256": "7a3d482b3452398db02f09169087e964e774f93a275cf65c9210cc9fa841a16b",
+        "raw_receipt_sha256": "1e290a7d4b862acf88963406d40353d84518d41218a73c3c5f8e05224403fc3c",
+        "package_regular_files_including_receipt": 3074
+      },
+      "macos-arm64": {
+        "archive_sha256": "778039b721f43c3d5d6ed89eba4461a8f43e7d3f7ef08d48bdeabcc146f8e7df",
+        "CLI_sha256": "9e2d2ab656fbbe8cd9f52b08629fb9ffa693f1333c1bf56425fca319b9e32270",
+        "raw_receipt_sha256": "886c7a8aa51a7f33915f509b8e1ae47cceb3f6a3bf66e6f2998b19cb8a2080ad",
+        "package_regular_files_including_receipt": 2973
+      }
+    },
+    "raw_storage_interread": {
+      "phases": 6,
+      "initialized_databases_per_profile": 5,
+      "ledger_schema_typed_userdata_preserved": true,
+      "history_not_initialized_not_counted": true,
+      "unit_tests_cover_six_storage_families": true,
+      "no_arbitrary_old_LF_reader_for_new_CRLF_promise": true
+    }
+  },
+  "current_installed_qualification": {
+    "windows": {
+      "all_unique": 2729,
+      "software_unique": 2707,
+      "software_positive_composed": 2703,
+      "legitimate_platform_skips": 4,
+      "native22_passed": 22,
+      "original_full": {
+        "positive": 2688,
+        "failure": 15,
+        "skip": 4,
+        "exit": 1
+      },
+      "fixture_only_exact15_retest_passed": 15,
+      "full_three_fixture_files51_not_added": true,
+      "origin2_overlaps_not_added": true,
+      "native22_token": "actual Limited/session3",
+      "software_token_context": "Host High preflight with real symlink capability; fixture recheck same reported High context. No historical per-process token reconstruction claimed.",
+      "native_short_lived_uncertain": 5,
+      "native_main_exit0": 19,
+      "expected_negative_exit1": 3
+    },
+    "linux": {
+      "run_id": 41334558626,
+      "job_id": 124931510257,
+      "all_unique": 2729,
+      "software_unique": 2707,
+      "software_positive": 2652,
+      "legitimate_platform_skips": 55,
+      "native22_passed": 22,
+      "controller_checks296_not_added": true,
+      "controller_overlap_primary": 1,
+      "native_uncertain_observation_occurrences": 4,
+      "software_uncertain_observation_occurrences": 13
+    },
+    "macos": {
+      "run_id": 41334558965,
+      "job_id": 124931512645,
+      "all_unique": 2729,
+      "software_unique": 2707,
+      "software_positive": 2651,
+      "legitimate_platform_skips": 56,
+      "native22_passed": 22,
+      "controller_checks296_not_added": true,
+      "controller_overlap_primary": 1,
+      "native_uncertain_observation_occurrences": 0,
+      "software_uncertain_observation_occurrences": 16,
+      "maintainer_local_Mac_product_test": false
+    },
+    "Unix_P27_Rust_carry": {
+      "new_Rust_builds_and_tests": 0,
+      "original_state22_each": 22,
+      "original_Guardian10_each": 10,
+      "state_filtered_not_passed": {
+        "linux": 224,
+        "macos": 222
+      },
+      "Guardian_filtered_not_passed_each": 117,
+      "original_source_recipe_lock_driver_checkpoint_and_binary_identity_bound": true,
+      "explicit_false_provider_cancellation_not_independently_proved_by_pool10": true
+    },
+    "uncertain_records_preserved_not_called_all_processes_observable": true
+  },
+  "explicit_provider_runtime": {
+    "default": "deepseek",
+    "explicit_qualified_ordinary_provider": "morph/fp8",
+    "fixed_model_unchanged": true,
+    "fallbacks": false,
+    "require_parameters": true,
+    "serial_strict_peer_route_precedence_preserved": true,
+    "active_owner_config_change_rejected": true,
+    "actual_nonce_tool_and_Guardian_and_original_schema_passed": true,
+    "same_original_UUID_cold_history_passed": true,
+    "cold_answers_not_injected_in_prompt_or_schema": true,
+    "upstream_strict_decoder_for_ordinary_tool_schema_claimed": false,
+    "final_phase_null_is_legal": true,
+    "doctor_one_billed_generation_identity_verified": true,
+    "nonce_Guardian_cold_four_success_receipts_not_each_billing_looked_up": true,
+    "original_official_failed_502_turn_preserved": true,
+    "original_official502_receipts_preserved": 30,
+    "same_request_ordinary_and_native_502_diagnostic_retained": true,
+    "auth_and_credit_positive_not_public_amounts": true
+  },
+  "complex_actual": {
+    "known_supervised_regression_not_blind_benchmark": true,
+    "native_first_runner_baseline": {
+      "exit": 1,
+      "failed": 6,
+      "passed": 902
+    },
+    "same_UUID_Stop_continue_completed": true,
+    "actual_public908_passed": true,
+    "independent_engineering": {
+      "unique": 930,
+      "public": 908,
+      "private": 22,
+      "failure_error_skip": 0,
+      "setup_call_teardown2790_not_extra_tests": true,
+      "protected_inputs": 120,
+      "protected_dependencies": 4237
+    },
+    "native_parent_child_grandchild": true,
+    "wait_calls": 2,
+    "V2_close_agent_not_available_not_fabricated": true,
+    "child_readonly_was_task_text_not_OS_readonly": true,
+    "child_modified_allowed_paths_then_exact_self_reversal_preserved": true,
+    "official_document_MCP": {
+      "open_completed": 12,
+      "find_completed": 15,
+      "find_nonzero": 14,
+      "find_valid_zero": 1,
+      "click_completed": 4,
+      "empty_reference_failed_find_preserved": 1,
+      "not_all_web_run_or_private_search_index": true
+    },
+    "requests": {
+      "total": 69,
+      "HTTP200_completed": 68,
+      "planned_Stop_cancelled": 1,
+      "all_fixed_model_Morph_only_falsefallback_requireparameters": true,
+      "context_keys_all_parent_UUID_not_per_child_billing_claim": true
+    },
+    "front_trace": {
+      "completed_POST200": 68,
+      "GET_health200": 1,
+      "Upgrade_observed_completed_window": 0,
+      "cancelled_incomplete_front_not_covered_by_completed_access_log": true
+    },
+    "actual_driver_token": "Limited/session3",
+    "native_policy": "workspace-write/on-request/auto_review/Windows unelevated",
+    "model_command_failures_and_child_instruction_violation_preserved": true,
+    "known_births_terminal_not_continuous_exact_idle_timing": true
+  },
+  "observer_corrections": {
+    "late_private_baseline_summary_not_authoritative": true,
+    "raw_typed_runner_selector_negative_controls": true,
+    "frozen_source_function_parameter_identity_and_actual_JUnit_match_not_old_classname_assumption": true,
+    "source_links_partial_list_not_complete_cache_directory": true,
+    "original_failures_not_rewritten": true
+  },
+  "delivery": {
+    "status": "pending_Root_actual_remote_and_daily_delivery",
+    "public_tag_main_asset_readback_verified_by_this_index": false,
+    "normal_daily_upgrade_verified": false,
+    "permanent_native_input_default_promoted": false,
+    "actual_permanent_delivery_CI_verified": false,
+    "no_placeholder_asset_IDs": true
+  },
   "pending": [
-    "new installed provider source",
-    "real explicit Morph tools Guardian strict schema and cold resume",
-    "necessary complex real task",
-    "new Python Unix qualification with same P27 bits",
-    "normal daily upgrade",
-    "public source/tag/assets/readback"
+    "Actual immutable tag/main/public asset delivery and independent downloaded-byte readback",
+    "Normal daily entry upgrade with existing home/history/alias/active-owner preservation",
+    "Concrete permanent asset pins and explicit default promotion, then both hosted targets through actual release downloads/native22/complete installed software"
   ],
   "known_scope_limits": [
-    "private OpenAI cloud entitlements/data services",
-    "model quality not native runtime equivalence",
-    "history not initialized in three raw storage profiles",
-    "no blanket every-method every-platform fresh assertion",
-    "not Codex App qualification"
+    "Model quality/inherent modalities and OpenAI private cloud entitlements are separate",
+    "Financial/sports private data services not connected or passed",
+    "No blanket every-method/every-platform fresh execution claim",
+    "Not Codex App/CADSG/P7 GUI qualification",
+    "Raw initialized storage interread does not include absent history database",
+    "Uncertain short-lived observations/filtered nodes are not passed counts"
   ],
   "evidence_sha256": {
+    "runtime_execution_state_snapshot": "89ec80fdd80ccc929742e93d021a65a781ede7e2537f8ae4808bf2bc673f44f0",
     "Windows_native_package_handoff": "a6318572c8b978725cac74cb3e6f91373e977da07970f5208b61a810e378f669",
     "Windows_actual_storage_handoff": "0890d82a365523fa79170c47b5c7811804b44772940088c3b5e7f26628e1f04e",
-    "Windows_base_installed_independent": "e777bb572277d4929ed7e313efb94e7b1ce448a52599c7484305b9b50259e70b",
-    "Linux_native_audit": "61d016f6e94fa78de6666a75a2b218e23cdd61061a2cda34c1eeb7361e17459f",
-    "Mac_native_audit": "f74aaedf3810774cd952df424a3b19afa0f7f3a42946d99f5ffd57a6e4cd2d01",
-    "provider_independent_source_review": "2ec540f71d81165c88bb286fcd987dd3fca017f8d4ebc9ae9af39e3c1ac4f231",
-    "official_original_failed_turn": "b19c6e1bc0543390d0abca398d96375063ccffa7ce070bf440a768086bb3768a",
-    "same_official_route_transport_diagnostic": "05b7dbaf8451759a316e7409b8580238998ce514fa3ae5417613dc6af8d23023"
+    "Windows_final_installed_independent_handoff": "65be9c87af62ddd086dd9d8f14bf0e74dfab3029e7802e924e4a47752ee1a415",
+    "Windows_final_installed_independent_review": "2cceb7d450c5b2a98d1f555c70c1448c514b68cda5db576e1e545a7e0f7c256e",
+    "Morph_independent_handoff": "1a53d021b3e6a9c538de5ff512b3745fa1d028d59d7449367ae318d4a1d915c4",
+    "Morph_original_handoff": "40d6a22459b1c83444a33e77586205d9f89af9c32a29d9714eed4322527f00f3",
+    "Morph_preserved_original_official_failure_handoff": "5a5809e8254fb7f4d9f86762b96e36f26d5ae2fbae186874c88b471a6e845a07",
+    "complex_independent_handoff": "d788b718c4d8272af58d975a00d99daa4bcb04d2f18f9bb370b1225d12b96468",
+    "complex_independent_final_review": "830fe23ce2a7ff63d2d3970b8dc21a48d6836fb042f69103cfc87aa5deae528c",
+    "complex_original_handoff": "469fe84380e733eab319f98eeab0396301cbed7d7e450c1db608e1b231f7b67c",
+    "new_Unix_independent_handoff": "af99f7c8ff41f5497727339c5e9b1510e93e621cc48e23d03bf0eafa71808e28",
+    "new_Unix_independent_joint_review": "bdbfc021390e778fc18b66fb239b8764806af5d7d257dc08f7a991764bcb756e",
+    "original_Linux_P27_native_audit": "61d016f6e94fa78de6666a75a2b218e23cdd61061a2cda34c1eeb7361e17459f",
+    "original_Mac_P27_native_audit": "f74aaedf3810774cd952df424a3b19afa0f7f3a42946d99f5ffd57a6e4cd2d01",
+    "earlier_official_failed_turn": "b19c6e1bc0543390d0abca398d96375063ccffa7ce070bf440a768086bb3768a",
+    "official_route_transport_diagnostic": "05b7dbaf8451759a316e7409b8580238998ce514fa3ae5417613dc6af8d23023"
   }
 }
