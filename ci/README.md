@@ -43,6 +43,17 @@ ignored tests, and upstream skip macros that return Ok. Filtered tests are not
 counted as executed. Original Cargo logs and a separate scope receipt are kept.
 No provider credential or model call is involved.
 
+The same controller, with `--suite state-migrations`, separately executes the
+22 explicitly named `codex-state` migration tests on that producer source/cache.
+It includes both coherent LF and CRLF pending migrations on each platform, all
+six stores, lazy auxiliary inheritance, mixed known forms, legacy recency repair,
+strict unknown/dirty failures, and SQL/checksum consistency. Each exact test must
+actually execute with zero failures or ignored tests; filtered tests do not count.
+The `state-migrations` receipt and full native log are separate from Guardian's.
+The compiler/profile/package/full-source checks apply before and after both
+suites. This step builds the test target, not a replacement native package, and
+does not certify old stock readers for mixed-style ledgers or any live profile.
+
 qualify_native.py checks the complete package inventory, fixed input archives,
 patch stack, source digests, compiler pin, and target before testing. It executes
 both native regression modules without skipping any case, rejects failures,

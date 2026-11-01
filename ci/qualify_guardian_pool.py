@@ -1,4 +1,4 @@
-"""Qualify the fixed Guardian pool on the fresh producer's actual source/cache.
+"""Qualify Guardian or State tests on the fresh producer's actual source/cache.
 
 No model, credential, installed runtime or native package is modified.
 """
@@ -30,6 +30,46 @@ EXPECTED_TESTS = (
     PREFIX + "tests::stalled_http_headers_exhaust_the_sampling_retry_budget",
     PREFIX + "tests::supersession_closes_http_before_headers_and_while_draining_the_body",
 )
+STATE_TESTS = (
+    "migrations::tests::guardian_metadata_cleanup_preserves_custom_names_and_titles",
+    "migrations::tests::thread_section_migration_preserves_legacy_pin_compatibility",
+    "migrations::tests::thread_attachment_migration_preserves_existing_data",
+    "migrations::tests::thread_section_order_migration_backfills_stably",
+    "migrations::tests::thread_item_update_ordinals_allow_older_writers",
+    "migrations::tests::realtime_items_preserve_older_thread_history_writers",
+    "migrations::tests::agent_job_tables_are_dropped_when_upgrading",
+    "migrations::tests::recency_migration_backfills_and_seeds_old_binary_inserts",
+    "migrations::tests::repairs_recency_migration_that_was_applied_as_version_38",
+    "migrations::tests::repair_recency_migration_succeeds_while_another_connection_holds_writer_slot",
+    "migrations::tests::writable_pool_reads_do_not_wait_for_an_existing_writer",
+    "migrations::tests::eol_fresh_platform_six_stores_match_canonical_representation",
+    "migrations::tests::eol_existing_lf_six_stores_keep_ledger_userdata_and_old_reader",
+    "migrations::tests::eol_old_lf_prefix_pending_stays_lf_for_old_reader",
+    "migrations::tests::eol_unknown_hash_dirty_and_changed_sql_are_strict",
+    "migrations::tests::eol_legacy_38_to_39_repair_accepts_both_precise_forms",
+    "migrations::tests::eol_sql_and_checksum_choose_same_literal_representation_and_rollback",
+    "migrations::tests::eol_missing_lazy_stores_inherit_lf_primary_for_old_p6_rollback",
+    "migrations::tests::eol_existing_auxiliary_ledger_does_not_depend_on_primary_health",
+    "migrations::tests::eol_crlf_prefix_pending_stays_crlf_on_every_platform",
+    "migrations::tests::eol_primary_proven_style_inherited_by_missing_and_empty_aux_stores",
+    "migrations::tests::eol_empty_or_mixed_ledgers_prove_no_single_style_without_rewriting",
+)
+
+
+def suite_spec(suite: str) -> dict:
+    if suite == "guardian-pool":
+        return {"tests": EXPECTED_TESTS, "crate": "codex-guardian-v2",
+                "filter": PREFIX.removesuffix("::"), "log": "native-pool.log",
+                "scope": "Guardian false/true provider pool, HTTP scoring and cancellation",
+                "passed": "passed_native_guardian_pool_scope"}
+    if suite == "state-migrations":
+        return {"tests": STATE_TESTS, "crate": "codex-state",
+                "filter": "migrations::tests::", "log": "native-state.log",
+                "scope": "State migration exact EOL forms, six stores, strict ledgers and old-reader compatibility",
+                "passed": "passed_native_state_migrations_scope"}
+    raise ValueError("Unknown native test suite")
+
+
 PROFILE_KEYS = (
     "CARGO_INCREMENTAL", "CARGO_BUILD_JOBS", "CARGO_PROFILE_RELEASE_DEBUG",
     "CARGO_PROFILE_RELEASE_STRIP", "CARGO_PROFILE_RELEASE_LTO",
@@ -37,20 +77,21 @@ PROFILE_KEYS = (
 )
 
 
-def test_result(log: str) -> dict:
+def test_result(log: str, suite: str = "guardian-pool") -> dict:
+    expected = suite_spec(suite)["tests"]
     # Upstream network skip macros return Ok, so Rust's passed count is insufficient.
     if re.search(r"skipping test|cannot execute when network is disabled", log, re.I):
         raise ValueError("A native fixture returned through an upstream skip macro")
     cases = re.findall(r"^test (\S+) \.\.\. (ok|FAILED|ignored)\s*$", log, re.M)
-    if Counter(name for name, _ in cases) != Counter(EXPECTED_TESTS):
-        raise ValueError("Guardian pool execution differs from the exact declared tests")
+    if Counter(name for name, _ in cases) != Counter(expected):
+        raise ValueError("Native suite execution differs from the exact declared tests")
     if any(state != "ok" for _, state in cases):
-        raise ValueError("Guardian pool contains a failed or ignored fixture")
+        raise ValueError("Native suite contains a failed or ignored fixture")
     summaries = re.findall(
         r"^test result: (\w+)\. (\d+) passed; (\d+) failed; (\d+) ignored; "
         r"(\d+) measured; (\d+) filtered out; finished in [^\n]+$", log, re.M)
-    if len(summaries) != 1 or summaries[0][:5] != ("ok", "10", "0", "0", "0"):
-        raise ValueError("Guardian pool summary is missing or unsuccessful")
+    if len(summaries) != 1 or summaries[0][:5] != ("ok", str(len(expected)), "0", "0", "0"):
+        raise ValueError("Native suite summary is missing or unsuccessful")
     return {"executed": len(cases), "failed": 0, "ignored": 0,
             "filtered_out_not_executed": int(summaries[0][5]),
             "tests": [name for name, _ in cases]}
@@ -105,7 +146,10 @@ def main() -> int:
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--build-work", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--suite", choices=("guardian-pool", "state-migrations"),
+                        default="guardian-pool")
     args = parser.parse_args()
+    selected = suite_spec(args.suite)
     if sys.platform not in {"linux", "darwin"}:
         raise ValueError("This CI entry point qualifies only hosted Unix native producers")
     package, work = args.package.resolve(strict=True), args.build_work.resolve(strict=True)
@@ -118,7 +162,7 @@ def main() -> int:
         raise ValueError("Preserve existing native qualification evidence")
     evidence.mkdir(parents=True)
     record = {"status": "running", "started_at": time.time(),
-              "scope": "Guardian false/true provider pool, HTTP scoring and cancellation",
+              "scope": selected["scope"], "suite": args.suite,
               "real_model_requests": 0, "provider_credentials_read": False,
               "product_release_ready": False}
     try:
@@ -144,30 +188,30 @@ def main() -> int:
             raise ValueError("Native producer release profile is not completely declared")
         env.update(profile, CARGO_TARGET_DIR=str(work / "target"))
         env.update(bundled_bwrap_environment(package, work, receipt, before["target"]))
-        command = [*cargo, "test", "--locked", "--release", "-p", "codex-guardian-v2",
-                   "--lib", PREFIX.removesuffix("::"), "--",
+        command = [*cargo, "test", "--locked", "--release", "-p", selected["crate"],
+                   "--lib", selected["filter"], "--",
                    "--test-threads=2", "--show-output"]
         record.update(package=before, source_sha256=source_before, producer=source_proof,
                       command=command, environment={k: env[k] for k in PROFILE_KEYS},
                       upstream_source_archive={"path": str(archive), "sha256": native.sha(archive)},
                       cargo_target_dir=env["CARGO_TARGET_DIR"],
                       bundled_sandbox_environment={k: v for k, v in env.items() if k=="CODEX_BWRAP_SHA256"})
-        log_path = evidence / "native-pool.log"
+        log_path = evidence / selected["log"]
         with log_path.open("wb") as log:
             process = native.run_observed(command, cwd=tree / "codex-rs", env=env,
                                           log=log, timeout=7200)
         record["processes"] = process
         record["log_sha256"] = native.sha(log_path)
-        if not process["passed"]:
-            raise RuntimeError("Native Guardian tests or owned-process cleanup failed")
-        record["tests"] = test_result(log_path.read_text(encoding="utf-8"))
+        if not process["passed"] or process.get("returncode") != 0:
+            raise RuntimeError("Native tests or owned-process cleanup failed")
+        record["tests"] = test_result(log_path.read_text(encoding="utf-8"), args.suite)
         if native.package_identity(package) != before or native.source_identity() != source_before:
             raise ValueError("Package or checkout changed during native pool qualification")
         if native.sha(archive) != record["upstream_source_archive"]["sha256"]:
             raise ValueError("Official source archive changed during native pool qualification")
         if producer_source(work, receipt, contract)[1] != source_proof:
             raise ValueError("Producer source changed during native pool qualification")
-        record["status"] = "passed_native_guardian_pool_scope"
+        record["status"] = selected["passed"]
     except BaseException as error:
         record.update(status="failed", error_type=type(error).__name__, error=str(error))
         raise

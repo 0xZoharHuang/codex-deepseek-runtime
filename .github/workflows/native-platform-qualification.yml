@@ -99,6 +99,11 @@ jobs:
         run: |
           set -euo pipefail
           python -I build_native.py --work "$RUNNER_TEMP/cds-build" --output "$RUNNER_TEMP/cds-native-package" --jobs "${{ matrix.jobs }}" 2>&1 | tee "$RUNNER_TEMP/cds-ci-artifact/build.log"
+      - name: Qualify actual State migration EOL compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I ci/qualify_guardian_pool.py --suite state-migrations --package "$RUNNER_TEMP/cds-native-package" --build-work "$RUNNER_TEMP/cds-build" --evidence "$RUNNER_TEMP/cds-ci-artifact/state-migrations"
       - name: Qualify actual Guardian provider transport and cancellation
         shell: bash
         run: |

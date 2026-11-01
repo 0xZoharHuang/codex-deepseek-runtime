@@ -122,3 +122,132 @@ def test_native_inventory_retains_known_archive_license_link_bytes(tmp_path):
     alias.write_bytes(b"altered archive license")
     with pytest.raises(ValueError,match="Complete native source inventory differs"):
         pool.producer_source(tmp_path,receipt,contract)
+
+
+def state_success_log():
+    return ("running 22 tests\n" + "".join("test " + name + " ... ok\n" for name in pool.STATE_TESTS)
+            + "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 201 filtered out; finished in 1.00s\n")
+
+
+@pytest.mark.parametrize("bad", [None, "missing", "replacement", "duplicate", "ignored",
+                                 "failed", "summary", "skip-return-ok", "extra-summary",
+                                 "empty-filter", "old-eleven-only", "guardian-only", "extra-test"])
+def test_state_suite_requires_all_exact_twenty_two_native_executions(bad):
+    log = state_success_log()
+    first = pool.STATE_TESTS[0]
+    if bad == "missing": log = log.replace("test " + first + " ... ok\n", "")
+    elif bad == "replacement": log = log.replace(first, "migrations::tests::unreviewed_same_count")
+    elif bad == "duplicate": log = log.replace(pool.STATE_TESTS[1], first)
+    elif bad == "ignored": log = log.replace("... ok", "... ignored", 1)
+    elif bad == "failed": log = log.replace("... ok", "... FAILED", 1)
+    elif bad == "summary": log = log.replace("0 failed", "1 failed")
+    elif bad == "skip-return-ok": log += "Skipping test because it cannot execute when network is disabled\n"
+    elif bad == "extra-summary": log += log.splitlines()[-1] + "\n"
+    elif bad == "empty-filter":
+        log = "running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 223 filtered out; finished in 0.00s\n"
+    elif bad == "old-eleven-only":
+        log = ("".join("test " + name + " ... ok\n" for name in pool.STATE_TESTS[:11])
+               + "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 212 filtered out; finished in 1.00s\n")
+    elif bad == "guardian-only": log = success_log()
+    elif bad == "extra-test": log += "test migrations::tests::unreviewed_extra ... ok\n"
+    if bad is None:
+        result = pool.test_result(log, "state-migrations")
+        assert result == {"executed": 22, "failed": 0, "ignored": 0,
+                          "filtered_out_not_executed": 201, "tests": list(pool.STATE_TESTS)}
+        assert len({name for name in pool.STATE_TESTS if name.startswith("migrations::tests::eol_")}) == 11
+    else:
+        with pytest.raises(ValueError): pool.test_result(log, "state-migrations")
+
+
+def test_native_suite_is_explicit_and_default_guardian_remains_strict():
+    assert pool.test_result(success_log())["executed"] == 10
+    with pytest.raises(ValueError): pool.test_result(state_success_log())
+    with pytest.raises(ValueError): pool.test_result(success_log(), "unreviewed-suite")
+
+
+@pytest.mark.parametrize("suite", ["guardian-pool", "state-migrations"])
+@pytest.mark.parametrize("bad", [None, "process", "source-after", "package-after",
+                                 "producer-after", "compiler", "successful-process-wrong-log", "nonzero-exit"])
+def test_suite_entry_uses_verified_producer_and_rejects_execution_or_identity_drift(
+        tmp_path, monkeypatch, suite, bad):
+    # Exercise the real CLI controller with the existing process observer replaced
+    # by an inert receipt writer: no Cargo, model or network is executed here.
+    import json
+    import sys
+    import build_native
+
+    package, work, checkout, evidence = (tmp_path/name for name in ("package", "work", "checkout", "evidence"))
+    for path in (package, work, checkout): path.mkdir()
+    tree = work/"b-1234abcd/src"
+    (tree/"codex-rs").mkdir(parents=True)
+    archive = work/"downloads/source-official"
+    archive.parent.mkdir()
+    archive.write_bytes(b"fixed official archive")
+    profile = {key: "0" for key in pool.PROFILE_KEYS}
+    profile["CARGO_BUILD_JOBS"] = "1"
+    cargo = ["cargo", "+1.99.1"]
+    receipt = {"build_toolchain_pin": "1.99.1", "cargo_command": cargo + ["build"],
+               "environment": profile}
+    (package/"build-receipt.json").write_text(json.dumps(receipt))
+    monkeypatch.setattr(pool, "ROOT", checkout)
+    monkeypatch.setattr(sys, "platform", "darwin")
+    argv = ["qualify_guardian_pool.py", "--package", str(package), "--build-work", str(work),
+            "--evidence", str(evidence)]
+    # The original Guardian invocation has no --suite argument.
+    if suite == "state-migrations": argv += ["--suite", suite]
+    monkeypatch.setattr(sys, "argv", argv)
+    counts = {"package": 0, "source": 0, "producer": 0}
+    identity = {"target": "aarch64-apple-darwin", "physical_binary_sha256": "fixture"}
+
+    def package_identity(path):
+        assert path == package
+        counts["package"] += 1
+        return dict(identity, drift=True) if bad == "package-after" and counts["package"] > 1 else dict(identity)
+
+    def source_identity():
+        counts["source"] += 1
+        return "changed" if bad == "source-after" and counts["source"] > 1 else "checkout-fingerprint"
+
+    def producer_source(actual_work, actual_receipt, contract):
+        assert actual_work == work and actual_receipt == receipt and contract == {"fixture": "verified"}
+        counts["producer"] += 1
+        return tree, {"full_source_inventory_sha256": "changed" if bad == "producer-after" and counts["producer"] > 1 else "complete-source-fingerprint"}
+
+    monkeypatch.setattr(pool.native, "package_identity", package_identity)
+    monkeypatch.setattr(pool.native, "source_identity", source_identity)
+    monkeypatch.setattr(pool, "producer_source", producer_source)
+    monkeypatch.setattr(pool.sources, "source_contract", lambda target, actual: {"fixture": "verified"})
+    monkeypatch.setattr(build_native, "compiler_commands", lambda pin: (
+        ["rustc", "+" + pin], ["different-cargo"] if bad == "compiler" else cargo, {}))
+    monkeypatch.setenv("OPENROUTER_API_KEY", "synthetic-fixture-not-a-credential")
+    observed = []
+
+    def run_observed(command, *, cwd, env, log, timeout):
+        selected = pool.suite_spec(suite)
+        assert command == [*cargo, "test", "--locked", "--release", "-p", selected["crate"],
+                           "--lib", selected["filter"], "--", "--test-threads=2", "--show-output"]
+        assert cwd == tree/"codex-rs" and timeout == 7200
+        assert {key: env[key] for key in pool.PROFILE_KEYS} == profile
+        assert env["CARGO_TARGET_DIR"] == str(work/"target")
+        assert "OPENROUTER_API_KEY" not in env
+        actual_log = state_success_log() if suite == "state-migrations" else success_log()
+        if bad == "successful-process-wrong-log": actual_log = "running 0 tests\n"
+        log.write(actual_log.encode())
+        observed.append(command)
+        return {"passed": bad != "process", "returncode": 1 if bad in {"process", "nonzero-exit"} else 0}
+
+    monkeypatch.setattr(pool.native, "run_observed", run_observed)
+    if bad is None:
+        assert pool.main() == 0
+    else:
+        with pytest.raises((ValueError, RuntimeError)): pool.main()
+    result = json.loads((evidence/"qualification.json").read_text())
+    selected = pool.suite_spec(suite)
+    assert result["suite"] == suite and result["scope"] == selected["scope"]
+    assert result["status"] == (selected["passed"] if bad is None else "failed")
+    assert result["product_release_ready"] is False and result["real_model_requests"] == 0
+    if bad == "compiler": assert observed == []
+    else: assert len(observed) == 1 and (evidence/selected["log"]).is_file()
+    if bad is None:
+        assert counts == {"package": 2, "source": 2, "producer": 2}
+        assert result["tests"]["executed"] == len(selected["tests"])
