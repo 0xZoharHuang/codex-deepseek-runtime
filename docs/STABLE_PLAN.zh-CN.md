@@ -2,11 +2,11 @@
 
 本方案只管理CDS。Codex App/CAG独立验收，不迁移App订阅、配置或会话。原生Codex负责工具、权限、会话和协作，DeepSeek负责模型输出，云端数据/权益另按服务处理。
 
-当前固定候选的 runtime 资格已完成，实际远端发布、日常切换及永久资产 CI 仍待交付确认；不把方案版本号当成已经发布。计数、原失败、权限 token 上下文与源承接见[0.6.9资格索引](../reports/releases/0.6.9/README.md)，数据库升级边界见[本版说明](release-0.6.9.zh-CN.md)。
+v0.6.9 已公开发布；固定 runtime 的计数、原失败、权限 token 上下文与源承接见[0.6.9资格索引](../reports/releases/0.6.9/README.md)，下载可用性与摘要以[发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)核对，数据库升级边界见[本版说明](release-0.6.9.zh-CN.md)。具体工具负载还需要相应的运行资源。
 
 ## 固定来源，再正常安装
 
-1. 发布者完成交付确认后，以[v0.6.9发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)取得对应tag、平台归档和摘要；发布页/实际下载回执决定可用性，不混tag、manifest、recipe或同名旧二进制。
+1. 从[v0.6.9发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)取得对应tag、平台归档和摘要；发布页/实际下载回执决定可用性，不混tag、manifest、recipe或同名旧二进制。
 2. 使用独立Python3.11+与Git；正常安装不编译Rust、不使用Codex App内置Python。按[安装升级回滚方案](release-0.6.9.zh-CN.md)先新root与标准安装器`--no-activate`验证，保护当前入口和工作。
 3. 选择新release绝对入口及显式`CODEX_DEEPSEEK_HOME`。`--version`与`runtime status`不等于模型连接通过；`runtime doctor`真实调用模型并计费。key仅走系统凭据/隐藏输入或安全进程环境，不进argv、仓库、日志。
 4. 日常切换先核当前home真实任务、进程birth与所有者。旧descriptor的PID可能已复用，不能按数字kill。验收、任务协调后才正常安装器选择已核root。
@@ -22,6 +22,8 @@ Windows关闭兼容分支为process-local已识别方法修复，未变共享Pyt
 ## 失败、回滚和清理
 
 区分上游模型错误、显式不支持的云后端语义、原生平台限制与适配缺陷。未知结果先查原run/thread/turn及副作用，不重放有副作用工作造全绿。
+
+Linux/WSL 活跃期检查超时先定位导入、函数或父进程等待，并核对 guest 内存及 memory/IO PSI；宿主空闲不代表 guest 未触及上限。保留原截止时间和并发，按[资源压力诊断](linux-resource-pressure.zh-CN.md)取证、确认配置作用域及其他消费者，再处理已经证实的资源层问题。不要用状态入口替换、跳过检查或关闭机制掩盖超时。
 
 回滚保留旧tag、root/home和不可变入口，协调目标home后由旧版本正常入口选择；新会话/失败记录不倒退覆盖。`native/rollback`中的旧版本记录只保来源，旧资产配旧tag与许可证补充；0.6.9程序与数据库的回滚条件分别核对。
 

@@ -31,6 +31,16 @@ Check the **child's effective native policy** before another attempt. A parent h
 
 When the task already authorizes the required public-network operation, configure the supported **invocation-local** network policy and read back the effective setting. See [Launch and permissions](launch-and-permissions.md#outbound-network-is-separate-from-workspace-write). Preserve the original failed result and then make only a bounded, appropriate continuation. Do not silently switch to full access, another endpoint, a host-side download, or a different transport to manufacture success. Unknown outcomes or side effects still require reconciliation.
 
+## Active lifecycle probes can time out before CDS runs
+
+When an active-only status probe times out, preserve its exact argv, original deadline, process birth and outcome. Record import and function boundaries, plus whether the parent received the result and EOF. A fast function phase is not the complete subprocess round trip; a timeout in `communicate()` alone does not locate the blocked layer. SQLite's connection timeout bounds busy-lock waiting, not interpreter startup or the entire probe.
+
+Do not substitute `runtime status` for a passive probe: it opens Store and enters provider lifecycle handling. `runtime provider status` also takes the service configuration lock. A lease check's nonblocking lock does not bound its earlier file open.
+
+On Linux, correlate a real stack with guest `MemTotal`/`MemAvailable`, memory and IO PSI, and actual overlapping tool processes. Free Windows RAM does not override a WSL guest limit; no OOM event does not prove there was no reclaim pressure. Treat unavailable metrics as unavailable. WSL memory settings apply to the actual Windows user's WSL2 VM, so confirm all consumers and existing authority before changing them. A particular memory limit from one workload is not a universal CDS requirement.
+
+Fix the demonstrated layer, preserve the original failure and recheck the same affected concurrency and resource peak under the original deadline. Unknown ownership does not authorize forced replacement; the confirmed original owner may still perform its normal failure cleanup and verify retirement.
+
 ## A useful integration acceptance
 
 When needed, use a small, owned, non-sensitive fixture and the user's original unmodified tool. Let CDS launch the actual tool when the requested workflow is CDS-owned. Verify the returned provider identity/result against the real input and effects; do not substitute a host execution and call it CDS acceptance.

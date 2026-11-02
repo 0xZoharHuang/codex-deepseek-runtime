@@ -267,7 +267,7 @@ codex-deepseek runtime doctor
 codex-deepseek doctor
 ```
 
-`--help` / `--version` 不需要 key；`runtime status` 查看本发行包的绑定和目录，`runtime doctor` 做真实提供方验证，最后一条 `doctor` 是原生 Codex 的诊断命令。不要公开贴出含私人路径、项目正文或 token 的原始日志。显式开启 `CODEX_DEEPSEEK_TRACE_DIR` 会记录敏感请求上下文，只用于受控排查。 前端 HTTP 脱敏记录及覆盖判定见 [Front HTTP trace](docs/front-http-trace.zh-CN.md)。
+`--help` / `--version` 不需要 key；`runtime status` 查看本发行包的绑定和目录，但会打开 Store 并进入 provider 生命周期，不是无副作用的高频状态探针。`runtime doctor` 做真实提供方验证，最后一条 `doctor` 是原生 Codex 的诊断命令。不要公开贴出含私人路径、项目正文或 token 的原始日志。显式开启 `CODEX_DEEPSEEK_TRACE_DIR` 会记录敏感请求上下文，只用于受控排查。 前端 HTTP 脱敏记录及覆盖判定见 [Front HTTP trace](docs/front-http-trace.zh-CN.md)。
 
 | 现象 | 处理 |
 | --- | --- |
@@ -276,6 +276,7 @@ codex-deepseek doctor
 | 原生数据库提示 migration checksum mismatch / migration modified | 保留原 home 和错误记录，核对程序版本与账本来源；使用本版匹配发行包。不要手工改 `_sqlx_migrations`、删除数据库或覆盖未知校验和。见[迁移兼容与回滚说明](docs/release-0.6.9.zh-CN.md)。 |
 | 原生产物或缓存摘要不符 | 保留异常文件，重新取得匹配版本的源码和归档，交给安装器验证；不要关闭摘要检查。 |
 | Linux 缺少动态库或 venv | 安装与系统匹配的 glibc/OpenSSL 3/libcap 运行库及 Python venv 支持；当前验证目标是 Ubuntu 24.04 GNU。 |
+| Linux/WSL 仅在活跃负载下状态检查超时 | 保留导入、函数、父进程等待和 guest RAM/PSI 证据；Windows 空闲 RAM 不等于 guest 有余量，不先延长 timeout 或修改数据库。见[资源压力诊断](docs/linux-resource-pressure.zh-CN.md)。 |
 | 模型未宣告 Code Mode 元数据的提醒 | 原生提醒不会据此禁用工具，纯文本完成也不能证明工具运行。不要为消警强填 catalog 的 tool_mode，否则可能覆盖 profile 的 Direct 选择。[条件、选择顺序及真工具验证方法](docs/code-mode-metadata-warning.zh-CN.md)。 |
 | `Reconnecting... undeclared tool` | 核对本次实际声明的工具集合与调用路径；目录、历史或 Code Mode 内的工具名不代表顶层已开放。保持工具白名单，参见[受控原生重试记录](reports/protocol/undeclared-tool-retry-20261025.json)。该记录覆盖一次未知调用前后已执行工具的保留，不承诺模型再次发出新操作时的业务幂等。 |
 | 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
