@@ -1,19 +1,21 @@
-# Windows 私有工程父目录与 PowerShell 工作目录
+# Windows 私有父目录、Node 与 PowerShell
 
-当集成方把工程放在自建的私有目录树，例如 `work/<worker>/<task>`，终端的目录参数正确并不代表 PowerShell 能初始化该目录。Win32/Python 可以进入目标目录，而 PowerShell 仍可能退回盘符根目录，或在 `Set-Location` 报拒绝访问：它还会查询祖先目录的属性。
+CDS 的 Windows P37 候选修复祖先目录的属性句柄权限。它沿用原生权限准备和工具执行，只补齐当前 namespace 已负责的 home / 私有 worktree 父目录权限。本候选的安装和发布资格以对应发行回执为准，不能把源码修复当作已交付。
 
-先分别核对原生 session/turn/tool 的 cwd、实际沙箱用户、Python cwd、PowerShell 初始 cwd 和相对文件读写。不要把这种差异归因于模型漏传 workdir，也不要切换 full access、改变整个工程树继承、读取凭据或替换 shell 来掩盖问题。
+## 根因与最小修复
 
-已在真实消费方同一 CDS 入口、同一 home、同一受限用户下验证：目标工程已有正常原生访问能力，但一个私有父目录缺少沙箱组的 `FILE_READ_ATTRIBUTES`。仅为该父目录增加不继承的 `READ_ATTRIBUTES`（0x80）后，PowerShell 初始位置、显式 Set-Location 和相对标记读取均恢复；8 个实际存在的私有测试文件仍拒绝访问，其他目录描述符、原有 owner 和 DACL 控制位保持不变。该结论只覆盖该目录布局和实际账号，不延伸到任意账户或所有嵌套目录。
+`GetFileAttributesW` 成功不代表 `CreateFileW(FILE_READ_ATTRIBUTES)` 能打开目录句柄。Windows 实测中，后者获得的权限掩码包含 `SYNCHRONIZE`；只有 `READ_ATTRIBUTES`（0x80）的旧 ACE 会让 Node 24.22.1 的普通 `.js` 文件在逐级 `lstat` 中报 `EPERM`。公开父目录可能使 libuv 的后备路径碰巧成功，因而只测公共临时目录会漏掉问题。
 
-这是集成方自建目录树的初始化条件。固定上游的工作区授权不承诺替第三方修改所有私有祖先目录；CDS 不会因此自动扩大这些目录的权限。若集成方确实拥有并授权维护这些父目录，应在既有的工程初始化流程内，依据当前 home 的已验证原生 namespace 身份提供最小的、不继承的属性访问，并对每一级私有父目录进行实际验证。不要硬编码本报告里的账号、SID 或 group 名，不要把诊断脚本复制成另一套沙箱或权限系统。
+原生 helper 需要的精确掩码是 `FILE_READ_ATTRIBUTES | SYNCHRONIZE`（0x100080），不继承给子项。它不授予目录枚举、文件数据读取、写入或更改所有者。已有旧属性 ACE 会按同一原生准备路径补齐，不要求用户手改 ACL、切换 full access、改用 stdin 或复制一套权限脚本。
 
-修改前后保存实际目录对象身份与安全描述符；拒绝 reparse 重定向、所有者不匹配以及并发变化。已存在的显式拒绝不能被覆盖。验收必须同时包含正常 cwd/相对读写和真实存在的私有邻接文件仍被拒绝；如果修复无效，按原描述符精确回滚。多用户、嵌套 worker/context、在线账号和业务构建仍由采用该布局的集成方分别验收。
+权限判定同时要求两个位，并分别核对联网和离线用户；不能把一个用户的属性位与另一个用户的同步位拼成通过。显式拒绝继续阻止授权；原路径身份、reparse 防护、目录锁、所有者检查及不继承规则保留。对当前 namespace 不负责的第三方私有目录，不静默扩大授权范围。
 
-普通个人工程没有这一私有目录布局时，不需要额外创建账号或维护 ACL。
+对应依据：[Windows 文件访问权限](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntcreatefile)、[Node 24.22.1 Windows 文件实现](https://github.com/nodejs/node/blob/v24.22.1/deps/uv/src/win/fs.c)。真实对照使用固定同一 Node 二进制、同一 native runtime、同一受限用户及同一普通脚本入口；脚本成功还须与目录枚举、写入和真实私有旁文件仍被拒绝一起判断。
 
-## Node 与 Git 的两项区别
+早期 PowerShell 实测只证明 0x80 能恢复当时的 cwd / Set-Location，不能外推为 Node 句柄已正常，也不能把早期记录改成新版本通过。新的回执保留原错误、升级前后权限和实际执行结果。
 
-PowerShell 的 `GetFileAttributes` 路径成功，不足以证明 Node 的逐级 `lstat` 成功。Node 24.22.1 的 Windows 路径解析可能需要实际 `CreateFileW(FILE_READ_ATTRIBUTES)` 句柄；访问失败后的 libuv 后备路径还会尝试父目录列表。应检查确切 API、访问掩码、组状态和显式拒绝，而不是直接扩大祖先树的 read 权限，或把改用 stdin 算作正常脚本文件执行通过。源码见 [Node fs.js](https://github.com/nodejs/node/blob/v24.22.1/lib/fs.js#L2616) 与 [libuv Windows fs](https://github.com/nodejs/node/blob/v24.22.1/deps/uv/src/win/fs.c#L2042)。
+## 标准 Git 布局
 
-标准 `.git` 在默认 workspace-write 中受保护属于原生行为。固定 0.164 源码支持 named permission profiles：继承 `:workspace` 后，为 `permissions.<name>.filesystem.":workspace_roots"` 下的 `.git` 明确设置 `write`，可表达授权的 Git 写入，同时保持受限执行身份。其他私有 deny 和临时目录范围仍需保留。旧 `sandbox_mode`/`sandbox_workspace_write` 与新 profile 不叠加；App-server 的实验性 `thread/start`、`thread/resume` 使用 `permissions` 选择名称，不能同时传 `sandbox`。应回读 `activePermissionProfile` 并实际验证普通 `.git` 操作和私有 canary；不能只看配置文本。参见[官方 Permissions](https://learn.chatgpt.com/docs/permissions)。
+工作区中的普通子目录仓库使用标准 `.git`，已由下游通过正常 Git 工具和同一线程冷恢复核回；这种布局不需要另建 named permission profile。
+
+工作区顶层 `.git` 的原生保护是另一种条件。确实需要写入该保护路径时，可用固定 0.164 支持的 named permission profile 明确表达授权，再回读 `activePermissionProfile` 和实际操作结果。实验性 App-server `thread/start`、`thread/resume` 的 `permissions` 不能与 `sandbox` 同传。不要以自定义 git-dir、关闭沙箱或全盘 `safe.directory` 掩盖布局、权限或仓库所有者问题。参见[官方 Permissions](https://learn.chatgpt.com/docs/permissions)。
