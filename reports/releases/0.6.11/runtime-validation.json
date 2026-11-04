@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "scope": "Windows P36 native runtime mechanisms; not model business correctness, other platforms, or Codex App",
+  "status": "VERIFIED_LOCAL_RUNTIME_SCOPE",
+  "native_CLI_sha256": "2a72434a574acd36acecfd35e72453cc0439fa4d8dd3e122777be456fd9ced45",
+  "native_archive_sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
+  "runtime_mechanisms": {
+    "dual_windows_context_public_cases": 8,
+    "original_pngs": 96,
+    "original_png_bytes": 154091060,
+    "visual_records_and_summary_exact": true,
+    "cold_original_reopen_stages": [
+      4,
+      8
+    ],
+    "natural_compactions": 4,
+    "native_child_completed_review_turns": 2,
+    "once_ledger_rows": 1,
+    "preserve_then_explicit_terminate_seconds": 0.028017282485961914,
+    "native_eof_exit": 0,
+    "provider_natural_idle_retirement_seconds": 120.53503740008455,
+    "owned_processes_remaining": 0,
+    "outer_forced_cleanup": [],
+    "other_runtime_components": "unchanged component source/previous fixed-version evidence, not a claim that every input permutation was replayed",
+    "same_P36_unique_large_completions": 6
+  },
+  "actual_generation_samples": {
+    "count": 3,
+    "canonical_model": "deepseek/deepseek-v4.1-flash-20261017",
+    "provider": "Morph",
+    "inference_requests_in_independent_audit": 0
+  },
+  "independent_runtime_audit_sha256": "a48f5aa5f614723f7693d22b0d60af5f5854e44d3668aed0638c552e5c03ed13",
+  "cache_summary_sha256": "bbfa23814cc658d859a201cd7b0e8ab6f13b28248d49356caaf865f627a67f1e",
+  "cache": {
+    "known_completed_requests_pinned": 0,
+    "unknown_upload_assets": 0,
+    "total_pins": 142,
+    "pinned_calls": 14,
+    "asset_states": {
+      "deleted": 36,
+      "ready": 53
+    },
+    "normal_reconcile_pending_not_forced_clear": true,
+    "cloud_complete_claimed": false
+  },
+  "business_benchmark": {
+    "status": "FAIL_OR_INCOMPLETE_PRESERVED",
+    "original_result_sha256": "0ab40abbb93a4059ab779090f898074aa4305bab7d221dc17b4563d4dd33fcf0",
+    "reason": "DeepSeek-generated Jinja changes still fail one new metadata regression; final phase reached its original1200second deadline. This is not a CDS source change. No full task success claimed.",
+    "workspace_tests": 917,
+    "workspace_failures": 1,
+    "heldout_tests": 908,
+    "heldout_failures": 0,
+    "visual96_records_and_summary": "passed",
+    "native_review_findings_unresolved": true
+  },
+  "failed_attempts_not_relabelled": true,
+  "native_permissions_unchanged": true,
+  "all_runtime_input_permutations_claimed": false
+}

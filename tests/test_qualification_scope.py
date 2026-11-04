@@ -277,7 +277,13 @@ def test_native_browser_result_decodes_nullable_structured_content_without_swall
                                   'no_full_scan','no_replay','missing_patch','extra_changed_file','missing_verifier'])
 def test_legacy_source_audit_cannot_qualify_the_new_recipe(change):
     from build_native import SOURCE_ASSET
-    native=acceptance.load(ROOT/'native/runtime-x86_64-unknown-linux-gnu.json')
+    # Each release can publish a single platform. Keep this rejection test
+    # bound to an actually shipped manifest, without adding an unqualified one.
+    targets=('x86_64-unknown-linux-gnu','x86_64-pc-windows-msvc','aarch64-apple-darwin')
+    manifest=next((ROOT/f'native/runtime-{target}.json' for target in targets
+                   if (ROOT/f'native/runtime-{target}.json').is_file()),None)
+    assert manifest is not None, 'This release must ship a native manifest'
+    native=acceptance.load(manifest)
     common=acceptance.load(ROOT/'native/source-changes.json')
     proof={'passed':True,'target':native['target'],'upstream_commit':acceptance.BASELINE_COMMIT,
            'upstream_archive_sha256':SOURCE_ASSET[1],'source_files':9353,'unchanged_protected_runtime_files':348,
@@ -285,7 +291,7 @@ def test_legacy_source_audit_cannot_qualify_the_new_recipe(change):
            'changed_native_files':sorted(row['path'] for row in common['files']),
            'patches':{'codex-runtime.patch':acceptance.sha(ROOT/'native/codex-runtime.patch')},
            'verifier_sha256':{name:acceptance.sha(ROOT/name) for name in ['verify_native_source.py','build_native.py']}}
-    if change=='target':proof['target']='x86_64-pc-windows-msvc'
+    if change=='target':proof['target']=next(target for target in targets if target!=native['target'])
     elif change=='source_archive':proof['upstream_archive_sha256']='unrelated'
     elif change=='source_count':proof['source_files']=9349
     elif change=='protected_count':proof['unchanged_protected_runtime_files']=347
@@ -848,6 +854,9 @@ def _observed_process_graph(monkeypatch, *, foreign=False, root_exits=True):
     from ci import qualify_native as qualify
     import codex_deepseek.processes as process_ids
     original_children=psutil.Process.children
+    # Keep the generic adapter's existing fault-injection coverage explicit.
+    # The Windows two-snapshot adapter has independent boundary cases below.
+    monkeypatch.setattr(qualify,'_observer_parent_map',lambda:None)
     graph={100:{'birth':'root-10','ctime':10,'ppid':1,'alive':True},
            200:{'birth':'foreign-50' if foreign else 'child-20','ctime':50 if foreign else 20,'ppid':999 if foreign else 100,'alive':True},
            300:{'birth':'grandchild-60' if foreign else 'grandchild-30','ctime':60 if foreign else 30,'ppid':200,'alive':True}}
@@ -1200,3 +1209,78 @@ def test_qualification_final_unknown_identity_is_never_natural_exit(monkeypatch,
         assert not result["passed"] and result["unknown_live"] == [200]
     else:
         assert result["passed"] and result["unknown_live"] == []
+
+
+@pytest.mark.parametrize('boundary',[
+    'stable','foreign_before','parent_reused','parent_disappears',
+    'child_reused','child_reused_after_maps','older_child','root_missing_after','root_reused','map_error','diagnostic_parent_reuse',
+])
+def test_windows_batched_observer_preserves_identity_and_uncertainty(monkeypatch,boundary):
+    """Two OS maps do not replace per-instance birth, order or unknown guards."""
+    import psutil
+    qualify,graph,callbacks,signals,_,_=_observed_process_graph(monkeypatch)
+    if boundary=='foreign_before':graph[200].update(birth='foreign-50',ctime=50,ppid=999)
+    if boundary=='older_child':graph[200]['ctime']=1
+    if boundary=='diagnostic_parent_reuse':
+        callbacks[('cmdline',200)]=lambda:graph[200].update(birth='foreign-80',ctime=80,ppid=999,argv=['FOREIGN_TEXT_MUST_NOT_PERSIST'])
+    calls=[]
+    def parent_map():
+        calls.append(1)
+        if boundary=='map_error':raise OSError('unavailable OS snapshot')
+        if len(calls)==2:
+            if boundary=='parent_reused':graph[200].update(birth='foreign-70',ctime=70,ppid=999)
+            if boundary=='parent_disappears':graph[200]['alive']=False
+            if boundary=='child_reused':graph[300].update(birth='foreign-95',ctime=95,ppid=999)
+            if boundary=='root_reused':graph[100].update(birth='foreign-root-90',ctime=90,ppid=999)
+            if boundary=='child_reused_after_maps':
+                callbacks[('identity',300)]=lambda:graph[300].update(birth='foreign-95',ctime=95,ppid=999)
+        result={pid:row['ppid'] for pid,row in graph.items()if row['alive']}
+        # A stale first OS map can still name the old edge; the actual second
+        # map must reject it without querying that foreign instance's text.
+        if boundary=='foreign_before'and len(calls)==1:result[200]=100
+        if boundary=='root_missing_after'and len(calls)==2:result.pop(100)
+        return result
+    monkeypatch.setattr(qualify,'_observer_parent_map',parent_map)
+    def forbidden(*_):raise AssertionError('batched Windows adapter re-enumerated global parent map')
+    monkeypatch.setattr(psutil.Process,'ppid',forbidden)
+    monkeypatch.setattr(psutil.Process,'children',forbidden)
+    seen={(100,'root-10'):{'pid':100,'birth':'root-10'}};uncertain={};rejected={};errors={}
+    qualify._observe_process_family(seen,uncertain,rejected,errors)
+    assert len(calls)==(1 if boundary=='map_error'else 2)
+    assert not signals
+    assert 'FOREIGN_TEXT_MUST_NOT_PERSIST'not in json.dumps([*seen.values(),*uncertain.values(),*rejected.values()])
+    if boundary=='stable':
+        assert set(seen)=={(100,'root-10'),(200,'child-20'),(300,'grandchild-30')}
+        assert not uncertain and not rejected and not errors
+    elif boundary=='foreign_before':
+        assert set(seen)=={(100,'root-10')}and rejected
+        assert callbacks['diagnostic_calls'].get((200,'argv'),0)==0
+    elif boundary in {'parent_reused','parent_disappears','diagnostic_parent_reuse'}:
+        assert (300,'grandchild-30')not in seen
+        assert any(row['pid']==300 and row['reason']=='parent_changed_during_collection'for row in uncertain.values())
+    elif boundary in {'child_reused','child_reused_after_maps'}:
+        assert (200,'child-20')in seen and (300,'foreign-95')not in seen
+        assert callbacks['diagnostic_calls'].get((300,'argv'),0)==0
+    elif boundary=='older_child':
+        assert set(seen)=={(100,'root-10')}and rejected
+    elif boundary in {'root_missing_after','root_reused'}:
+        assert set(seen)=={(100,'root-10')}and uncertain
+    elif boundary=='map_error':
+        assert set(seen)=={(100,'root-10')}and errors
+
+
+def test_windows_batched_observer_cleanup_keeps_owned_survivors_strict(monkeypatch,tmp_path):
+    import io,psutil
+    qualify,graph,_,signals,_,_=_observed_process_graph(monkeypatch)
+    calls=[]
+    def parent_map():
+        calls.append(1)
+        return {pid:row['ppid'] for pid,row in graph.items()if row['alive']}
+    monkeypatch.setattr(qualify,'_observer_parent_map',parent_map)
+    monkeypatch.setattr(psutil.Process,'ppid',lambda *_:pytest.fail('per-process global snapshot'))
+    monkeypatch.setattr(psutil.Process,'children',lambda *_args,**_kwargs:pytest.fail('per-parent global snapshot'))
+    result=qualify.run_observed(['synthetic'],cwd=tmp_path,env={},log=io.StringIO(),timeout=30)
+    assert not result['passed']and {pid for pid,_ in signals}=={200,300}
+    assert not result['remaining_after_cleanup']and not result['unknown_live']
+    assert {row['pid']for row in result['observed']}=={100,200,300}
+    assert len(calls)%2==0

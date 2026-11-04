@@ -22,7 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
-    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch'}]}
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch','windows-interactive-runner-bootstrap-0164.patch'}]}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -776,3 +776,30 @@ def test_p30_host_overlay_requires_named_windows_only_tail(tmp_path,monkeypatch,
             leaf['changes_by_target']['x86_64-unknown-linux-gnu']=copy.deepcopy(leaf['changes_by_target'][WIN])
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()
+
+
+def test_p36_interactive_bootstrap_is_windows_only_and_preserves_exact_p35():
+    raw = (ROOT/'native/runtime-overlays-pre-interactive-bootstrap-p35.json').read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == 'ecb4674b926992022d36cc0eef527627a415b61633356129b44fd9add864c83e'
+    previous = json.loads(raw)
+    current = build.runtime_recipe()
+    assert len(previous['overlays']) == 35 and len(current['overlays']) == 36
+    assert {**current, 'overlays':current['overlays'][:-1]} == previous
+    leaf = current['overlays'][-1]
+    assert leaf['file'] == 'windows-interactive-runner-bootstrap-0164.patch'
+    assert leaf['sha256'] == '7913a0e4027e0e98296528afa4be1a0588690db11c11d02567532ba50a0259ae'
+    assert build.sha(ROOT/'native'/leaf['file']) == leaf['sha256']
+    assert set(leaf['changes_by_target']) == {WIN}
+    assert {row['path'] for row in leaf['changes_by_target'][WIN]} == {
+        'codex-rs/windows-sandbox-rs/src/'+name
+        for name in ('desktop.rs','elevated/runner_client.rs','service_station_tests.rs')}
+    expected = {
+        'x86_64-unknown-linux-gnu':'08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b',
+        'aarch64-apple-darwin':'fbb213a8d3a7648191d9ab19bbaf4428fa6d95850a6559ee9f50d356d06c3675'}
+    for target, identity in expected.items():
+        assert [row for row in current['overlays'] if target in row['changes_by_target']] == [
+            row for row in previous['overlays'] if target in row['changes_by_target']]
+        assert build.overlay_source_hashes(target,current) == build.overlay_source_hashes(target,previous)
+        assert build.native_recipe_identity(target,current) == build.native_recipe_identity(target,previous) == identity
+    assert build.native_recipe_identity(WIN,current) == '514fdfdc2231046dbe124d47ffb32b4f172194ff462d14b62be32e1c06c54e79'
+    assert build.native_recipe_identity(WIN,current) != build.native_recipe_identity(WIN,previous)

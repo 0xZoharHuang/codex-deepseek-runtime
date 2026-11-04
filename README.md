@@ -4,12 +4,14 @@
 
 **Linux 0.6.10 已正式发布并完成实测。** 正常安装版已完成真实 Jinja 修复、96 张原图审核、自然压缩、同 UUID 冷恢复、原生只读子线程的新一轮最终复核，以及中断后的副作用一次性检查。原始失败和多次继续均保留；这不是一次连续 75 分钟全程无误的运行。详细范围与回执摘要见[本版索引](reports/releases/0.6.10/README.md)。
 
+Windows 0.6.11 的 P36 启动修复已完成本地 runtime 验收，完整范围和未通过的模型业务基准见 [Windows 索引](reports/releases/0.6.11/README.md)。公开交付状态以发行页回执为准。
+
 Linux 独立发版。安装包与源码见 [v0.6.10 发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)；该页的发布回执记录实际提交、资产哈希与下载后的安装验证。
 
 | 平台 | 当前选择 |
 | --- | --- |
-| Linux x86_64 GNU | 0.6.10 已完成公开下载和正常隔离安装验证；使用本版匹配源码、Linux manifest 与原生归档。 |
-| Windows x86_64 | 使用 [v0.6.9](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)。新修复正在独立验收，完成后单独发版。 |
+| Linux x86_64 GNU | 继续使用 v0.6.10：该 tag 已完成公开下载和正常隔离安装验证。0.6.11 不混入旧 Linux manifest。 |
+| Windows x86_64 | 0.6.11 使用配套的 P36 Windows 原生包；最终资格与公开下载状态见 [Windows 版本索引](reports/releases/0.6.11/README.md)。旧 v0.6.9 安装与入口保留。 |
 | macOS Apple Silicon | 使用 v0.6.9；0.6.10 暂不提供新的 macOS 原生包。 |
 
 真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
@@ -105,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.9 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.11 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -118,20 +120,20 @@ codex-deepseek.exe
 
 Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe` 副本；未知或被占用的入口会保留并明确失败，不创建新的全局短命令。想在 PowerShell 中使用短命令 `cds`，可执行 `Set-Alias -Name cds -Value codex-deepseek.exe`；需要每次启动 PowerShell 都生效时，将这一行加入自己的 `$PROFILE`。`cds` 与 `codex-deepseek.exe` 使用同一个 runtime，参数不变。
 
-运行目录默认在 `$env:LOCALAPPDATA\codex-deepseek`，命令入口在 `$HOME\.local\bin\codex-deepseek.exe`。`setup-key` 保存到 Windows Credential Manager。某些 SSH 网络登录没有可用凭据库，应使用安全的进程环境，或回到交互式登录设置凭据。Windows 的沙箱设置由原生 Codex 负责，遵循其提示和系统权限要求。
+运行目录默认在 `$env:LOCALAPPDATA\codex-deepseek`，命令入口在 `$HOME\.local\bin\codex-deepseek.exe`。`setup-key` 保存到 Windows Credential Manager。某些 SSH 网络登录没有可用凭据库，应使用安全的进程环境，或回到交互式登录设置凭据。Windows 的沙箱设置由原生 Codex 负责，遵循其提示和系统权限要求。 自建私有工程树的集成方还应核对[PowerShell 的祖先目录属性访问条件](docs/windows-private-workspace.md)。
 
 以上 PATH 设置只影响当前终端。需要长期使用时，将用户的 `.local/bin` 加入自己的终端 PATH。无需覆盖现有 `codex` 命令。
 
 ### 下载受限或并行验证版本
 
-可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。Linux 0.6.10 的新资产与 Windows/macOS 0.6.9 的旧资产分别管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。Windows 0.6.11、Linux 0.6.10 与 macOS 0.6.9 分别配套管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
 python3 install.py --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json \
   --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-Linux 0.6.10 的拟发布文件名为 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`；公开下载验证前只是待发布名称。Windows 0.6.9 使用 `codex-deepseek-native-0.6.9-x86_64-pc-windows-msvc.tar.gz`，旧 Linux 0.6.9 仅配旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+Linux v0.6.10 使用其已公开验证的 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.11 配套文件名为 `codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz`，实际 URL 和下载后安装验证以该版本发布回执为准。Windows/macOS v0.6.9 资产仍仅配各自旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 

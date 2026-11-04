@@ -282,7 +282,7 @@ def source_identity() -> dict:
 
 
 
-def _process_snapshot(pid):
+def _process_snapshot(pid, parent_map=None):
     """Read identity and edge fields only; an unproven PID is not diagnostic scope."""
     import psutil
     from codex_deepseek.processes import identity
@@ -292,8 +292,9 @@ def _process_snapshot(pid):
         return row
     try:
         process = psutil.Process(pid)
-        row.update(creation_time=process.create_time(), ppid=process.ppid())
-    except (psutil.Error, OSError) as error:
+        row.update(creation_time=process.create_time(),
+                   ppid=process.ppid() if parent_map is None else parent_map[pid])
+    except (psutil.Error, OSError, KeyError) as error:
         row["metadata_error"] = type(error).__name__
     row["birth_after"] = identity(pid)
     row["stable"] = (row["birth_after"] == row["birth"]
@@ -324,6 +325,58 @@ def _proven_process_diagnostics(row):
     return (values if last == row["birth"] else None), first, last
 
 
+def _observer_parent_map():
+    """Use the pinned Windows psutil batch API; never collect process text here."""
+    import psutil
+    if sys.platform != "win32":
+        return None
+    reader = getattr(getattr(psutil, "_psplatform", None), "ppid_map", None)
+    return reader() if callable(reader) else None
+
+
+def _observer_family_batch(seen):
+    """Bracket identity-only candidates with two Windows PID/PPID snapshots.
+
+    Windows parent IDs are immutable for a process lifetime. The second map
+    still must confirm each edge, and admission keeps the original per-PID
+    kernel birth and parent birth checks. No foreign argv/exe is inspected.
+    """
+    before_map = _observer_parent_map()
+    if before_map is None:
+        return None
+    reverse = {}
+    for pid, parent in before_map.items():
+        reverse.setdefault(parent, []).append(pid)
+    snapshots, candidates = {}, {}
+    pending = list(seen)
+    visited = set()
+    while pending:
+        pid, birth = pending.pop()
+        if (pid, birth) in visited:
+            continue
+        visited.add((pid, birth))
+        if pid not in snapshots:
+            snapshots[pid] = _process_snapshot(pid, before_map)
+        first = snapshots[pid]
+        if not first["stable"] or first["birth"] != birth:
+            continue
+        children = []
+        for child_pid in reverse.get(pid, ()):
+            if child_pid not in snapshots:
+                snapshots[child_pid] = _process_snapshot(child_pid, before_map)
+            child = snapshots[child_pid]
+            children.append(child)
+            if (child["stable"] and child["pid"] != pid
+                    and child["ppid"] == pid
+                    and child["creation_time"] >= first["creation_time"]):
+                pending.append((child["pid"], child["birth"]))
+        candidates[(pid, birth)] = children
+    after_map = _observer_parent_map()
+    if after_map is None:
+        raise RuntimeError("Windows parent map disappeared during one observation")
+    return snapshots, candidates, after_map
+
+
 def _observe_process_family(seen, uncertain, rejected, errors):
     """Admit only individually proven direct-parent edges, never a PPID tree."""
     import psutil
@@ -338,6 +391,26 @@ def _observe_process_family(seen, uncertain, rejected, errors):
                parent["pid"], parent["birth"])
         container[key] = value
 
+    try:
+        batch = _observer_family_batch(seen)
+    except (psutil.Error, OSError, RuntimeError) as error:
+        # Unknown discovery is a qualification error, never permission to signal.
+        errors[("parent_maps",)] = {"reason": "process_parent_maps_unavailable",
+                                    "error_type": type(error).__name__}
+        return
+    if batch is not None:
+        snapshots, candidate_rows, after_map = batch
+        # Retain live descendants of a parent which vanished/reused between the
+        # two snapshots as uncertain, even if that parent was not yet admitted.
+        for parent_key, children in candidate_rows.items():
+            parent = snapshots[parent_key[0]]
+            if identity(parent["pid"]) != parent["birth"]:
+                for child in children:
+                    remember(uncertain, {**child,
+                             "parent_birth_before": parent["birth"],
+                             "parent_birth_after": identity(parent["pid"])},
+                             "parent_changed_during_collection", parent)
+
     while stack:
         key = stack.pop()
         if key in visited:
@@ -345,21 +418,33 @@ def _observe_process_family(seen, uncertain, rejected, errors):
         visited.add(key)
         parent = seen[key]
         if not matches(parent["pid"], parent["birth"]):
+            if batch is not None:
+                for child in candidate_rows.get(key, ()):
+                    remember(uncertain, {**child,
+                             "parent_birth_before": parent["birth"],
+                             "parent_birth_after": identity(parent["pid"])},
+                             "parent_changed_during_collection", parent)
             continue
-        first = _process_snapshot(parent["pid"])
+        first = snapshots.get(parent["pid"]) if batch is not None else _process_snapshot(parent["pid"])
+        if first is None:
+            continue
         if not first["stable"] or first["birth"] != parent["birth"]:
             if first.get("metadata_error") and matches(parent["pid"], parent["birth"]):
                 remember(errors, first, "parent_metadata_unavailable", parent)
             continue
-        try:
-            children = psutil.Process(parent["pid"]).children(recursive=False)
-        except (psutil.Error, OSError) as error:
-            # A vanished parent has no stable sample; never infer its descendants.
-            if matches(parent["pid"], parent["birth"]):
-                remember(errors, first, "children_unavailable:" + type(error).__name__, parent)
-            continue
-        candidates = [_process_snapshot(child.pid) for child in children]
-        last = _process_snapshot(parent["pid"])
+        if batch is not None:
+            candidates = candidate_rows.get(key, [])
+            last = _process_snapshot(parent["pid"], after_map)
+        else:
+            try:
+                children = psutil.Process(parent["pid"]).children(recursive=False)
+            except (psutil.Error, OSError) as error:
+                # A vanished parent has no stable sample; never infer its descendants.
+                if matches(parent["pid"], parent["birth"]):
+                    remember(errors, first, "children_unavailable:" + type(error).__name__, parent)
+                continue
+            candidates = [_process_snapshot(child.pid) for child in children]
+            last = _process_snapshot(parent["pid"])
         parent_stable = (last["stable"] and last["birth"] == parent["birth"]
                          and last["creation_time"] == first["creation_time"])
         for child in candidates:
@@ -377,6 +462,7 @@ def _observe_process_family(seen, uncertain, rejected, errors):
                 continue
             if (child["pid"] == parent["pid"]
                     or child["ppid"] != parent["pid"]
+                    or (batch is not None and after_map.get(child["pid"]) != parent["pid"])
                     or child["creation_time"] < first["creation_time"]):
                 remember(rejected, child, "not_a_current_direct_child", parent)
                 continue

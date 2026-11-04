@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "version": "0.6.11",
+  "target": "x86_64-pc-windows-msvc",
+  "status": "WINDOWS_LOCAL_RUNTIME_QUALIFIED_EXTERNAL_DELIVERY_RECEIPT_SEPARATE",
+  "public_base_commit": "9b276d17cad81df8c0785b5b2dfacdd6227ce2f7",
+  "native": {
+    "archive_sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
+    "archive_bytes": 204341488,
+    "files": 3018,
+    "cli_sha256": "2a72434a574acd36acecfd35e72453cc0439fa4d8dd3e122777be456fd9ced45",
+    "native_recipe_id": "514fdfdc2231046dbe124d47ffb32b4f172194ff462d14b62be32e1c06c54e79",
+    "raw_recipe_sha256": "ae28ba09b8b38fe8891d7499cf44c16ced50da6af9161cf88f0ac24772f69113",
+    "build_toolchain": "1.99.1",
+    "native_rebuilt_for_version_bump": false
+  },
+  "python": {
+    "changed_business_modules": [],
+    "version_literals": [
+      "pyproject.toml",
+      "src/codex_deepseek/__init__.py"
+    ],
+    "normal_install": {
+      "source_id": "1a90e2683859d321ea35",
+      "receipt_sha256": "bf568044f063d0e2b76b75bd9d98dec59d63171fff7b2a3d82bd873fc68f46c1",
+      "no_activate": true
+    },
+    "targeted_installed_offline_regressions": {
+      "passed": 336,
+      "failed": 0,
+      "skipped": 0,
+      "result_sha256": "8c7c5918c485114af6e0c4b97453417c4bdd987a9f8c45e18d9d2af4cdad2265"
+    }
+  },
+  "retained_evidence": {
+    "R478": "RED_RETAINED_ORIGINAL_ASSERTION_REQUIRES_TURN_INTERRUPT_TO_KILL_RESUMABLE_SESSION",
+    "R480_adjudication_sha256": "002023b3c42ffc43591eb627c2c435cd2a39440c3fb9396e9b00f38db5dfcb4b",
+    "R481_native_contract_result_sha256": "7c3c6fa0ea7b918b69af73e3384df331c4543c781ccaa24f542897b3add822c6",
+    "R481_scope": "Observed native initial-preserve/list-exact-processId/terminate, held worker exit0.028s. Outer controller false retained with precise provider cleanup and historical uncertain; not a global lifecycle pass."
+  },
+  "public_download_validation": "See external publication-receipt.json; this source record does not predict a future commit or successful download",
+  "publication_receipt": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/publication-receipt.json",
+  "other_platforms": {
+    "linux": "Use qualified v0.6.10 source and native archive",
+    "macos": "Use qualified v0.6.9; not newly qualified by this tag"
+  },
+  "all_platform_or_app_qualified": false,
+  "runtime_validation": {
+    "file": "runtime-validation.json",
+    "sha256": "a057a0d72a56c2bbfd347e6ad9d23be56ed789d55f8b5e5da9cc549e21d1e0ac"
+  },
+  "complex_benchmark": "96-image mechanism/audit outputs passed; Jinja business correction remains failed and is explicitly preserved",
+  "source_and_observer_tests": {
+    "cases": 501,
+    "skipped": 0,
+    "result_sha256": "2d7d872b0eeabfafd74c79703a06f31127e6fc24e94335cb094bc1416faa3bcf"
+  }
+}

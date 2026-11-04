@@ -1855,6 +1855,29 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-interactive-runner-bootstrap-0164.patch",
+      "sha256": "7913a0e4027e0e98296528afa4be1a0588690db11c11d02567532ba50a0259ae",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/desktop.rs",
+            "before_sha256": "aba0bb66af1e66543bc75096d4f7e86bc347c535a295bafed6b600d90292071c",
+            "after_sha256": "da9b74a4030859465483223eb4a26937e091fb4861687418908cd3cd182777c4"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs",
+            "before_sha256": "fd911d600528eb17a80a4068ffacb09835e344f5fab7ecbc11ba5e080cf032e8",
+            "after_sha256": "b45410cb42f4a12bfbf8288c84a699f31ee247d0762a6c44e1d51f4fb973cf78"
+          },
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/service_station_tests.rs",
+            "before_sha256": "e29adbc66afee9f3e1d17c7d0067bed8daadaea032d6ef6acc64ca174d15266f",
+            "after_sha256": "c689cbbb579774ed80b09d1a85d45bb9bab0e8be0c31df3ad9ae90206ba4c590"
+          }
+        ]
+      }
     }
   ]
 }
