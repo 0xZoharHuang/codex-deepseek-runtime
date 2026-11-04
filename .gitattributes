@@ -2,3 +2,6 @@
 
 # Native patch files are hash-pinned data, including unified-diff context spaces.
 native/*.patch -text whitespace=-blank-at-eol
+
+# Captured P30 recipe bytes include CRLF; preserve the attested historical SHA.
+native/runtime-overlays-pre-typed-projection-p30.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
