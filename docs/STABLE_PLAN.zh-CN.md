@@ -1,6 +1,6 @@
 # CDS 按平台安装、升级与回滚方案
 
-Linux / macOS 使用 v0.6.12，默认公开安装和当前原生机制的各平台实测见[本版索引](../reports/releases/0.6.12/README.md)。正常安装复用清单固定的已发布原生归档，无需编译 Rust。Windows 保留 v0.6.11 P36：新确认的 Node 私有祖先目录问题仍待原生修复和正常安装版验证，不与 Unix 一起宣布完成。旧入口、home 和任务保持；CADSG / Codex App 单独验收。
+Linux / macOS 使用 v0.6.12，默认公开安装和当前原生机制的各平台实测见[本版索引](../reports/releases/0.6.12/README.md)。正常安装复用清单固定的已发布原生归档，无需编译 Rust。Windows 0.6.13 / P37 已完成 Node 私有祖先目录问题的原生修复、正常安装、原目录升级和冷启动验证，公开下载状态见[本版索引](../reports/releases/0.6.13/README.md)。旧入口、home 和任务保持；CADSG / Codex App 单独验收。
 
 ## 原生机制与模型的分工
 

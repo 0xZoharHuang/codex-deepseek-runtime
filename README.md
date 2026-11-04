@@ -8,7 +8,7 @@
 | --- | --- |
 | Linux x86_64 GNU | v0.6.12，复用 v0.6.10 原生组件；Ubuntu 24.04 / WSL 条件保持。 |
 | macOS Apple Silicon | v0.6.12，固定 P35 组件；在隔离 macOS 26 托管主机完成正常安装与当前测试。 |
-| Windows x86_64 | v0.6.11 P36 已发布；新确认的私有祖先目录 Node `EPERM lstat` 正在修复。0.6.12 的 Windows 清单复用旧组件，不代表该问题已修复。 |
+| Windows x86_64 | v0.6.13 / P37：修复私有祖先目录中的 Node `EPERM lstat`，正常安装、原目录升级和冷启动已实测；公开交付见 [版本索引](reports/releases/0.6.13/README.md)。 |
 
 真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
 
@@ -105,7 +105,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.11 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py

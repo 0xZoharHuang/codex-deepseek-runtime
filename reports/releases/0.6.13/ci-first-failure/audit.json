@@ -1,0 +1,18 @@
+[
+  {
+    "platform": "macos",
+    "zip_sha256": "38ee7bd27b9928d7a2cb29b2e5a7590531898c3151af7630bf6e12cca167b65a",
+    "actual_installed_version": "0.6.13",
+    "installed_modules": 32,
+    "error": "ValueError('Installed distribution version or module origins differ')",
+    "original_run": 41935538003
+  },
+  {
+    "platform": "linux",
+    "zip_sha256": "e93d905fc127735e446b75bdf48d1b6bb3f763e5b727e5181beb7d808458dfa3",
+    "actual_installed_version": "0.6.13",
+    "installed_modules": 32,
+    "error": "ValueError('Installed distribution version or module origins differ')",
+    "original_run": 41935538003
+  }
+]

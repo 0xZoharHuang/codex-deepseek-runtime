@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "status": "WINDOWS_NORMAL_INSTALL_EXISTING_HOME_UPGRADE_AND_COLD_RESTART_PASSED_PUBLIC_DELIVERY_PENDING",
+  "patch_commit": "39d5c98",
+  "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "native_recipe_id": "cc528ec484974638d5f80b5c1bf4b41ea7682c9234695e3a7389d8aa79f01645",
+  "node": {
+    "version": "24.22.1",
+    "libuv": "1.52.1",
+    "binary_sha256": "d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5",
+    "binary_signature": "Valid OpenJS Foundation"
+  },
+  "cause": "FILE_READ_ATTRIBUTES alone permits GetFileAttributesW but not the actual attribute handle needed by Node lstat on private ancestors. Observed granted mask on the passing handle is 0x100080.",
+  "native_change": "Exact non-inheriting FILE_READ_ATTRIBUTES|SYNCHRONIZE; complete rights evaluated independently for each native sandbox user; deny and path/owner/lock checks retained.",
+  "controlled_runtime_cases": [
+    {
+      "name": "private_drive_top",
+      "raw_result_sha256": "40eb63531c620e591d5104a6b3e2951fee1686d782b9b45f0561484d9819e45c",
+      "rows": [
+        {
+          "mode": "readonly",
+          "case": "lo",
+          "node_exit_code": 1,
+          "attribute_handle_open": false,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "readonly",
+          "case": "lo_sync",
+          "node_exit_code": 0,
+          "attribute_handle_open": true,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "readonly",
+          "case": "user_lo_sync",
+          "node_exit_code": 0,
+          "attribute_handle_open": true,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "workspace_online",
+          "case": "lo",
+          "node_exit_code": 1,
+          "attribute_handle_open": false,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "workspace_online",
+          "case": "lo_sync",
+          "node_exit_code": 0,
+          "attribute_handle_open": true,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "workspace_online",
+          "case": "user_lo_sync",
+          "node_exit_code": 0,
+          "attribute_handle_open": true,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        }
+      ]
+    },
+    {
+      "name": "existing_home_before_upgrade",
+      "raw_result_sha256": "ee6cd654ca87b5dadd18eead6b11d35835f64a46503faed3c585d3e15721290f",
+      "rows": [
+        {
+          "mode": "readonly",
+          "case": "owned_private_parent",
+          "node_exit_code": 1,
+          "attribute_handle_open": false,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        },
+        {
+          "mode": "workspace_online",
+          "case": "owned_private_parent",
+          "node_exit_code": 1,
+          "attribute_handle_open": false,
+          "directory_list_denied": true,
+          "parent_write_denied": true,
+          "private_canary_denied": true,
+          "restricted_token_observed": true
+        }
+      ]
+    }
+  ],
+  "native_units": {
+    "passed": 29,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_scope": "separate explicitly confirmed CADSG home read-only SID audit",
+    "standalone_process_lifecycle_passed": true,
+    "raw_result_sha256": "dbe4dbfe7759b29272e8b47572e4f0bde23b770ac7e6c9c63d3cebdaf1a984da"
+  },
+  "source_recipe_tests": {
+    "passed": 87,
+    "skipped": 9,
+    "original_missing_QA_inputs_failure_retained": true
+  },
+  "retained_failures": [
+    "Generic ACL setter test initially expected the helper expanded mask although the setter request was attributes only; corrected expected exact requested mask, descriptor/child assertions unchanged.",
+    "Compiler observation included an exactly-owned MSVC telemetry process cleanup; compiler and standalone runtime lifecycles are reported separately.",
+    "A first fixture controller rerun wrote the earlier result path; original overwrite notice retained; corrected self-relative controller and fresh R501/R507 evidence used."
+  ],
+  "installed_candidate_accepted": true,
+  "published": false,
+  "all_goal_complete": false,
+  "installation": {
+    "source_id": "1ee9c5b1d86d13180fe4",
+    "installation_sha256": "a29e3694a4f3f309636c2d99f8b0b0f772c53e2e849079b62e9d0da1bccb40fb",
+    "native_archive_sha256": "238a896c158c7fd643ca717596de05debbdb9bd56ada247696563d4c6bae4640",
+    "installed_runtime_modules": 32,
+    "normal_eof": true,
+    "normal_provider_retired": true,
+    "model_receipts": 0,
+    "no_activate": true,
+    "old_installations_modified": false,
+    "synthetic_credential_only": true
+  },
+  "native_upgrade_runs": [
+    {
+      "phase": "upgrade",
+      "raw_result_sha256": "8c5eb7d25276a4731c59217711505ce1a794daef839846138a98bcf5b854fcc1",
+      "normal_native_eof_exit": 0,
+      "model_requests": 0,
+      "manual_acl_changes_since_failure": false,
+      "source_id": "1ee9c5b1d86d13180fe4",
+      "modes": [
+        {
+          "name": "readonly",
+          "restricted_token": true,
+          "ordinary_node_exit": 0,
+          "private_canary_denied": true,
+          "parent_list_denied": true,
+          "parent_write_denied": true,
+          "metadata_granted_access": 1048704
+        },
+        {
+          "name": "workspace_online",
+          "restricted_token": true,
+          "ordinary_node_exit": 0,
+          "private_canary_denied": true,
+          "parent_list_denied": true,
+          "parent_write_denied": true,
+          "metadata_granted_access": 1048704
+        }
+      ]
+    },
+    {
+      "phase": "cold_restart",
+      "raw_result_sha256": "35cc29960c318e84ab5b59d68054011724cf20692d6880cb700b74d98066b7dd",
+      "normal_native_eof_exit": 0,
+      "model_requests": 0,
+      "manual_acl_changes_since_failure": false,
+      "source_id": "1ee9c5b1d86d13180fe4",
+      "modes": [
+        {
+          "name": "readonly",
+          "restricted_token": true,
+          "ordinary_node_exit": 0,
+          "private_canary_denied": true,
+          "parent_list_denied": true,
+          "parent_write_denied": true,
+          "metadata_granted_access": 1048704
+        },
+        {
+          "name": "workspace_online",
+          "restricted_token": true,
+          "ordinary_node_exit": 0,
+          "private_canary_denied": true,
+          "parent_list_denied": true,
+          "parent_write_denied": true,
+          "metadata_granted_access": 1048704
+        }
+      ]
+    }
+  ],
+  "native_archive": {
+    "filename": "codex-deepseek-native-0.6.13-x86_64-pc-windows-msvc.tar.gz",
+    "sha256": "238a896c158c7fd643ca717596de05debbdb9bd56ada247696563d4c6bae4640",
+    "size": 204336469
+  },
+  "manifest_sha256": "3e40819f809c4bb0b5cd2571285d2c94155adfbb28043b919de00b35f2c0dcd8",
+  "compiler_receipt": {
+    "returncode": 0,
+    "normal_opt_level": "3",
+    "source_unchanged": true,
+    "lifecycle_passed": false,
+    "known_compiler_telemetry_cleanup": true,
+    "live_unknown": 0,
+    "live_remaining": 0,
+    "raw_result_sha256": "6679ce46567be1284988a312c6a7c9e60c039d95fa46f804be42991f73e58eb9"
+  },
+  "inherited_runtime_scope": "v0.6.11 Windows runtime mechanisms and v0.6.10 long-history components; native source delta is only ancestor_metadata.rs, not new tool/agent implementations",
+  "scope_exclusions": [
+    "Model code quality remains separate; prior Jinja benchmark failure is retained.",
+    "Uncertain upstream cloud-consumption pins remain protected.",
+    "CADSG actual App acceptance is separate and incomplete."
+  ]
+}

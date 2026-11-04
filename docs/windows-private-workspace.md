@@ -1,6 +1,6 @@
 # Windows 私有父目录、Node 与 PowerShell
 
-CDS 的 Windows P37 候选修复祖先目录的属性句柄权限。它沿用原生权限准备和工具执行，只补齐当前 namespace 已负责的 home / 私有 worktree 父目录权限。本候选的安装和发布资格以对应发行回执为准，不能把源码修复当作已交付。
+CDS 的 Windows 0.6.13 / P37 修复祖先目录的属性句柄权限。它沿用原生权限准备和工具执行，只补齐当前 namespace 已负责的 home / 私有 worktree 父目录权限。正常安装、原目录自动升级及冷启动的实测见[0.6.13 索引](../reports/releases/0.6.13/README.md)；公开交付以发布回执为准。
 
 ## 根因与最小修复
 
