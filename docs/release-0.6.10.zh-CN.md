@@ -27,7 +27,7 @@ CDS 仍运行原生 Codex CLI `0.164.0-alpha.7` / `fe136d4e70ef2b5bbed40a2d22b3a
 
 实际大图片请求有 66 个唯一成功的主账本/图片账本/native 完成关联，其中 62 个普通请求、4 个压缩请求；关联按 request ID 去重，不把两个账本重复相加。5 个选定真实 generation 的 GET 元数据核对为固定 DeepSeek / Morph 与准入快照；这是抽样身份核对，不称全部请求逐次发票审计。173 个实际工具调用的回读审计没有发现读取 gold、controller 或 credential 目标。
 
-旧 EOF 中断只证明关闭连接，原事务的单次 append 仍保留；另一个独立新事务通过真实 RPC interrupt 关闭当前工具，ledger 也恰好一次。原超时标准未改，最终复核是在原生既有只读子线程发起新 turn；没有用探针或旧复核替代。
+旧 EOF 中断只证明关闭连接，原事务的单次 append 仍保留。另一个独立新事务中，控制器发出真实 `turn/interrupt` 后、cold08 的正常 EOF 关闭之前，观察到该 Linux worker 退出，第二份 ledger 也恰好一次。这是该次实测结果，不代表中断 turn 会终止所有可恢复后台终端；后台终端的列出、按原生 processId 终止与统一清理是独立的原生接口。`turn/completed` 的 `interrupted` 状态本身不是全部子进程退出的证明。原超时标准未改，最终复核是在原生既有只读子线程发起新 turn；没有用探针或旧复核替代。
 
 已知完成请求的图片保护 pin 为 0，未知上传资产为 0；3 个消费未知请求的 36 个 pin 仍受保护。有界正常 reconcile 没将它们伪装成已知或强删。最终资格明确保留这项云端不确定性。
 
