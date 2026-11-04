@@ -24,7 +24,7 @@ concurrency:
 jobs:
   qualify:
     name: retained-${{ inputs.platform }}
-    runs-on: ${{ inputs.platform == 'linux-x64' && 'ubuntu-24.04' || 'macos-15' }}
+    runs-on: ${{ inputs.platform == 'linux-x64' && 'ubuntu-24.04' || 'macos-26' }}
     timeout-minutes: 45
     env:
       CDS_RETAINED_PIN: ${{ inputs.pin_file }}
