@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 import traceback
+import tomllib
 
 SOURCE = Path(__file__).resolve().parents[1]
 
@@ -22,6 +23,17 @@ def sha(path):
 
 def write(path, value):
     Path(path).write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+def validate_installed_origins(origins, release, source=SOURCE):
+    expected = tomllib.loads((Path(source)/"pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    if not isinstance(expected, str) or not expected.strip():
+        raise ValueError("Source distribution version must be explicit")
+    root = (Path(release)/"venv").resolve()
+    if (origins["version"] != expected or len(origins["modules"]) != 32
+            or not all(Path(row["origin"]).resolve().is_relative_to(root)
+                       for row in origins["modules"])):
+        raise ValueError("Installed distribution version or module origins differ")
+    return expected
 
 def isolated_environment(home):
     env = {k: v for k, v in os.environ.items()
@@ -170,9 +182,7 @@ def main():
         if origin.returncode:
             raise RuntimeError("Installed module origin verification failed")
         origins = json.loads(origin.stdout)
-        if (origins["version"] != "0.6.12" or len(origins["modules"]) != 32
-                or not all(Path(row["origin"]).is_relative_to(release/"venv") for row in origins["modules"])):
-            raise ValueError("Installed distribution version or module origins differ")
+        distribution_version = validate_installed_origins(origins, release)
         binding = {"home": str(root/"codex-home"), "entry": str(entry),
                    "cwd": str(SOURCE), "output": str(evidence)}
         write(evidence/"ipc-binding.json", binding)
@@ -185,7 +195,7 @@ def main():
                       native_package=str(package), installation_sha256=sha(release/"installation.json"),
                       source_id=installation["source_id"],
                       native_archive_sha256=installation["native_archive_sha256"],
-                      installed_modules=32, no_activate=True,
+                      installed_modules=32, distribution_version=distribution_version, no_activate=True,
                       normal_eof_exit=ipc["eof_exit"], model_receipts=0)
     except BaseException as error:
         record.update(status="failed", error=repr(error), traceback=traceback.format_exc())
