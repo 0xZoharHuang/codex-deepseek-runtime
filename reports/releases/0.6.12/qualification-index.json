@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.6.12",
-  "status": "UNIX_NORMAL_INSTALL_AND_CURRENT_RUNTIME_QUALIFIED_WINDOWS_NODE_GAP_OPEN",
+  "status": "PUBLISHED_STABLE_LINUX_MACOS_WINDOWS_NODE_GAP_OPEN",
   "behavior_changes": "Only distribution version literals;31 behavior modules byte-identical to0.6.11. Existing native binaries are reused without a Rust rebuild.",
   "components": [
     {
@@ -61,8 +61,7 @@
   },
   "remaining": [
     "Windows Node ancestor metadata gap: actual native handle requires attributes plus synchronize. Reproduced in own isolated drive-top directories; production fix and normal installed validation pending.",
-    "CADSG actual App qualification remains separate.",
-    "Final public tag and publication receipt."
+    "CADSG actual App qualification remains separate."
   ],
   "all_goal_complete": false,
   "mac_component_publication": "native-macos-p35; qualified native component, separate from product installation",
@@ -159,5 +158,6 @@
     "source_id": "797514c1139c7dd5348a",
     "normal_public_archive_install": true,
     "does_not_close_node_gap": true
-  }
+  },
+  "publication_receipt": "publication-receipt.json"
 }
