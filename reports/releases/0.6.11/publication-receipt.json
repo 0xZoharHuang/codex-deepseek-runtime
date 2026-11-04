@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "version": "0.6.11",
+  "platform": "x86_64-pc-windows-msvc",
+  "status": "PUBLIC_SOURCE_ARTIFACTS_AND_NORMAL_INSTALL_VERIFIED",
+  "verified_at_unix": 1793820937.7772632,
+  "source": {
+    "tag": "v0.6.11",
+    "commit": "2793290d641680bfae74a42e261dbfdc4847debd",
+    "annotated_tag_object": "3ca482e35a4348ef347d02cbf8a8631519ed857d",
+    "public_clone_commit_matches": true
+  },
+  "assets": {
+    "codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz": {
+      "asset_id": 710550518,
+      "sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
+      "bytes": 204341488,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz"
+    },
+    "runtime-x86_64-pc-windows-msvc.json": {
+      "asset_id": 710550519,
+      "sha256": "b9d7df623c2777cbae49b6da85dc29d542966a38c871716cd61e2a6ab75e3839",
+      "bytes": 416543,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/runtime-x86_64-pc-windows-msvc.json"
+    },
+    "runtime-validation.json": {
+      "asset_id": 710550517,
+      "sha256": "a057a0d72a56c2bbfd347e6ad9d23be56ed789d55f8b5e5da9cc549e21d1e0ac",
+      "bytes": 2540,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/runtime-validation.json"
+    }
+  },
+  "normal_public_consumer": {
+    "source_id": "97118dff6ad38bb34381",
+    "normal_default_manifest": true,
+    "native_manifest_override": false,
+    "native_archive_override": false,
+    "fresh_root": true,
+    "no_activate": true,
+    "dependency_mode": "existing hash-locked wheelhouse through supported installer option",
+    "public_native_archive_sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
+    "public_manifest_sha256": "b9d7df623c2777cbae49b6da85dc29d542966a38c871716cd61e2a6ab75e3839",
+    "installed_runtime_modules": 32,
+    "native_cli_version": "0.164.0-alpha.7",
+    "native_cli_sha256": "2a72434a574acd36acecfd35e72453cc0439fa4d8dd3e122777be456fd9ced45",
+    "wrapper_initialize_home_matches": true,
+    "normal_eof_exit": 0,
+    "normal_provider_retired": true,
+    "model_receipts": 0,
+    "synthetic_credential_only": true,
+    "credential_store_read": false,
+    "installation_sha256": "e6b5e14ea827014ca3319e68fbada122a21d7bd4e9badf793d8d6380a841abe8",
+    "consumer_result_sha256": "38a1b49a7a0b7846a30a53f7bbdfcad383a7897d67fb480946b58bf3a197a911",
+    "installed_origins_receipt_sha256": "a6a56f6300cf50aed167c23016ce476d2b4f7ed557f9353397ced2e68edb6ff6"
+  },
+  "scope": "Fixed Windows P36 local runtime. Model-generated Jinja business benchmark remains failed; no all-platform/App/model-quality claim. Original failures and unknown image-consumption pins retained.",
+  "stable_state_authority": "This immutable receipt verifies delivery. Stable/prerelease state is the separate live GitHub release metadata, promoted only after receipt readback."
+}

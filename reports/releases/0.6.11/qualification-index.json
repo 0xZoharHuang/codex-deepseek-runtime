@@ -2,7 +2,7 @@
   "schema": 1,
   "version": "0.6.11",
   "target": "x86_64-pc-windows-msvc",
-  "status": "WINDOWS_LOCAL_RUNTIME_QUALIFIED_EXTERNAL_DELIVERY_RECEIPT_SEPARATE",
+  "status": "WINDOWS_PUBLIC_STABLE_RELEASE_AND_NORMAL_CONSUMER_VERIFIED",
   "public_base_commit": "9b276d17cad81df8c0785b5b2dfacdd6227ce2f7",
   "native": {
     "archive_sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
@@ -38,7 +38,7 @@
     "R481_native_contract_result_sha256": "7c3c6fa0ea7b918b69af73e3384df331c4543c781ccaa24f542897b3add822c6",
     "R481_scope": "Observed native initial-preserve/list-exact-processId/terminate, held worker exit0.028s. Outer controller false retained with precise provider cleanup and historical uncertain; not a global lifecycle pass."
   },
-  "public_download_validation": "See external publication-receipt.json; this source record does not predict a future commit or successful download",
+  "public_download_validation": "passed",
   "publication_receipt": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/publication-receipt.json",
   "other_platforms": {
     "linux": "Use qualified v0.6.10 source and native archive",
@@ -54,5 +54,15 @@
     "cases": 501,
     "skipped": 0,
     "result_sha256": "2d7d872b0eeabfafd74c79703a06f31127e6fc24e94335cb094bc1416faa3bcf"
+  },
+  "publication": {
+    "tag": "v0.6.11",
+    "commit": "2793290d641680bfae74a42e261dbfdc4847debd",
+    "annotated_tag": "3ca482e35a4348ef347d02cbf8a8631519ed857d",
+    "isDraft": false,
+    "isPrerelease": false,
+    "receipt_asset_id": 710677950,
+    "receipt_sha256": "2d18f05e9699bd88d1392fee7b375342eb724c736b6a6b7c44f9bcc43affb6ea",
+    "normal_consumer_source_id": "97118dff6ad38bb34381"
   }
 }

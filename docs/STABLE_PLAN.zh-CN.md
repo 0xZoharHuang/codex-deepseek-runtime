@@ -1,6 +1,6 @@
 # CDS 按平台安装、升级与回滚方案
 
-Linux 0.6.10 已正式发布，公开下载、正常安装和真实长任务均已验证；实际来源与回执见[资格索引](../reports/releases/0.6.10/README.md)。Windows 0.6.11 使用独立的 P36 配套源码和原生包，资格与公开下载状态见[Windows 索引](../reports/releases/0.6.11/README.md)；macOS 继续使用 v0.6.9。Linux v0.6.10 及旧平台入口保持，不混用新源码、旧 manifest 或同名二进制。各平台独立发版；CADSG / Codex App 单独验收。
+Linux 0.6.10 已正式发布，公开下载、正常安装和真实长任务均已验证；实际来源与回执见[资格索引](../reports/releases/0.6.10/README.md)。Windows 0.6.11 的 P36 配套源码与原生包已正式发布，公开下载及正常隔离安装验证见[Windows 索引](../reports/releases/0.6.11/README.md)；macOS 继续使用 v0.6.9。Linux v0.6.10 及旧平台入口保持，不混用新源码、旧 manifest 或同名二进制。各平台独立发版；CADSG / Codex App 单独验收。
 
 ## 原生机制与模型的分工
 

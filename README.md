@@ -4,7 +4,7 @@
 
 **Linux 0.6.10 已正式发布并完成实测。** 正常安装版已完成真实 Jinja 修复、96 张原图审核、自然压缩、同 UUID 冷恢复、原生只读子线程的新一轮最终复核，以及中断后的副作用一次性检查。原始失败和多次继续均保留；这不是一次连续 75 分钟全程无误的运行。详细范围与回执摘要见[本版索引](reports/releases/0.6.10/README.md)。
 
-Windows 0.6.11 的 P36 启动修复已完成本地 runtime 验收，完整范围和未通过的模型业务基准见 [Windows 索引](reports/releases/0.6.11/README.md)。公开交付状态以发行页回执为准。
+**Windows 0.6.11 已正式发布并完成公开下载、全新正常安装和入口验证。** [发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.11)与[交付回执](reports/releases/0.6.11/publication-receipt.json)记录实际资产和安装来源；runtime 范围及未通过的模型业务基准见 [Windows 索引](reports/releases/0.6.11/README.md)。
 
 Linux 独立发版。安装包与源码见 [v0.6.10 发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)；该页的发布回执记录实际提交、资产哈希与下载后的安装验证。
 

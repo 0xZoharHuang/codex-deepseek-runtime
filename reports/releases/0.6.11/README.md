@@ -2,7 +2,7 @@
 
 本版固定 Windows x64 Codex `0.164.0-alpha.7` 与 P36。修复交互桌面下受限 runner 在建立 IPC 之前启动失败的问题：只恢复上游在可见 WinSta0 上的默认启动描述，保留非交互 Service station 的原有处理。没有扩大桌面 ACL、文件或网络权限，也没有替换 agent loop、工具调度或子智能体实现。
 
-这一源码记录覆盖已完成的本地 runtime 验收。公开版本、资产下载与正常安装的最终交付状态由发行页的 `publication-receipt.json` 单独确认；没有用未来提交哈希自证发布。Linux v0.6.10 保持独立，CADSG / Codex App 单独验收。
+Windows v0.6.11 已正式发布；公开下载、全新正常安装、32 模块一致性和正常入口/EOF/provider idle 均通过。[发布回执](publication-receipt.json)与[发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.11)记录真实来源，tag 保持不变。Linux v0.6.10 保持独立，CADSG / Codex App 单独验收。
 
 实际证据包括：
 
