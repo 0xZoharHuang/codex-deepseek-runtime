@@ -17,6 +17,14 @@ on:
         required: false
         type: boolean
         default: false
+      retained_pin:
+        description: Exact native evidence to requalify; original failures stay recorded
+        required: false
+        type: choice
+        default: release-0.6.9
+        options:
+          - release-0.6.9
+          - macos-p35-f958
       retained_target:
         description: Reviewed retained artifact target
         required: false
@@ -155,3 +163,4 @@ jobs:
     uses: ./.github/workflows/retained-native-qualification.yml
     with:
       platform: ${{ inputs.retained_target }}
+      pin_file: ${{ inputs.retained_pin == 'macos-p35-f958' && 'ci/retained-native-build-p35-f958.json' || 'ci/qualified-native-build-0.6.9.json' }}

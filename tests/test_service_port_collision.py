@@ -10,6 +10,26 @@ def exclusive_listener():
     value.bind(("127.0.0.1",0));value.listen(1);value.settimeout(2)
     return value
 
+def assert_listener_roundtrip(listener):
+    """Verify real accept/data delivery; SO_ACCEPTCONN is unavailable on Darwin."""
+    previous_timeout=listener.gettimeout()
+    listener.settimeout(2)
+    try:
+        with socket.create_connection(listener.getsockname(),timeout=2) as client:
+            peer,_=listener.accept()
+            with closing(peer):
+                peer.settimeout(2)
+                client.sendall(b"OWN_LISTENER_VERIFIED")
+                received=bytearray()
+                while len(received)<len(b"OWN_LISTENER_VERIFIED"):
+                    chunk=peer.recv(128)
+                    assert chunk, "listener closed before completing the packet"
+                    received.extend(chunk)
+                assert received==b"OWN_LISTENER_VERIFIED"
+    finally:
+        listener.settimeout(previous_timeout)
+
+
 def test_occupied_previous_port_selects_new_listener_without_touching_occupant(tmp_path,monkeypatch):
     monkeypatch.setattr(service,"native_active",lambda home:False)
     descriptor=tmp_path/"gateway.json";descriptor.write_bytes(b"original descriptor")
@@ -17,7 +37,7 @@ def test_occupied_previous_port_selects_new_listener_without_touching_occupant(t
         old=occupant.getsockname()[1]
         with closing(service._provider_listener(tmp_path,{"port":old})) as selected:
             assert selected.getsockname()[1] not in {0,old}
-            assert selected.getsockopt(socket.SOL_SOCKET,socket.SO_ACCEPTCONN)==1
+            assert_listener_roundtrip(selected)
             with socket.create_connection(("127.0.0.1",old),timeout=2) as client:
                 peer,_=occupant.accept()
                 with closing(peer):
@@ -35,14 +55,14 @@ def test_active_profile_does_not_move_stable_port_and_closes_failed_socket(tmp_p
         with pytest.raises(RuntimeError,match="stable provider port is unavailable"):
             service._provider_listener(tmp_path,{"port":occupant.getsockname()[1]})
         assert len(created)==1 and created[0].fileno()==-1
-        assert occupant.getsockopt(socket.SOL_SOCKET,socket.SO_ACCEPTCONN)==1
+        assert_listener_roundtrip(occupant)
 
 def test_fresh_profile_returns_actual_ephemeral_listener(tmp_path,monkeypatch):
     def no_activity_query(home):raise AssertionError("A successful fresh bind does not need activity recovery")
     monkeypatch.setattr(service,"native_active",no_activity_query)
     with closing(service._provider_listener(tmp_path,{})) as selected:
         assert selected.getsockname()[1]>0
-        assert selected.getsockopt(socket.SOL_SOCKET,socket.SO_ACCEPTCONN)==1
+        assert_listener_roundtrip(selected)
 
 def test_total_bind_failure_never_inspects_unbound_socket_and_closes(tmp_path,monkeypatch):
     class FailedSocket:
@@ -86,7 +106,7 @@ def test_normal_supervisor_recovers_stale_occupied_port_without_native_or_model(
             assert recovered["token"]==first["token"]
             assert recovered["pid"]!=first["pid"] or recovered["birth"]!=first["birth"]
             assert occupant.getsockname()[1]==port
-            assert occupant.getsockopt(socket.SOL_SOCKET,socket.SO_ACCEPTCONN)==1
+            assert_listener_roundtrip(occupant)
             assert not service.native_active(home)
             from contextlib import closing as close_db
             import sqlite3

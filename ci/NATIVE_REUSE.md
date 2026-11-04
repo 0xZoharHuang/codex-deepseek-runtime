@@ -185,3 +185,10 @@ that actual permanent path. A successful temporary-source run is not evidence
 that permanent downloads work. Keep the original producer a585 and the later
 publication/Python commits distinct; publishing unchanged tarballs never changes
 their build receipts or original qualification limits.
+
+
+### Explicit P35 macOS requalification
+
+`native-platform-qualification.yml` accepts `retained_mode=true`, `retained_target=macos-arm64`, and `retained_pin=macos-p35-f958`. The default permanent 0.6.9 pin remains unchanged. The CLI equivalent is an explicit `ci/reuse_retained_native.py --pins ci/retained-native-build-p35-f958.json` with its usual output arguments.
+
+This selects original run 41839521557 and exact artifact 13346764748. Its native build, State, Guardian, capacity-core and native transport steps passed; its complete offline step failed six cases. That failure is preserved in the selected records. Requalification executes the current full native/offline collections without Cargo, and does not itself qualify model behavior, other platforms or the App. The temporary artifact expires; stable releases require separately verified permanent assets.
