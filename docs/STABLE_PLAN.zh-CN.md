@@ -1,6 +1,6 @@
 # CDS 按平台安装、升级与回滚方案
 
-Linux 0.6.10 已正式发布，公开下载、正常安装和真实长任务均已验证；实际来源与回执见[资格索引](../reports/releases/0.6.10/README.md)。Windows 0.6.11 的 P36 配套源码与原生包已正式发布，公开下载及正常隔离安装验证见[Windows 索引](../reports/releases/0.6.11/README.md)；macOS 继续使用 v0.6.9。Linux v0.6.10 及旧平台入口保持，不混用新源码、旧 manifest 或同名二进制。各平台独立发版；CADSG / Codex App 单独验收。
+Linux / macOS 使用 v0.6.12，默认公开安装和当前原生机制的各平台实测见[本版索引](../reports/releases/0.6.12/README.md)。正常安装复用清单固定的已发布原生归档，无需编译 Rust。Windows 保留 v0.6.11 P36：新确认的 Node 私有祖先目录问题仍待原生修复和正常安装版验证，不与 Unix 一起宣布完成。旧入口、home 和任务保持；CADSG / Codex App 单独验收。
 
 ## 原生机制与模型的分工
 
@@ -23,7 +23,7 @@ CDS 独立入口与 home
 
 使用独立 Python 3.11+。Linux 实测为 Ubuntu 24.04 GNU/WSL，保留 glibc、OpenSSL 3、libcap 与捆绑 bwrap 条件。正常安装不编译 Rust，也不用 Codex App 内置 Python。
 
-从本平台 tag、平台 manifest、原生归档和 SHA-256 组成匹配集合。Linux v0.6.10 已有独立的公开下载和安装回执；Windows v0.6.11 的公开 URL、asset ID 与下载后安装结果须由其发布回执确认，本地已有归档并不等于 URL 已验证。0.6.11 不提供新的 Linux/macOS manifest，安装器会明确拒绝未准入的平台。
+从本平台 tag、平台 manifest、原生归档和 SHA-256 组成匹配集合。Linux v0.6.10 已有独立的公开下载和安装回执；Windows v0.6.11 的公开 URL、asset ID 与下载后安装结果须由其发布回执确认，本地已有归档并不等于 URL 已验证。v0.6.12 提供 Linux/macOS 正常默认 manifest，明确引用既有不可变归档。
 
 ```sh
 # 从相同版本源码目录执行；验证目录应此前不存在。

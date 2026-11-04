@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.6.12",
-  "status": "QUALIFIED_NATIVE_COMPONENTS_NORMAL_RELEASE_INSTALL_VALIDATION_PENDING",
+  "status": "UNIX_NORMAL_INSTALL_AND_CURRENT_RUNTIME_QUALIFIED_WINDOWS_NODE_GAP_OPEN",
   "behavior_changes": "Only distribution version literals;31 behavior modules byte-identical to0.6.11. Existing native binaries are reused without a Rust rebuild.",
   "components": [
     {
@@ -60,10 +60,104 @@
     }
   },
   "remaining": [
-    "normal default-manifest install and wrapper IPC for this source on each platform",
-    "current Unix native/offline qualification against the exact installed native package",
-    "public delivery receipt and stable promotion"
+    "Windows Node ancestor metadata gap: actual native handle requires attributes plus synchronize. Reproduced in own isolated drive-top directories; production fix and normal installed validation pending.",
+    "CADSG actual App qualification remains separate.",
+    "Final public tag and publication receipt."
   ],
   "all_goal_complete": false,
-  "mac_component_publication": "native-macos-p35; qualified native component, separate from product installation"
+  "mac_component_publication": "native-macos-p35; qualified native component, separate from product installation",
+  "validated_source_commit": "b9bc76fbc27150cb78b84816f69f8b32f883dfb3",
+  "current_ci": [
+    {
+      "platform": "macos",
+      "run_id": 41913744242,
+      "artifact_id": 13365105480,
+      "zip": "ci/installed-macos-41913744242.zip",
+      "sha256": "a35ddc2e32526ef4727c37711169a85e59caa650186287afdffc9d43d6cee68b",
+      "source_id": "510fadcee6338d1d273a",
+      "installed_modules": 32,
+      "normal_public_install": true,
+      "archive_override": false,
+      "manifest_override": false,
+      "wrapper_eof_exit": 0,
+      "model_receipts": 0,
+      "junit": {
+        "native/native.xml": [
+          {
+            "name": "pytest",
+            "errors": "0",
+            "failures": "0",
+            "skipped": "0",
+            "tests": "22",
+            "time": "22.622",
+            "timestamp": "2026-11-04T21:14:55.975237+00:00",
+            "hostname": "sjc22-bm204-f26dde3d-b29c-414f-9144-a6eca0e4ffdd-128F6AD456E1.local"
+          }
+        ],
+        "offline/adapter.xml": [
+          {
+            "name": "pytest",
+            "errors": "0",
+            "failures": "0",
+            "skipped": "56",
+            "tests": "2883",
+            "time": "125.986",
+            "timestamp": "2026-11-04T21:15:26.392490+00:00",
+            "hostname": "sjc22-bm204-f26dde3d-b29c-414f-9144-a6eca0e4ffdd-128F6AD456E1.local"
+          }
+        ]
+      },
+      "skips_are_not_passes": true,
+      "complete_collection": 2905,
+      "deselected": 0
+    },
+    {
+      "platform": "linux",
+      "run_id": 41913744242,
+      "artifact_id": 13363812436,
+      "zip": "ci/installed-linux-41913744242.zip",
+      "sha256": "1d766e7183ebeb1abf9c460bcf7431af52078938922f3197faebda7b0a92b55a",
+      "source_id": "510fadcee6338d1d273a",
+      "installed_modules": 32,
+      "normal_public_install": true,
+      "archive_override": false,
+      "manifest_override": false,
+      "wrapper_eof_exit": 0,
+      "model_receipts": 0,
+      "junit": {
+        "native/native.xml": [
+          {
+            "name": "pytest",
+            "errors": "0",
+            "failures": "0",
+            "skipped": "0",
+            "tests": "22",
+            "time": "26.928",
+            "timestamp": "2026-11-04T21:14:49.254043+00:00",
+            "hostname": "runnervm48cm3"
+          }
+        ],
+        "offline/adapter.xml": [
+          {
+            "name": "pytest",
+            "errors": "0",
+            "failures": "0",
+            "skipped": "55",
+            "tests": "2883",
+            "time": "119.819",
+            "timestamp": "2026-11-04T21:15:24.607081+00:00",
+            "hostname": "runnervm48cm3"
+          }
+        ]
+      },
+      "skips_are_not_passes": true,
+      "complete_collection": 2905,
+      "deselected": 0
+    }
+  ],
+  "windows_0612_install_only": {
+    "source_id": "797514c1139c7dd5348a",
+    "normal_public_archive_install": true,
+    "does_not_close_node_gap": true
+  }
 }
