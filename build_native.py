@@ -160,8 +160,9 @@ def runtime_recipe(recipe_path=None):
     irreducible_fixture='capacity-irreducible-pair-fixture-0164.patch'
     reset_old_gap='capacity-token-budget-old-gap-continuation-0164.patch'
     interactive_bootstrap='windows-interactive-runner-bootstrap-0164.patch'
+    metadata_sync='windows-ancestor-metadata-synchronize-0164.patch'
     selected=[item.get('file') for item in recipe['overlays']] if isinstance(recipe['overlays'],list) else None
-    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol,restored_capacity,cancel_owned,windows_host,typed_projection,windows_station,text_projection,irreducible_fixture,reset_old_gap,interactive_bootstrap])
+    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol,restored_capacity,cancel_owned,windows_host,typed_projection,windows_station,text_projection,irreducible_fixture,reset_old_gap,interactive_bootstrap,metadata_sync])
     if selected!=expected_order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():

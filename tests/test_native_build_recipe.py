@@ -22,7 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
-    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch','windows-interactive-runner-bootstrap-0164.patch'}]}
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch','windows-interactive-runner-bootstrap-0164.patch','windows-ancestor-metadata-synchronize-0164.patch'}]}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -782,7 +782,7 @@ def test_p36_interactive_bootstrap_is_windows_only_and_preserves_exact_p35():
     raw = (ROOT/'native/runtime-overlays-pre-interactive-bootstrap-p35.json').read_bytes()
     assert hashlib.sha256(raw).hexdigest() == 'ecb4674b926992022d36cc0eef527627a415b61633356129b44fd9add864c83e'
     previous = json.loads(raw)
-    current = build.runtime_recipe()
+    current = recipe_prefix_through(build.runtime_recipe(), 'windows-interactive-runner-bootstrap-0164.patch')
     assert len(previous['overlays']) == 35 and len(current['overlays']) == 36
     assert {**current, 'overlays':current['overlays'][:-1]} == previous
     leaf = current['overlays'][-1]
@@ -802,4 +802,22 @@ def test_p36_interactive_bootstrap_is_windows_only_and_preserves_exact_p35():
         assert build.overlay_source_hashes(target,current) == build.overlay_source_hashes(target,previous)
         assert build.native_recipe_identity(target,current) == build.native_recipe_identity(target,previous) == identity
     assert build.native_recipe_identity(WIN,current) == '514fdfdc2231046dbe124d47ffb32b4f172194ff462d14b62be32e1c06c54e79'
+    assert build.native_recipe_identity(WIN,current) != build.native_recipe_identity(WIN,previous)
+
+
+def test_p37_metadata_handle_patch_preserves_exact_previous_targets():
+    raw = (ROOT/'native/runtime-overlays-pre-metadata-synchronize-p36.json').read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == 'ae28ba09b8b38fe8891d7499cf44c16ced50da6af9161cf88f0ac24772f69113'
+    previous = json.loads(raw)
+    current = build.runtime_recipe()
+    assert len(previous['overlays']) == 36 and len(current['overlays']) == 37
+    assert {**current, 'overlays': current['overlays'][:-1]} == previous
+    leaf = current['overlays'][-1]
+    assert leaf['file'] == 'windows-ancestor-metadata-synchronize-0164.patch'
+    assert build.sha(ROOT/'native'/leaf['file']) == leaf['sha256']
+    assert set(leaf['changes_by_target']) == {WIN}
+    assert [x['path'] for x in leaf['changes_by_target'][WIN]] == ['codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs']
+    for target in set(TARGETS) - {WIN}:
+        assert build.native_recipe_identity(target,current) == build.native_recipe_identity(target,previous)
+        assert build.overlay_source_hashes(target,current) == build.overlay_source_hashes(target,previous)
     assert build.native_recipe_identity(WIN,current) != build.native_recipe_identity(WIN,previous)

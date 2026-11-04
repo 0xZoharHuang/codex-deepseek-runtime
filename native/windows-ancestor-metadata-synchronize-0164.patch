@@ -1,0 +1,256 @@
+diff --git a/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs b/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
+--- a/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
++++ b/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
+@@ -226,7 +226,7 @@
+     }
+ 
+     // This predicate only authorizes this module's exact, non-inheriting
+-    // FILE_READ_ATTRIBUTES ACE. Windows still checks WRITE_DAC on the pinned
++    // FILE_READ_ATTRIBUTES | SYNCHRONIZE ACE. Windows checks WRITE_DAC on the pinned
+     // target handle; no ownership, data-read, list, write or inherited grant is added.
+     // SYSTEM-owned profiles and Administrators-owned native setup directories
+     // are legitimate layouts. Both principals already control the namespace.
+@@ -315,8 +315,22 @@
+     }
+ }
+ 
+-fn metadata_mask(mask: u32) -> bool {
+-    mask & (fs::FILE_READ_ATTRIBUTES | 0x8000_0000 | 0x2000_0000 | 0x1000_0000) != 0
++// CreateFileW attribute handles also request SYNCHRONIZE. Attributes alone
++// can pass GetFileAttributesW yet fail Node/libuv lstat on private ancestors.
++// Neither bit grants directory listing, data access, traversal or inheritance.
++const METADATA_ACCESS: u32 = fs::FILE_READ_ATTRIBUTES | fs::SYNCHRONIZE;
++
++fn metadata_rights(mask: u32) -> u32 {
++    let mut rights = mask & METADATA_ACCESS;
++    // File generic read/execute/all include both required rights; write only
++    // includes synchronize, and must not alone count as readable metadata.
++    if mask & (0x8000_0000 | 0x2000_0000 | 0x1000_0000) != 0 {
++        rights |= METADATA_ACCESS;
++    }
++    if mask & 0x4000_0000 != 0 {
++        rights |= fs::SYNCHRONIZE;
++    }
++    rights
+ }
+ 
+ fn entry_sid(ace: &[u8]) -> Result<&[u8]> {
+@@ -335,13 +349,14 @@
+     if dacl.acl.is_null() {
+         return Ok(true);
+     }
+-    let mut allowed = false;
++    let mut allowed = 0_u32;
+     for ace in entries {
+         if ace[1] & INHERIT_ONLY_ACE as u8 != 0 || ace.len() < 8 {
+             continue;
+         }
+         let mask = u32::from_le_bytes(ace[4..8].try_into().unwrap());
+-        if !metadata_mask(mask) {
++        let rights = metadata_rights(mask);
++        if rights == 0 {
+             continue;
+         }
+         match ace[0] {
+@@ -352,7 +367,7 @@
+                         ace[0] != 1,
+                         "explicit ancestor metadata denial must not be weakened"
+                     );
+-                    allowed = true;
++                    allowed |= rights;
+                 }
+             }
+             // Conditional/object denials need a full token evaluation; do not override them.
+@@ -360,7 +375,27 @@
+             _ => {}
+         }
+     }
+-    Ok(allowed)
++    Ok(allowed == METADATA_ACCESS)
++}
++
++fn readable_for_users(
++    dacl: &Dacl,
++    entries: &[Vec<u8>],
++    common: &[Vec<u8>],
++    users: &[Vec<u8>],
++) -> Result<bool> {
++    if users.is_empty() {
++        return already_readable(dacl, entries, common);
++    }
++    let mut all_readable = true;
++    // Never combine one user's attributes with another user's synchronize.
++    // Inspect every subject even after a missing allow, to retain deny checks.
++    for user in users {
++        let mut subject = common.to_vec();
++        subject.push(user.clone());
++        all_readable &= already_readable(dacl, entries, &subject)?;
++    }
++    Ok(all_readable)
+ }
+ 
+ fn metadata_ace(sid: &[u8]) -> Result<Vec<u8>> {
+@@ -375,7 +410,7 @@
+     let size = 8 + sid.len();
+     let mut ace = vec![0, 0]; // ACCESS_ALLOWED_ACE, no inheritance flags.
+     ace.extend_from_slice(&(size as u16).to_le_bytes());
+-    ace.extend_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
++    ace.extend_from_slice(&METADATA_ACCESS.to_le_bytes());
+     ace.extend_from_slice(sid);
+     Ok(ace)
+ }
+@@ -446,17 +481,16 @@
+     user_sids: &[Vec<u8>],
+ ) -> Result<()> {
+     let ace = metadata_ace(group_sid)?;
+-    let mut principals = vec![
++    let principals = vec![
+         group_sid.to_vec(),
+         crate::resolve_sid("Users")?,
+         crate::resolve_sid("Authenticated Users")?,
+         crate::resolve_sid("Everyone")?,
+     ];
+-    principals.extend_from_slice(user_sids);
+     let deadline = crate::acl_lock::deadline();
+     for directory in pinned.iter().filter(|p| p.path.parent().is_some()) {
+         let dacl = Dacl::read(directory)?;
+-        if already_readable(&dacl, &dacl.entries()?, &principals)? {
++        if readable_for_users(&dacl, &dacl.entries()?, &principals, user_sids)? {
+             continue;
+         }
+         // Preserve the existing object -> owner lock order. No persistent home
+@@ -466,7 +500,7 @@
+             crate::setup_mutex::acquire_metadata_acl_lock(&namespace.owner_sid, 5_000)?;
+         let dacl = Dacl::read(directory)?;
+         let mut entries = dacl.entries()?;
+-        if already_readable(&dacl, &entries, &principals)? {
++        if readable_for_users(&dacl, &entries, &principals, user_sids)? {
+             continue;
+         }
+         dacl.require_metadata_owner(&namespace.owner_sid, &directory.path)?;
+@@ -753,7 +787,9 @@
+         }
+         let after = raw_fixture_descriptor(&target_pin)?;
+         assert_eq!((after.0, after.1), (before.0, before.1));
+-        let expected = metadata_ace(&principal)?;
++        let mut expected = metadata_ace(&principal)?;
++        // This generic setter was explicitly asked for attributes only.
++        expected[4..8].copy_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
+         assert_eq!(
+             after
+                 .2
+@@ -803,7 +839,7 @@
+         assert_eq!(ace[1], 0);
+         assert_eq!(
+             u32::from_le_bytes(ace[4..8].try_into().unwrap()),
+-            fs::FILE_READ_ATTRIBUTES
++            METADATA_ACCESS
+         );
+         assert_eq!(entry_sid(&ace).unwrap(), principal);
+     }
+@@ -1636,6 +1672,105 @@
+     }
+ 
+     #[test]
++    fn metadata_handle_requires_both_rights_and_never_unions_distinct_users() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let directory = PinnedDirectory::open(root.path())?;
++        let dacl = Dacl::read(&directory)?;
++        let group = sid(1101);
++        let users = [sid(1103), sid(1104)];
++        let make = |who: &[u8], mask: u32, deny: bool| -> Result<Vec<u8>> {
++            let mut ace = metadata_ace(who)?;
++            ace[4..8].copy_from_slice(&mask.to_le_bytes());
++            ace[0] = u8::from(deny);
++            Ok(ace)
++        };
++        let common = [group.clone()];
++        let legacy = make(&group, fs::FILE_READ_ATTRIBUTES, false)?;
++        assert!(!readable_for_users(
++            &dacl,
++            &[legacy.clone()],
++            &common,
++            &users
++        )?);
++        assert!(readable_for_users(
++            &dacl,
++            &[legacy.clone(), metadata_ace(&group)?],
++            &common,
++            &users
++        )?);
++        let split = [
++            make(&users[0], fs::FILE_READ_ATTRIBUTES, false)?,
++            make(&users[1], fs::SYNCHRONIZE, false)?,
++        ];
++        assert!(!readable_for_users(&dacl, &split, &common, &users)?);
++        assert!(!readable_for_users(
++            &dacl,
++            &[metadata_ace(&users[0])?],
++            &common,
++            &users
++        )?);
++        let per_user = [metadata_ace(&users[0])?, metadata_ace(&users[1])?];
++        assert!(readable_for_users(&dacl, &per_user, &common, &users)?);
++        for user in &users {
++            for mask in [fs::FILE_READ_ATTRIBUTES, fs::SYNCHRONIZE, 0x4000_0000] {
++                assert!(
++                    readable_for_users(
++                        &dacl,
++                        &[metadata_ace(&group)?, make(user, mask, true)?],
++                        &common,
++                        &users
++                    )
++                    .is_err()
++                );
++            }
++        }
++        assert_eq!(metadata_rights(0x4000_0000), fs::SYNCHRONIZE);
++        for generic in [0x8000_0000, 0x2000_0000, 0x1000_0000] {
++            assert_eq!(metadata_rights(generic), METADATA_ACCESS);
++        }
++        assert!(!readable_for_users(
++            &dacl,
++            &[make(&group, 0x4000_0000, false)?],
++            &common,
++            &users
++        )?);
++        assert_eq!(
++            metadata_rights(fs::FILE_LIST_DIRECTORY | fs::FILE_WRITE_DATA),
++            0
++        );
++        Ok(())
++    }
++
++    #[test]
++    fn metadata_upgrade_preserves_legacy_ace_and_is_idempotent() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let owner = SandboxNamespace::current(root.path())?.owner_sid;
++        let home = root.path().join("home");
++        create_explicit_inheritable_fixture(&home, &owner)?;
++        let namespace = SandboxNamespace::current(&home)?;
++        namespace.reserve_owner()?;
++        let group = sid(1101);
++        let pin = PinnedDirectory::open(&home)?;
++        let dacl = Dacl::read(&pin)?;
++        let mut entries = dacl.entries()?;
++        let mut legacy = metadata_ace(&group)?;
++        legacy[4..8].copy_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
++        entries.push(legacy.clone());
++        dacl.write(&pin, &entries)?;
++        grant_pinned(&namespace, &group, &[pin], &[])?;
++        let after = Dacl::read(&PinnedDirectory::open(&home)?)?.entries()?;
++        assert_eq!(after.len(), entries.len() + 1);
++        assert!(exact_index(&after, &legacy)?.is_some());
++        assert!(exact_index(&after, &metadata_ace(&group)?)?.is_some());
++        grant_pinned(&namespace, &group, &[PinnedDirectory::open(&home)?], &[])?;
++        assert_eq!(
++            Dacl::read(&PinnedDirectory::open(&home)?)?.entries()?,
++            after
++        );
++        Ok(())
++    }
++
++    #[test]
+     fn old_metadata_audit_files_are_not_read_modified_or_used_as_grant_authority() -> Result<()> {
+         use std::io::Read;
+         for bytes in [

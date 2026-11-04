@@ -1878,6 +1878,19 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-ancestor-metadata-synchronize-0164.patch",
+      "sha256": "43cbb3a58d1ca5eee969962e6b8ad509bdd3a88fafc98ea992b221399a0ee458",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+            "before_sha256": "65813376be9f034714bde6806fc1b910ad731824ee094e434bc97a71180b1d6b",
+            "after_sha256": "f7372f49836fdb62936eb7cdd00f15da8d61c3da2a7f2f6521df836e5edcdc1b"
+          }
+        ]
+      }
     }
   ]
 }
