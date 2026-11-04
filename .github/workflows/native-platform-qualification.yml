@@ -3,6 +3,15 @@ name: Native platform transport qualification
 on:
   workflow_dispatch:
     inputs:
+      fresh_target:
+        description: Platform to build and qualify from the current pinned source
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - macos-arm64
+          - linux-x64
       retained_mode:
         description: Reuse the exact reviewed retained native build; never run fresh Cargo
         required: false
@@ -30,18 +39,12 @@ jobs:
     name: ${{ matrix.label }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - label: macos-arm64
-            runner: macos-15
-            architecture: arm64
-            uname: arm64
-            jobs: 1
-          - label: linux-x64
-            runner: ubuntu-24.04
-            architecture: x64
-            uname: x86_64
-            jobs: 2
+      matrix: >-
+        ${{ fromJSON(
+          inputs.fresh_target == 'macos-arm64' && '{"include":[{"label":"macos-arm64","runner":"macos-15","architecture":"arm64","uname":"arm64","jobs":1}]}'
+          || inputs.fresh_target == 'linux-x64' && '{"include":[{"label":"linux-x64","runner":"ubuntu-24.04","architecture":"x64","uname":"x86_64","jobs":2}]}'
+          || '{"include":[{"label":"macos-arm64","runner":"macos-15","architecture":"arm64","uname":"arm64","jobs":1},{"label":"linux-x64","runner":"ubuntu-24.04","architecture":"x64","uname":"x86_64","jobs":2}]}'
+        ) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 240
     env:

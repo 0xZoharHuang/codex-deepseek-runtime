@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "status": "PASS_PUBLIC_LINUX_CONSUMER_INSTALL_AND_OFFLINE_STARTUP",
+  "created_utc": "2026-11-04T12:56:38.211166+00:00",
+  "release": {
+    "version": "0.6.10",
+    "tag": "v0.6.10",
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10",
+    "release_id": 433886232
+  },
+  "source": {
+    "repository_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime.git",
+    "commit": "6d6ccd32c92d06fc52ecd72712140f24496c30a2",
+    "annotated_tag_object": "ca06160dee25aa7ad1ab6cee6f35609467a8d001",
+    "peeled_commit": "6d6ccd32c92d06fc52ecd72712140f24496c30a2",
+    "tag_ref_api_http_status": 200,
+    "annotated_tag_api_http_status": 200,
+    "successful_ingress": "Public HTTPS git clone --branch v0.6.10 --depth 1",
+    "git_checkout_clean_before_and_after_install": true,
+    "installer_source_id": "2752f58dbefb9114c9a8"
+  },
+  "public_assets": [
+    {
+      "kind": "native_archive",
+      "asset_id": 709421431,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz",
+      "http_codes": [
+        302,
+        200
+      ],
+      "final_http_status": 200,
+      "bytes": 159347453,
+      "sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1",
+      "github_asset_digest_matches": true,
+      "download_seconds": 24.944657,
+      "transport": "macOS publication transport downloaded actual public bytes; no product runtime executed on that transport host. Bytes were independently rehashed on Windows and after copy into the Linux consumer normal cache.",
+      "public_transport_receipt_sha256": "69a9403d41098d5f69d5f1abd5217d6cec91166ec55f83824a77740eff6a1bef"
+    },
+    {
+      "kind": "native_manifest",
+      "asset_id": 709421436,
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/runtime-x86_64-unknown-linux-gnu.json",
+      "http_status": 200,
+      "bytes": 424058,
+      "sha256": "20ab81ceca9d2099bc470117a678c9e39572029339bacf4cc96ddca5a95b16f7",
+      "same_tag_source_default_manifest_matches_release_asset_byte_for_byte": true
+    }
+  ],
+  "normal_install": {
+    "platform": "x86_64-unknown-linux-gnu",
+    "isolated_new_root": true,
+    "source": "public same-tag checkout",
+    "argv_template": [
+      "python3",
+      "-I",
+      "-B",
+      "install.py",
+      "--root",
+      "<isolated-install-root>",
+      "--no-activate"
+    ],
+    "exit_code": 0,
+    "activated": false,
+    "manifest_override": false,
+    "native_archive_override": false,
+    "used_default_same_tag_manifest": true,
+    "normal_cache_origin": "Verified actual public-release download; no private build artifact",
+    "native_recipe_id": "08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b",
+    "install_cid": "2752f58dbefb9114c9a8",
+    "installation_sha256": "ffa41571276fd5ca91e86a408101212333f3e542e88effc37fc72edfc0ad5882",
+    "adapter_version": "0.6.10",
+    "installed_production_module_count": 32,
+    "installed_modules_equal_frozen_qualified_runtime": true,
+    "native_cli_sha256": "3682953b5ae307593bdfe0e6f8e41fdd269dca55af3dcb90797eb87b631cb626",
+    "normal_entry_sha256": "9d124bc7bf6e7da25e033822a1ced057fa9d2cf2cc93367676963e93680941fa"
+  },
+  "actual_offline_checks": {
+    "public_entry_version": {
+      "exit_code": 0,
+      "stdout": "codex-cli 0.164.0-alpha.7\n"
+    },
+    "packaged_native_app_server": {
+      "initialize_response_received": true,
+      "platform_os": "linux",
+      "fresh_isolated_home": true,
+      "stdin_eof_exit_code": 0,
+      "stdout_and_stderr_readers_exited": true,
+      "exact_observed_native_or_tool_processes_remaining": 0,
+      "thread_or_turn_start_sent": false,
+      "inference_requests": 0
+    }
+  },
+  "preservation": {
+    "pre_existing_install_receipt_home_config_audit_and_both_ledgers_unchanged": true,
+    "global_entrypoints_unchanged": true,
+    "public_source_checkout_clean_after_install": true
+  },
+  "retained_ingress_observations": [
+    {
+      "stage": "First source tarball ingress",
+      "outcome": "Outer controller reached its 240-second observation timeout during a progressing transfer; partial data and timeout observation were retained. This attempt was not counted as a successful source download."
+    },
+    {
+      "stage": "Subsequent source ingress",
+      "outcome": "The standard public shallow Git clone succeeded, with exact annotated tag and peeled commit verification."
+    },
+    {
+      "stage": "Slow parallel native download",
+      "outcome": "Only the specifically identified slow download process was retired after the complete alternative public download and its verified Linux cache copy were available; its partial data and retirement receipt were retained."
+    }
+  ],
+  "scope": "Public delivery, normal isolated consumer installation, package identity and offline native startup. No model inference, Rust build, native14 rerun or real96 task rerun was performed for this publication check.",
+  "acceptance_result_sha256": "485c428bea55534535649c83f7c31d6e04bf8f587c717bcff2ec39cc554c866a"
+}

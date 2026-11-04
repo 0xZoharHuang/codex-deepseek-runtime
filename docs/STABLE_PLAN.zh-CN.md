@@ -1,6 +1,6 @@
 # CDS 按平台安装、升级与回滚方案
 
-Linux 0.6.10 的正常安装与真实长任务本地资格已完成；公开交付状态以本版发行页和[资格索引](../reports/releases/0.6.10/README.md)为准。Windows/macOS 继续使用各自已发布的 v0.6.9，不混用新源码、旧 manifest 或同名二进制。Linux 可先独立发布；CADSG / Codex App 单独验收。
+Linux 0.6.10 已正式发布，公开下载、正常安装和真实长任务均已验证；实际来源与回执见[资格索引](../reports/releases/0.6.10/README.md)。Windows/macOS 继续使用各自已发布的 v0.6.9，不混用新源码、旧 manifest 或同名二进制。各平台独立发版；CADSG / Codex App 单独验收。
 
 ## 原生机制与模型的分工
 
@@ -87,3 +87,7 @@ Linux/WSL 超时保留原时间界限，先看实际导入/函数/等待位置�
 本次真实任务结束后，本地 native/provider 均已退役。已知完成请求的保护 pin 已为 0、未知上传资产为 0；仍有 3 个云消费结果未知的请求，36 个 pin 按既有 fail-closed 规则保留。它们分别来自原 EOF、新事务的计划取消，以及缺 generation ID 的 502。一次有界正常 reconcile 后仍未知，没有强制清除，也不能宣称全部云文件/账本已清空。
 
 保留这些回执与保护 pin，后续只使用正常图片状态/维护入口核对；不要手删数据库、清全部缓存或把未知消费改成已成功删除。该云端不确定性不等于本地进程仍在运行，亦不被最终任务成功抹去。
+
+## 0.6.10 公开交付回读
+
+Linux 0.6.10 已正式发布。公开资产下载及默认 manifest 的正常隔离安装已通过；固定源码为 `6d6ccd32c92d06fc52ecd72712140f24496c30a2`，安装 CID 为 `2752f58dbefb9114c9a8`。参见[发布回执](../reports/releases/0.6.10/publication-receipt.json)及[发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。Windows/macOS/CADSG 的后续验收保持独立。

@@ -151,3 +151,7 @@ Missing/expired records, changed native sources/recipe/test drivers, unknown
 skips or metadata mismatches fail closed. There is no old26, release-asset or
 fresh-build fallback. The historical49da pins and their original failed full
 workflow status remain immutable records, not the current selection.
+
+### Select a fresh platform
+
+The existing native qualification workflow accepts `fresh_target=macos-arm64`, `linux-x64`, or `all` (the default). For example, `gh workflow run native-platform-qualification.yml --ref main -f fresh_target=macos-arm64 -F retained_mode=false` runs the unchanged fresh build and qualification steps only on the macOS runner. Retained-artifact qualification keeps its separate explicit mode and pins.

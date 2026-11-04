@@ -2,13 +2,13 @@
 
 **用原生 Codex CLI 的工具、审批、沙箱、会话恢复和子智能体，连接 OpenRouter 上的固定 DeepSeek 模型。** CDS 独立安装与配置，不接管本机 Codex App 的订阅或会话。
 
-**Linux 0.6.10 的本地资格已完成。** 正常安装版已完成真实 Jinja 修复、96 张原图审核、自然压缩、同 UUID 冷恢复、原生只读子线程的新一轮最终复核，以及中断后的副作用一次性检查。原始失败和多次继续均保留；这不是一次连续 75 分钟全程无误的运行。详细范围与回执摘要见[本版索引](reports/releases/0.6.10/README.md)。
+**Linux 0.6.10 已正式发布并完成实测。** 正常安装版已完成真实 Jinja 修复、96 张原图审核、自然压缩、同 UUID 冷恢复、原生只读子线程的新一轮最终复核，以及中断后的副作用一次性检查。原始失败和多次继续均保留；这不是一次连续 75 分钟全程无误的运行。详细范围与回执摘要见[本版索引](reports/releases/0.6.10/README.md)。
 
 Linux 独立发版。安装包与源码见 [v0.6.10 发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)；该页的发布回执记录实际提交、资产哈希与下载后的安装验证。
 
 | 平台 | 当前选择 |
 | --- | --- |
-| Linux x86_64 GNU | 0.6.10 本地资格完成；使用本版匹配源码、Linux manifest 与原生归档，公开下载状态见发行回执。 |
+| Linux x86_64 GNU | 0.6.10 已完成公开下载和正常隔离安装验证；使用本版匹配源码、Linux manifest 与原生归档。 |
 | Windows x86_64 | 使用 [v0.6.9](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)。新修复正在独立验收，完成后单独发版。 |
 | macOS Apple Silicon | 使用 v0.6.9；0.6.10 暂不提供新的 macOS 原生包。 |
 

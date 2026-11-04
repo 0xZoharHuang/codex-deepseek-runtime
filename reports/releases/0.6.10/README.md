@@ -1,6 +1,8 @@
 # CDS 0.6.10 Linux 资格与交付索引
 
-**Linux 正常安装版的本地资格已闭环，包括真实 96 图/Jinja 长任务。** 最终 source commit/tag、公开资产下载及发布后安装由外部交付回执确认；此处不预造未来结果。Linux 独立发布，其他平台不自动继承资格。
+**Linux 0.6.10 的真实长任务、公开下载和正常安装验收已闭环。** 实际 source/tag、资产和安装身份见下方发布回执。Linux 独立发布，其他平台不自动继承资格。
+
+公开交付已完成：tag `v0.6.10` 指向 `6d6ccd32c92d06fc52ecd72712140f24496c30a2`。两个正式资产经公开 URL 下载校验后，以默认 manifest、`--no-activate` 正常安装，CID 为 `2752f58dbefb9114c9a8`；原生版本与 app-server initialize/EOF 均通过。[发布回执](publication-receipt.json)（SHA `134cd1949665a103053d83a447dba5babf6f904309137dc7024eab6046a4a29f`）与发行页独立资产一致。旧 tag 未移动，本文的后续记录不冒充 tag 内已有未来回执。
 
 ## 固定组件与候选身份
 

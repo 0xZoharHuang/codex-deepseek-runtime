@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "version": "0.6.10",
-  "status": "LINUX_LOCAL_QUALIFIED_REAL96_ACCEPTED_AFTER_CONTROLLED_REPAIRS_PUBLICATION_RECEIPT_AUTHORITATIVE",
-  "public_release_asserted": false,
-  "final_commit": null,
-  "final_product_source_id": null,
+  "status": "LINUX_PUBLIC_STABLE_RELEASE_AND_NORMAL_CONSUMER_VERIFIED",
+  "public_release_asserted": true,
+  "final_commit": "6d6ccd32c92d06fc52ecd72712140f24496c30a2",
+  "final_product_source_id": "2752f58dbefb9114c9a8",
   "platforms": {
     "x86_64-unknown-linux-gnu": {
       "native_artifact_locally_validated": true,
       "python_normal_install_validated": true,
       "real96_reviewer_and_long_task": "passed_after_multiple_preserved_attempts",
-      "public_download_and_tag_install": "external_actual_publication_receipt_required",
+      "public_download_and_tag_install": "passed",
       "target_recipe_id": "08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b"
     },
     "x86_64-pc-windows-msvc": {
@@ -86,11 +86,17 @@
   },
   "publication": {
     "tag": "v0.6.10",
-    "tag_commit": null,
-    "asset_ids": null,
-    "public_download_receipt": null,
-    "url_values_are_only_plans_until_verified": true,
-    "authority": "actual external final source/tag/asset/download/install receipt; no self-referential future hash"
+    "tag_commit": "6d6ccd32c92d06fc52ecd72712140f24496c30a2",
+    "asset_ids": {
+      "native_archive": 709421431,
+      "native_manifest": 709421436,
+      "publication_receipt": 709522599
+    },
+    "public_download_receipt": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/publication-receipt.json",
+    "url_values_are_only_plans_until_verified": false,
+    "authority": "actual external final source/tag/asset/download/install receipt; no self-referential future hash",
+    "publication_receipt_sha256": "134cd1949665a103053d83a447dba5babf6f904309137dc7024eab6046a4a29f",
+    "normal_consumer_result_sha256": "485c428bea55534535649c83f7c31d6e04bf8f587c717bcff2ec39cc554c866a"
   },
   "aggregation": "cohorts overlap; do not sum into all-runtime coverage",
   "excluded_claims": [
