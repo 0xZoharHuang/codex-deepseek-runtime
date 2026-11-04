@@ -63,7 +63,8 @@ def test_doctor_billed_generation_identity_stays_strict(ordinary,actual,bad):
 
 
 @pytest.mark.parametrize('ordinary,actual',[('deepseek','DeepSeek'),('morph/fp8','Morph')])
-async def test_doctor_child_uses_same_home_and_reports_actual_admitted_policy(tmp_path,monkeypatch,ordinary,actual,capsys):
+@pytest.mark.parametrize('peer',['morph/fp8','primeintellect'])
+async def test_doctor_child_uses_same_home_and_reports_actual_admitted_policy(tmp_path,monkeypatch,ordinary,actual,peer,capsys):
     home=tmp_path/'home';home.mkdir();captured={}
     class Process:
         returncode=0
@@ -75,10 +76,11 @@ async def test_doctor_child_uses_same_home_and_reports_actual_admitted_policy(tm
     async def generation(*a,**k):return ({'id':'response1','model':MODEL,'provider_name':actual},{'source':'fake-billed-record-only'})
     class DB:
         def execute(self,*a):return SimpleNamespace(fetchone=lambda:('response1','default-fallback',ordinary,'completed'))
-    doc={'schema':1,'ordinary_default_provider':ordinary};gateway=SimpleNamespace(metadata={'ordinary_default_provider':ordinary,'provider_config_sha256':provider_config.digest(doc)})
+    doc={'schema':1,'ordinary_default_provider':ordinary};gateway=SimpleNamespace(metadata={'ordinary_default_provider':ordinary,'peer_hosted_provider':peer,'provider_config_sha256':provider_config.digest(doc)})
     monkeypatch.setattr(cli.asyncio,'create_subprocess_exec',launch);monkeypatch.setattr(cli,'NativeTransport',Transport);monkeypatch.setattr(cli,'generation_receipt',generation);monkeypatch.setattr(cli,'data_root',lambda:tmp_path)
     assert await cli.doctor('FAKE',gateway,SimpleNamespace(db=DB()),home,native_binary=tmp_path/'codex.exe')==0
     result=json.loads(capsys.readouterr().out);assert result['provider']==actual and result['ordinary_default_provider']==ordinary and result['provider_config_sha256']==provider_config.digest(doc)
+    assert result['peer_hosted_provider']==peer
     assert captured['env']['CODEX_DEEPSEEK_HOME']==str(home)
 
 
@@ -121,3 +123,43 @@ def test_doctor_does_not_reuse_stream_optional_identity_semantics():
     # Unknown SSE identity is intentionally valid; the billed generation is not.
     module.validate_observed_identity({'model':None,'provider':None},'deepseek')
     assert cli._verified_generation({'id':'response1'},'response1','deepseek','deepseek') is False
+
+
+@pytest.mark.parametrize('status',[429,502])
+async def test_peer_selected_gateway_keeps_one_route_and_reports_snapshot(tmp_path,monkeypatch,status):
+    captures=json.loads((Path(__file__).parent/'fixtures/provider-default-captures.json').read_bytes())['cases']
+    capture=next(c for c in captures if c['name']=='peer-hosted')
+    body=copy.deepcopy(capture['request']);calls=[]
+    async def handle(request):
+        calls.append(await request.json())
+        return web.json_response({'error':{'message':'kept peer failure'}},status=status,headers={'Retry-After':'2'})
+    app=web.Application();app.router.add_post('/responses',handle)
+    runner=web.AppRunner(app);await runner.setup();await web.TCPSite(runner,'127.0.0.1',0).start()
+    monkeypatch.setattr(module,'UPSTREAM',f'http://127.0.0.1:{runner.addresses[0][1]}/responses')
+    store=Store(tmp_path/'adapter.sqlite')
+    selected={**provider_config.default(),'peer_hosted_provider':'primeintellect'}
+    try:
+        async with Gateway('FAKE','LOCAL',store,{},peer_hosted_provider='primeintellect',
+                           provider_config_sha256=provider_config.digest(selected)) as g,aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{g.port}/v1/responses',json=body,
+                                   headers={'Authorization':'Bearer LOCAL'}) as response:
+                assert response.status==status
+                await response.read()
+            async with client.get(f'http://127.0.0.1:{g.port}/health',headers={'Authorization':'Bearer LOCAL'}) as response:
+                health=await response.json()
+                assert health['provider']=='deepseek' and health['peer_hosted_provider']=='primeintellect'
+                assert health['provider_config_sha256']==provider_config.digest(selected)
+        expected=copy.deepcopy(capture['payload']);expected['provider']['only']=['primeintellect']
+        assert calls==[expected]
+        assert store.db.execute('select provider,status,upstream_status,route_reason from receipts').fetchone()==(
+            'primeintellect','upstream_error',status,'native_peer_or_continuation_with_hosted_tools')
+    finally:store.close();await runner.cleanup()
+
+
+def test_gateway_rejects_a_peer_snapshot_with_legacy_hash(tmp_path):
+    store=Store(tmp_path/'adapter.sqlite')
+    try:
+        with pytest.raises(ValueError,match='snapshot hash'):
+            Gateway('FAKE','LOCAL',store,{},peer_hosted_provider='primeintellect',
+                    provider_config_sha256=provider_config.digest(provider_config.default()))
+    finally:store.close()

@@ -69,7 +69,7 @@ def selected_pin(pins, target):
     if sha(ROOT/"native/runtime-overlays.json") != current:
         raise ValueError("Current full native recipe differs from its explicit pin")
     manifest_path = ROOT/"native"/pin["manifest"]
-    if sha(manifest_path) != pin["manifest_sha256"]:
+    if not manifest_path.is_file() or sha(manifest_path) != pin["manifest_sha256"]:
         raise ValueError("Current target manifest differs from the reviewed candidate")
     manifest = unique_json(manifest_path.read_bytes())
     archive = manifest.get("archive", {})

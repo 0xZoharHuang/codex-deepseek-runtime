@@ -9,6 +9,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -18,9 +19,10 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_log import AccessLogger
 
-from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response
+from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response, provider_failure_diagnostic, redact_provider_failure
 
 from .state import Store
+from .request_metadata import native_request_metadata
 from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers
 from .structured import StructuredOutput
 from .image_provider import ImageProvider,load_image_config
@@ -41,7 +43,7 @@ _OBSERVED_PROVIDERS = {
 }
 
 
-def validate_observed_identity(value, requested_provider):
+def validate_observed_identity(value, requested_provider, *, failed=False):
     """Reject explicit response identity contradictions before native dispatch."""
     if not isinstance(value, dict):
         return  # The existing response/event validator owns envelope validation.
@@ -52,7 +54,7 @@ def validate_observed_identity(value, requested_provider):
         if not isinstance(item, str) or not item:
             raise ProtocolError("Observed upstream " + name + " must be a nonempty string")
         accepted = _OBSERVED_MODELS if name == "model" else _OBSERVED_PROVIDERS[requested_provider]
-        if item not in accepted:
+        if not failed and item not in accepted:
             raise ProtocolError("Upstream returned an incompatible " + name + ": " + item)
 
 
@@ -179,12 +181,15 @@ class _DownstreamDisconnected(ConnectionError):
 
 
 class Gateway:
-    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None, ordinary_default_provider=PROVIDER, provider_config_sha256=None):
+    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None, ordinary_default_provider=PROVIDER, peer_hosted_provider=None, provider_config_sha256=None):
         from .provider_config import validate, digest
-        policy=validate({"schema":1,"ordinary_default_provider":ordinary_default_provider})
+        policy={"schema":1,"ordinary_default_provider":ordinary_default_provider}
+        if peer_hosted_provider is not None:policy["peer_hosted_provider"]=peer_hosted_provider
+        policy=validate(policy)
         expected=digest(policy)
         if provider_config_sha256 is not None and provider_config_sha256!=expected:raise ValueError("Provider snapshot hash mismatch")
         self.ordinary_default_provider=ordinary_default_provider
+        self.peer_hosted_provider=policy.get("peer_hosted_provider",PEER_HOSTED_PROVIDER)
         self.provider_config_sha256=expected
         self.key = key if isinstance(key,str) else None
         self.credential_source = key
@@ -251,7 +256,7 @@ class Gateway:
         return web.json_response({"status": "ready", "model": MODEL, "provider": self.ordinary_default_provider,
                                   "provider_config_sha256": self.provider_config_sha256,
                                   "structured_provider": STRUCTURED_PROVIDER, "serial_provider": SERIAL_PROVIDER,
-                                  "peer_hosted_provider": PEER_HOSTED_PROVIDER,"fallbacks": False,
+                                  "peer_hosted_provider": self.peer_hosted_provider,"fallbacks": False,
                                   "image_maintenance":self.image_gc.snapshot() if self.image_gc else {"enabled":False}})
 
     async def models(self, request):
@@ -264,26 +269,81 @@ class Gateway:
             return error_response("Unauthorized", 401)
         try:
             body = await request.json()
-            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider)
+            native_request = native_request_metadata(body, request.headers)
+            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider)
             structured = StructuredOutput(body)
             transport_policy=network_policy(request.headers)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
         receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason,
-                                   structured_output_mapping=registry.structured_output_mapping)
+                                   structured_output_mapping=registry.structured_output_mapping,
+                                   native_request=native_request)
         trace = None
         response = None
         events = Events(registry)
         status = None
         captured_key = self.key
         image_stack=AsyncExitStack();prepared_images=None;image_refs=False;image_started=False
+        failure_detail = None
+        trace_event_lines, trace_event_bytes, trace_event_closed = [], 0, False
+        def trace_upstream_event(original):
+            nonlocal trace_event_bytes, trace_event_closed
+            if trace is None or trace_event_closed:
+                return
+            try:
+                safe = redact_provider_failure(original, captured_key)
+                encoded = (json.dumps(safe, ensure_ascii=False, allow_nan=False, sort_keys=True,
+                                      separators=(",", ":")) + "\n").encode("utf-8")
+                limit = 1024 * 1024
+                if trace_event_bytes + len(encoded) > limit - 2048:
+                    value = safe.get("response") if isinstance(safe, dict) else None
+                    value = value if isinstance(value, dict) else {}
+                    error = value.get("error")
+                    summary = {name: value.get(name) for name in ("id", "model", "status")}
+                    summary["error_code"] = error.get("code") if isinstance(error, dict) else None
+                    summary = {name: item[:256] if isinstance(item, str) else item
+                               if item is None or type(item) in (int, float, bool) else None
+                               for name, item in summary.items()}
+                    marker = {"_codex_trace": {"truncated": True, "limit_bytes": limit,
+                              "captured_event_bytes": trace_event_bytes, "next_event_bytes": len(encoded)},
+                              "event_type": safe.get("type") if isinstance(safe, dict) else None,
+                              "response_summary": summary}
+                    encoded = (json.dumps(marker, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
+                    trace_event_closed = True
+                if trace_event_bytes + len(encoded) > limit:
+                    raise ValueError("Bounded upstream event trace marker exceeds its budget")
+                trace_event_lines.append(encoded)
+                trace_event_bytes += len(encoded)
+                private_write(trace / (receipt + "-upstream-events.jsonl"), b"".join(trace_event_lines))
+            except Exception as error:
+                trace_event_closed = True
+                logging.getLogger(__name__).warning("Upstream event trace incomplete (%s); forward outcome unchanged",
+                                                   type(error).__name__)
+        def reject_credential_response_id(value):
+            identifier = value.get("id") if isinstance(value, dict) else None
+            if isinstance(identifier, str) and captured_key and captured_key in identifier:
+                raise ProtocolError("Provider response identity is invalid")
+        def observe_response(value):
+            if not isinstance(value, dict):
+                return
+            reject_credential_response_id(value)
+            events.observe_response_id(value)
+            if events.response_id is not None:
+                self.store.progress(receipt, events)
+                if self.images is not None:
+                    self.images.record(receipt, response_id=events.response_id)
         async def deliver(operation, *args):
             try:
                 return await getattr(response, operation)(*args)
             except ConnectionError as exc:
                 raise _DownstreamDisconnected(operation, type(exc).__name__) from exc
-        async def image_terminal(response_id,terminal):
+        async def image_terminal(value, expected=None):
             if image_refs:
+                validate_response(value, expected)
+                # Terminal shape and stable ID prove consumption ended; an
+                # incompatible successful model/provider must still fail below.
+                validate_observed_identity(value, payload['provider']['only'][0], failed=True)
+                response_id, terminal = value['id'], value['status']
                 self.images.record(receipt,consumption_status='provider_terminal',provider_terminal=terminal,provider_response_id=response_id,response_id=response_id)
                 await prepared_images.mark_upstream_settled(response_id,terminal)
         try:
@@ -313,6 +373,11 @@ class Gateway:
                     headers={'Authorization':'Bearer '+captured_key,'Content-Type':'application/json','X-Title':'Codex DeepSeek Runtime'})
             async with upstream_context as upstream:
                 status = upstream.status
+                if image_refs:
+                    candidate = upstream.headers.get('X-Generation-Id')
+                    if isinstance(candidate, str) and re.fullmatch(r'gen-[0-9A-Za-z-]{1,124}', candidate) and captured_key not in candidate:
+                        self.images.record(receipt, generation_header_candidate={
+                            'id': candidate, 'provenance': 'http_response_header:X-Generation-Id'})
                 transport_headers=response_headers(upstream.headers)
                 if trace:private_write(trace/(receipt+'-network.json'),json.dumps({'policy':transport_policy,'native_http':True}))
                 if status >= 300:
@@ -327,35 +392,49 @@ class Gateway:
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):
                     result = await upstream.json()
+                    reject_credential_response_id(result)
+                    if isinstance(result, dict) and result.get("status") == "failed":
+                        failure_detail = provider_failure_diagnostic({"type": "response.failed", "response": result})
                     validate_response(result)
-                    validate_observed_identity(result, payload['provider']['only'][0])
-                    await image_terminal(result['id'],result['status'])
+                    failed = result["status"] == "failed"
+                    if failed:
+                        result = redact_provider_failure(result, captured_key)
+                    observe_response(result)
+                    await image_terminal(result)
+                    validate_observed_identity(result, payload['provider']['only'][0], failed=failed)
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
-                    self.store.finish(receipt, result.get("status", "completed"), status, events)
+                    self.store.finish(receipt, result.get("status", "completed"), status, events,
+                                      json.dumps(failure_detail) if failure_detail is not None else None)
                     return web.json_response(result, headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 response = web.StreamResponse(headers={**transport_headers,"Content-Type": "text/event-stream", "Cache-Control": "no-store",
                                                         "X-Adapter-Request-Id": receipt})
                 await deliver('prepare', request)
                 async for original in sse_events(upstream.content):
-                    validate_observed_identity(original.get('response') if isinstance(original, dict) else None,
-                                               payload['provider']['only'][0])
-                    if image_refs and original.get('type') in {'response.completed','response.failed','response.incomplete'}:
-                        terminal=original.get('response');validate_response(terminal)
-                        if events.response_id and terminal['id']!=events.response_id:raise ProtocolError('Provider terminal changed response identity')
-                        await image_terminal(terminal['id'],terminal['status'])
-                    if self.images is not None and original.get('type')=='response.created':
-                        identifier=(original.get('response') or {}).get('id')
-                        if isinstance(identifier,str):self.images.record(receipt,response_id=identifier)
+                    reject_credential_response_id(original.get("response") if isinstance(original, dict) else None)
+                    trace_upstream_event(original)
+                    kind = original.get("type") if isinstance(original, dict) else None
+                    if kind in {"response.failed", "error"}:
+                        failure_detail = provider_failure_diagnostic(original)
+                    if kind == "response.failed":
+                        validate_response(original.get("response"), "failed")
+                    if kind in {"response.failed", "error"}:
+                        original = redact_provider_failure(original, captured_key)
+                    observed = original.get("response") if isinstance(original, dict) else None
+                    observe_response(observed)
+                    if image_refs and kind in {'response.completed','response.failed','response.incomplete'}:
+                        await image_terminal(observed, kind.removeprefix("response."))
+                    if kind != "error":
+                        validate_observed_identity(observed, payload['provider']['only'][0],
+                                                   failed=kind == "response.failed")
                     for event in structured.events(original):
                         normalized_events = events.transform(event)
-                        if event.get('type') == 'response.created':
-                            self.store.progress(receipt, events)
                         if events.terminal:
                             # The receipt describes the upstream model result;
                             # native logs remain authoritative for tool effects.
-                            self.store.finish(receipt, events.status, status, events)
+                            self.store.finish(receipt, events.status, status, events,
+                                              json.dumps(failure_detail) if failure_detail is not None else None)
                         for normalized in normalized_events:
                             await deliver('write', encode_sse(normalized))
                         if events.terminal:
@@ -391,6 +470,8 @@ class Gateway:
             else:
                 detail = str(exc).replace(captured_key, "[REDACTED]") if captured_key else str(exc)
             receipt_detail = detail
+            if failure_detail is not None:
+                receipt_detail = json.dumps({"message": detail, "provider_failure": failure_detail})
             budget = getattr(exc, 'diagnostics', None) if isinstance(exc, ImageTransportError) else None
             if isinstance(budget, dict):
                 # Only the pure planner's aggregate: no URLs, image data or file IDs.
@@ -401,9 +482,11 @@ class Gateway:
             self.store.finish(receipt, "adapter_error", status, events, receipt_detail)
             if response is not None and response.prepared:
                 try:
-                    await response.write(encode_sse({"type": "response.failed", "response": {
-                        "id": events.response_id or "resp_adapter_failure", "status": "failed",
-                        "error": {"code": "provider_compatibility", "message": detail}, "output": []}}))
+                    failure = {"status": "failed",
+                               "error": {"code": "provider_compatibility", "message": detail}, "output": []}
+                    if events.response_id is not None:
+                        failure["id"] = events.response_id
+                    await response.write(encode_sse({"type": "response.failed", "response": failure}))
                     await response.write_eof()
                 except (ConnectionError, RuntimeError):
                     pass  # The native client already closed the stream; the receipt records failure.

@@ -97,7 +97,7 @@ class ImageProvider:
             image=value['adaptations']['image_transport']
             for key,item in updates.items():
                 if key in {'status','response_id','requested_provider'}:value[key]=item
-                elif key in {'preparation','consumption_status','provider_terminal','provider_response_id','release_error_type','native_outbound_policy','budget_failure'}:image[key]=item
+                elif key in {'preparation','consumption_status','provider_terminal','provider_response_id','release_error_type','native_outbound_policy','budget_failure','generation_header_candidate'}:image[key]=item
                 else:raise ValueError('Unknown image receipt field')
             db.execute('INSERT OR REPLACE INTO calls VALUES (?,?)',(ref,json.dumps(value,allow_nan=False)))
     @staticmethod

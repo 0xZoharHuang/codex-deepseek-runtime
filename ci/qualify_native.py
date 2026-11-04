@@ -466,10 +466,16 @@ def run_observed(command, *, cwd, env, log, timeout):
         ]
         # Uncertain association is never promoted to ownership or signalled.
         uncertain_live = set()
+        # A missing identity is not exit evidence when the PID remains live.
+        # Never signal an unproven instance, including a previously owned PID.
+        for row in seen.values():
+            if identity(row["pid"]) is None and psutil.pid_exists(row["pid"]):
+                uncertain_live.add(row["pid"])
         for row in uncertain.values():
             stamp = row.get("birth_after") or row.get("birth")
-            if ((stamp and matches(row["pid"], stamp))
-                    or (not stamp and psutil.pid_exists(row["pid"]))):
+            current = identity(row["pid"])
+            if ((stamp and current == stamp)
+                    or ((not stamp or current is None) and psutil.pid_exists(row["pid"]))):
                 uncertain_live.add(row["pid"])
         report["unknown_live"] = sorted(uncertain_live | {pid for pid in unknown if psutil.pid_exists(pid)})
         report["uncertain_observations"] = list(uncertain.values())

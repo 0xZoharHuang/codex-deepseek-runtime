@@ -260,7 +260,8 @@ async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
             'generation_id':generation_id,'generation_model':generation_model,'selected_provider':selected,
             'native_thread':thread,'network_policy':policy,'text':answer,'echo_expected':'CONNECTED','echo_exact_match':answer.strip()=='CONNECTED',
             'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER,
-            'ordinary_default_provider':ordinary_provider,'provider_config_sha256':gateway.metadata['provider_config_sha256']}
+            'ordinary_default_provider':ordinary_provider,'peer_hosted_provider':gateway.metadata.get('peer_hosted_provider',PEER_HOSTED_PROVIDER),
+            'provider_config_sha256':gateway.metadata['provider_config_sha256']}
     (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2), encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if result['status']=='connected' else 1
@@ -340,7 +341,7 @@ async def run(arguments: list[str]) -> int:
                                   "provider": gateway.metadata["ordinary_default_provider"],
                                   "provider_config_sha256": gateway.metadata["provider_config_sha256"], "structured_provider": STRUCTURED_PROVIDER,
                                   "serial_provider": SERIAL_PROVIDER,
-                                  "peer_hosted_provider": PEER_HOSTED_PROVIDER,
+                                  "peer_hosted_provider": gateway.metadata.get("peer_hosted_provider",PEER_HOSTED_PROVIDER),
                                   "fallbacks": False, "state": str(store.path), "runtime_home":str(runtime_home),
                                   "release_environment":sys.prefix,"model_catalog":str(catalog_path())}, indent=2))
                 return 0

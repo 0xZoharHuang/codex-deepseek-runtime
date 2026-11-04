@@ -17,6 +17,18 @@ spec=importlib.util.spec_from_file_location("retained_native_test",ROOT/"ci/reus
 reuse=importlib.util.module_from_spec(spec);spec.loader.exec_module(reuse)
 
 
+def historical_p27_recipe_root(tmp_path, monkeypatch, pins):
+    """Scope historical success controls to their actual immutable compiler input."""
+    raw = (ROOT/"native/runtime-overlays-0.6.9-812c04d1.json").read_bytes()
+    assert len(raw) == pins["recipe_bytes"]
+    assert hashlib.sha256(raw).hexdigest() == pins["recipe_sha256"]
+    source = tmp_path/"historical-p27-source"
+    (source/"native").mkdir(parents=True)
+    (source/"native/runtime-overlays.json").write_bytes(raw)
+    monkeypatch.setattr(reuse, "ROOT", source)
+    return raw
+
+
 def metadata_fixture(target="x86_64-unknown-linux-gnu", *, qualified=False):
     path = reuse.PINS if qualified else ROOT/"ci/retained-native-build-49da.json"
     pins=json.loads(path.read_bytes())
@@ -228,8 +240,9 @@ def test_original_compiled_scope_target_is_not_interchangeable(target):
 @pytest.mark.parametrize("bad", [None, "run-in-progress", "run-failure", "job-failure",
                                  "state-step", "missing-state-step", "missing-state-record",
                                  "missing-state-log", "legacy-scope", "recipe", "other-target"])
-def test_new_p27_reuse_requires_exact_successful_scope_and_state_evidence(target, bad):
+def test_new_p27_reuse_requires_exact_successful_scope_and_state_evidence(target, bad, tmp_path, monkeypatch):
     pins, pin, run, job, artifact = metadata_fixture(target, qualified=True)
+    historical_p27_recipe_root(tmp_path, monkeypatch, pins)
     if bad == "run-in-progress": run.update(status="in_progress", conclusion=None)
     elif bad == "run-failure": run["conclusion"] = "failure"
     elif bad == "job-failure": job["conclusion"] = "failure"
@@ -379,7 +392,7 @@ def permanent_fixture(tmp_path, monkeypatch, bad=None):
     pins["current_recipe_sha256"] = pins["recipe_sha256"]
     pins["targets"]["x86_64-unknown-linux-gnu"] = pin
     data = {"native-package.tar.gz": b"unchanged native original bytes",
-            "runtime-overlays.json": (ROOT/"native/runtime-overlays.json").read_bytes()}
+            "runtime-overlays.json": historical_p27_recipe_root(tmp_path, monkeypatch, pins)}
     pin["archive_bytes"] = len(data["native-package.tar.gz"])
     pin["archive_sha256"] = hashlib.sha256(data["native-package.tar.gz"]).hexdigest()
     tag, version, commit = "v0.6.9", "0.6.9", "b"*40
@@ -548,3 +561,12 @@ def test_both_registered_reuse_entries_select_the_same_explicit_dataset():
 def test_explicit_release_never_inherits_missing_legacy_selection(release):
     pins={"source":"release-asset","release":release}
     with pytest.raises(ValueError):reuse.legacy.release_spec(pins)
+
+
+@pytest.mark.parametrize("target", ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin"])
+def test_active_capacity_recipe_cannot_inherit_historical_p27_qualification(target):
+    pins, pin, run, job, artifact = metadata_fixture(target, qualified=True)
+    assert reuse.native.sha(ROOT/"native/runtime-overlays.json") != pins["recipe_sha256"]
+    with pytest.raises(ValueError, match="Current full P27 recipe differs from its compiled pin"):
+        reuse.validate_scope(run, job, artifact, pins, pin,
+                             now=datetime(2026, 11, 2, tzinfo=timezone.utc))

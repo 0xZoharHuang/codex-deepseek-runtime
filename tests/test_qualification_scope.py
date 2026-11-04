@@ -1162,3 +1162,41 @@ def test_external_offline_lineage_propagates_only_verified_terminal_revalidation
     if change=='both':
         with pytest.raises(SystemExit,match='mutually exclusive'):
             acceptance.external_offline_receipt(external,metadata,native,scope,**options)
+
+
+@pytest.mark.parametrize("origin", ["observed", "uncertain"])
+@pytest.mark.parametrize("terminal", ["identity_lost_but_pid_live", "gone", "reused"])
+def test_qualification_final_unknown_identity_is_never_natural_exit(monkeypatch, tmp_path, origin, terminal):
+    import io
+    qualify, graph, _, signals, _, root = _observed_process_graph(monkeypatch)
+    graph[300]["alive"] = False
+    observe = qualify._observe_process_family
+    if origin == "uncertain":
+        def uncertain_child(seen, uncertain, rejected, errors):
+            observe(seen, uncertain, rejected, errors)
+            row = seen.pop((200, "child-20"), None)
+            if row:
+                uncertain[(200, "child-20", "synthetic-final-boundary")] = {
+                    **row, "reason": "synthetic-final-boundary"}
+        monkeypatch.setattr(qualify, "_observe_process_family", uncertain_child)
+    poll = root.poll
+    def finish():
+        result = poll()
+        if result == 0:
+            if terminal == "identity_lost_but_pid_live":
+                graph[200]["birth"] = None
+            elif terminal == "gone":
+                graph[200]["alive"] = False
+            else:
+                graph[200].update(birth="foreign-100", ctime=100, ppid=999)
+        return result
+    monkeypatch.setattr(root, "poll", finish)
+    result = qualify.run_observed(["synthetic"], cwd=tmp_path, env={},
+                                  log=io.StringIO(), timeout=30)
+    assert signals == []
+    assert result["remaining_before_cleanup"] == result["remaining_after_cleanup"] == []
+    if terminal == "identity_lost_but_pid_live":
+        assert graph[200]["alive"]
+        assert not result["passed"] and result["unknown_live"] == [200]
+    else:
+        assert result["passed"] and result["unknown_live"] == []

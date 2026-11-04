@@ -139,7 +139,8 @@ def healthy(value):
             if 'provider_config_sha256' in value:
                 health=json.load(response)
                 return (health.get('provider')==value.get('ordinary_default_provider')
-                        and health.get('provider_config_sha256')==value['provider_config_sha256'])
+                        and health.get('provider_config_sha256')==value['provider_config_sha256']
+                        and health.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)==value.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER))
             return True
     except (OSError,ValueError):return False
 
@@ -230,7 +231,8 @@ class ProviderService:
 def _admitted_provider(value):
     policy=provider_config.validate(value.get('provider_config'))
     if (provider_config.digest(policy)!=value.get('provider_config_sha256')
-            or policy['ordinary_default_provider']!=value.get('ordinary_default_provider')):
+            or policy['ordinary_default_provider']!=value.get('ordinary_default_provider')
+            or policy.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)!=value.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)):
         raise RuntimeError('Admitted provider policy metadata is inconsistent')
     return policy
 
@@ -253,7 +255,7 @@ async def worker(home,catalog,fd):
     watcher=asyncio.create_task(watch_owner())
     try:
         def trace_source():return json.loads((Path(home)/'provider-state/trace.json').read_text(encoding='utf-8')).get('directory')
-        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None,ordinary_default_provider=provider_snapshot['ordinary_default_provider'],provider_config_sha256=value['provider_config_sha256']) as gateway:
+        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None,ordinary_default_provider=provider_snapshot['ordinary_default_provider'],peer_hosted_provider=provider_snapshot.get('peer_hosted_provider'),provider_config_sha256=value['provider_config_sha256']) as gateway:
             if WINDOWS:
                 from .windows_sockets import Receiver
                 receiver=Receiver(gateway,stopped);receiver.start()
@@ -295,31 +297,43 @@ def idle_retirement(home):
         raise
 
 
+def _provider_listener(home,previous):
+    sock=socket.socket()
+    try:
+        sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE if WINDOWS else socket.SO_REUSEADDR,1)
+        # A previous worker may briefly retain its inherited socket. Keep the
+        # original retry window, but do not inspect an unbound Winsock socket.
+        bound=False;end=time.monotonic()+3
+        while True:
+            try:
+                sock.bind(('127.0.0.1',previous.get('port',0)));bound=True;break
+            except OSError:
+                if not previous or time.monotonic()>=end:break
+                time.sleep(.1)
+        if not bound:
+            if native_active(home):
+                raise RuntimeError('The stable provider port is unavailable while this profile has active native sessions')
+            sock.bind(('127.0.0.1',0))
+        sock.listen(128)
+        return sock
+    except BaseException:
+        sock.close()
+        raise
+
+
 def _supervise(home,catalog,native_binary,provider_snapshot=None):
     home=Path(home)
     if provider_snapshot is None:
         with provider_config.locked(home):provider_snapshot=provider_config.load(home)['policy']
     provider_snapshot=provider_config.validate(provider_snapshot)
     path=descriptor_path(home);previous=read_descriptor(home)
-    sock=socket.socket();sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE if WINDOWS else socket.SO_REUSEADDR,1)
-    # A just-killed watchdog's old worker may retain the inherited socket until
-    # its identity watcher runs. Preserve the port while that owner exits.
-    end=time.monotonic()+3
-    while True:
-        try:
-            sock.bind(('127.0.0.1',previous.get('port',0)));break
-        except OSError:
-            if not previous or time.monotonic()>=end:break
-            time.sleep(.1)
-    if not sock.getsockname()[1]:
-        if native_active(home):raise RuntimeError('The stable provider port is unavailable while this profile has active native sessions')
-        sock.bind(('127.0.0.1',0))
-    sock.listen(128)
+    sock=_provider_listener(home,previous)
     value={'schema':1,'pid':os.getpid(),'birth':identity(os.getpid()),'port':sock.getsockname()[1],
            'token':previous.get('token') or secrets.token_urlsafe(48),'code_id':code_id(catalog,native_binary,home,provider_snapshot),'native_binary':str(native_binary) if native_binary else None,
            'environment':sys.prefix,'started':time.time(),'worker_pid':None,'worker_birth':None,'restarts':0,
            'provider_config':provider_snapshot,'provider_config_sha256':provider_config.digest(provider_snapshot),
            'ordinary_default_provider':provider_snapshot['ordinary_default_provider']}
+    if 'peer_hosted_provider' in provider_snapshot:value['peer_hosted_provider']=provider_snapshot['peer_hosted_provider']
     atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[];retirement=None
     def stop(signum,frame):
         nonlocal stopped

@@ -1,0 +1,950 @@
+--- a/codex-rs/core/src/compact.rs
++++ b/codex-rs/core/src/compact.rs
+@@ -356,6 +356,12 @@
+     if cancellation_token.is_cancelled() {
+         return Err(CodexErr::TurnAborted);
+     }
++    // Capture ordinary-consumed authority before fresh-summary target extension.
++    // CapacityPrefix was already checked against this exact snapshot's hash and
++    // pair-safe boundary; later historical extension does not expand authority.
++    let confirmed_capacity_len = capacity_prefix
++        .as_ref()
++        .map_or(0, |prefix| prefix.prefix.len);
+     capacity_prefix = capacity_prefix.map(CapacityPrefix::for_fresh_summary);
+     let compaction_item = TurnItem::ContextCompaction(ContextCompactionItem::new());
+     sess.emit_turn_item_started(&turn_context, &compaction_item)
+@@ -410,9 +416,9 @@
+         // before this compactor observes its replacement history.
+         sess.capture_capacity_send().await.history
+     };
+-    let mut capacity_work = capacity_prefix
+-        .as_ref()
+-        .map(|prefix| CapacitySummaryWork::new(prefix.history.clone()));
++    let mut capacity_work = capacity_prefix.as_ref().map(|prefix| {
++        CapacitySummaryWork::with_confirmed_prefix(prefix.history.clone(), confirmed_capacity_len)
++    });
+     let mut input_goal_ids = UserGoalUpdate::message_ids(history.raw_items());
+     let compact_input: ResponseItem = initial_input_for_turn.into();
+     history.record_items(
+@@ -435,6 +441,7 @@
+     let mut capacity_trims = CompactionCapacityTrimTrace::default();
+     let mut input_trimmed = false;
+     let mut warned_capacity = false;
++    let mut pending_capacity_reduction: Option<(Prompt, CodexErr)> = None;
+     if capacity_prefix.is_some() {
+         warn_capacity_prefix(&sess, &turn_context).await;
+         warned_capacity = true;
+@@ -486,6 +493,34 @@
+         let responses_metadata = sess
+             .compaction_responses_metadata(turn_context.as_ref(), compaction_metadata)
+             .await;
++        if let Some((rejected_prompt, rejection)) = pending_capacity_reduction.take() {
++            // Use the native request builder for both known prompts, with the
++            // same non-input settings. This includes actual image-detail and
++            // provider metadata rules; partial framing must buy a strict byte
++            // reduction before another failed-byte-capacity probe is sent.
++            let request_size = |candidate: &Prompt| {
++                let request = sess
++                    .services
++                    .model_client
++                    .build_responses_request(
++                        candidate,
++                        turn_context.model_info(),
++                        None,
++                        turn_context.reasoning_summary(),
++                        turn_context.config.service_tier.clone(),
++                        &responses_metadata,
++                        false,
++                    )
++                    .ok()?;
++                serde_json::to_vec(&request).ok().map(|bytes| bytes.len())
++            };
++            if !request_size(&prompt)
++                .zip(request_size(&rejected_prompt))
++                .is_some_and(|(next, previous)| next < previous)
++            {
++                return Err(rejection);
++            }
++        }
+         let (attempt_result, failed_before_response_stream) = match drain_to_completed(
+             &sess,
+             turn_context.as_ref(),
+@@ -675,6 +710,11 @@
+                     partition_attempts = capacity_trims.attempts,
+                     "Compaction capacity retry selected a smaller complete confirmed prefix; the entire remainder is retained",
+                 );
++                if work.projection.is_some()
++                    && !matches!(e.details(), CodexErrorDetails::ContextWindowExceeded)
++                {
++                    pending_capacity_reduction = Some((prompt, e));
++                }
+                 continue;
+             }
+             Err(e)
+@@ -694,9 +734,13 @@
+                 if let CodexErrorDetails::UnexpectedStatus(rejection) = e.details() {
+                     capacity_rejection = Some(rejection.clone());
+                 }
++                let confirmed_len = prefix.prefix.len;
+                 let prefix = prefix.for_fresh_summary();
+                 history = prefix.history.clone();
+-                capacity_work = Some(CapacitySummaryWork::new(prefix.history.clone()));
++                capacity_work = Some(CapacitySummaryWork::with_confirmed_prefix(
++                    prefix.history.clone(),
++                    confirmed_len,
++                ));
+                 capacity_prefix = Some(prefix);
+                 history.record_items(
+                     &[compact_input.clone()],
+@@ -1355,6 +1399,7 @@
+     working_history: crate::context_manager::ContextManager,
+     carry_len: usize,
+     selected_len: usize,
++    confirmed_len: usize,
+     projection: Option<CapacityProjection>,
+     verified_projection: Option<ProjectionReceipt>,
+ }
+@@ -1365,6 +1410,7 @@
+             selected_len: target.annotated_items().len(),
+             working_history: target.clone(),
+             carry_len: 0,
++            confirmed_len: 0,
+             projection: None,
+             verified_projection: None,
+             coverage: CapacitySummaryCoverage {
+@@ -1374,6 +1420,15 @@
+                 carry_summary: None,
+             },
+         }
++    }
++
++    fn with_confirmed_prefix(
++        target: crate::context_manager::ContextManager,
++        confirmed_len: usize,
++    ) -> Self {
++        let mut work = Self::new(target);
++        work.confirmed_len = confirmed_len;
++        work
+     }
+ 
+     fn smaller_prefix(&self, context_capacity: bool) -> Option<usize> {
+@@ -1414,7 +1469,7 @@
+     fn reduce(&mut self, context_capacity: bool, current_turn: &str) -> CodexResult<bool> {
+         self.verified_projection = None;
+         if let Some(projection) = &mut self.projection {
+-            return Ok(projection.shrink());
++            return Ok(projection.shrink(&self.coverage.target));
+         }
+         if let Some(len) = self.smaller_prefix(context_capacity) {
+             self.selected_len = len;
+@@ -1426,11 +1481,12 @@
+         let Some(end) = self.coverage.covered.checked_add(added) else {
+             return Ok(false);
+         };
+-        let Some(projection) = CapacityProjection::new(
++        let Some(projection) = CapacityProjection::new_with_confirmed_prefix(
+             &self.coverage.target,
+             self.coverage.covered,
+             end,
+             current_turn,
++            self.confirmed_len,
+         ) else {
+             return Ok(false);
+         };
+--- a/codex-rs/core/src/compact_capacity_projection.rs
++++ b/codex-rs/core/src/compact_capacity_projection.rs
+@@ -7,10 +7,20 @@
+ use crate::context_manager::ContextManager;
+ use codex_context_fragments::set_annotated_content;
+ use codex_context_fragments::to_annotated_content;
++use codex_protocol::models::ContentItem;
++use codex_protocol::models::FunctionCallOutputBody;
+ use codex_protocol::models::FunctionCallOutputContentItem;
+ use serde::Serialize;
+ use sha2::Digest;
+ use sha2::Sha256;
++
++/// Byte offsets always refer to one unchanged original text part.
++#[derive(Clone, Debug, PartialEq, Eq)]
++struct ProjectionTextRange {
++    start: usize,
++    end: usize,
++    len: usize,
++}
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub(super) struct ProjectionReceipt {
+@@ -24,6 +34,7 @@
+     pub(super) part_start: usize,
+     pub(super) part_end: usize,
+     pub(super) part_count: usize,
++    text_range: Option<ProjectionTextRange>,
+     source_turn: String,
+     source_hash: [u8; 32],
+     projection_hash: [u8; 32],
+@@ -45,6 +56,7 @@
+     atom_index: usize,
+     pub(super) part_start: usize,
+     pub(super) part_end: usize,
++    text_range: Option<ProjectionTextRange>,
+     source_turn: String,
+ }
+ 
+@@ -66,22 +78,37 @@
+ }
+ 
+ impl CapacityProjection {
++    #[cfg(test)]
+     pub(super) fn new(
+         target: &ContextManager,
+         source_start: usize,
+         source_end: usize,
+         current_turn: &str,
+     ) -> Option<Self> {
++        Self::new_with_confirmed_prefix(target, source_start, source_end, current_turn, 0)
++    }
++
++    pub(super) fn new_with_confirmed_prefix(
++        target: &ContextManager,
++        source_start: usize,
++        source_end: usize,
++        current_turn: &str,
++        confirmed_len: usize,
++    ) -> Option<Self> {
+         let mut projection = Self::source(target, source_start, source_end)?;
+-        if current_turn.is_empty() || projection.source_turn == current_turn {
++        // The exception is only the captured, hash-verified ordinary-consumed
++        // prefix. Fresh-summary extension must never grant current-input authority.
++        if current_turn.is_empty()
++            || (projection.source_turn == current_turn && source_end > confirmed_len)
++        {
+             return None;
+         }
+         // A multi-atom block becomes one complete pair/message per request.
+-        // For a single atom the full body just failed: strictly reduce its parts.
+-        if projection.atoms.len() == 1 {
+-            projection.part_end /= 2;
+-        }
+-        (projection.part_end > 0).then_some(projection)
++        // For one atom the full body just failed: reduce parts, then UTF-8 text.
++        if projection.atoms.len() == 1 && !projection.shrink(target) {
++            return None;
++        }
++        Some(projection)
+     }
+ 
+     fn source(target: &ContextManager, source_start: usize, source_end: usize) -> Option<Self> {
+@@ -169,7 +196,7 @@
+                     }
+                     (parts.len().max(1), parts.is_empty())
+                 }
+-                // Plain text remains one indivisible original payload.
++                // Keep the native string envelope; byte views only edit its clone.
+                 None => (1, true),
+             };
+             atoms.push(ProjectionAtom {
+@@ -188,8 +215,7 @@
+                 )
+             })
+             .count();
+-        if used_calls.len() != call_count || atoms.iter().map(|atom| atom.parts).sum::<usize>() <= 1
+-        {
++        if used_calls.len() != call_count {
+             return None;
+         }
+         let part_end = atoms.first()?.parts;
+@@ -200,6 +226,7 @@
+             atom_index: 0,
+             part_start: 0,
+             part_end,
++            text_range: None,
+             source_turn: turn,
+         })
+     }
+@@ -209,6 +236,35 @@
+             2
+         } else {
+             1
++        }
++    }
++
++    fn text<'a>(&self, target: &'a ContextManager) -> Option<&'a str> {
++        if self.part_end != self.part_start + 1 {
++            return None;
++        }
++        let atom = self.atoms.get(self.atom_index)?;
++        let item = &target
++            .annotated_items()
++            .get(self.source_start + atom.item)?
++            .item;
++        match item {
++            ResponseItem::Message { content, .. } => match content.get(self.part_start)? {
++                ContentItem::InputText { text } => Some(text),
++                // Sampled output offsets/logprobs are opaque; do not fabricate
++                // attribution for a substring of that native payload.
++                _ => None,
++            },
++            ResponseItem::FunctionCallOutput { output, .. }
++            | ResponseItem::CustomToolCallOutput { output, .. } => match &output.body {
++                FunctionCallOutputBody::Text(text) if self.part_start == 0 => Some(text),
++                FunctionCallOutputBody::ContentItems(parts) => match parts.get(self.part_start)? {
++                    FunctionCallOutputContentItem::InputText { text } => Some(text),
++                    _ => None,
++                },
++                _ => None,
++            },
++            _ => None,
+         }
+     }
+ 
+@@ -220,6 +276,21 @@
+         if self.part_start >= self.part_end || self.part_end > atom.parts {
+             return Err(invalid("Invalid historical compaction part range"));
+         }
++        let text_slice = if let Some(range) = &self.text_range {
++            let text = self
++                .text(target)
++                .ok_or_else(|| invalid("Historical text part changed type"))?;
++            if range.len != text.len() || range.start >= range.end {
++                return Err(invalid("Historical text byte coverage changed"));
++            }
++            Some(
++                text.get(range.start..range.end)
++                    .ok_or_else(|| invalid("Historical text range is not UTF-8 aligned"))?
++                    .to_owned(),
++            )
++        } else {
++            None
++        };
+         let source = target
+             .annotated_items()
+             .get(self.source_start..self.source_end)
+@@ -231,9 +302,13 @@
+         items.push(source[atom.item].clone());
+         if atom.whole {
+             if self.part_start != 0 || self.part_end != 1 {
+-                return Err(invalid("Whole historical payload cannot be fragmented"));
+-            }
+-            return Ok(items);
++                return Err(invalid(
++                    "Whole historical payload cannot change part boundaries",
++                ));
++            }
++            if text_slice.is_none() {
++                return Ok(items);
++            }
+         }
+         let item = &mut items
+             .last_mut()
+@@ -243,25 +318,49 @@
+             ResponseItem::Message { .. } => {
+                 let parts = to_annotated_content(item)
+                     .ok_or_else(|| invalid("Historical message lost typed content"))?;
+-                let selected = parts
++                let mut selected = parts
+                     .get(self.part_start..self.part_end)
+                     .ok_or_else(|| invalid("Historical message part range changed"))?
+                     .to_vec();
++                if let Some(text_slice) = &text_slice {
++                    let Some(ContentItem::InputText { text }) =
++                        selected.first_mut().map(|part| part.content_mut())
++                    else {
++                        return Err(invalid("Historical message text view changed type"));
++                    };
++                    *text = text_slice.clone();
++                }
+                 set_annotated_content(item, selected)
+                     .ok_or_else(|| invalid("Historical message lost annotations"))?;
+             }
+             ResponseItem::FunctionCallOutput { output, .. }
+             | ResponseItem::CustomToolCallOutput { output, .. } => {
+-                // Slice a clone through the native API. Text bodies remain intact;
+-                // success, media/detail and the original output identity survive.
+-                if let Some(parts) = output.content_items_mut() {
+-                    let selected = parts
+-                        .get(self.part_start..self.part_end)
+-                        .ok_or_else(|| invalid("Historical output part range changed"))?
+-                        .to_vec();
+-                    *parts = selected;
+-                } else if self.part_start != 0 || self.part_end != 1 {
+-                    return Err(invalid("Plain historical output cannot be fragmented"));
++                // Slice only a clone. Keep the native body variant, success,
++                // media/detail, metadata and original call/output identity.
++                match &mut output.body {
++                    FunctionCallOutputBody::ContentItems(parts) => {
++                        let mut selected = parts
++                            .get(self.part_start..self.part_end)
++                            .ok_or_else(|| invalid("Historical output part range changed"))?
++                            .to_vec();
++                        if let Some(text_slice) = &text_slice {
++                            let Some(FunctionCallOutputContentItem::InputText { text }) =
++                                selected.first_mut()
++                            else {
++                                return Err(invalid("Historical output text view changed type"));
++                            };
++                            *text = text_slice.clone();
++                        }
++                        *parts = selected;
++                    }
++                    FunctionCallOutputBody::Text(text) => {
++                        if self.part_start != 0 || self.part_end != 1 {
++                            return Err(invalid("Plain historical output changed part boundaries"));
++                        }
++                        if let Some(text_slice) = &text_slice {
++                            *text = text_slice.clone();
++                        }
++                    }
+                 }
+             }
+             _ => return Err(invalid("Historical compaction source is not typed content")),
+@@ -287,6 +386,7 @@
+             part_start: self.part_start,
+             part_end: self.part_end,
+             part_count: atom.parts,
++            text_range: self.text_range.clone(),
+             source_turn: self.source_turn.clone(),
+             // Native envelopes intentionally do not implement Serialize.
+             // Hash item + harness provenance, and the internal success bit that
+@@ -363,7 +463,7 @@
+ 
+     pub(super) fn instruction(&self) -> String {
+         let atom = &self.atoms[self.atom_index];
+-        format!(
++        let mut instruction = format!(
+             "Compaction-only partial historical content: original block {}..{}, source content envelope {}, source call envelope {:?}, ordered content unit {} of {}, whole original payload {}, content parts {}..{} of {}. These source positions describe the original history order. This is a view of an already completed historical item, not a new tool invocation or a complete block/output. Other original units and parts still exist and will be read separately. Preserve these parts and the exact previous fresh summary in the next summary; do not execute or repeat historical calls.",
+             self.source_start,
+             self.source_end,
+@@ -371,23 +471,63 @@
+             atom.call.map(|call| self.source_start + call),
+             self.atom_index,
+             self.atoms.len(),
+-            atom.whole,
++            atom.whole && self.text_range.is_none(),
+             self.part_start,
+             self.part_end,
+             atom.parts,
+-        )
+-    }
+-
+-    pub(super) fn shrink(&mut self) -> bool {
++        );
++        if let Some(range) = &self.text_range {
++            instruction.push_str(&format!(
++                " The selected text part contains only UTF-8 bytes {}..{} of its original {} bytes; all other original bytes remain unread until separately summarized.",
++                range.start, range.end, range.len,
++            ));
++        }
++        instruction
++    }
++
++    pub(super) fn shrink(&mut self, target: &ContextManager) -> bool {
+         let count = self.part_end - self.part_start;
+-        if count <= 1 {
+-            return false;
+-        }
+-        self.part_end = self.part_start + count / 2;
++        if count > 1 {
++            self.part_end = self.part_start + count / 2;
++            self.text_range = None;
++            return true;
++        }
++        let Some(text) = self.text(target) else {
++            return false;
++        };
++        let range = self.text_range.clone().unwrap_or(ProjectionTextRange {
++            start: 0,
++            end: text.len(),
++            len: text.len(),
++        });
++        let Some(selected) = text.get(range.start..range.end) else {
++            return false;
++        };
++        // Empty text still belongs to a complete original part. A single scalar
++        // is irreducible and returns the original capacity error unchanged.
++        let Some(first) = selected.chars().next() else {
++            return false;
++        };
++        let mut end = text.floor_char_boundary(range.start + selected.len() / 2);
++        if end == range.start {
++            end += first.len_utf8();
++        }
++        if end >= range.end {
++            return false;
++        }
++        self.text_range = Some(ProjectionTextRange { end, ..range });
+         true
+     }
+ 
+     pub(super) fn advance_parts(&mut self) -> bool {
++        if let Some(range) = &mut self.text_range {
++            if range.end < range.len {
++                range.start = range.end;
++                range.end = range.len;
++                return true;
++            }
++        }
++        self.text_range = None;
+         if self.part_end < self.atoms[self.atom_index].parts {
+             self.part_start = self.part_end;
+             self.part_end = self.atoms[self.atom_index].parts;
+@@ -405,11 +545,21 @@
+ 
+ impl ProjectionReceipt {
+     pub(super) fn starts_source(&self) -> bool {
+-        self.atom_index == 0 && self.part_start == 0
++        self.atom_index == 0
++            && self.part_start == 0
++            && self
++                .text_range
++                .as_ref()
++                .is_none_or(|range| range.start == 0)
+     }
+ 
+     pub(super) fn completes_source(&self) -> bool {
+-        self.atom_index + 1 == self.atom_count && self.part_end == self.part_count
++        self.atom_index + 1 == self.atom_count
++            && self.part_end == self.part_count
++            && self
++                .text_range
++                .as_ref()
++                .is_none_or(|range| range.end == range.len)
+     }
+ 
+     pub(super) fn matches_target(&self, target: &ContextManager) -> bool {
+@@ -433,6 +583,7 @@
+         source.atom_index = self.atom_index;
+         source.part_start = self.part_start;
+         source.part_end = self.part_end;
++        source.text_range = self.text_range.clone();
+         source.receipt(target).is_ok_and(|receipt| receipt == *self)
+     }
+ 
+@@ -447,11 +598,35 @@
+                     && self.call_item == previous.call_item
+                     && self.whole == previous.whole
+                     && self.part_count == previous.part_count
+-                    && self.part_start == previous.part_end
++                    && if let Some(range) = previous
++                        .text_range
++                        .as_ref()
++                        .filter(|range| range.end < range.len)
++                    {
++                        self.part_start == previous.part_start
++                            && self.part_end == previous.part_end
++                            && self.text_range.as_ref().is_some_and(|next| {
++                                next.start == range.end && next.len == range.len
++                            })
++                    } else {
++                        self.part_start == previous.part_end
++                            && self
++                                .text_range
++                                .as_ref()
++                                .is_none_or(|range| range.start == 0)
++                    }
+             } else {
+                 previous.part_end == previous.part_count
++                    && previous
++                        .text_range
++                        .as_ref()
++                        .is_none_or(|range| range.end == range.len)
+                     && self.atom_index == previous.atom_index + 1
+                     && self.part_start == 0
+-            }
+-    }
+-}
++                    && self
++                        .text_range
++                        .as_ref()
++                        .is_none_or(|range| range.start == 0)
++            }
++    }
++}
+--- a/codex-rs/core/src/compact_capacity_projection_tests.rs
++++ b/codex-rs/core/src/compact_capacity_projection_tests.rs
+@@ -24,6 +24,22 @@
+ 
+ fn typed_source(scenario: &str) -> anyhow::Result<Vec<ResponseItem>> {
+     let pair = exact_pair()?;
++    if scenario.starts_with("text_") {
++        let text = if scenario == "text_confirmed" {
++            format!("CONFIRMED-UTF8-TEXT-{}", "甲🙂éZ".repeat(60_000))
++        } else {
++            format!("CAPACITY_OWN_SYNTHETIC_SEED_R43 {}", "x".repeat(512 * 1024))
++        };
++        return Ok(vec![serde_json::from_value(json!({
++            "type":"message", "id":"msg_original-large-text", "role":"user",
++            "status":"completed", "content":[{"type":"input_text","text":text}],
++            "internal_chat_message_metadata_passthrough":{
++                "turn_id":if scenario == "text_confirmed" { serde_json::Value::Null } else { json!(OLD_TURN) },
++                "content_item_kinds":["source-text-part"],
++                "content_item_metadata":[ContentItemMetadata::user()]
++            }
++        }))?]);
++    }
+     if scenario == "function" {
+         let mut call = serde_json::to_value(&pair[0])?;
+         let code = call["input"].as_str().unwrap().to_owned();
+@@ -415,6 +431,7 @@
+ struct ProjectionWireState {
+     accepted_parts: HashMap<String, usize>,
+     accepted_empty: Vec<String>,
++    accepted_text_bytes: usize,
+     projection_requests: usize,
+     rejections: usize,
+     last_summary: Option<String>,
+@@ -427,6 +444,10 @@
+ #[test_case::test_case("cancel"; "real token cancelled after first typed part summary")]
+ #[test_case::test_case("upstream_error"; "later typed part upstream failure installs nothing")]
+ #[test_case::test_case("no_summary"; "later completed without fresh summary installs nothing")]
++#[test_case::test_case("text_cold"; "single historical text 512k bytes budget 256k")]
++#[test_case::test_case("text_confirmed"; "confirmed current turn unicode text budget 256k")]
++#[test_case::test_case("text_cancel"; "real token cancelled after first text byte range summary")]
++#[test_case::test_case("text_upstream_error"; "later text byte range upstream failure installs nothing")]
+ #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+ async fn historical_typed_projection_reads_all_parts_before_one_durable_install(
+     scenario: &str,
+@@ -453,6 +474,22 @@
+         )
+         .await;
+     let mut source = typed_source(scenario)?;
++    if scenario == "text_confirmed" {
++        // A second real ordinary completion grants only this exact captured
++        // prefix authority. The pending/current suffix is appended afterwards.
++        session
++            .record_conversation_items(&turn, turn.model_info(), &source)
++            .await;
++        session
++            .confirm_capacity_completion(
++                &turn,
++                &turn.model_info().slug,
++                session.capture_capacity_send().await,
++                "ordinary-confirmed-current-text",
++            )
++            .await;
++        source.clear();
++    }
+     source.push(user_message("CURRENT-PROTECTED-SUFFIX-AFTER-TYPED-OUTPUT"));
+     session
+         .record_conversation_items(&turn, turn.model_info(), &source)
+@@ -461,8 +498,22 @@
+         .capacity_prefix(&turn, &turn.model_info().slug)
+         .await
+         .expect("native historical prefix");
+-    assert!(prefix.needs_fresh_summary());
++    assert_eq!(prefix.needs_fresh_summary(), scenario != "text_confirmed");
+     let before = session.clone_history().await;
++    if scenario == "text_confirmed" {
++        let (index, item) = before
++            .annotated_items()
++            .iter()
++            .enumerate()
++            .find(|(_, envelope)| matches!(&envelope.item,
++                ResponseItem::Message { id: Some(id), .. } if id.to_string() == "msg_original-large-text"))
++            .expect("the ordinary-confirmed current text remains in the captured source");
++        assert_eq!(item.item.turn_id(), Some(turn.sub_id.as_str()));
++        assert!(
++            index < prefix.prefix.len,
++            "only the actual confirmed prefix grants authority"
++        );
++    }
+     let before_window = session.current_window().await;
+     let checkpoint = session.capacity_checkpoint_for_test().await.unwrap();
+     let cp_path = home
+@@ -481,33 +532,37 @@
+     // Keep independent raw history Original. The official request formatter
+     // selects the wire detail from the actual model capability, never from the
+     // observed request; it clones without changing source bytes or history.
+-    let raw_parts = original
+-        .iter()
+-        .filter_map(|item| {
+-            if item["type"] == "custom_tool_call_output" || item["type"] == "function_call_output" {
+-                item["output"].as_array()
+-            } else if scenario == "message" && item["id"] == "msg_original-seven-part-message" {
+-                item["content"].as_array()
+-            } else {
+-                None
+-            }
+-        })
+-        .flatten()
+-        .collect::<Vec<_>>();
+-    assert_eq!(
+-        raw_parts
++    if !scenario.starts_with("text_") {
++        let raw_parts = original
+             .iter()
+-            .filter(|part| part["type"] == "input_image")
+-            .count(),
+-        7
+-    );
+-    assert!(
+-        raw_parts
+-            .iter()
+-            .filter(|part| part["type"] == "input_image")
+-            .all(|part| part["detail"] == "original"),
+-        "raw native source retains Original detail"
+-    );
++            .filter_map(|item| {
++                if item["type"] == "custom_tool_call_output"
++                    || item["type"] == "function_call_output"
++                {
++                    item["output"].as_array()
++                } else if scenario == "message" && item["id"] == "msg_original-seven-part-message" {
++                    item["content"].as_array()
++                } else {
++                    None
++                }
++            })
++            .flatten()
++            .collect::<Vec<_>>();
++        assert_eq!(
++            raw_parts
++                .iter()
++                .filter(|part| part["type"] == "input_image")
++                .count(),
++            7
++        );
++        assert!(
++            raw_parts
++                .iter()
++                .filter(|part| part["type"] == "input_image")
++                .all(|part| part["detail"] == "original"),
++            "raw native source retains Original detail"
++        );
++    }
+     let expected_wire = Prompt {
+         input: before.raw_items().cloned().collect(),
+         ..Default::default()
+@@ -534,7 +589,9 @@
+             let key = item["call_id"].as_str().unwrap().to_owned();
+             expected_order.push(key.clone());
+             expected.insert(key, item["output"].as_array().unwrap().clone());
+-        } else if scenario == "message" && item["id"] == "msg_original-seven-part-message" {
++        } else if (scenario == "message" && item["id"] == "msg_original-seven-part-message")
++            || (scenario.starts_with("text_") && item["id"] == "msg_original-large-text")
++        {
+             expected_order.push("message".to_owned());
+             expected.insert(
+                 "message".to_owned(),
+@@ -542,14 +599,19 @@
+             );
+         }
+     }
+-    assert_eq!(
+-        expected
+-            .values()
+-            .flat_map(|parts| parts.iter())
+-            .filter(|part| part["type"] == "input_image")
+-            .count(),
+-        7
+-    );
++    if !scenario.starts_with("text_") {
++        assert_eq!(
++            expected
++                .values()
++                .flat_map(|parts| parts.iter())
++                .filter(|part| part["type"] == "input_image")
++                .count(),
++            7
++        );
++    } else {
++        assert_eq!(expected["message"].len(), 1);
++        assert!(expected["message"][0]["text"].as_str().unwrap().len() > 512 * 1024);
++    }
+     let state = Arc::new(Mutex::new(ProjectionWireState::default()));
+     let inspect = Arc::new(tokio::sync::Notify::new());
+     let release = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+@@ -562,8 +624,8 @@
+     Mock::given(method("POST"))
+         .and(path("/v1/responses"))
+         .respond_with(move |request: &wiremock::Request| {
+-            let body: serde_json::Value =
+-                serde_json::from_slice(&native_mock_decoded_json_body(request)).unwrap();
++            let decoded = native_mock_decoded_json_body(request);
++            let body: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
+             assert!(
+                 body.get("tools")
+                     .is_none_or(|tools| tools.as_array().is_some_and(Vec::is_empty)),
+@@ -581,7 +643,7 @@
+                     .and_then(|item| item["content"].as_array())
+                     .map_or(0, Vec::len),
+             );
+-            if images > 6 {
++            if images > 6 || (scenario_owned.starts_with("text_") && decoded.len() > 256 * 1024) {
+                 fixture_state.lock().unwrap().rejections += 1;
+                 return ResponseTemplate::new(413)
+                     .set_body_json(json!({"error":{"message":"fixed six image capacity"}}));
+@@ -651,59 +713,88 @@
+                             || item["type"] == "function_call_output"
+                     })
+                     .collect::<Vec<_>>();
+-                let (key, parts) = if scenario_owned == "message" {
+-                    let message = input
+-                        .iter()
+-                        .find(|item| item["id"] == "msg_original-seven-part-message")
+-                        .expect("original message view");
+-                    (
+-                        "message".to_owned(),
+-                        message["content"].as_array().unwrap().clone(),
+-                    )
+-                } else {
+-                    assert_eq!(
+-                        selected.len(),
+-                        1,
+-                        "one projected completed pair per request"
+-                    );
+-                    let output = selected[0];
+-                    let key = output["call_id"].as_str().unwrap().to_owned();
+-                    let call_type = if output["type"] == "function_call_output" {
+-                        "function_call"
++                let (key, parts) =
++                    if scenario_owned == "message" || scenario_owned.starts_with("text_") {
++                        let message = input
++                            .iter()
++                            .find(|item| {
++                                item["id"]
++                                    == if scenario_owned.starts_with("text_") {
++                                        "msg_original-large-text"
++                                    } else {
++                                        "msg_original-seven-part-message"
++                                    }
++                            })
++                            .expect("original message view");
++                        (
++                            "message".to_owned(),
++                            message["content"].as_array().unwrap().clone(),
++                        )
+                     } else {
+-                        "custom_tool_call"
++                        assert_eq!(
++                            selected.len(),
++                            1,
++                            "one projected completed pair per request"
++                        );
++                        let output = selected[0];
++                        let key = output["call_id"].as_str().unwrap().to_owned();
++                        let call_type = if output["type"] == "function_call_output" {
++                            "function_call"
++                        } else {
++                            "custom_tool_call"
++                        };
++                        let calls = input
++                            .iter()
++                            .filter(|item| item["type"] == call_type && item["call_id"] == key)
++                            .collect::<Vec<_>>();
++                        assert_eq!(calls.len(), 1);
++                        let original_call = &expected_calls[&key];
++                        for field in [
++                            "type",
++                            "id",
++                            "call_id",
++                            "input",
++                            "arguments",
++                            "name",
++                            "namespace",
++                            "status",
++                        ] {
++                            assert_eq!(calls[0][field], original_call[field]);
++                        }
++                        (key, output["output"].as_array().unwrap().clone())
+                     };
+-                    let calls = input
+-                        .iter()
+-                        .filter(|item| item["type"] == call_type && item["call_id"] == key)
+-                        .collect::<Vec<_>>();
+-                    assert_eq!(calls.len(), 1);
+-                    let original_call = &expected_calls[&key];
+-                    for field in [
+-                        "type",
+-                        "id",
+-                        "call_id",
+-                        "input",
+-                        "arguments",
+-                        "name",
+-                        "namespace",
+-                        "status",
+-                    ] {
+-                        assert_eq!(calls[0][field], original_call[field]);
+-                    }
+-                    (key, output["output"].as_array().unwrap().clone())
+-                };
+                 later_failure = observed.projection_requests > 1
+                     && matches!(
+                         scenario_owned.as_str(),
+-                        "upstream_error" | "no_summary" | "cancel"
++                        "upstream_error"
++                            | "no_summary"
++                            | "cancel"
++                            | "text_upstream_error"
++                            | "text_cancel"
+                     );
+                 if later_failure {
+                     block = true;
+                 } else {
+                     let source = &expected_for_mock[&key];
+                     let offset = *observed.accepted_parts.get(&key).unwrap_or(&0);
+-                    if source.is_empty() {
++                    if scenario_owned.starts_with("text_") {
++                        assert_eq!(parts.len(), 1);
++                        let original = source[0]["text"].as_str().unwrap();
++                        let selected = parts[0]["text"].as_str().unwrap();
++                        let start = observed.accepted_text_bytes;
++                        let end = start + selected.len();
++                        assert!(!selected.is_empty(), "byte progress is never empty");
++                        assert!(original.is_char_boundary(start) && original.is_char_boundary(end));
++                        assert_eq!(
++                            selected.as_bytes(),
++                            &original.as_bytes()[start..end],
++                            "each accepted view is the next exact original UTF-8 byte range"
++                        );
++                        observed.accepted_text_bytes = end;
++                        if end == original.len() {
++                            observed.accepted_parts.insert(key.clone(), source.len());
++                        }
++                    } else if source.is_empty() {
+                         assert!(parts.is_empty());
+                         assert!(!observed.accepted_empty.contains(&key));
+                         observed.accepted_empty.push(key.clone());
+@@ -744,7 +835,12 @@
+                     "typed summary release barrier"
+                 );
+             }
+-            if later_failure && scenario_owned == "upstream_error" {
++            if later_failure
++                && matches!(
++                    scenario_owned.as_str(),
++                    "upstream_error" | "text_upstream_error"
++                )
++            {
+                 return ResponseTemplate::new(500).set_body_string("synthetic later part failure");
+             }
+             let mut output = Vec::new();
+@@ -803,7 +899,7 @@
+                 .count(),
+             0
+         );
+-        if scenario == "cancel" {
++        if matches!(scenario, "cancel" | "text_cancel") {
+             token.cancel();
+         }
+         let (lock, condition) = &*release;
+@@ -851,7 +947,10 @@
+     );
+     checked?;
+     session.flush_rollout().await?;
+-    let success = matches!(scenario, "single" | "function" | "parallel" | "message");
++    let success = matches!(
++        scenario,
++        "single" | "function" | "parallel" | "message" | "text_cold" | "text_confirmed"
++    );
+     let after = session.clone_history().await;
+     if success {
+         result?;
+@@ -932,7 +1031,7 @@
+         }
+     } else {
+         let error = result.expect_err("later failure cannot install a partial result");
+-        if scenario == "cancel" {
++        if matches!(scenario, "cancel" | "text_cancel") {
+             assert!(matches!(error.details(), CodexErrorDetails::TurnAborted));
+         }
+         assert_eq!(after.annotated_items(), before.annotated_items());

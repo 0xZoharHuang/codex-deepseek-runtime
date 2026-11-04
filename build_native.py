@@ -151,8 +151,16 @@ def runtime_recipe(recipe_path=None):
     order=['payload-http-transport.patch','payload-too-large.patch','windows-sandbox-isolation.patch','windows-sandbox-help.patch','windows-loopback-policy.patch','windows-wfp-readiness.patch','windows-artifact-readroots.patch','windows-sandbox-runner-home.patch','windows-sandbox-coordination.patch','windows-managed-deny-revoke.patch','windows-runner-junction-root.patch','windows-home-metadata.patch','windows-root-acl-sharing.patch','windows-plugin-git-lifecycle.patch','windows-setup-background-handles.patch','windows-ancestor-metadata.patch','windows-acl-inheritance-lock.patch','windows-critical-read.patch','windows-acl-lifecycle.patch','payload-request-capacity.patch','payload-request-capacity-replay.patch','windows-readable-daemon-scratch.patch','windows-critical-read-deny-readiness.patch','windows-metadata-owner-policy.patch','windows-native-metadata-minimal.patch']
     guardian='guardian-provider-transport-0164.patch'
     migration_eol='migration-checksum-eol-0164.patch'
+    restored_capacity='restored-call-capacity-0164.patch'
+    cancel_owned='capacity-cancel-owned-commit-0164.patch'
+    windows_host='windows-host-boundaries-0164.patch'
+    typed_projection='capacity-historical-typed-projection-0164.patch'
+    windows_station='windows-service-station-bootstrap-0164.patch'
+    text_projection='capacity-historical-text-projection-0164.patch'
+    irreducible_fixture='capacity-irreducible-pair-fixture-0164.patch'
+    reset_old_gap='capacity-token-budget-old-gap-continuation-0164.patch'
     selected=[item.get('file') for item in recipe['overlays']] if isinstance(recipe['overlays'],list) else None
-    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol])
+    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol,restored_capacity,cancel_owned,windows_host,typed_projection,windows_station,text_projection,irreducible_fixture,reset_old_gap])
     if selected!=expected_order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():
@@ -160,7 +168,7 @@ def runtime_recipe(recipe_path=None):
         if not isinstance(inputs,list) or [item.get('file') for item in inputs]!=names or any(set(item)!={'file','sha256'} or not digest(item['sha256']) for item in inputs):raise ValueError('Invalid required native baseline inputs')
     for item in recipe['overlays']:
         if set(item)!={'file','sha256','changes_by_target'} or not digest(item['sha256']):raise ValueError('Invalid native overlay identity')
-        expected_targets=set(PLATFORM_ASSETS) if item['file'].startswith('payload-') or item['file'] in {guardian,migration_eol} else {'x86_64-pc-windows-msvc'}
+        expected_targets=set(PLATFORM_ASSETS) if item['file'].startswith('payload-') or item['file'] in {guardian,migration_eol,restored_capacity,cancel_owned,typed_projection,text_projection,irreducible_fixture,reset_old_gap} else {'x86_64-pc-windows-msvc'}
         if set(item['changes_by_target'])!=expected_targets:raise ValueError('Invalid native overlay target coverage')
         for changes in item['changes_by_target'].values():
             if not isinstance(changes,list) or not changes:raise ValueError('Native overlay needs source hash assertions')

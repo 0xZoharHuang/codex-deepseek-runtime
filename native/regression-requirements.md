@@ -120,3 +120,28 @@ The Windows overlay must admit the concrete reads required by a command before s
 - Preserve the original cold error 267, missing explicit read-leaf denial, and copied-rg error 5/fallback evidence. Unit/source results and a successful build do not replace those installed-artifact checks.
 
 The reviewed change is limited to Windows permission materialization and setup payloads. It must not replace native approval, command dispatch, agent scheduling, session handling or tool execution.
+
+## Restored calls and request-byte compaction candidate
+
+This overlay is not qualified by source replay or compilation. Preserve the P27
+root-interruption failure and use the same owned native workload for the candidate.
+Do not edit saved conversations, synthesize a successful tool result, relax live
+pair protection, raise runtime deadlines or replace native compaction.
+
+- Resume/fork initialization may reuse native aborted outputs for abandoned replay
+  calls. Preserve original items, metadata, media and stable output IDs; repeated
+  cold reconstruction must be idempotent and match its native capacity checkpoint.
+  A live owned call must remain unfinished until its actual output or interruption.
+- After a byte rejection, select a complete useful prefix by serialized native JSON
+  bytes. Keep its sent history and installed boundary equal, with the entire
+  unselected confirmed remainder and new unconsumed suffix unchanged. A large
+  first indivisible item must not cause one trailing-item retry per large upload.
+- A partial replacement may retain attestation for the unchanged previously
+  confirmed remainder only after rechecking the original checkpoint. Never include
+  unconsumed input; retain the original response, completion epoch and attempt fence.
+- Use a mock whose ordinary/compactor rejection follows actual received bytes or
+  image counts, not request number. Assert image reduction, the unseen image/pair's
+  exact retention, same-UUID cold recovery, no duplicate effects and real outcomes.
+- Final scope requires the large real task, two automatic compactions with later
+  ordinary completion, cold/interruption gates and Guardian approvals on the new
+  installed native build. Keep the provider's original 413 and unknown outcomes.

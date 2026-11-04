@@ -384,10 +384,45 @@ def validate_response(response, expected=None):
         raise ProtocolError('Provider completed response contains a contradictory error')
 
 
-def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER) -> tuple[dict, Registry]:
+def provider_failure_diagnostic(event):
+    """Receipt-safe identity of an upstream failure; never persist its message."""
+    kind = event.get("type") if isinstance(event, dict) else None
+    response = event.get("response") if isinstance(event, dict) else None
+    error = response.get("error") if kind == "response.failed" and isinstance(response, dict) else event
+    code = error.get("code") if isinstance(error, dict) else None
+    if not ((type(code) is int and 0 <= code <= 999999) or
+            (isinstance(code, str) and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", code))):
+        code = None
+    try:
+        raw = json.dumps(event, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        digest = hashlib.sha256(raw).hexdigest()
+    except (TypeError, ValueError, UnicodeError):
+        digest = None
+    return {"event_type": kind, "error_code": code, "event_json_sha256": digest,
+            "hash_basis": "canonical_json_utf8"}
+
+
+def redact_provider_failure(value, credential):
+    """Redact the known credential from failure data without changing success identities."""
+    if not isinstance(credential, str) or not credential:
+        return copy.deepcopy(value)
+    if isinstance(value, str):
+        return value.replace(credential, "[REDACTED]")
+    if isinstance(value, list):
+        return [redact_provider_failure(item, credential) for item in value]
+    if isinstance(value, dict):
+        return {redact_provider_failure(key, credential): redact_provider_failure(item, credential)
+                for key, item in value.items()}
+    return value
+
+
+def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER,
+            peer_hosted_provider: str = PEER_HOSTED_PROVIDER) -> tuple[dict, Registry]:
     """Pin the model/provider and convert tool schemas and retained tool history together."""
     if not isinstance(ordinary_default_provider, str) or ordinary_default_provider not in {PROVIDER, STRUCTURED_PROVIDER}:
         raise ProtocolError("Unsupported ordinary default provider")
+    if not isinstance(peer_hosted_provider, str) or peer_hosted_provider not in {PEER_HOSTED_PROVIDER, SERIAL_PROVIDER}:
+        raise ProtocolError("Unsupported peer hosted provider")
     if not isinstance(body, dict):
         raise ProtocolError("Responses request must be an object")
     if body.get("model") != MODEL:
@@ -482,7 +517,7 @@ def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: 
     # or reasoning, and never retry a failed request on a different provider.
     peer_hosted = (registry.peer_context or registry.continuation_context or registry.unattested_history) and mapping[effort]!='none' and any(
         tool.get('type')=='openrouter:web_search' for tool in result['tools'])
-    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else PEER_HOSTED_PROVIDER if peer_hosted else ordinary_default_provider
+    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else peer_hosted_provider if peer_hosted else ordinary_default_provider
     registry.route_reason = ('explicit_serial_tools' if serial else 'strict_json_schema' if upstream_structured else
                              'unattested_native_history_with_hosted_tools' if peer_hosted and registry.unattested_history else
                              'native_peer_or_continuation_with_hosted_tools' if peer_hosted else
@@ -620,6 +655,17 @@ class Events:
         self.argument_diagnostic_count = 0
         self.argument_diagnostics_truncated = False
 
+    def observe_response_id(self, response):
+        """Record correlation only; this neither attests identity nor completes input."""
+        if not isinstance(response, dict) or response.get("id") is None:
+            return
+        identifier = response["id"]
+        if not isinstance(identifier, str) or not identifier:
+            raise ProtocolError("Provider response lacks a valid response ID")
+        if self.response_id and self.response_id != identifier:
+            raise ProtocolError("Provider response ID changed within one stream")
+        self.response_id = identifier
+
     def check_item(self, item, *, final):
         if not isinstance(item,dict):raise ProtocolError('Stream output item must be an object')
         item_id=item.get('id')
@@ -734,11 +780,23 @@ class Events:
         if self.terminal:raise ProtocolError('Provider emitted an event after terminal completion')
         event = copy.deepcopy(original)
         kind = event.get("type", "")
-        if isinstance(event.get("response"), dict) and event["response"].get("id"):
-            if self.response_id and self.response_id!=event['response']['id']:
-                raise ProtocolError('Provider response ID changed within one stream')
-            self.response_id = event["response"]["id"]
+        self.observe_response_id(event.get("response"))
         result = []
+        if kind == "error":
+            if (not isinstance(event.get("message"), str)
+                    or (event.get("code") is not None and not isinstance(event["code"], str))
+                    or (event.get("param") is not None and not isinstance(event["param"], str))):
+                raise ProtocolError("Provider error event has an invalid shape")
+            # The native parser classifies response.failed errors, while its
+            # generic error branch only recognizes a provider-specific flex error.
+            # No provider terminal/response ID is invented by this wire mapping.
+            failure = {"status": "failed", "output": [],
+                       "error": {key: event.get(key) for key in ("code", "message", "param")}}
+            if self.response_id:
+                failure["id"] = self.response_id
+            event = {"type": "response.failed", "response": failure}
+            self.status = "failed"
+            self.terminal = True
         if kind in {"response.output_item.added", "response.output_item.done"}:
             item = event["item"]
             if isinstance(item,dict) and item.get('id') in self.done:
@@ -815,7 +873,16 @@ class Events:
                     preview["sequence_number"] = self.sequence
                     self.sequence += 1
                 return previews
-        if kind in {"response.completed", "response.incomplete", "response.failed"}:
+        if kind == "response.failed":
+            response = event.get("response", {})
+            validate_response(response, "failed")
+            # Failed snapshots may omit already delivered items or contain
+            # unfinished tool arguments. Native consumes their error only:
+            # never re-dispatch tools or impose successful snapshot coverage.
+            self.usage = response.get("usage") or {}
+            self.status = "failed"
+            self.terminal = True
+        elif kind in {"response.completed", "response.incomplete"}:
             response = event.get("response", {})
             validate_response(response,kind.removeprefix('response.'))
             previously_done=set(self.done)

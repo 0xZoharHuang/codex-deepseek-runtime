@@ -1,0 +1,1745 @@
+--- a/codex-rs/core/src/compact.rs
++++ b/codex-rs/core/src/compact.rs
+@@ -321,6 +321,7 @@
+     mut capacity_prefix: Option<CapacityPrefix>,
+     mut capacity_rejection: Option<UnexpectedResponseError>,
+ ) -> CodexResult<String> {
++    capacity_prefix = capacity_prefix.map(CapacityPrefix::for_fresh_summary);
+     let compaction_item = TurnItem::ContextCompaction(ContextCompactionItem::new());
+     sess.emit_turn_item_started(&turn_context, &compaction_item)
+         .await;
+@@ -371,6 +372,9 @@
+     } else {
+         sess.clone_history().await
+     };
++    let mut capacity_work = capacity_prefix
++        .as_ref()
++        .map(|prefix| CapacitySummaryWork::new(prefix.history.clone()));
+     let mut input_goal_ids = UserGoalUpdate::message_ids(history.raw_items());
+     let compact_input: ResponseItem = initial_input_for_turn.into();
+     history.record_items(
+@@ -426,6 +430,11 @@
+             cyber_access_program: turn_context.cyber_access_program,
+             ..Default::default()
+         };
++        let carried_response_id = if let Some(work) = &capacity_work {
++            work.coverage.prompt_carry(&prompt.input)?
++        } else {
++            None
++        };
+         let responses_metadata = sess
+             .compaction_responses_metadata(turn_context.as_ref(), compaction_metadata)
+             .await;
+@@ -447,6 +456,37 @@
+ 
+         match attempt_result {
+             Ok(response) => {
++                if let Some(work) = &mut capacity_work {
++                    if !work.complete_selected(&response, carried_response_id)? {
++                        // Only model-local carry changes here. The native session,
++                        // original target, protected suffix and claimed fence do not.
++                        let selected = work.selected_history();
++                        let user_messages =
++                            collect_annotated_user_messages(selected.annotated_items());
++                        let summary_text = work
++                            .coverage
++                            .carry_summary
++                            .as_deref()
++                            .expect("fresh summary carry");
++                        let carry =
++                            build_compacted_history(Vec::new(), &user_messages, summary_text);
++                        let (carry, _) = build_compaction_replacement_history(
++                            sess.as_ref(),
++                            &replacement_step_context,
++                            &world_state,
++                            carry,
++                        )
++                        .await;
++                        work.advance(carry)?;
++                        history = work.selected_history();
++                        history.record_items(
++                            &[compact_input.clone()],
++                            turn_context.model_info().truncation_policy.into(),
++                        );
++                        retries = 0;
++                        continue;
++                    }
++                }
+                 break response;
+             }
+             Err(err)
+@@ -486,7 +526,12 @@
+                     .as_ref()
+                     .expect("captured manual prefix")
+                     .len;
+-                let Some(next_len) = smaller_manual_prefix(&snapshot.history, selected) else {
++                let next_len = if context_capacity {
++                    smaller_manual_prefix(&snapshot.history, selected)
++                } else {
++                    smaller_request_byte_prefix(&snapshot.history, selected)
++                };
++                let Some(next_len) = next_len else {
+                     return Err(e);
+                 };
+                 if let Some(delay) = e.server_retry_delay() {
+@@ -528,78 +573,83 @@
+                 continue;
+             }
+             Err(e)
+-                if failed_before_response_stream
+-                    && matches!(
+-                        e.details(),
+-                        CodexErrorDetails::UnexpectedStatus(error)
+-                            if error.status == http::StatusCode::PAYLOAD_TOO_LARGE
+-                    )
+-                    // Advice first retains the existing same-request retry budget.
+-                    // Once that budget is spent, shrink only this compaction input.
++                if capacity_prefix.is_some()
++                    && (matches!(e.details(), CodexErrorDetails::ContextWindowExceeded)
++                        || (failed_before_response_stream
++                            && matches!(e.details(), CodexErrorDetails::UnexpectedStatus(error)
++                                if error.status == http::StatusCode::PAYLOAD_TOO_LARGE)
++                            && (e.server_retry_delay().is_none() || retries >= max_retries))) =>
++            {
++                let work = capacity_work
++                    .as_mut()
++                    .expect("capacity summary transaction");
++                let selected = work.selected_len;
++                let next_len = work.smaller_prefix(matches!(
++                    e.details(),
++                    CodexErrorDetails::ContextWindowExceeded
++                ));
++                let Some(next_len) = next_len else {
++                    return Err(e);
++                };
++                if let Some(delay) = e.server_retry_delay() {
++                    tokio::time::sleep(delay).await;
++                }
++                if let CodexErrorDetails::UnexpectedStatus(rejection) = e.details() {
++                    capacity_rejection = Some(rejection.clone());
++                }
++                if next_len <= work.carry_len {
++                    return Err(e);
++                }
++                work.selected_len = next_len;
++                history = work.selected_history();
++                history.record_items(
++                    &[compact_input.clone()],
++                    turn_context.model_info().truncation_policy.into(),
++                );
++                retries = 0;
++                capacity_trims.attempts += 1;
++                capacity_trims.items += selected - next_len;
++                warn!(
++                    selected_items = next_len,
++                    previous_items = selected,
++                    partition_attempts = capacity_trims.attempts,
++                    "Compaction capacity retry selected a smaller complete confirmed prefix; the entire remainder is retained",
++                );
++                continue;
++            }
++            Err(e)
++                if capacity_prefix.is_none()
++                    && failed_before_response_stream
++                    && matches!(e.details(), CodexErrorDetails::UnexpectedStatus(error)
++                        if error.status == http::StatusCode::PAYLOAD_TOO_LARGE)
+                     && (e.server_retry_delay().is_none() || retries >= max_retries) =>
+             {
+-                if capacity_prefix.is_none() {
+-                    // Never trim a last unconsumed user batch or pending tool result.
+-                    let Some(prefix) = sess
+-                        .capacity_prefix(turn_context.as_ref(), &turn_context.model_info().slug)
+-                        .await
+-                    else {
+-                        return Err(e);
+-                    };
+-                    if let CodexErrorDetails::UnexpectedStatus(rejection) = e.details() {
+-                        capacity_rejection = Some(rejection.clone());
+-                    }
+-                    history = prefix.history.clone();
+-                    history.record_items(
+-                        &[compact_input.clone()],
+-                        turn_context.model_info().truncation_policy.into(),
+-                    );
+-                    capacity_prefix = Some(prefix);
+-                    if !warned_capacity {
+-                        warn_capacity_prefix(&sess, &turn_context).await;
+-                        warned_capacity = true;
+-                    }
+-                    if let Some(delay) = e.server_retry_delay() {
+-                        tokio::time::sleep(delay).await;
+-                    }
+-                    retries = 0;
+-                    continue;
++                // Never trim a last unconsumed user batch or pending tool result.
++                let Some(prefix) = sess
++                    .capacity_prefix(turn_context.as_ref(), &turn_context.model_info().slug)
++                    .await
++                else {
++                    return Err(e);
++                };
++                if let CodexErrorDetails::UnexpectedStatus(rejection) = e.details() {
++                    capacity_rejection = Some(rejection.clone());
+                 }
+-                let history_items_before = history.raw_items().count();
+-                if turn_input_len <= 1 || history_items_before <= 2 {
+-                    // This is still a request-byte failure, never a token overflow.
+-                    return Err(e);
++                let prefix = prefix.for_fresh_summary();
++                history = prefix.history.clone();
++                capacity_work = Some(CapacitySummaryWork::new(prefix.history.clone()));
++                capacity_prefix = Some(prefix);
++                history.record_items(
++                    &[compact_input.clone()],
++                    turn_context.model_info().truncation_policy.into(),
++                );
++                if !warned_capacity {
++                    warn_capacity_prefix(&sess, &turn_context).await;
++                    warned_capacity = true;
+                 }
+                 if let Some(delay) = e.server_retry_delay() {
+                     tokio::time::sleep(delay).await;
+                 }
+-                history.remove_first_item();
+-                input_trimmed = true;
+-                let history_items_after = history.raw_items().count();
+-                if history_items_after <= 1 || history_items_after >= history_items_before {
+-                    return Err(e);
+-                }
+                 retries = 0;
+-                capacity_trims.attempts += 1;
+-                capacity_trims.items += history_items_before - history_items_after;
+-                warn!(
+-                    history_items_before,
+-                    history_items_after,
+-                    trim_attempts = capacity_trims.attempts,
+-                    trimmed_items = capacity_trims.items,
+-                    "Compaction request rejected with HTTP 413; trimmed oldest local history item"
+-                );
+-                if !warned_capacity {
+-                    warned_capacity = true;
+-                    sess.send_event(
+-                        &turn_context,
+-                        EventMsg::Warning(WarningEvent {
+-                            message: "Compaction request exceeded request-byte capacity (HTTP 413). Retrying with the oldest item and any paired tool item removed from the compactor's local input. The original session history is retained until compaction completes."
+-                                .to_string(),
+-                        }),
+-                    )
+-                    .await;
+-                }
+                 continue;
+             }
+             Err(e) if matches!(e.details(), CodexErrorDetails::ContextWindowExceeded) => {
+@@ -696,8 +746,13 @@
+                 turn_context: &turn_context,
+                 started_item: None,
+             },
+-            Some(CapacityCheckpointInstallation::Translate {
++            Some(CapacityCheckpointInstallation::FreshSummary {
+                 prefix,
++                coverage: &capacity_work
++                    .as_ref()
++                    .expect("completed capacity transaction")
++                    .coverage,
++                response_id: &compaction_response.response_id,
+                 turn_context: &turn_context,
+             }),
+         )
+@@ -1158,6 +1213,212 @@
+     summary: Option<String>,
+ }
+ 
++// This is local compaction input/coverage state, not an agent or tool executor.
++// A capacity claim remains fenced while all chunks are read. Nothing is installed
++// until the final fresh summary transitively covers the complete captured target.
++pub(crate) struct CapacitySummaryCoverage {
++    target: crate::context_manager::ContextManager,
++    segments: Vec<CapacitySummarySegment>,
++    covered: usize,
++    carry_summary: Option<String>,
++}
++
++struct CapacitySummarySegment {
++    start: usize,
++    end: usize,
++    response_id: String,
++    carried_response_id: Option<String>,
++}
++
++impl CapacitySummaryCoverage {
++    fn prompt_carry(&self, input: &[ResponseItem]) -> CodexResult<Option<String>> {
++        let Some(summary) = &self.carry_summary else {
++            return Ok(None);
++        };
++        let carried = input.iter().any(|item| matches!(item,
++            ResponseItem::Message {content, internal_chat_message_metadata_passthrough: Some(metadata), ..}
++            if metadata.content_item_kinds.as_ref().is_some_and(|kinds| kinds.iter().any(|kind| kind.0 == CompactionSummary::KIND))
++                && content.iter().any(|part| matches!(part, ContentItem::InputText {text} if text == summary))
++        ));
++        if !carried {
++            return Err(CodexErr::InvalidRequest(
++                "Capacity partition lost its exact fresh summary carry".to_owned(),
++            ));
++        }
++        Ok(self
++            .segments
++            .last()
++            .map(|segment| segment.response_id.clone()))
++    }
++
++    pub(crate) fn matches_target(
++        &self,
++        target: &crate::context_manager::ContextManager,
++        final_response_id: &str,
++    ) -> bool {
++        if self.target.annotated_items() != target.annotated_items()
++            || self.covered != target.annotated_items().len()
++            || self.segments.is_empty()
++        {
++            return false;
++        }
++        let mut covered = 0;
++        let mut previous = None;
++        for segment in &self.segments {
++            if segment.start != covered
++                || segment.end <= segment.start
++                || segment.end > self.covered
++                || segment.response_id.is_empty()
++                || segment.carried_response_id.as_deref() != previous
++                || target.pair_safe_prefix_len(segment.end) != segment.end
++            {
++                return false;
++            }
++            covered = segment.end;
++            previous = Some(segment.response_id.as_str());
++        }
++        covered == self.covered && previous == Some(final_response_id)
++    }
++}
++
++struct CapacitySummaryWork {
++    coverage: CapacitySummaryCoverage,
++    working_history: crate::context_manager::ContextManager,
++    carry_len: usize,
++    selected_len: usize,
++}
++
++impl CapacitySummaryWork {
++    fn new(target: crate::context_manager::ContextManager) -> Self {
++        Self {
++            selected_len: target.annotated_items().len(),
++            working_history: target.clone(),
++            carry_len: 0,
++            coverage: CapacitySummaryCoverage {
++                target,
++                segments: Vec::new(),
++                covered: 0,
++                carry_summary: None,
++            },
++        }
++    }
++
++    fn smaller_prefix(&self, context_capacity: bool) -> Option<usize> {
++        let proposed = if context_capacity {
++            self.selected_len / 2
++        } else {
++            request_byte_midpoint(&self.working_history, self.selected_len)?
++        };
++        // Only this transaction's actual fresh carry is already summarized.
++        // Old summaries in the unread original target are still original input.
++        let candidate = |proposed| {
++            let len = self.working_history.pair_safe_prefix_len(proposed);
++            let added = len.checked_sub(self.carry_len)?;
++            let end = self.coverage.covered.checked_add(added)?;
++            (added > 0
++                && len < self.selected_len
++                && end <= self.coverage.target.annotated_items().len()
++                && self.coverage.target.pair_safe_prefix_len(end) == end)
++                .then_some(len)
++        };
++        if let Some(len) = candidate(proposed) {
++            return Some(len);
++        }
++        candidate(self.selected_len.checked_sub(1)?)?;
++        let mut lower = self.carry_len;
++        let mut upper = self.selected_len - 1;
++        while lower < upper {
++            let middle = lower + (upper - lower) / 2;
++            if candidate(middle).is_some() {
++                upper = middle;
++            } else {
++                lower = middle + 1;
++            }
++        }
++        candidate(lower)
++    }
++
++    fn selected_history(&self) -> crate::context_manager::ContextManager {
++        let mut history = self.working_history.clone();
++        history.replace_annotated(
++            self.working_history.annotated_items()[..self.selected_len].to_vec(),
++        );
++        history
++    }
++
++    fn complete_selected(
++        &mut self,
++        response: &CompactionResponse,
++        carried_response_id: Option<String>,
++    ) -> CodexResult<bool> {
++        let summary = response
++            .summary
++            .as_deref()
++            .filter(|summary| !summary.trim().is_empty())
++            .ok_or_else(|| {
++                CodexErr::Stream(
++                    "Local capacity partition completed without a fresh non-empty summary"
++                        .to_owned(),
++                )
++            })?;
++        let added = self
++            .selected_len
++            .checked_sub(self.carry_len)
++            .filter(|added| *added > 0)
++            .ok_or_else(|| {
++                CodexErr::InvalidRequest(
++                    "Capacity partition made no original-input progress".to_owned(),
++                )
++            })?;
++        let end = self
++            .coverage
++            .covered
++            .checked_add(added)
++            .filter(|end| *end <= self.coverage.target.annotated_items().len())
++            .ok_or_else(|| {
++                CodexErr::InvalidRequest(
++                    "Capacity partition exceeded its captured original target".to_owned(),
++                )
++            })?;
++        if self.coverage.target.pair_safe_prefix_len(end) != end
++            || carried_response_id.as_deref()
++                != self
++                    .coverage
++                    .segments
++                    .last()
++                    .map(|segment| segment.response_id.as_str())
++            || response.response_id.is_empty()
++        {
++            return Err(CodexErr::InvalidRequest(
++                "Capacity partition has invalid pair or carry lineage".to_owned(),
++            ));
++        }
++        self.coverage.segments.push(CapacitySummarySegment {
++            start: self.coverage.covered,
++            end,
++            response_id: response.response_id.clone(),
++            carried_response_id,
++        });
++        self.coverage.covered = end;
++        self.coverage.carry_summary = Some(format!("{SUMMARY_PREFIX}\n{summary}"));
++        Ok(end == self.coverage.target.annotated_items().len())
++    }
++
++    fn advance(&mut self, carry: Vec<ResponseItemEnvelope>) -> CodexResult<()> {
++        self.carry_len = carry.len();
++        let mut next = carry;
++        next.extend_from_slice(&self.coverage.target.annotated_items()[self.coverage.covered..]);
++        self.working_history.replace_annotated(next);
++        self.selected_len = self.working_history.annotated_items().len();
++        if self.selected_len <= self.carry_len {
++            return Err(CodexErr::InvalidRequest(
++                "Capacity partition has no remaining original input".to_owned(),
++            ));
++        }
++        Ok(())
++    }
++}
++
+ fn manual_prefix_has_input(items: &[ResponseItemEnvelope]) -> bool {
+     items.iter().any(|envelope| {
+         is_real_user_or_agent_message(&envelope.item)
+@@ -1173,6 +1434,57 @@
+ fn smaller_manual_prefix(
+     history: &crate::context_manager::ContextManager,
+     selected: usize,
++) -> Option<usize> {
++    smaller_prefix(history, selected, selected / 2, false)
++}
++
++fn smaller_request_byte_prefix(
++    history: &crate::context_manager::ContextManager,
++    selected: usize,
++) -> Option<usize> {
++    smaller_prefix(
++        history,
++        selected,
++        request_byte_midpoint(history, selected)?,
++        true,
++    )
++}
++
++fn request_byte_midpoint(
++    history: &crate::context_manager::ContextManager,
++    selected: usize,
++) -> Option<usize> {
++    let items = history.annotated_items();
++    if selected <= 1 || selected > items.len() {
++        return None;
++    }
++    // Count native JSON without allocating another copy of inline media. This
++    // halves a rejected input; it does not claim a provider's byte limit.
++    let sizes = items[..selected]
++        .iter()
++        .map(|item| crate::utils::json::serialized_json_bytes(&item.item).ok())
++        .collect::<Option<Vec<_>>>()?;
++    let total = sizes
++        .iter()
++        .try_fold(0usize, |total, size| total.checked_add(*size))?;
++    let mut bytes = 0usize;
++    let mut proposed = 0;
++    for size in sizes {
++        let next = bytes.checked_add(size)?;
++        if next > total / 2 {
++            break;
++        }
++        bytes = next;
++        proposed += 1;
++    }
++    Some(proposed)
++}
++
++fn smaller_prefix(
++    history: &crate::context_manager::ContextManager,
++    selected: usize,
++    proposed: usize,
++    smallest_fallback: bool,
+ ) -> Option<usize> {
+     let items = history.annotated_items();
+     // The previous native summary and retained context are the starting context,
+@@ -1202,12 +1514,32 @@
+     if selected <= 1 || selected > items.len() {
+         return None;
+     }
+-    candidate(selected / 2).or_else(|| candidate(selected - 1))
++    if let Some(len) = candidate(proposed) {
++        return Some(len);
++    }
++    if !smallest_fallback {
++        return candidate(selected - 1);
++    }
++    // A pair may straddle the byte midpoint. Do not fall back to removing just
++    // one trailing item per large upload. Find the smallest complete useful
++    // prefix in logarithmic boundary checks, or preserve the original error.
++    candidate(selected - 1)?;
++    let mut lower = 0;
++    let mut upper = selected - 1;
++    while lower < upper {
++        let middle = lower + (upper - lower) / 2;
++        if candidate(middle).is_some() {
++            upper = middle;
++        } else {
++            lower = middle + 1;
++        }
++    }
++    candidate(lower)
+ }
+ 
+ async fn warn_capacity_prefix(sess: &Session, turn_context: &TurnContext) {
+     sess.send_event(turn_context, EventMsg::Warning(WarningEvent {
+-        message: "Request-byte capacity was exceeded (HTTP 413). Native compaction will summarize only previously confirmed input; the unconsumed suffix is preserved unchanged. If needed, the oldest item and any paired tool item are removed only from the compactor's local input.".to_owned(),
++        message: "Request-byte capacity was exceeded (HTTP 413). Native compaction will read and freshly summarize a complete historical prefix. Current-turn input and the unselected remainder stay unchanged. No history is replaced without a fresh successful summary; reset authority remains limited to previously confirmed input.".to_owned(),
+     })).await;
+ }
+ 
+--- a/codex-rs/core/src/compact_tests.rs
++++ b/codex-rs/core/src/compact_tests.rs
+@@ -1,4 +1,5 @@
+ use super::*;
++use crate::context_manager::ContextManager;
+ use crate::session::tests::make_session_and_context_with_auth_and_config_and_rx;
+ use crate::tools::context::ToolCallSource;
+ use crate::tools::context::ToolPayload;
+@@ -1015,7 +1016,8 @@
+         prefix,
+         capacity_rejection_for_test(),
+     )
+-    .await?;
++    .await
++    .expect_err("an indivisible original pair rejected in every request cannot be silently excluded from summary coverage");
+     let requests = calls.lock().unwrap().clone();
+     assert!(
+         requests.len() >= 3,
+@@ -1042,8 +1044,11 @@
+         &after.annotated_items()[after.annotated_items().len() - suffix.len()..],
+         suffix.as_slice()
+     );
+-    assert!(after.raw_items().any(|item| matches!(item, ResponseItem::Message {content,..}
+-        if content_items_to_text(content).is_some_and(|text| text.contains("The consumed synthetic work is summarized.")))));
++    assert_eq!(
++        after.annotated_items(),
++        before.annotated_items(),
++        "an incomplete capacity transaction cannot install its partial summaries"
++    );
+     assert!(
+         session
+             .capacity_prefix(&turn, &turn.model_info().slug)
+@@ -1519,6 +1524,10 @@
+         .capacity_prefix(&turn, &turn.model_info().slug)
+         .await
+         .expect("explicit TokenBudget can qualify the same confirmed prefix");
++    assert!(
++        !prefix.needs_fresh_summary(),
++        "current pending input does not replace the native reset path"
++    );
+     // This append happens after the reset captures its prefix but before install.
+     // The existing Prefix installer must retain it together with the pending media.
+     let late_pair = vec![
+@@ -2468,3 +2477,571 @@
+     assert!(session.capacity_checkpoint_for_test().await.is_none());
+     Ok(())
+ }
++
++#[test]
++fn request_capacity_byte_prefix_bounds_dense_data_instead_of_counting_small_notes() {
++    let mut items = vec![ResponseItemEnvelope::new(user_message(
++        "Engineering repair task",
++    ))];
++    for index in 0..100 {
++        items.push(ResponseItemEnvelope::new(user_message(&format!(
++            "Small context note {index}"
++        ))));
++    }
++    for index in 0..4 {
++        let call_id = format!("byte-prefix-{index}");
++        items.push(ResponseItemEnvelope::new(ResponseItem::FunctionCall {
++            status: None,
++            encrypted_content: None,
++            id: None,
++            name: "inspect".to_string(),
++            namespace: None,
++            arguments: "{}".to_string(),
++            encrypted_function_args: None,
++            call_id: call_id.clone(),
++            internal_chat_message_metadata_passthrough: None,
++        }));
++        items.push(ResponseItemEnvelope::new(
++            ResponseItem::FunctionCallOutput {
++                id: None,
++                call_id: Some(call_id),
++                name: None,
++                namespace: None,
++                output: FunctionCallOutputPayload::from_text("data".repeat(8192)),
++                internal_chat_message_metadata_passthrough: None,
++            },
++        ));
++    }
++    let original = items.clone();
++    let mut history = ContextManager::new();
++    history.replace_annotated(items);
++    let selected = smaller_request_byte_prefix(&history, original.len()).expect("byte prefix");
++    assert!(
++        selected > 101,
++        "byte partition must include the dominant tool data"
++    );
++    assert!(selected < original.len());
++    assert_eq!(history.pair_safe_prefix_len(selected), selected);
++    assert_eq!(history.annotated_items(), original.as_slice());
++}
++
++#[test]
++fn request_capacity_byte_prefix_dominant_first_input_does_not_retry_every_trailing_note() {
++    let mut items = vec![ResponseItemEnvelope::new(user_message(
++        &"data".repeat(262144),
++    ))];
++    for index in 1..100 {
++        items.push(ResponseItemEnvelope::new(user_message(&format!(
++            "tiny-{index}"
++        ))));
++    }
++    let mut history = ContextManager::new();
++    history.replace_annotated(items);
++    assert_eq!(smaller_request_byte_prefix(&history, 100), Some(1));
++    assert_eq!(smaller_request_byte_prefix(&history, 1), None);
++}
++
++#[test]
++fn request_capacity_byte_prefix_requires_new_real_input_after_the_previous_summary() {
++    let mut history = ContextManager::new();
++    history.replace_annotated(vec![
++        ResponseItemEnvelope::new(ContextualUserFragment::into(CompactionSummary::new(
++            "already covered",
++        ))),
++        ResponseItemEnvelope::new(user_message("new real task")),
++        ResponseItemEnvelope::new(user_message(&"data".repeat(262144))),
++        ResponseItemEnvelope::new(user_message("tail")),
++    ]);
++    let prefix = smaller_request_byte_prefix(&history, 4).expect("strict useful prefix");
++    assert_eq!(prefix, 2);
++    assert_eq!(smaller_request_byte_prefix(&history, 2), None);
++    assert_eq!(smaller_manual_prefix(&history, 4), Some(2));
++}
++
++/// Native ordinary Responses transport probe, with genuine Completed admission.
++/// The public CLI fixture separately covers the complete agent-turn lifecycle.
++async fn capacity_test_ordinary_request(
++    session: &Session,
++    turn: &TurnContext,
++    step: &StepContext,
++) -> CodexResult<String> {
++    let snapshot = session.capture_capacity_send().await;
++    let input = snapshot
++        .history
++        .clone()
++        .for_prompt(&turn.model_info().input_modalities);
++    let base_instructions = if input
++        .iter()
++        .any(|item| BaseInstructionsFragment::text_from_item(item).is_some())
++    {
++        BaseInstructions {
++            text: String::new(),
++            provenance: None,
++        }
++    } else {
++        session.get_prompt_base_instructions().await
++    };
++    let prompt = Prompt {
++        input,
++        base_instructions,
++        ..Default::default()
++    };
++    let metadata = session
++        .responses_metadata(
++            step,
++            crate::responses_metadata::CodexResponsesRequestKind::Turn,
++        )
++        .await;
++    let mut client = session.services.model_client.new_session();
++    let mut stream = client
++        .stream(
++            &prompt,
++            turn.model_info(),
++            &turn.session_telemetry,
++            None,
++            turn.reasoning_summary(),
++            turn.config.service_tier.clone(),
++            &metadata,
++            &InferenceTraceContext::disabled(),
++        )
++        .await?;
++    while let Some(event) = stream.next().await {
++        if let ResponseEvent::Completed {
++            response_id,
++            token_usage,
++            usage_metadata,
++            ..
++        } = event?
++        {
++            session
++                .record_observed_response_completed(
++                    turn,
++                    &response_id,
++                    token_usage.as_ref(),
++                    usage_metadata.as_ref(),
++                )
++                .await;
++            session
++                .confirm_capacity_completion(turn, &turn.model_info().slug, snapshot, &response_id)
++                .await;
++            return Ok(response_id);
++        }
++    }
++    Err(CodexErr::Stream(
++        "ordinary capacity probe ended without Completed".to_owned(),
++    ))
++}
++
++fn capacity_test_image_count(value: &serde_json::Value) -> usize {
++    match value {
++        serde_json::Value::Object(fields) => {
++            usize::from(fields.get("type").and_then(|v| v.as_str()) == Some("input_image"))
++                + fields
++                    .values()
++                    .map(capacity_test_image_count)
++                    .sum::<usize>()
++        }
++        serde_json::Value::Array(items) => items.iter().map(capacity_test_image_count).sum(),
++        _ => 0,
++    }
++}
++
++#[derive(Default)]
++struct CapacityTransactionWireOracle {
++    covered: usize,
++    previous_summary: Option<String>,
++    segments: Vec<(usize, usize, usize, usize)>,
++    rejections: usize,
++    ordinary: Vec<(usize, usize, bool)>,
++}
++
++#[test_case("full"; "old CP6 direct fresh summary")]
++#[test_case("partial"; "byte-bounded subset preserves all unsent history")]
++#[test_case("no_summary"; "completed without summary cannot install")]
++#[test_case("upstream_error"; "failed upstream cannot install")]
++#[test_case("stale_history"; "changed native lifetime cannot install")]
++#[test_case("stale_auth"; "changed auth owner cannot install")]
++#[test_case("images"; "seven image budget six requires whole transaction")]
++#[test_case("cancel"; "cancelled after partial response cannot install")]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn request_capacity_fresh_summary_recovers_old_cp6_without_manual_or_ordinary_warmup(
++    scenario: &str,
++) -> anyhow::Result<()> {
++    skip_if_no_network!(Ok(()));
++    use wiremock::Mock;
++    use wiremock::ResponseTemplate;
++    use wiremock::matchers::method;
++    use wiremock::matchers::path;
++    let (_home, session, turn, server, events) = manual_partition_test_session().await?;
++    let mark_old = |mut item: ResponseItem| {
++        item.set_turn_id_if_missing("recorded-before-cold-recovery");
++        item
++    };
++    let first = (0..6)
++        .map(|index| {
++            let text = if scenario == "images" {
++                format!("CONFIRMED-SIX-{index}-{}", "e".repeat(8192))
++            } else {
++                format!("CONFIRMED-SIX-{index}")
++            };
++            mark_old(user_message(&text))
++        })
++        .collect::<Vec<_>>();
++    session
++        .record_conversation_items(&turn, turn.model_info(), &first)
++        .await;
++    session
++        .confirm_capacity_completion(
++            &turn,
++            &turn.model_info().slug,
++            session.capture_capacity_send().await,
++            "original-ordinary-epoch-response",
++        )
++        .await;
++    let original_checkpoint =
++        serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++    assert_eq!(original_checkpoint["prefix_len"], 6);
++    let orphan = mark_old(serde_json::from_value(
++        json!({"type":"custom_tool_call","call_id":"cold-orphan","name":"fixture","input":"old interrupted work"}),
++    )?);
++    let mut restored = vec![ResponseItemEnvelope::new(orphan)];
++    crate::context_manager::ContextManager::ensure_restored_call_outputs(&mut restored);
++    let mut historical = restored
++        .into_iter()
++        .map(|item| mark_old(item.item))
++        .collect::<Vec<_>>();
++    if scenario == "images" {
++        for index in 0..7 {
++            historical.push(mark_old(serde_json::from_value(json!({"type":"message","role":"user","content":[
++                {"type":"input_text","text":format!("ORIGINAL-IMAGE-{index}")},
++                {"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMQMgkDAAD4AJ3MaiF4AAAAAElFTkSuQmCC","detail":"high"}
++            ]}))?));
++        }
++    } else {
++        let count = if scenario == "full" { 8 } else { 32 };
++        for index in 0..count {
++            historical.extend(legacy_pair(index, 8192)?.into_iter().map(mark_old));
++        }
++    }
++    let pending = if scenario != "full" {
++        "CURRENT-UNCONSUMED-CANARY".to_owned()
++    } else {
++        format!("CURRENT-UNCONSUMED-CANARY-{}", "p".repeat(80 * 1024))
++    };
++    historical.push(user_message(&pending));
++    session
++        .record_conversation_items(&turn, turn.model_info(), &historical)
++        .await;
++    let before = session.clone_history().await;
++    let full_target = before.annotated_items().len() - 1;
++    let original_values = before
++        .raw_items()
++        .map(serde_json::to_value)
++        .collect::<serde_json::Result<Vec<_>>>()?;
++    let expected_ids = original_values
++        .iter()
++        .enumerate()
++        .map(|(index, item)| {
++            (
++                item["id"]
++                    .as_str()
++                    .expect("native recorded item ID")
++                    .to_owned(),
++                index,
++            )
++        })
++        .collect::<std::collections::HashMap<_, _>>();
++    let oracle = Arc::new(std::sync::Mutex::new(
++        CapacityTransactionWireOracle::default(),
++    ));
++    let observed = Arc::clone(&oracle);
++    let notify = Arc::new(tokio::sync::Notify::new());
++    let barrier = Arc::clone(&notify);
++    let scenario_owned = scenario.to_owned();
++    let compact_prompt = turn
++        .config
++        .compact_prompt
++        .as_deref()
++        .unwrap_or(SUMMARIZATION_PROMPT)
++        .to_owned();
++    let byte_budget = if scenario == "full" {
++        128 * 1024
++    } else {
++        64 * 1024
++    };
++    Mock::given(method("POST")).and(path("/v1/responses")).respond_with(move |request:&wiremock::Request| {
++        let decoded=native_mock_decoded_json_body(request);
++        let body:serde_json::Value=serde_json::from_slice(&decoded).unwrap();
++        let input=body["input"].as_array().unwrap();
++        let image_count=capacity_test_image_count(&body["input"]);
++        let fits=if scenario_owned=="images" {image_count<=6} else {decoded.len()<=byte_budget};
++        let compact=input.last().is_some_and(|item|item["role"]=="user" && item["content"]==json!([{"type":"input_text","text":compact_prompt}]));
++        let mut state=observed.lock().unwrap();
++        if !compact {
++            state.ordinary.push((decoded.len(),image_count,fits));
++            if !fits {return ResponseTemplate::new(413).set_body_string("same fixed capacity for ordinary and compaction");}
++            return ResponseTemplate::new(200).insert_header("content-type","text/event-stream").set_body_string(responses::sse(vec![
++                responses::ev_assistant_message("ordinary-answer","ORDINARY-RESUMED-AFTER-COMPLETE-TRANSACTION"),
++                responses::ev_completed("actual-ordinary-after-capacity"),
++            ]));
++        }
++        let wire=serde_json::to_string(input).unwrap();
++        assert!(!wire.contains("CURRENT-UNCONSUMED-CANARY"));
++        assert!(!wire.contains("CONCURRENT-UNCONSUMED-CANARY"));
++        if let Some(previous)=&state.previous_summary {
++            assert!(input.iter().any(|item|item["content"].as_array().is_some_and(|parts|parts.iter().any(|part|part["text"]==previous.as_str()))),
++                "every later actual model input must carry the exact previous successful fresh summary");
++        }
++        let new_indices=input.iter().filter_map(|item|item["id"].as_str().and_then(|id|expected_ids.get(id)).copied())
++            .filter(|index|*index>=state.covered).collect::<Vec<_>>();
++        let end=state.covered+new_indices.len();
++        assert_eq!(new_indices,(state.covered..end).collect::<Vec<_>>(),"each request must continue the next contiguous original range");
++        assert!(end>state.covered && end<=full_target,"a carry-only or current-input request cannot qualify");
++        for item in input {
++            let Some(index)=item["id"].as_str().and_then(|id|expected_ids.get(id)) else {continue;};
++            if *index<state.covered {continue;}
++            for field in ["role","content","name","namespace","call_id","input","output"] {
++                assert_eq!(item[field],original_values[*index][field],"unread original content cannot change before it is actually sent");
++            }
++        }
++        for index in 0..32 {
++            let id=format!("legacy-partition-{index}");
++            let call=input.iter().any(|item|item["call_id"]==id && item["type"]=="custom_tool_call");
++            let output=input.iter().any(|item|item["call_id"]==id && item["type"]=="custom_tool_call_output");
++            assert_eq!(call,output,"each actual chunk must keep complete call/output pairs");
++        }
++        if !fits {state.rejections+=1;return ResponseTemplate::new(413).set_body_string("same fixed capacity for ordinary and compaction");}
++        barrier.notify_one();
++        if scenario_owned=="upstream_error" && state.covered>0 {
++            return ResponseTemplate::new(503).set_body_string("owned upstream failure").set_delay(std::time::Duration::from_millis(200));
++        }
++        let mut frames=Vec::new();
++        if scenario_owned!="no_summary" || state.covered==0 {
++            let summary=format!("FRESH-SUBSET-SUMMARY-COVERS-THROUGH-{end}");
++            let start=state.covered;state.segments.push((start,end,decoded.len(),image_count));state.covered=end;
++            state.previous_summary=Some(format!("{SUMMARY_PREFIX}\n{summary}"));
++            frames.push(responses::ev_assistant_message("fresh-summary",&summary));
++        }
++        frames.push(responses::ev_completed(&format!("actual-fresh-summary-through-{end}")));
++        ResponseTemplate::new(200).insert_header("content-type","text/event-stream").set_body_string(responses::sse(frames))
++            .set_delay(std::time::Duration::from_millis(200))
++    }).mount(&server).await;
++    let step = session
++        .capture_step_context(
++            Arc::clone(&turn),
++            &tokio_util::sync::CancellationToken::new(),
++        )
++        .await?;
++    let first_error =
++        capacity_test_ordinary_request(session.as_ref(), turn.as_ref(), step.as_ref())
++            .await
++            .expect_err("original ordinary request must truly fail the same fixed budget first");
++    assert!(
++        matches!(first_error.details(),CodexErrorDetails::UnexpectedStatus(error) if error.status==http::StatusCode::PAYLOAD_TOO_LARGE)
++    );
++    assert_eq!(
++        serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?["prefix_len"],
++        6
++    );
++    let prefix = session
++        .capacity_prefix(&turn, &turn.model_info().slug)
++        .await
++        .unwrap();
++    assert_eq!(
++        prefix.prefix.len, 6,
++        "summary-free reset authority stays at six"
++    );
++    let checkpoint_fenced =
++        serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++    assert!(
++        prefix.needs_fresh_summary(),
++        "legacy historical deficit requires an actual fresh summary"
++    );
++    let mut prefix = prefix.for_fresh_summary();
++    assert_eq!(prefix.prefix.len, full_target);
++    if scenario == "stale_auth" {
++        prefix.prefix.auth_owner_generation = Some(
++            prefix
++                .prefix
++                .auth_owner_generation
++                .unwrap_or(0)
++                .wrapping_add(1),
++        );
++    }
++    let world = Arc::new(session.build_world_state_for_step(&step, true).await?);
++    let attempt = run_inline_capacity_compact_task(
++        Arc::clone(&session),
++        Arc::clone(&turn),
++        Arc::clone(&step),
++        world,
++        prefix,
++        capacity_rejection_for_test(),
++    );
++    let late = async {
++        tokio::time::timeout(std::time::Duration::from_secs(20), notify.notified())
++            .await
++            .expect("a real fitting partition must reach the fixture");
++        if scenario == "stale_history" {
++            session
++                .replace_history(vec![user_message("SUPERSEDING-HISTORY-MUST-STAY")], None)
++                .await;
++        } else {
++            session
++                .record_conversation_items(
++                    &turn,
++                    turn.model_info(),
++                    &[user_message("CONCURRENT-UNCONSUMED-CANARY")],
++                )
++                .await;
++        }
++        session.clone_history().await
++    };
++    let (result, at_response) = if scenario == "cancel" {
++        let first_completed = async {
++            loop {
++                let event = events
++                    .recv()
++                    .await
++                    .expect("native event channel remains open");
++                if matches!(&event.msg, EventMsg::RawResponseCompleted(completed)
++                    if completed.response_id.starts_with("actual-fresh-summary-through-"))
++                {
++                    break;
++                }
++            }
++        };
++        let mut running = Box::pin(async { tokio::join!(attempt, late) });
++        tokio::select! {
++            biased;
++            _=first_completed => {
++                // Native task cancellation drops the in-flight compaction future.
++                // This happens after a genuine partial response, before installation.
++                drop(running);
++                (Err(CodexErr::TurnAborted),session.clone_history().await)
++            }
++            result=&mut running => panic!("partial transaction finished before cancellation barrier: {:?}",result.0),
++        }
++    } else {
++        tokio::join!(attempt, late)
++    };
++    let after = session.clone_history().await;
++    let mut completed_compactions = 0;
++    while let Ok(event) = events.try_recv() {
++        if matches!(&event.msg,EventMsg::ItemCompleted(event) if matches!(&event.item,TurnItem::ContextCompaction(_)))
++        {
++            completed_compactions += 1;
++        }
++    }
++    if matches!(scenario, "full" | "partial" | "images") {
++        assert_eq!(
++            completed_compactions, 1,
++            "all model partitions must produce one native compaction installation lifecycle"
++        );
++        result?;
++        {
++            let state = oracle.lock().unwrap();
++            assert_eq!(
++                state.covered, full_target,
++                "every original target item must be in a successful actual request range"
++            );
++            assert_eq!(state.ordinary.len(), 1);
++            assert!(!state.ordinary[0].2);
++            if scenario == "partial" {
++                assert!(state.rejections > 0);
++                assert!(state.segments.len() > 1);
++            }
++            if scenario == "images" {
++                assert!(state.rejections > 0);
++                assert!(state.segments.len() > 1);
++                assert_eq!(
++                    state.segments.first().unwrap().3,
++                    0,
++                    "must exercise the first zero-image summary which previously caused false recovery"
++                );
++                assert!(state.segments.iter().skip(1).any(|segment| segment.3 > 0));
++            }
++        }
++        let suffix = &at_response.annotated_items()[full_target..];
++        assert_eq!(
++            &after.annotated_items()[after.annotated_items().len() - suffix.len()..],
++            suffix,
++            "current and concurrent suffix remain exact"
++        );
++        let translated =
++            serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++        for field in ["response_id", "completed_epoch", "recovery_turn_id"] {
++            assert_eq!(
++                translated[field], checkpoint_fenced[field],
++                "partition summaries cannot rearm ordinary consumption authority"
++            );
++        }
++        assert!(
++            session
++                .capacity_prefix(&turn, &turn.model_info().slug)
++                .await
++                .is_none()
++        );
++        // This is the missing closure: the final ordinary native request must
++        // succeed under exactly the same real capacity predicate, not merely
++        // because one small compactor request completed.
++        assert_eq!(
++            capacity_test_ordinary_request(session.as_ref(), turn.as_ref(), step.as_ref()).await?,
++            "actual-ordinary-after-capacity"
++        );
++        let state = oracle.lock().unwrap();
++        assert_eq!(state.ordinary.len(), 2);
++        assert!(state.ordinary[1].2);
++        if scenario == "images" {
++            assert!(
++                state.ordinary[1].1 < state.ordinary[0].1,
++                "actual ordinary image capacity must progress"
++            );
++        } else {
++            assert!(
++                state.ordinary[1].0 < state.ordinary[0].0,
++                "actual ordinary encoded bytes must decrease"
++            );
++        }
++    } else {
++        assert_eq!(
++            completed_compactions, 0,
++            "failed transactions cannot publish a completed native compaction"
++        );
++        assert!(result.is_err());
++        assert_eq!(
++            after.annotated_items(),
++            at_response.annotated_items(),
++            "any partition failure or stale scope must prevent every native installation"
++        );
++        if scenario == "cancel" {
++            let state = oracle.lock().unwrap();
++            assert!(state.covered > 0 && state.covered < full_target);
++            assert_eq!(
++                &after.annotated_items()[..before.annotated_items().len()],
++                before.annotated_items(),
++                "cancelling after a genuine partial completion cannot install or alter any original item"
++            );
++            assert_eq!(
++                after.annotated_items().len(),
++                before.annotated_items().len() + 1,
++                "only the authorized concurrent input was appended"
++            );
++        }
++        if matches!(scenario, "no_summary" | "upstream_error") {
++            let state = oracle.lock().unwrap();
++            assert!(
++                state.covered > 0 && state.covered < full_target,
++                "fault must happen after a genuinely successful partial summary"
++            );
++        }
++        if scenario != "stale_history" {
++            assert!(
++                session
++                    .capacity_prefix(&turn, &turn.model_info().slug)
++                    .await
++                    .is_none()
++            );
++        }
++    }
++    Ok(())
++}
+--- a/codex-rs/core/src/context_manager/history.rs
++++ b/codex-rs/core/src/context_manager/history.rs
+@@ -597,6 +597,12 @@
+         source
+     }
+ 
++    /// Complete abandoned calls only while installing resumed or forked history.
++    /// Live recording and its unfinished-pair protection remain unchanged.
++    pub(crate) fn ensure_restored_call_outputs(items: &mut Vec<ResponseItemEnvelope>) {
++        normalize::ensure_restored_call_outputs_present(items);
++    }
++
+     /// Returns the history prepared for sending to the model. This applies a proper
+     /// normalization and drops un-suited items. Unsupported image and audio content
+     /// is stripped from messages and tool outputs according to `input_modalities`.
+@@ -707,6 +713,45 @@
+             }
+             len = protected_from;
+         }
++    }
++
++    /// Select historical input for a new summary, never for an unproven reset.
++    /// Keep the current turn and any ambiguously attributed item in the suffix.
++    pub(crate) fn fresh_capacity_summary_prefix_len(
++        &self,
++        confirmed_len: usize,
++        current_turn: &str,
++    ) -> Option<usize> {
++        let items = self.annotated_items();
++        if current_turn.is_empty() || confirmed_len > items.len() {
++            return None;
++        }
++        // Rebuilt initial context may carry the current turn ID inside the
++        // already confirmed prefix. It does not turn that proven prefix into
++        // unconsumed input. Search only the not-yet-confirmed suffix boundary.
++        let current_start =
++            items
++                .iter()
++                .enumerate()
++                .skip(confirmed_len)
++                .find_map(|(index, item)| {
++                    (item.item.turn_id() == Some(current_turn)).then_some(index)
++                })?;
++        if current_start <= confirmed_len {
++            return None;
++        }
++        let mut end = current_start;
++        for index in confirmed_len..current_start {
++            // A known call alone cannot establish an existing output's turn.
++            // Native replay stamps only the synthetic outputs it actually creates.
++            // Every remaining unknown item stays in the protected suffix.
++            if items[index].item.turn_id().is_none() {
++                end = index;
++                break;
++            }
++        }
++        let len = self.pair_safe_prefix_len(end);
++        (len > confirmed_len).then_some(len)
+     }
+ 
+     pub(crate) fn remove_first_item(&mut self) {
+--- a/codex-rs/core/src/context_manager/history_tests.rs
++++ b/codex-rs/core/src/context_manager/history_tests.rs
+@@ -3707,3 +3707,252 @@
+     assert_eq!(history.pair_safe_prefix_len(2), 2);
+     assert_eq!(raw_items(&history), before);
+ }
++
++#[test_case("function"; "function")]
++#[test_case("custom"; "custom")]
++#[test_case("local_shell"; "local_shell")]
++#[test_case("tool_search"; "tool_search")]
++fn request_capacity_restored_calls_use_native_aborted_outputs_without_mutating_live_history(
++    kind: &str,
++) {
++    let (mut call, _) = request_capacity_pair(kind);
++    call.set_turn_id_if_missing("known-recorded-call-turn");
++    let live = create_history_with_items(vec![
++        user_msg("recorded authorization"),
++        call,
++        user_msg("later unconsumed instruction"),
++    ]);
++    let original = live.annotated_items().to_vec();
++    assert_eq!(live.pair_safe_prefix_len(original.len()), 1);
++    let mut restored = original.clone();
++    ContextManager::ensure_restored_call_outputs(&mut restored);
++    assert_eq!(restored.len(), original.len() + 1);
++    assert_eq!(restored[0], original[0]);
++    assert_eq!(restored[1], original[1]);
++    assert_eq!(restored[3], original[2]);
++    assert!(restored[2].metadata.is_none());
++    assert_eq!(
++        restored[2].item.turn_id(),
++        Some("known-recorded-call-turn"),
++        "only an actually created replay output inherits its known source call turn"
++    );
++    match &restored[2].item {
++        ResponseItem::FunctionCallOutput { output, .. }
++        | ResponseItem::CustomToolCallOutput { output, .. } => {
++            assert_eq!(
++                output,
++                &FunctionCallOutputPayload::from_text("aborted".to_string())
++            );
++        }
++        ResponseItem::ToolSearchOutput { tools, .. } => assert!(tools.is_empty()),
++        other => panic!("unexpected restored output: {other:?}"),
++    }
++    let once = restored.clone();
++    ContextManager::ensure_restored_call_outputs(&mut restored);
++    assert_eq!(restored, once);
++    assert_eq!(live.annotated_items(), original.as_slice());
++    assert_eq!(live.pair_safe_prefix_len(original.len()), 1);
++    if matches!(kind, "function" | "tool_search") {
++        let prompt = live.clone().for_prompt(&[]);
++        assert_eq!(
++            prompt[2].turn_id(),
++            None,
++            "the existing live prompt-only normalization must not acquire replay attribution"
++        );
++    }
++    let (unknown_call, _) = request_capacity_pair(kind);
++    let mut unknown = vec![ResponseItemEnvelope::new(unknown_call)];
++    ContextManager::ensure_restored_call_outputs(&mut unknown);
++    assert_eq!(
++        unknown[1].item.turn_id(),
++        None,
++        "replay cannot invent a turn for an unattributed source call"
++    );
++}
++
++#[test]
++fn request_capacity_restored_custom_call_output_id_is_stable_across_independent_rebuilds() {
++    let (mut call, _) = request_capacity_pair("custom");
++    if let ResponseItem::CustomToolCall { id, .. } = &mut call {
++        *id = Some(codex_protocol::ResponseItemId::with_suffix(
++            "ct",
++            uuid::Uuid::from_u128(17),
++        ));
++    }
++    call.set_turn_id_if_missing("stable-original-call-turn");
++    let original = vec![ResponseItemEnvelope::new(call)];
++    let mut first = original.clone();
++    let mut second = original;
++    ContextManager::ensure_restored_call_outputs(&mut first);
++    ContextManager::ensure_restored_call_outputs(&mut second);
++    assert_eq!(first, second);
++    assert!(first[1].item.id().is_some());
++    assert_eq!(first[1].item.turn_id(), Some("stable-original-call-turn"));
++    assert_eq!(
++        first[1].item.turn_id(),
++        second[1].item.turn_id(),
++        "independent cold reconstruction preserves both ID and turn"
++    );
++}
++
++fn capacity_old_turn_item(mut item: ResponseItem) -> ResponseItem {
++    item.set_turn_id_if_missing("recorded-old-turn");
++    item
++}
++
++#[test]
++fn request_capacity_fresh_summary_keeps_current_turn_and_completes_only_restored_old_pairs() {
++    let mut items = (0..6)
++        .map(|index| {
++            ResponseItemEnvelope::new(capacity_old_turn_item(user_msg(&format!("old {index}"))))
++        })
++        .collect::<Vec<_>>();
++    let (call, _) = request_capacity_pair("custom");
++    items.push(ResponseItemEnvelope::new(capacity_old_turn_item(call)));
++    items.push(ResponseItemEnvelope::new(capacity_old_turn_item(user_msg(
++        "old image observation",
++    ))));
++    let mut current = user_msg("current unconsumed request");
++    current.set_turn_id_if_missing("current-turn");
++    items.push(ResponseItemEnvelope::new(current));
++    let mut live = ContextManager::new();
++    live.replace_annotated(items.clone());
++    assert_eq!(
++        live.fresh_capacity_summary_prefix_len(6, "current-turn"),
++        None
++    );
++    ContextManager::ensure_restored_call_outputs(&mut items);
++    let mut restored = ContextManager::new();
++    restored.replace_annotated(items);
++    assert_eq!(
++        restored.fresh_capacity_summary_prefix_len(6, "current-turn"),
++        Some(9)
++    );
++    assert_eq!(
++        live.pair_safe_prefix_len(8),
++        6,
++        "live unfinished call remains protected"
++    );
++    for kind in ["function", "custom", "local_shell", "tool_search"] {
++        let (call, mut output) = request_capacity_pair(kind);
++        match &mut output {
++            ResponseItem::FunctionCallOutput { output, .. }
++            | ResponseItem::CustomToolCallOutput { output, .. } => {
++                *output = FunctionCallOutputPayload::from_text("aborted".to_owned());
++            }
++            ResponseItem::ToolSearchOutput {
++                tools,
++                status,
++                execution,
++                ..
++            } => {
++                tools.clear();
++                *status = "completed".to_owned();
++                *execution = "client".to_owned();
++            }
++            _ => panic!("unexpected pair output"),
++        }
++        output.set_id(Some(codex_protocol::ResponseItemId::with_suffix(
++            "unknown",
++            uuid::Uuid::from_u128(989),
++        )));
++        assert_eq!(output.turn_id(), None);
++        let mut current = user_msg("known current input");
++        current.set_turn_id_if_missing("current-turn");
++        let mut ambiguous = vec![
++            ResponseItemEnvelope::new(capacity_old_turn_item(user_msg("confirmed"))),
++            ResponseItemEnvelope::new(capacity_old_turn_item(call)),
++            ResponseItemEnvelope::new(output),
++            ResponseItemEnvelope::new(capacity_old_turn_item(user_msg("old after unknown"))),
++            ResponseItemEnvelope::new(current),
++        ];
++        let original = ambiguous.clone();
++        ContextManager::ensure_restored_call_outputs(&mut ambiguous);
++        assert_eq!(
++            ambiguous, original,
++            "an existing unattributed aborted-looking output must never be stamped by replay"
++        );
++        let mut unknown_history = ContextManager::new();
++        unknown_history.replace_annotated(ambiguous);
++        assert_eq!(
++            unknown_history.fresh_capacity_summary_prefix_len(1, "current-turn"),
++            None,
++            "arbitrary-ID aborted or empty-search output cannot bypass the unknown suffix boundary: {kind}"
++        );
++    }
++}
++
++#[test]
++fn request_capacity_fresh_summary_requires_current_turn_and_stops_before_ambiguous_input() {
++    let mut history = ContextManager::new();
++    let mut current = user_msg("current");
++    current.set_turn_id_if_missing("current-turn");
++    history.replace_annotated(vec![
++        ResponseItemEnvelope::new(capacity_old_turn_item(user_msg("confirmed"))),
++        ResponseItemEnvelope::new(capacity_old_turn_item(user_msg("historical"))),
++        ResponseItemEnvelope::new(user_msg("ambiguous may be unconsumed")),
++        ResponseItemEnvelope::new(current),
++    ]);
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(1, "current-turn"),
++        Some(2)
++    );
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(1, "missing-turn"),
++        None
++    );
++    assert_eq!(history.fresh_capacity_summary_prefix_len(1, ""), None);
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(4, "current-turn"),
++        None
++    );
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(5, "current-turn"),
++        None
++    );
++
++    // Native compaction rebuilds initial context using the current turn stamp.
++    // Confirmed items must not hide the later old-turn expansion boundary.
++    let stamped_current = |text: &str| {
++        let mut item = user_msg(text);
++        item.set_turn_id_if_missing("current-turn");
++        ResponseItemEnvelope::new(item)
++    };
++    let mut rebuilt = (0..6)
++        .map(|index| stamped_current(&format!("confirmed context {index}")))
++        .collect::<Vec<_>>();
++    rebuilt.push(ResponseItemEnvelope::new(capacity_old_turn_item(user_msg(
++        "old observation A",
++    ))));
++    rebuilt.push(ResponseItemEnvelope::new(capacity_old_turn_item(user_msg(
++        "old observation B",
++    ))));
++    rebuilt.push(stamped_current("actual unconsumed current input"));
++    history.replace_annotated(rebuilt);
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(6, "current-turn"),
++        Some(8),
++        "current stamps in the confirmed six cannot block fresh reading of old suffix input"
++    );
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(8, "current-turn"),
++        None,
++        "the first not-yet-confirmed current item remains protected"
++    );
++}
++
++#[test]
++fn request_capacity_fresh_summary_does_not_cross_pair_ending_in_current_turn() {
++    let (call, mut output) = request_capacity_pair("function");
++    output.set_turn_id_if_missing("current-turn");
++    let mut history = ContextManager::new();
++    history.replace_annotated(vec![
++        ResponseItemEnvelope::new(capacity_old_turn_item(user_msg("confirmed"))),
++        ResponseItemEnvelope::new(capacity_old_turn_item(call)),
++        ResponseItemEnvelope::new(output),
++    ]);
++    assert_eq!(
++        history.fresh_capacity_summary_prefix_len(1, "current-turn"),
++        None
++    );
++}
+--- a/codex-rs/core/src/context_manager/normalize.rs
++++ b/codex-rs/core/src/context_manager/normalize.rs
+@@ -19,6 +19,16 @@
+ const SYNTHETIC_OUTPUT_ID_NAMESPACE: Uuid = Uuid::from_u128(0x90d38d3e_6a5b_4d52_bfe2_2f1e634bfac4);
+ 
+ pub(crate) fn ensure_call_outputs_present(items: &mut Vec<ResponseItemEnvelope>) {
++    ensure_call_outputs_present_inner(items, false);
++}
++
++// Replay installation owns no live tool work. Use the same native aborted
++// outputs for unfinished historical calls that prompt normalization already uses.
++pub(crate) fn ensure_restored_call_outputs_present(items: &mut Vec<ResponseItemEnvelope>) {
++    ensure_call_outputs_present_inner(items, true);
++}
++
++fn ensure_call_outputs_present_inner(items: &mut Vec<ResponseItemEnvelope>, restored: bool) {
+     let mut function_output_ids = HashSet::new();
+     let mut tool_search_output_ids = HashSet::new();
+     let mut custom_tool_output_ids = HashSet::new();
+@@ -89,10 +99,11 @@
+             {
+                 // Preserved-prefix forks mark copied calls as inherited. A call still
+                 // running in the parent has no output in the child's snapshot.
+-                if !envelope
+-                    .metadata
+-                    .as_ref()
+-                    .is_some_and(|metadata| metadata.inherited_user_message)
++                if !restored
++                    && !envelope
++                        .metadata
++                        .as_ref()
++                        .is_some_and(|metadata| metadata.inherited_user_message)
+                 {
+                     error_or_panic(format!(
+                         "Custom tool call output is missing for call id: {call_id}"
+@@ -117,10 +128,11 @@
+             } if !function_output_ids.contains(call_id.as_str()) => {
+                 // Preserved-prefix forks mark copied calls as inherited. A call still
+                 // running in the parent has no output in the child's snapshot.
+-                if !envelope
+-                    .metadata
+-                    .as_ref()
+-                    .is_some_and(|metadata| metadata.inherited_user_message)
++                if !restored
++                    && !envelope
++                        .metadata
++                        .as_ref()
++                        .is_some_and(|metadata| metadata.inherited_user_message)
+                 {
+                     error_or_panic(format!(
+                         "Local shell call output is missing for call id: {call_id}"
+@@ -148,7 +160,12 @@
+     ));
+ 
+     // Insert synthetic outputs in reverse index order to avoid re-indexing.
+-    for (idx, output_item) in missing_outputs_to_insert.into_iter().rev() {
++    for (idx, mut output_item) in missing_outputs_to_insert.into_iter().rev() {
++        // Only outputs created by this replay installation inherit their call's
++        // known turn. Existing outputs and live prompt normalization are unchanged.
++        if restored && let Some(turn_id) = items[idx].item.turn_id() {
++            output_item.item.set_turn_id_if_missing(turn_id);
++        }
+         items.insert(idx + 1, output_item);
+     }
+ }
+--- a/codex-rs/core/src/session/mod.rs
++++ b/codex-rs/core/src/session/mod.rs
+@@ -479,12 +479,32 @@
+     }
+ }
+ 
+-/// A confirmed prefix; the live suffix is owned by the existing Prefix installer.
++/// A confirmed anchor. Only fresh summarization may select its captured historical extension.
+ pub(crate) struct CapacityPrefix {
+     pub(crate) history: ContextManager,
+     pub(crate) prefix: CompactionPrefix,
+     checkpoint: request_capacity::Checkpoint,
+     home: PathBuf,
++    fresh_summary_history: Option<ContextManager>,
++}
++
++impl CapacityPrefix {
++    /// A cold legacy cursor cannot authorize resetting unread historical input.
++    pub(crate) fn needs_fresh_summary(&self) -> bool {
++        self.fresh_summary_history
++            .as_ref()
++            .is_some_and(|history| history.annotated_items().len() > self.prefix.len)
++    }
++
++    /// This extension is not a consumption proof and may never authorize a reset.
++    /// Its exact contents must be read by a fresh successful summary first.
++    pub(crate) fn for_fresh_summary(mut self) -> Self {
++        if let Some(history) = self.fresh_summary_history.take() {
++            self.prefix.len = history.annotated_items().len();
++            self.history = history;
++        }
++        self
++    }
+ }
+ 
+ /// Passed only by local compaction; does not alter the rollout history schema.
+@@ -495,6 +515,12 @@
+     },
+     TranslateReset {
+         prefix: &'a CapacityPrefix,
++        turn_context: &'a TurnContext,
++    },
++    FreshSummary {
++        prefix: &'a CapacityPrefix,
++        coverage: &'a crate::compact::CapacitySummaryCoverage,
++        response_id: &'a str,
+         turn_context: &'a TurnContext,
+     },
+     ManualGenesis {
+@@ -1909,6 +1935,12 @@
+             .zip(metadata)
+             .map(|(item, metadata)| ResponseItemEnvelope { item, metadata })
+             .collect();
++        // This session has no live tool work from the restored history. Materialize
++        // the existing native aborted-output normalization before installation so
++        // capacity pairing agrees with the model-visible replay. The recorded
++        // rollout and all original items remain unchanged; live recording does not
++        // use this path.
++        ContextManager::ensure_restored_call_outputs(&mut history);
+         let context = crate::guardian::GuardianReviewContext::from(turn_context);
+         let (_, reviewer) = crate::guardian::resolve_review_model(self, &context).await;
+         let reviewer_compaction_hash = reviewer.comp_hash.clone();
+@@ -4375,6 +4407,46 @@
+                         return false;
+                     }
+                     let current = state.history.annotated_items();
++                    let confirmed_remainder = match capacity.as_ref() {
++                        Some(CapacityCheckpointInstallation::FreshSummary {
++                            prefix: proof,
++                            coverage,
++                            response_id,
++                            ..
++                        }) => {
++                            // A new summary proves only the exact subset sent this time.
++                            // The old checkpoint remains the scope/fence authority, not
++                            // authority to silently discard its unconfirmed remainder.
++                            if !coverage.matches_target(&proof.history, response_id)
++                                || proof.prefix.len != prefix.len
++                                || proof.history.annotated_items().len() != prefix.len
++                                || proof.history.annotated_items() != &current[..prefix.len]
++                                || !matches!(proof.checkpoint.matches_prefix(current), Ok(true))
++                            {
++                                return false;
++                            }
++                            proof.checkpoint.prefix_len.saturating_sub(prefix.len)
++                        }
++                        Some(
++                            CapacityCheckpointInstallation::Translate { prefix: proof, .. }
++                            | CapacityCheckpointInstallation::TranslateReset {
++                                prefix: proof, ..
++                            },
++                        ) => {
++                            if proof.prefix.len != prefix.len
++                                || !matches!(proof.checkpoint.matches_prefix(current), Ok(true))
++                            {
++                                return false;
++                            }
++                            let Some(remainder) =
++                                proof.checkpoint.prefix_len.checked_sub(prefix.len)
++                            else {
++                                return false;
++                            };
++                            remainder
++                        }
++                        _ => 0,
++                    };
+                     let suffix = &current[prefix.len..];
+                     if suffix.iter().any(|envelope| {
+                         crate::compact_retained_tool_outputs::is_retained_tool_output(envelope)
+@@ -4391,7 +4463,10 @@
+                         0..0,
+                         prefix_context.into_iter().map(ResponseItemEnvelope::new),
+                     );
+-                    confirmed_prefix_len = items.len();
++                    let Some(confirmed_len) = items.len().checked_add(confirmed_remainder) else {
++                        return false;
++                    };
++                    confirmed_prefix_len = confirmed_len;
+                     items.extend_from_slice(suffix);
+                     // The unchanged suffix already contains updates through this baseline.
+                     if let Some(checkpoint) = state.history.world_state_checkpoint() {
+@@ -4516,12 +4591,13 @@
+             let mut state = self.state.lock().await;
+             state.queue_pending_session_start_source(codex_hooks::SessionStartSource::Compact);
+         }
+-        // The exact receipt excludes the unchanged protected suffix. Publication failure
++        // The exact receipt excludes unconsumed suffix items. Publication failure
+         // only removes cold recovery availability; it cannot undo a history replacement.
+         if let (Some(capacity), Some(receipt)) = (capacity, capacity_receipt) {
+             let capacity_turn = match &capacity {
+                 CapacityCheckpointInstallation::Translate { turn_context, .. }
+                 | CapacityCheckpointInstallation::TranslateReset { turn_context, .. }
++                | CapacityCheckpointInstallation::FreshSummary { turn_context, .. }
+                 | CapacityCheckpointInstallation::ManualGenesis { turn_context, .. } => {
+                     *turn_context
+                 }
+@@ -4542,6 +4618,11 @@
+                 | CapacityCheckpointInstallation::TranslateReset {
+                     prefix,
+                     turn_context,
++                }
++                | CapacityCheckpointInstallation::FreshSummary {
++                    prefix,
++                    turn_context,
++                    ..
+                 } => {
+                     self.translate_capacity_checkpoint(prefix, receipt, turn_context)
+                         .await;
+@@ -5221,6 +5302,17 @@
+         }
+         // Fence publication precedes the attempt even if this lifetime changed meanwhile.
+         state.request_capacity_checkpoint = Some(checkpoint.clone());
++        // Capture an optional old-turn extension from this exact snapshot.
++        // Missing or ambiguous turn attribution stops expansion conservatively.
++        // The ordinary confirmed checkpoint and all reset paths stay unchanged.
++        let fresh_summary_history = snapshot
++            .history
++            .fresh_capacity_summary_prefix_len(checkpoint.prefix_len, &turn_context.sub_id)
++            .map(|len| {
++                let mut history = snapshot.history.clone();
++                history.replace_annotated(snapshot.history.annotated_items()[..len].to_vec());
++                history
++            });
+         let mut prefix_history = snapshot.history;
+         prefix_history
+             .replace_annotated(prefix_history.annotated_items()[..checkpoint.prefix_len].to_vec());
+@@ -5233,6 +5325,7 @@
+             },
+             checkpoint,
+             home: prefix_home,
++            fresh_summary_history,
+         })
+     }
+ 
+--- a/codex-rs/core/src/session/turn.rs
++++ b/codex-rs/core/src/session/turn.rs
+@@ -627,7 +627,18 @@
+                 CodexErrorDetails::UnexpectedStatus(error) => error.clone(),
+                 _ => unreachable!("known HTTP413"),
+             };
+-            let recovered = if turn_context.config.features.enabled(Feature::TokenBudget) {
++            let token_budget_enabled = turn_context.config.features.enabled(Feature::TokenBudget);
++            let historical_summary_required = prefix.needs_fresh_summary();
++            if token_budget_enabled && historical_summary_required {
++                sess.send_event(
++                    turn_context.as_ref(),
++                    EventMsg::Warning(codex_protocol::protocol::WarningEvent {
++                        message: "Request-byte recovery found historical input beyond its confirmed cursor. Native compaction must read that history before replacing it; token-budget reset remains enabled.".to_owned(),
++                    }),
++                )
++                .await;
++            }
++            let recovered = if token_budget_enabled && !historical_summary_required {
+                 crate::compact_token_budget::run_inline_capacity_reset_task(
+                     Arc::clone(&sess),
+                     Arc::clone(&step_context),

@@ -311,7 +311,7 @@ async def test_real_cli_retry_classification(tmp_path,monkeypatch,status,retry_a
 
 
 def compaction_wire_capacity_progress(rows,expected_base):
-    """Auto compactor: confirmed prefix first, then native local oldest-item removal."""
+    """HTTP413 recovery reads an exact captured historical-prefix transaction."""
     prompt={'type':'message','role':'user','content':[{'type':'input_text','text':COMPACT}]}
     selected=[]
     for row in rows:
@@ -327,14 +327,14 @@ def compaction_wire_capacity_progress(rows,expected_base):
     assert len(selected)>1 and all(selected)
     # First rejection can switch from full input to a previously confirmed send snapshot.
     assert len(selected[1])<len(selected[0]) and selected[1]==selected[0][:len(selected[1])]
-    # Existing Auto compaction trims oldest local items; Manual uses a separate prefix partition.
+    # Captured capacity recovery reads the oldest unread original prefix first.
     for previous,current in zip(selected[1:],selected[2:]):
-        assert len(current)<len(previous) and current==previous[-len(current):]
+        assert len(current)<len(previous) and current==previous[:len(current)]
     assert len(rows)<=len(selected[0])+1,'Every recovery request must make finite item progress'
     assert len({row['sha256'] for row in rows})==len(rows),'No advice means no identical-body transport replay'
     assert all(right['bytes']<left['bytes'] for left,right in zip(rows,rows[1:]))
     return {'request_input_items':[len(items) for items in selected],
-            'first_transition':'strict_confirmed_prefix','later_transition':'strict_local_suffix',
+            'first_transition':'strict_confirmed_prefix','later_transition':'strict_unread_prefix',
             'all_full_item_json_hashes_preserved':True,'base_sha256':hashlib.sha256(capacity_exact(expected_base)).hexdigest()}
 
 

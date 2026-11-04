@@ -1,20 +1,22 @@
 # Codex CLI + DeepSeek
 
-**CDS 0.6.9：原生 Codex CLI runtime + 固定 DeepSeek 模型。** 下载与可用资产以[v0.6.9发布页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)及其摘要/回执为准，不能因清单有URL就跳过下载校验。本版范围见[资格索引](reports/releases/0.6.9/README.md)，稳定安装、升级和回滚见[操作方案](docs/release-0.6.9.zh-CN.md)。
+**用原生 Codex CLI 的工具、审批、沙箱、会话恢复和子智能体，连接 OpenRouter 上的固定 DeepSeek 模型。** CDS 独立安装与配置，不接管本机 Codex App 的订阅或会话。
 
-**保留原生 Codex CLI 的执行机制，把模型接到 OpenRouter 上的 DeepSeek。**
+**Linux 0.6.10 的本地资格已完成。** 正常安装版已完成真实 Jinja 修复、96 张原图审核、自然压缩、同 UUID 冷恢复、原生只读子线程的新一轮最终复核，以及中断后的副作用一次性检查。原始失败和多次继续均保留；这不是一次连续 75 分钟全程无误的运行。详细范围与回执摘要见[本版索引](reports/releases/0.6.10/README.md)。
 
-你仍然用 Codex 的终端界面、命令与文件工具、审批和沙箱、会话恢复、MCP、Code Mode 与子智能体。这个项目提供独立安装、模型协议转换和必要的系统适配；模型给出的工具调用仍交给原生 Codex 执行。
+Linux 独立发版。安装包与源码见 [v0.6.10 发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)；该页的发布回执记录实际提交、资产哈希与下载后的安装验证。
+
+| 平台 | 当前选择 |
+| --- | --- |
+| Linux x86_64 GNU | 0.6.10 本地资格完成；使用本版匹配源码、Linux manifest 与原生归档，公开下载状态见发行回执。 |
+| Windows x86_64 | 使用 [v0.6.9](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.9)。新修复正在独立验收，完成后单独发版。 |
+| macOS Apple Silicon | 使用 v0.6.9；0.6.10 暂不提供新的 macOS 原生包。 |
+
+真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
 
 *An isolated native Codex CLI distribution for DeepSeek through OpenRouter. The native runtime owns tool execution, permissions, sessions and agent scheduling.*
 
-独立 home 可显式选择已支持的同模型提供方，查看状态、条件修改和恢复方法见[提供方配置](docs/provider-routing.zh-CN.md)。缺省仍为官方 DeepSeek，失败不自动换提供方。
-
-需要让另一个 agent 调用、控制或排查 CDS，可安装仓库提供的 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)。直接使用 CDS CLI 不依赖这个技能；技能不另建 runtime。
-
-0.6.9 修复官方 Windows 包与源码构建包之间的数据库迁移校验差异：相同 SQL 的 LF/CRLF 换行曾导致原生会话数据库无法互读。新增适配只在原有 SQLx 迁移入口选择已识别的 SQL 字节形式，不改写历史校验和，不另建 agent loop、审批器或子智能体系统。严格最终 JSON、Guardian HTTP-only 传输与 Windows Proactor 清理沿用 0.6.8 的实现；新增逐 home 的显式普通提供方配置与强身份诊断。
-
-本版资格索引分别记录三平台新原生产物、状态迁移、Guardian、CLI/HTTP、安装版离线回归，以及 Windows 实际新旧程序互读和真实 DeepSeek 会话恢复。既有已知 Jinja 工程的 930 项结果属于明确标注版本的复杂任务证据；源码未变的机制采用逐文件核对的证据承接，不冒称全部重新实测。独立 CADSG 桌面 App 项目另行验收。
+模型质量、固有模态与 OpenAI 云端账户权益单列；独立 CADSG / Codex App 项目不由本 CLI 版本代验。另一个 agent 调用或诊断 CDS 可使用 [`$cds` 操作技能](docs/cds-skill.zh-CN.md)，直接使用 CLI 不依赖技能。
 
 ## 它怎样工作
 
@@ -46,21 +48,17 @@
 
 ## 支持范围与验收状态
 
-本版三平台使用同一套 27 份 overlay 与各自固定 recipe，完整构建回执和许可证随包保留。Linux/macOS 原生验收在对应的 CI 宿主执行；Windows 安装、模型任务和存储互读在 Windows 执行。源码、发行资产、实际 native 调用与模型工程结果分别给证据。
+固定基线是 Codex CLI **`0.164.0-alpha.7`** / `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`，模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**。这是上游预发布 runtime；不用会自行变化的 `latest` 模型别名。
 
-| 平台 | 已有资格与范围 |
-| --- | --- |
-| Windows x86_64 | 新原生产物、普通权限隔离安装、CLI/HTTP 与完整离线集合；实际 LF/CRLF 存储互读、数据与结构保持、真实工具与 Guardian、同会话冷恢复。各项实际结果与原始失败见本版资格索引。 |
-| Linux x86_64 GNU | 对应宿主的新原生产物、状态迁移、Guardian、CLI/HTTP 与安装版离线集合。当前验证宿主为 Ubuntu 24.04；glibc、OpenSSL 3 和 libcap 条件单列。 |
-| macOS Apple Silicon | 对应 CI 宿主的新原生产物、状态迁移、Guardian、CLI/HTTP 与安装版离线集合。没有在维护者的 Mac 主机运行产品测试。 |
+Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保留 glibc、OpenSSL 3、libcap 的运行条件及捆绑 bwrap。其他发行版/CPU、Windows、macOS 和未来 Codex 版本不自动继承本次结果。
 
-各平台资格仅证明索引中实际执行或明确承接的范围，不表示所有 177 个 RPC 在每个 OS 都重新调用过。过滤项不计执行，平台专用跳过逐项列明，原始失败和进程观察的不确定性仍保留。详见[本版索引](reports/releases/0.6.9/README.md)。
+本次改变的容量、协议和恢复路径经过原生机制测试、正常安装回归及模型驱动的长任务验收。其余组件按未变更的源码与既有固定版本证据承接。[资格索引](reports/releases/0.6.10/README.md)列出每项范围、原始失败、组件来源及实际结果。
 
-原生基线是 **Codex `0.164.0-alpha.7`**，提交 `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`。这是上游预发布版本。模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**，不使用会自行变化的 `latest` 别名。其他 CPU、Linux 发行版或未来 Codex 版本不自动继承这里的验收结果；当前 Linux 包也不是 musl 静态包。
+0.6.9 及更早的工具/平台证据仍绑定原版本，见[0.6.9 索引](reports/releases/0.6.9/README.md)。0.6.10 承接的组件必须有对应文件、recipe 和来源证据，不靠改旧 CI/retained pins 获得新资格。
 
 ## 安装并运行
 
-取得v0.6.9的匹配源码和本平台资产后，使用下列标准入口。下载可用性以发布页为准，平台manifest、recipe和归档摘要必须匹配。安装器校验平台、recipe、工具链和完整文件清单，正常使用不需要编译 Rust。发布资产尚不可用时不要用任意开发分支或旧同名二进制代替。
+先按上表选择平台版本，使用发行页里同一 tag 的源码和原生包。安装器会校验平台、构建配方、工具链、归档摘要和完整文件清单；正常使用不需要编译 Rust。
 
 已有任务继续使用自己的不可变入口。并行验证或升级先用新目录及下文 --no-activate，当前任务完成后再切换，不覆盖正在使用的启动器、profile 或 sandbox 目录。
 
@@ -89,7 +87,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.9 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.10 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -126,13 +124,14 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 
 ### 下载受限或并行验证版本
 
-可以预先下载与当前源码随附的平台清单和 recipe 匹配的0.6.9原生归档，再让安装器校验。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。Linux 0.6.10 的新资产与 Windows/macOS 0.6.9 的旧资产分别管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
-python3 install.py --native-archive /path/to/codex-deepseek-native-0.6.9-aarch64-apple-darwin.tar.gz
+python3 install.py --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json \
+  --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-另外两份文件名是 `codex-deepseek-native-0.6.9-x86_64-unknown-linux-gnu.tar.gz` 和 `codex-deepseek-native-0.6.9-x86_64-pc-windows-msvc.tar.gz`。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+Linux 0.6.10 的拟发布文件名为 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`；公开下载验证前只是待发布名称。Windows 0.6.9 使用 `codex-deepseek-native-0.6.9-x86_64-pc-windows-msvc.tar.gz`，旧 Linux 0.6.9 仅配旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
@@ -247,7 +246,7 @@ enabled = false
 | 有工具，且明确要求 `parallel_tool_calls=false` | `primeintellect` | `explicit_serial_tools` |
 | strict=true + auto + 有效工具的最终Schema | 保留serial/peer/default既有路由；官方object/array用JSON语法模式，其余完整schema指令+原校验 | `auto_tools_final_schema_validation/...`，回执明示策略 |
 | 其余 JSON Schema 结构化输出 | `morph/fp8` | `strict_json_schema` |
-| 同时包含思考、托管网页搜索，以及原生 peer/未完成续接/缺少完成证明的模型历史 | `morph/fp8` | `native_peer_or_continuation_with_hosted_tools` 或 `unattested_native_history_with_hosted_tools` |
+| 同时包含思考、托管网页搜索，以及原生 peer/未完成续接/缺少完成证明的模型历史 | 缺省 `morph/fp8`；0.6.10 可逐 home 显式选择 `primeintellect` | `native_peer_or_continuation_with_hosted_tools` 或 `unattested_native_history_with_hosted_tools` |
 | 其余普通请求 | 缺省为**官方 `deepseek`**；该 home 可显式选择 `morph/fp8` | `official_default` 或 `operator_default/morph/fp8` |
 
 每个请求设置 `provider.only`、`allow_fallbacks=false`、`require_parameters=true`。提供方报错不会触发适配层换路由重试；原生重试和取消仍由原生 runtime 负责。上面几种组合来自实际提供方差异复现，见 [互操作说明](upstream/README.md)。
@@ -281,6 +280,8 @@ codex-deepseek doctor
 | `Reconnecting... undeclared tool` | 核对本次实际声明的工具集合与调用路径；目录、历史或 Code Mode 内的工具名不代表顶层已开放。保持工具白名单，参见[受控原生重试记录](reports/protocol/undeclared-tool-retry-20261025.json)。该记录覆盖一次未知调用前后已执行工具的保留，不承诺模型再次发出新操作时的业务幂等。 |
 | 修改网络/凭据环境后提示已有运行者 | 结束该 home 的工作与 daemon，或换一个独立 home；避免新旧环境混在同一进程中。 |
 | 子任务 DNS 失败 / `curl` 退出 6 / HTTP 000 | 先核对实际子任务网络策略；宿主能解析不等于沙箱能联网，也不能据此断言远端宕机。见[诊断指引](skills/cds/references/diagnostics-and-verification.md#shell-network-errors-do-not-prove-a-remote-outage)。 |
+
+0.6.10 同 home 升级使用新不可变入口的正常 `runtime status` 迁移已终态 descriptor，再核对 environment/native_binary/code_id；它会进入本地 provider 生命周期，不是零副作用查询。不要手删 descriptor、删除 lease 或忽略身份守卫。配置切换仍需任务和服务自然退役，显式 peer CAS 与 default 回滚见[本版方案](docs/release-0.6.10.zh-CN.md)。
 
 已发布版本的升级先在新 root 和独立 home 中验证，再切换入口；确认该 home 的任务、子进程和 daemon 都已结束后才做同 home 变更。单独停止 daemon 不等于所有工作已退出。
 

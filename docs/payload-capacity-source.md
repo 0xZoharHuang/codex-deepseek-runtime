@@ -1,8 +1,8 @@
 # Private image transport: source candidate
 
-Release scope: the current distribution version is an unpublished 0.6.0 candidate. The versioned user procedure and current release gates are in [the 0.6.0 candidate guide](release-0.6.0-candidate.zh-CN.md). The qualification updates below retain their exact component identities; they do not qualify every later adapter or Windows overlay revision.
+Version boundary: this page retains the historical payload component snapshots first staged during the 0.6.0 candidate work. The public release remains 0.6.9; its original qualification is in the [0.6.9 index](../reports/releases/0.6.9/README.md). The current private P29 candidate is tracked in the [candidate acceptance matrix](candidate-acceptance.zh-CN.md), not qualified by the historical counts or commands below.
 
-This work is staged on CDS `83056e7cf320461c30a609e911f3bcf0bea41be0` with native upstream `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`. It is not an installed or fully qualified CDS release. The new Windows HTTP helper has been independently built and qualified below; full CLI/runtime qualification is separate. No installed runtime was changed and no platform manifest was marked ready.
+The initial component snapshot below was staged on CDS `83056e7cf320461c30a609e911f3bcf0bea41be0` with native upstream `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`. It is not an installed or fully qualified CDS release. The new Windows HTTP helper has been independently built and qualified below; full CLI/runtime qualification is separate. No installed runtime was changed and no platform manifest was marked ready.
 
 ## Boundary
 
@@ -38,7 +38,7 @@ Absent configuration means disabled and preserves the existing JSON request path
 }
 ```
 
-These byte values are an operator prevention policy, not a claimed provider limit. The actual API accepts at most 16 file-reference occurrences per request in our prior controlled probes. The module selects the greatest estimated byte savings, retains every other original image inline, preserves order/detail, and fails explicitly if the configured wire budget cannot be met. It never resizes, drops, concatenates or summarizes images. A deterministic local budget failure is HTTP 413, separate from model context-window errors.
+These byte values are an operator prevention policy, not a claimed provider limit. A controlled official-DeepSeek probe on 2026-10-24 accepted 16 file-reference occurrences and explicitly rejected 17. This historical observation is the basis of the current local occurrence policy, not a published or permanent cross-provider maximum; the current published Responses schema does not specify that global bound. The module selects the greatest estimated byte savings, retains every other original image inline, preserves order/detail, and fails explicitly if the configured wire budget cannot be met. It never resizes, drops, concatenates or summarizes images. A deterministic local budget failure is HTTP 413, separate from model context-window errors.
 
 The service identity includes this configuration. Existing active-profile upgrade protections still apply. Changing configuration must not replace a worker underneath active native sessions. Use the normal isolated-profile procedure rather than killing all Codex processes.
 
@@ -84,11 +84,11 @@ This is a helper qualification, not a full CDS runtime release: the 413 main-run
 
 ## Actual official DeepSeek request through the new native helper
 
-A single authorized Windows probe used the new native helper for Files upload, Responses, generation metadata and DELETE/GET cleanup, with a fresh project-owned cache and dedicated Windows credential. It fixed the model to `deepseek/deepseek-v4.1-flash-1017`, provider to official DeepSeek only, and disabled fallback. The provider metadata identified canonical `deepseek/deepseek-v4.1-flash-20261017` and DeepSeek.
+A single authorized Windows probe on 2026-10-22 used the native helper identified above for Files upload, Responses, generation metadata and DELETE/GET cleanup, with a fresh project-owned cache and dedicated Windows credential. It fixed the model to `deepseek/deepseek-v4.1-flash-1017`, provider to official DeepSeek only, and disabled fallback. The provider metadata identified canonical `deepseek/deepseek-v4.1-flash-20261017` and DeepSeek.
 
 The 1,206-item synthetic request contained 101 original PNG images and was 34,009,154 bytes before transport. Sixteen private file references and 85 original inline images produced a 28,625,730-byte request. The exact prepared body was sent through native raw IPC; image order, detail, and original bytes round-tripped without changes. The model identified independently generated first/last image nonces, returned HTTP 200 with a validated completed response, and used 38,341 input / 152 output tokens at a recorded cost of $0.00584235. All 16 owned files were deleted and individually read back as GET 404, with zero pins, unknown uploads or pending cleanup.
 
-This proves one representative long multimodal request through the actual native provider path. It is not a claim that any arbitrary request size fits a provider's limits, a full runtime acceptance, or a server-side download hash proof. The API does not provide downloadable image content for this check; proof comprises the original upload bytes/hash, metadata, exact outbound wire body and actual model vision result. No business images, existing CDS worker, Store/ProviderService ownership logic, or account-wide Files listing was used.
+The retained original report has SHA-256 `4e7918ce3bdebc71df43d63412e92b8537fc8e06408678779b5ca7dce455bc5d`, protocol v1, image-transport module SHA-256 `f13bbb6344bdb1e9bfda4bfd1a24bf2b639bd0ccde05746ee18a868f5a1fbc0b`, and generation ID `gen-1792701429-QsdYegb9CPhveAHcz6YL`. It launched one HTTP helper and no full native CLI process. This proves one representative historical long multimodal request through that actual native provider path; it does not qualify a later runtime, provider revision or sustained image-heavy task. It is not a claim that any arbitrary request size fits a provider's limits, a full runtime acceptance, or a server-side download hash proof. The API does not provide downloadable image content for this check; proof comprises the original upload bytes/hash, metadata, exact outbound wire body and actual model vision result. No business images, existing CDS worker, Store/ProviderService ownership logic, or account-wide Files listing was used.
 
 ## Actual Windows CLI 413 behavior
 

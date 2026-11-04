@@ -1,0 +1,1370 @@
+--- a/codex-rs/core/src/session/mod.rs
++++ b/codex-rs/core/src/session/mod.rs
+@@ -241,6 +241,7 @@
+ use codex_protocol::exec_output::StreamOutput;
+ 
+ pub(crate) mod async_compaction;
++mod capacity_reset_continuation;
+ mod code_mode_warning;
+ mod config_refresh;
+ pub(crate) mod context_window;
+@@ -253,6 +254,8 @@
+ mod inject;
+ mod reasoning_effort;
+ pub(crate) mod request_capacity;
++pub(crate) use capacity_reset_continuation::CapacityResetContinuation;
++pub(crate) use capacity_reset_continuation::CapacityResetPreparation;
+ mod submission;
+ pub(crate) use reasoning_effort::RequestEffortUsage;
+ pub(crate) use submission::Submission;
+@@ -486,9 +489,20 @@
+     checkpoint: request_capacity::Checkpoint,
+     home: PathBuf,
+     fresh_summary_history: Option<ContextManager>,
++    pre_compact_hook_ran: bool,
++    prepared_reset: Option<capacity_reset_continuation::PreparedCapacityReset>,
++    reset_completion: Option<capacity_reset_continuation::CapacityResetCompletion>,
+ }
+ 
+ impl CapacityPrefix {
++    pub(crate) fn pre_compact_hook_already_ran(&self) -> bool {
++        self.pre_compact_hook_ran
++    }
++
++    pub(crate) fn mark_pre_compact_hook_ran(&mut self) {
++        self.pre_compact_hook_ran = true;
++    }
++
+     /// A cold legacy cursor cannot authorize resetting unread historical input.
+     pub(crate) fn needs_fresh_summary(&self) -> bool {
+         self.fresh_summary_history
+@@ -4722,6 +4736,13 @@
+                 history_anchor: self.current_window_from_state(&state).0,
+                 generation: state.history.history_version(),
+             });
++            if let (
++                Some(CapacityCheckpointInstallation::TranslateReset { prefix, .. }),
++                Some(receipt),
++            ) = (capacity.as_ref(), capacity_receipt.as_ref())
++            {
++                prefix.stage_reset_continuation(receipt, &state.history);
++            }
+             (compacted_item, started_item, capacity_receipt)
+         };
+ 
+@@ -4780,8 +4801,12 @@
+                     turn_context,
+                     ..
+                 } => {
+-                    self.translate_capacity_checkpoint(prefix, receipt, turn_context)
+-                        .await;
++                    if let Some(checkpoint) = self
++                        .translate_capacity_checkpoint(prefix, receipt, turn_context)
++                        .await
++                    {
++                        prefix.publish_reset_continuation(checkpoint);
++                    }
+                 }
+                 CapacityCheckpointInstallation::ManualGenesis {
+                     turn_context,
+@@ -5517,6 +5542,9 @@
+             checkpoint,
+             home: prefix_home,
+             fresh_summary_history,
++            pre_compact_hook_ran: false,
++            prepared_reset: None,
++            reset_completion: None,
+         })
+     }
+ 
+@@ -5525,7 +5553,7 @@
+         prefix: &CapacityPrefix,
+         receipt: CapacitySendSnapshot,
+         turn_context: &TurnContext,
+-    ) {
++    ) -> Option<request_capacity::Checkpoint> {
+         let old = prefix.checkpoint.clone();
+         let home = prefix.home.clone();
+         // Use the binding's logical model/provider; compactor responses do not rearm it.
+@@ -5555,12 +5583,12 @@
+                 "checkpoint translation could not be constructed",
+             )
+             .await;
+-            return;
++            return None;
+         };
+         if self.live_thread().is_some() {
+             if let Err(error) = self.flush_rollout().await {
+                 self.capacity_unavailable(turn_context, error).await;
+-                return;
++                return None;
+             }
+             let disk_checkpoint = checkpoint.clone();
+             let result = tokio::task::spawn_blocking(move || {
+@@ -5570,10 +5598,11 @@
+             if !matches!(result, Ok(Ok(()))) {
+                 self.capacity_unavailable(turn_context, format!("{result:?}"))
+                     .await;
+-                return;
+-            }
+-        }
+-        self.state.lock().await.request_capacity_checkpoint = Some(checkpoint);
++                return None;
++            }
++        }
++        self.state.lock().await.request_capacity_checkpoint = Some(checkpoint.clone());
++        Some(checkpoint)
+     }
+ 
+     pub(crate) async fn clone_history(&self) -> ContextManager {
+@@ -5657,27 +5686,33 @@
+         self: &Arc<Self>,
+         step_context: &StepContext,
+         world_state: Arc<WorldState>,
+-        prefix: CapacityPrefix,
++        mut prefix: CapacityPrefix,
+         cancellation_token: &CancellationToken,
+     ) -> bool {
+         if cancellation_token.is_cancelled() {
+             return false;
+         }
+-        let retained_client_items = self.retained_client_items_for_context_window(&prefix.history);
+-        // Native context updates need not implement Send. Select directly,
+-        // retaining cancellation priority without strengthening native types.
+-        let (context_updates, world_state_snapshot) = tokio::select! {
+-            biased;
+-            _ = cancellation_token.cancelled() => return false,
+-            context = self.build_initial_context_with_world_state(
+-                step_context, world_state.as_ref(),
+-            ) => context,
+-        };
+-        let items = crate::context_manager::updates::merge_world_state_updates(context_updates)
+-            .into_iter()
+-            .map(ResponseItemEnvelope::new)
+-            .chain(retained_client_items)
+-            .collect();
++        let (items, world_state_snapshot) = if let Some(prepared) = prefix.prepared_reset.take() {
++            (prepared.items, prepared.baseline)
++        } else {
++            let retained_client_items =
++                self.retained_client_items_for_context_window(&prefix.history);
++            // Native context updates need not implement Send. Select directly,
++            // retaining cancellation priority without strengthening native types.
++            let (context_updates, world_state_snapshot) = tokio::select! {
++                biased;
++                _ = cancellation_token.cancelled() => return false,
++                context = self.build_initial_context_with_world_state(
++                    step_context, world_state.as_ref(),
++                ) => context,
++            };
++            let items = crate::context_manager::updates::merge_world_state_updates(context_updates)
++                .into_iter()
++                .map(ResponseItemEnvelope::new)
++                .chain(retained_client_items)
++                .collect();
++            (items, world_state_snapshot)
++        };
+         let compaction_prefix = prefix.prefix;
+         let installed = self
+             .install_local_compaction(
+--- a/codex-rs/core/src/compact_token_budget.rs
++++ b/codex-rs/core/src/compact_token_budget.rs
+@@ -85,6 +85,76 @@
+     .await
+ }
+ 
++pub(crate) enum CapacityResetOutcome {
++    Reset(Option<crate::session::CapacityResetContinuation>),
++    FreshSummary(CapacityPrefix),
++}
++
++/// Same native reset lifecycle, with a one-turn proof for a preserved old gap.
++pub(crate) async fn run_inline_capacity_reset_with_old_gap(
++    sess: Arc<Session>,
++    step_context: Arc<StepContext>,
++    world_state: Arc<WorldState>,
++    mut prefix: CapacityPrefix,
++    rejection: UnexpectedResponseError,
++    cancellation_token: CancellationToken,
++) -> CodexResult<CapacityResetOutcome> {
++    if cancellation_token.is_cancelled() {
++        return Err(CodexErr::TurnAborted);
++    }
++    match run_pre_compact_hooks(&sess, &step_context.turn, CompactionTrigger::Auto)
++        .or_cancel(&cancellation_token)
++        .await
++        .unwrap_or(PreCompactHookOutcome::Stopped)
++    {
++        PreCompactHookOutcome::Continue => prefix.mark_pre_compact_hook_ran(),
++        PreCompactHookOutcome::Stopped => return Err(CodexErr::TurnAborted),
++    }
++    match sess
++        .prepare_capacity_reset_for_recovery(
++            &step_context,
++            Arc::clone(&world_state),
++            prefix,
++            &cancellation_token,
++        )
++        .await
++    {
++        crate::session::CapacityResetPreparation::Ready { prefix, completion } => {
++            run_inline_capacity_reset_task(
++                sess,
++                step_context,
++                world_state,
++                prefix,
++                rejection,
++                cancellation_token.clone(),
++            )
++            .await?;
++            if cancellation_token.is_cancelled() {
++                return Err(CodexErr::TurnAborted);
++            }
++            let continuation = match completion {
++                Some(receiver) => receiver.await.ok(),
++                None => None,
++            };
++            Ok(CapacityResetOutcome::Reset(continuation))
++        }
++        crate::session::CapacityResetPreparation::NoProgress(prefix) => {
++            if prefix.needs_fresh_summary() {
++                Ok(CapacityResetOutcome::FreshSummary(prefix))
++            } else {
++                Err(CodexErr::UnexpectedStatus(rejection))
++            }
++        }
++        crate::session::CapacityResetPreparation::Invalid => {
++            if cancellation_token.is_cancelled() {
++                Err(CodexErr::TurnAborted)
++            } else {
++                Err(CodexErr::UnexpectedStatus(rejection))
++            }
++        }
++    }
++}
++
+ async fn run_compact_task_inner(
+     sess: &Arc<Session>,
+     step_context: &Arc<StepContext>,
+@@ -94,7 +164,12 @@
+     cancellation_token: Option<&CancellationToken>,
+ ) -> CodexResult<()> {
+     let turn_context = &step_context.turn;
+-    let pre_compact_outcome = if let Some(token) = cancellation_token {
++    let pre_compact_outcome = if capacity
++        .as_ref()
++        .is_some_and(|(prefix, _)| prefix.pre_compact_hook_already_ran())
++    {
++        PreCompactHookOutcome::Continue
++    } else if let Some(token) = cancellation_token {
+         run_pre_compact_hooks(sess, turn_context, trigger)
+             .or_cancel(token)
+             .await
+--- a/codex-rs/core/src/session/turn.rs
++++ b/codex-rs/core/src/session/turn.rs
+@@ -460,6 +460,7 @@
+ 
+     let mut next_step_context = Some(first_step_context);
+     let mut guardian_budget_compacted = false;
++    let mut capacity_reset_continuation = None;
+     loop {
+         // Note that pending_input would be something like a message the user
+         // submitted through the UI while the model was running. Though the UI
+@@ -588,21 +589,38 @@
+                         rejection.known_rejected && rejection.turn_id == turn_context.sub_id
+                     })
+         });
+-        if known_capacity_rejection
++        // The next ordinary result consumes this one-turn proof, successful or
++        // not. A continuation never reclaims the reset turn/epoch fence.
++        let reset_continuation = capacity_reset_continuation.take();
++        let continuing_reset = reset_continuation.is_some();
++        let recovery_allowed = known_capacity_rejection
+             && auto_compaction_enabled
+             && !crate::guardian::is_basic_session_source(&turn_context.session_source)
+             && (turn_context.config.features.enabled(Feature::TokenBudget)
+                 || matches!(
+                     turn_context.provider.capabilities().remote_compaction,
+                     RemoteCompactionSupport::Unsupported
+-                ))
+-            && let Some(prefix) = sess
+-                .capacity_prefix(
++                ));
++        let recovery_prefix = if recovery_allowed {
++            if let Some(proof) = reset_continuation {
++                sess.capacity_prefix_from_reset_continuation(
++                    proof,
++                    turn_context.as_ref(),
++                    &step_context.settings.model_info.slug,
++                    &cancellation_token,
++                )
++                .await
++            } else {
++                sess.capacity_prefix(
+                     turn_context.as_ref(),
+                     &step_context.settings.model_info.slug,
+                 )
+                 .await
+-        {
++            }
++        } else {
++            None
++        };
++        if let Some(prefix) = recovery_prefix {
+             // Existing same-body retry advice has already been exhausted.
+             let retry_at = sess
+                 .services
+@@ -629,27 +647,48 @@
+                 _ => unreachable!("known HTTP413"),
+             };
+             let token_budget_enabled = turn_context.config.features.enabled(Feature::TokenBudget);
+-            let historical_summary_required = prefix.needs_fresh_summary();
+-            if token_budget_enabled && historical_summary_required {
+-                sess.send_event(
+-                    turn_context.as_ref(),
+-                    EventMsg::Warning(codex_protocol::protocol::WarningEvent {
+-                        message: "Request-byte recovery found historical input beyond its confirmed cursor. Native compaction must read that history before replacing it; token-budget reset remains enabled.".to_owned(),
+-                    }),
+-                )
+-                .await;
+-            }
+-            let recovered = if token_budget_enabled && !historical_summary_required {
+-                crate::compact_token_budget::run_inline_capacity_reset_task(
++            let recovered = if token_budget_enabled && !continuing_reset {
++                match crate::compact_token_budget::run_inline_capacity_reset_with_old_gap(
+                     Arc::clone(&sess),
+                     Arc::clone(&step_context),
+-                    capacity_world_state,
++                    Arc::clone(&capacity_world_state),
+                     prefix,
+-                    rejection,
++                    rejection.clone(),
+                     cancellation_token.child_token(),
+                 )
+                 .await
++                {
++                    Ok(crate::compact_token_budget::CapacityResetOutcome::Reset(continuation)) => {
++                        capacity_reset_continuation = continuation;
++                        Ok(())
++                    }
++                    Ok(crate::compact_token_budget::CapacityResetOutcome::FreshSummary(prefix)) => {
++                        sess.send_event(turn_context.as_ref(),
++                            EventMsg::Warning(codex_protocol::protocol::WarningEvent {
++                                message: "The local token-budget reset would not shorten its confirmed input. Native compaction will read the captured historical input; current input remains unchanged.".to_owned(),
++                            }),
++                        ).await;
++                        crate::compact::run_inline_capacity_compact_task(
++                            Arc::clone(&sess),
++                            Arc::clone(&turn_context),
++                            Arc::clone(&step_context),
++                            capacity_world_state,
++                            prefix,
++                            rejection,
++                            cancellation_token.child_token(),
++                        )
++                        .await
++                    }
++                    Err(error) => Err(error),
++                }
+             } else {
++                if continuing_reset {
++                    sess.send_event(turn_context.as_ref(),
++                        EventMsg::Warning(codex_protocol::protocol::WarningEvent {
++                            message: "The native reset preserved historical input that still exceeds request capacity. Native compaction will read that captured history; current input remains unchanged.".to_owned(),
++                        }),
++                    ).await;
++                }
+                 crate::compact::run_inline_capacity_compact_task(
+                     Arc::clone(&sess),
+                     Arc::clone(&turn_context),
+--- /dev/null
++++ b/codex-rs/core/src/session/capacity_reset_continuation.rs
+@@ -0,0 +1,355 @@
++//! One-turn continuation of an admitted native capacity reset.
++//! It never grants a new epoch, current-input authority, or a second reset.
++use super::*;
++use sha2::Digest;
++
++pub(crate) enum CapacityResetPreparation {
++    Ready {
++        prefix: CapacityPrefix,
++        completion: Option<tokio::sync::oneshot::Receiver<CapacityResetContinuation>>,
++    },
++    NoProgress(CapacityPrefix),
++    Invalid,
++}
++
++pub(super) struct PreparedCapacityReset {
++    pub(super) items: Vec<ResponseItemEnvelope>,
++    pub(super) baseline: WorldStateSnapshot,
++}
++
++pub(super) struct CapacityResetCompletion {
++    gap: Arc<Vec<ResponseItemEnvelope>>,
++    gap_hash: [u8; 32],
++    staged: std::sync::Mutex<Option<CapacitySendSnapshot>>,
++    sender: std::sync::Mutex<Option<tokio::sync::oneshot::Sender<CapacityResetContinuation>>>,
++}
++
++/// In-memory only, owned by the existing run_turn invocation and consumed once.
++pub(crate) struct CapacityResetContinuation {
++    original: request_capacity::Checkpoint,
++    checkpoint: request_capacity::Checkpoint,
++    home: PathBuf,
++    reset: CapacitySendSnapshot,
++    auth_owner_generation: Option<u64>,
++    gap: Arc<Vec<ResponseItemEnvelope>>,
++    gap_hash: [u8; 32],
++}
++
++fn exact_gap_hash(items: &[ResponseItemEnvelope]) -> Option<[u8; 32]> {
++    // Include every native item, all harness provenance, and the internal output
++    // success bit that its wire serializer deliberately excludes.
++    let values = items
++        .iter()
++        .map(|envelope| {
++            let success = match &envelope.item {
++                ResponseItem::FunctionCallOutput { output, .. }
++                | ResponseItem::CustomToolCallOutput { output, .. } => output.success,
++                _ => None,
++            };
++            (&envelope.item, &envelope.metadata, success)
++        })
++        .collect::<Vec<_>>();
++    let bytes = serde_json::to_vec(&values).ok()?;
++    Some(sha2::Sha256::digest(bytes).into())
++}
++
++impl CapacityPrefix {
++    /// Called under the same state lock as the live replacement and its receipt.
++    pub(super) fn stage_reset_continuation(
++        &self,
++        receipt: &CapacitySendSnapshot,
++        installed: &ContextManager,
++    ) {
++        let Some(completion) = &self.reset_completion else {
++            return;
++        };
++        let start = receipt.history.annotated_items().len();
++        let Some(end) = start.checked_add(completion.gap.len()) else {
++            return;
++        };
++        if receipt.generation != installed.history_version()
++            || installed.annotated_items().get(..start) != Some(receipt.history.annotated_items())
++            || installed.annotated_items().get(start..end) != Some(completion.gap.as_slice())
++            || installed.pair_safe_prefix_len(end) != end
++        {
++            return;
++        }
++        if let Ok(mut staged) = completion.staged.lock() {
++            *staged = Some(receipt.clone());
++        }
++    }
++
++    /// Called only after the existing rollout ACK and checkpoint CAS succeeded.
++    pub(super) fn publish_reset_continuation(&self, checkpoint: request_capacity::Checkpoint) {
++        let Some(completion) = &self.reset_completion else {
++            return;
++        };
++        let Some(reset) = completion
++            .staged
++            .lock()
++            .ok()
++            .and_then(|mut staged| staged.take())
++        else {
++            return;
++        };
++        if !checkpoint
++            .binding
++            .same_sampling_scope(&self.checkpoint.binding)
++            || checkpoint.binding.history_anchor != reset.history_anchor
++            || checkpoint.binding.history_anchor == self.checkpoint.binding.history_anchor
++            || checkpoint.prefix_len != reset.history.annotated_items().len()
++            || checkpoint.completed_epoch != self.checkpoint.completed_epoch
++            || checkpoint.response_id != self.checkpoint.response_id
++            || checkpoint.recovery_turn_id != self.checkpoint.recovery_turn_id
++            || checkpoint.recovery_turn_id.is_none()
++            || checkpoint.origin != request_capacity::Origin::TranslatedPrefix
++            || !matches!(
++                checkpoint.matches_prefix(reset.history.annotated_items()),
++                Ok(true)
++            )
++        {
++            return;
++        }
++        let proof = CapacityResetContinuation {
++            original: self.checkpoint.clone(),
++            checkpoint,
++            home: self.home.clone(),
++            reset,
++            auth_owner_generation: self.prefix.auth_owner_generation,
++            gap: Arc::clone(&completion.gap),
++            gap_hash: completion.gap_hash,
++        };
++        if let Some(sender) = completion
++            .sender
++            .lock()
++            .ok()
++            .and_then(|mut sender| sender.take())
++        {
++            // A dropped/cancelled receiver does not create a usable continuation.
++            let _ = sender.send(proof);
++        }
++    }
++}
++
++impl Session {
++    /// Build the original native reset plan after the native pre-compact hook. An unchanged or
++    /// larger request prefix cannot consume a recovery attempt by installing it.
++    pub(crate) async fn prepare_capacity_reset_for_recovery(
++        self: &Arc<Self>,
++        step: &StepContext,
++        world_state: Arc<WorldState>,
++        mut prefix: CapacityPrefix,
++        token: &CancellationToken,
++    ) -> CapacityResetPreparation {
++        if token.is_cancelled() {
++            return CapacityResetPreparation::Invalid;
++        }
++        let retained = self.retained_client_items_for_context_window(&prefix.history);
++        let (updates, baseline) = tokio::select! {
++            biased;
++            _ = token.cancelled() => return CapacityResetPreparation::Invalid,
++            value = self.build_initial_context_with_world_state(step, world_state.as_ref()) => value,
++        };
++        let mut items = crate::context_manager::updates::merge_world_state_updates(updates)
++            .into_iter()
++            .map(ResponseItemEnvelope::new)
++            .chain(retained)
++            .collect::<Vec<_>>();
++        for envelope in &mut items {
++            Self::assign_missing_response_item_id(&mut envelope.item);
++        }
++        {
++            let state = self.state.lock().await;
++            if token.is_cancelled()
++                || state.history.history_version() != prefix.prefix.generation
++                || self.services.model_client.auth_owner_generation()
++                    != prefix.prefix.auth_owner_generation
++                || self.current_window_from_state(&state).0
++                    != prefix.checkpoint.binding.history_anchor
++                || state.request_capacity_checkpoint.as_ref() != Some(&prefix.checkpoint)
++                || !matches!(
++                    prefix
++                        .checkpoint
++                        .matches_prefix(state.history.annotated_items()),
++                    Ok(true)
++                )
++            {
++                return CapacityResetPreparation::Invalid;
++            }
++        }
++        // The exact preserved suffix and non-input settings are identical. Use
++        // the original native builder, including its provider metadata and image
++        // policies, to compare only the changing nonempty prefix contribution.
++        let metadata = crate::responses_metadata::CodexResponsesMetadata::new(
++            String::new(),
++            self.session_id().to_string(),
++            self.thread_id.to_string(),
++            prefix.checkpoint.binding.history_anchor.clone(),
++        );
++        let size = |history: ContextManager| {
++            let prompt = crate::Prompt {
++                input: history.for_prompt(&step.settings.model_info.input_modalities),
++                ..Default::default()
++            };
++            let request = self
++                .services
++                .model_client
++                .build_responses_request(
++                    &prompt,
++                    step.settings.model_info.as_ref(),
++                    None,
++                    step.turn.reasoning_summary(),
++                    step.turn.config.service_tier.clone(),
++                    &metadata,
++                    false,
++                )
++                .ok()?;
++            serde_json::to_vec(&request).ok().map(|bytes| bytes.len())
++        };
++        let mut reset_history = prefix.history.clone();
++        reset_history.replace_annotated(items.clone());
++        let Some((after, before)) = size(reset_history).zip(size(prefix.history.clone())) else {
++            return CapacityResetPreparation::Invalid;
++        };
++        if after >= before {
++            return CapacityResetPreparation::NoProgress(prefix);
++        }
++        let mut receiver = None;
++        if let Some(historical) = &prefix.fresh_summary_history {
++            let start = prefix.prefix.len;
++            let end = historical.annotated_items().len();
++            if historical.annotated_items().get(..start) != Some(prefix.history.annotated_items()) {
++                return CapacityResetPreparation::Invalid;
++            }
++            if end > start {
++                let gap = historical.annotated_items()[start..end].to_vec();
++                if gap.iter().any(|item| {
++                    item.item.turn_id().is_none()
++                        || item.item.turn_id() == Some(step.turn.sub_id.as_str())
++                }) {
++                    return CapacityResetPreparation::Invalid;
++                }
++                let Some(gap_hash) = exact_gap_hash(&gap) else {
++                    return CapacityResetPreparation::Invalid;
++                };
++                let (sender, completion) = tokio::sync::oneshot::channel();
++                prefix.reset_completion = Some(CapacityResetCompletion {
++                    gap: Arc::new(gap),
++                    gap_hash,
++                    staged: std::sync::Mutex::new(None),
++                    sender: std::sync::Mutex::new(Some(sender)),
++                });
++                receiver = Some(completion);
++            }
++        }
++        prefix.prepared_reset = Some(PreparedCapacityReset { items, baseline });
++        CapacityResetPreparation::Ready {
++            prefix,
++            completion: receiver,
++        }
++    }
++
++    /// Consume a one-turn reset continuation without claiming or writing a fence.
++    pub(crate) async fn capacity_prefix_from_reset_continuation(
++        &self,
++        proof: CapacityResetContinuation,
++        turn: &TurnContext,
++        model: &str,
++        token: &CancellationToken,
++    ) -> Option<CapacityPrefix> {
++        if token.is_cancelled()
++            || proof.checkpoint.recovery_turn_id.as_deref() != Some(turn.sub_id.as_str())
++            || proof.original.recovery_turn_id != proof.checkpoint.recovery_turn_id
++            || proof.original.completed_epoch != proof.checkpoint.completed_epoch
++            || proof.original.response_id != proof.checkpoint.response_id
++            || !proof
++                .original
++                .binding
++                .same_sampling_scope(&proof.checkpoint.binding)
++            || self.services.model_client.auth_owner_generation() != proof.auth_owner_generation
++        {
++            return None;
++        }
++        let snapshot = self.capture_capacity_send().await;
++        let start = proof.reset.history.annotated_items().len();
++        let end = start.checked_add(proof.gap.len())?;
++        if snapshot.generation != proof.reset.generation
++            || snapshot.history_anchor != proof.reset.history_anchor
++            || snapshot.history.annotated_items().get(..start)
++                != Some(proof.reset.history.annotated_items())
++            || snapshot.history.annotated_items().get(start..end) != Some(proof.gap.as_slice())
++            || exact_gap_hash(snapshot.history.annotated_items().get(start..end)?)?
++                != proof.gap_hash
++            || snapshot.history.pair_safe_prefix_len(end) != end
++            || proof.gap.iter().any(|item| {
++                item.item.turn_id().is_none() || item.item.turn_id() == Some(turn.sub_id.as_str())
++            })
++        {
++            return None;
++        }
++        let home = turn.config.codex_home.clone();
++        let thread = self.thread_id.to_string();
++        let model = model.to_owned();
++        let provider = turn.config.model_provider_id.clone();
++        let anchor = snapshot.history_anchor.clone();
++        let expected = proof.checkpoint.clone();
++        let durable = self.live_thread().is_some();
++        let memory = self.state.lock().await.request_capacity_checkpoint.clone();
++        let persistence = self.track_native_persistence()?;
++        let valid = tokio::task::spawn_blocking(move || -> anyhow::Result<bool> {
++            let _persistence = persistence;
++            let binding =
++                request_capacity::Binding::for_profile(&home, &thread, &model, &provider, &anchor)?;
++            if expected.binding != binding || memory.as_ref() != Some(&expected) {
++                return Ok(false);
++            }
++            if durable {
++                return Ok(request_capacity::load(&home, &binding)?.as_ref() == Some(&expected));
++            }
++            Ok(true)
++        })
++        .await
++        .ok()?
++        .ok()?;
++        if !valid || token.is_cancelled() {
++            return None;
++        }
++        let state = self.state.lock().await;
++        if state.history.history_version() != proof.reset.generation
++            || self.current_window_from_state(&state).0 != proof.reset.history_anchor
++            || state.request_capacity_checkpoint.as_ref() != Some(&proof.checkpoint)
++            || self.services.model_client.auth_owner_generation() != proof.auth_owner_generation
++            || state.history.annotated_items().get(..start)
++                != Some(proof.reset.history.annotated_items())
++            || state.history.annotated_items().get(start..end) != Some(proof.gap.as_slice())
++            || !matches!(
++                proof
++                    .checkpoint
++                    .matches_prefix(state.history.annotated_items()),
++                Ok(true)
++            )
++        {
++            return None;
++        }
++        let mut target = snapshot.history.clone();
++        target.replace_annotated(snapshot.history.annotated_items()[..end].to_vec());
++        Some(CapacityPrefix {
++            history: proof.reset.history,
++            prefix: CompactionPrefix {
++                generation: proof.reset.generation,
++                len: start,
++                auth_owner_generation: proof.auth_owner_generation,
++            },
++            checkpoint: proof.checkpoint,
++            home: proof.home,
++            fresh_summary_history: Some(target),
++            pre_compact_hook_ran: false,
++            prepared_reset: None,
++            reset_completion: None,
++        })
++    }
++}
++
++#[cfg(test)]
++#[path = "capacity_reset_continuation_tests.rs"]
++mod tests;
+--- a/codex-rs/core/src/compact.rs
++++ b/codex-rs/core/src/compact.rs
+@@ -267,10 +267,17 @@
+         phase,
+     )
+     .await;
+-    let pre_compact_outcome = run_pre_compact_hooks(&sess, &turn_context, trigger)
+-        .or_cancel(&cancellation_token)
+-        .await
+-        .unwrap_or(PreCompactHookOutcome::Stopped);
++    let pre_compact_outcome = if capacity_prefix
++        .as_ref()
++        .is_some_and(CapacityPrefix::pre_compact_hook_already_ran)
++    {
++        PreCompactHookOutcome::Continue
++    } else {
++        run_pre_compact_hooks(&sess, &turn_context, trigger)
++            .or_cancel(&cancellation_token)
++            .await
++            .unwrap_or(PreCompactHookOutcome::Stopped)
++    };
+     match pre_compact_outcome {
+         PreCompactHookOutcome::Continue => {}
+         PreCompactHookOutcome::Stopped => {
+--- /dev/null
++++ b/codex-rs/core/src/session/capacity_reset_continuation_tests.rs
+@@ -0,0 +1,606 @@
++use super::*;
++use crate::rollout::recorder::RolloutRecorder;
++use crate::session::tests::make_session_and_context_with_auth_and_config_and_rx;
++use codex_features::Feature;
++use codex_login::CodexAuth;
++use codex_model_provider_info::ModelProviderInfo;
++use core_test_support::responses;
++use pretty_assertions::assert_eq;
++use serde_json::{Value, json};
++use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
++use std::time::Duration;
++use wiremock::matchers::{method, path};
++use wiremock::{Mock, MockServer, ResponseTemplate};
++
++const OLD: &str = "01a1a1fc-c598-7870-a58b-e9d0ee722432";
++const IMAGES: &[&str] = &[
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYPgOAAETAQC5prJ2AAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZPgGAAEVAQDVMkJTAAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYvgKAAEXAQBnG1/BAAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZvgCAAEZAQAFnP5cAAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYfgMAAEbAQA210JbAAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZfgEAAEdAQBaQ7J+AAAAAElFTkSuQmCC",
++    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgY/gIAAEfAQDoaq/sAAAAAElFTkSuQmCC",
++];
++
++#[derive(Default)]
++struct HookCounts {
++    pre: AtomicUsize,
++    post: AtomicUsize,
++    stop: AtomicBool,
++}
++impl codex_hooks::HookMcpExecutor for HookCounts {
++    fn execute(
++        &self,
++        call: codex_hooks::HookMcpCall,
++    ) -> futures::future::BoxFuture<'_, anyhow::Result<codex_hooks::HookMcpOutput>> {
++        Box::pin(async move {
++            let stop = if call.tool == "pre" {
++                self.pre.fetch_add(1, Ordering::SeqCst);
++                self.stop.load(Ordering::SeqCst)
++            } else {
++                assert_eq!(call.tool, "post");
++                self.post.fetch_add(1, Ordering::SeqCst);
++                false
++            };
++            Ok(codex_hooks::HookMcpOutput {
++                text: json!({"continue":!stop,"stopReason":"owned reset hook fixture"}).to_string(),
++                source_tool_namespace: Some("owned_reset_fixture".into()),
++            })
++        })
++    }
++}
++struct DynamicContext(Arc<HookCounts>);
++impl codex_extension_api::ContextContributor for DynamicContext {
++    fn contribute_thread_context<'a>(
++        &'a self,
++        _session: &'a codex_extension_api::ExtensionData,
++        _thread: &'a codex_extension_api::ExtensionData,
++    ) -> codex_extension_api::ExtensionFuture<'a, Vec<codex_extension_api::PromptFragment>> {
++        Box::pin(async move {
++            vec![codex_extension_api::PromptFragment::developer_policy(
++                format!(
++                    "POST_NATIVE_PREHOOK_CONTEXT_{}",
++                    self.0.pre.load(Ordering::SeqCst)
++                ),
++                codex_extension_api::ContentItemKind("test.reset.dynamic_context".into()),
++            )]
++        })
++    }
++}
++fn message(role: &str, text: &str, turn: &str) -> ResponseItem {
++    serde_json::from_value(json!({
++        "type":"message", "id":format!("msg_{}",uuid::Uuid::new_v4()), "role":role,
++        "status":"completed",
++        "content":[{"type":if role=="assistant" {"output_text"} else {"input_text"},"text":text}],
++        "internal_chat_message_metadata_passthrough":{"turn_id":turn}
++    }))
++    .unwrap()
++}
++fn contains_text(history: &ContextManager, needle: &str) -> bool {
++    history.raw_items().any(|item| {
++        matches!(item, ResponseItem::Message { content, .. }
++        if content.iter().any(|part| matches!(part,
++            codex_protocol::models::ContentItem::InputText { text }
++            | codex_protocol::models::ContentItem::OutputText { text, .. }
++            if text.contains(needle))))
++    })
++}
++async fn fixture(
++    stop: bool,
++) -> anyhow::Result<(
++    tempfile::TempDir,
++    Arc<Session>,
++    Arc<TurnContext>,
++    MockServer,
++    async_channel::Receiver<codex_protocol::protocol::Event>,
++    Arc<HookCounts>,
++    PathBuf,
++)> {
++    let home = tempfile::tempdir()?;
++    let home_path = codex_utils_absolute_path::AbsolutePathBuf::from_absolute_path(home.path())?;
++    let server = responses::start_mock_server().await;
++    let provider = ModelProviderInfo::create_openai_provider(Some(format!("{}/v1", server.uri())));
++    let user_hooks = json!({
++        "hooks":{
++            "PreCompact":[{"hooks":[{"type":"mcp_tool","server":"owned_reset_fixture","tool":"pre","input":{}}]}],
++            "PostCompact":[{"hooks":[{"type":"mcp_tool","server":"owned_reset_fixture","tool":"post","input":{}}]}]
++        }
++    });
++    let hook_config_path = home_path.join("config.toml");
++    let (mut session, mut turn, events) = make_session_and_context_with_auth_and_config_and_rx(
++        CodexAuth::create_dummy_chatgpt_auth_for_testing(),
++        Vec::new(),
++        move |config| {
++            config.codex_home = home_path;
++            config.model = Some("gpt-5.2".into());
++            config.model_provider = provider;
++            config.model_provider.supports_websockets = false;
++            config.model_provider.request_max_retries = Some(0);
++            config.model_provider.stream_max_retries = Some(0);
++            config.model_auto_compact_token_limit = Some(1_000_000_000);
++            config.features.enable(Feature::TokenBudget).unwrap();
++            config.features.enable(Feature::CodexHooks).unwrap();
++            config.bypass_hook_trust = true; // This isolated fixture only.
++            let user_hooks: codex_config::TomlValue = serde_json::from_value(user_hooks).unwrap();
++            config.config_layer_stack = config
++                .config_layer_stack
++                .with_user_config(&hook_config_path, user_hooks.clone())
++                .expect("native fixture user hook configuration");
++            std::fs::write(&hook_config_path, toml::to_string(&user_hooks).unwrap()).unwrap();
++            let _ = config.features.disable(Feature::CodeMode);
++            let _ = config.features.disable(Feature::CodeModeOnly);
++        },
++    )
++    .await;
++    Arc::get_mut(&mut turn).unwrap().sub_id = uuid::Uuid::new_v4().to_string();
++    let counts = Arc::new(HookCounts::default());
++    counts.stop.store(stop, Ordering::SeqCst);
++    let mut extensions = codex_extension_api::ExtensionRegistryBuilder::new();
++    extensions.prompt_contributor(Arc::new(DynamicContext(Arc::clone(&counts))));
++    let mutable = Arc::get_mut(&mut session).unwrap();
++    mutable.services.extensions = Arc::new(extensions.build());
++    let live = LiveThread::create(
++        Arc::clone(&mutable.services.thread_store),
++        CreateThreadParams {
++            creator_user_id: None,
++            creator_account_id: None,
++            session_id: mutable.session_id(),
++            thread_id: mutable.thread_id,
++            extra_config: None,
++            forked_from_id: None,
++            parent_thread_id: None,
++            source: codex_protocol::protocol::SessionSource::Exec,
++            thread_source: None,
++            originator: "reset_old_gap_native".into(),
++            base_instructions: Default::default(),
++            dynamic_tools: Vec::new(),
++            selected_capability_roots: Vec::new(),
++            multi_agent_version: None,
++            history_mode: Default::default(),
++            subagent_history_start_ordinal: None,
++            history_base: None,
++            initial_window_id: uuid::Uuid::now_v7().to_string(),
++            runtime_workspace_roots: None,
++            metadata: ThreadPersistenceMetadata {
++                cwd: Some(turn.config.cwd.to_path_buf()),
++                model_provider: turn.config.model_provider_id.clone(),
++                memory_mode: codex_protocol::protocol::ThreadMemoryMode::Disabled,
++            },
++        },
++    )
++    .await?;
++    mutable.services.live_thread = Some(live);
++    mutable
++        .ensure_rollout_materialized(PersistContext::Standard)
++        .await;
++    mutable.flush_rollout().await?;
++    let rollout = mutable.current_rollout_path().await?.unwrap();
++    // Admission refreshes handlers from actual configuration/plugin state.
++    // Only the executor is controlled; user hook definitions survive that path.
++    let hook_config = session.get_config().await;
++    let (hooks, _async_events) = codex_hooks::Hooks::new(
++        codex_hooks::HooksConfig {
++            feature_enabled: true,
++            bypass_hook_trust: true,
++            config_layer_stack: Some(hook_config.config_layer_stack.clone()),
++            plugin_hook_sources: Vec::new(),
++            ..Default::default()
++        },
++        session.thread_id,
++        Arc::clone(&counts) as Arc<dyn codex_hooks::HookMcpExecutor>,
++    )?;
++    session.services.hooks.store(Arc::new(hooks));
++    Ok((home, session, turn, server, events, counts, rollout))
++}
++async fn seed_confirmed(
++    session: &Arc<Session>,
++    turn: &Arc<TurnContext>,
++    gap: Vec<ResponseItem>,
++) -> anyhow::Result<()> {
++    let confirmed = message(
++        "user",
++        &format!("CONFIRMED_ONLY_{}", "x".repeat(512 * 1024)),
++        OLD,
++    );
++    session
++        .record_conversation_items(turn, turn.model_info(), &[confirmed])
++        .await;
++    session
++        .confirm_capacity_completion(
++            turn,
++            &turn.model_info().slug,
++            session.capture_capacity_send().await,
++            "ordinary-confirmed-before-gap",
++        )
++        .await;
++    session
++        .record_conversation_items(turn, turn.model_info(), &gap)
++        .await;
++    Ok(())
++}
++async fn compacted_count(session: &Arc<Session>, rollout: &PathBuf) -> anyhow::Result<usize> {
++    session.flush_rollout().await?;
++    let (items, _, errors) = RolloutRecorder::load_rollout_items(rollout).await?;
++    assert_eq!(errors, 0);
++    Ok(items
++        .iter()
++        .filter(|item| matches!(item, codex_history::RolloutItem::Compacted(_)))
++        .count())
++}
++async fn finish(session: &Arc<Session>) -> anyhow::Result<()> {
++    session.drain_capacity_native_persistence_for_test().await;
++    session.hooks().shutdown().await;
++    session.live_thread().unwrap().shutdown().await?;
++    Ok(())
++}
++
++#[test_case::test_case(false; "post native hook plan retains exact old assistant and current suffix")]
++#[test_case::test_case(true; "stopped native hook changes no history window checkpoint or model")]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn local_reset_with_old_gap_keeps_native_hook_and_writer_contract(
++    stop: bool,
++) -> anyhow::Result<()> {
++    let (_home, session, turn, server, _events, counts, rollout) = fixture(stop).await?;
++    seed_confirmed(
++        &session,
++        &turn,
++        vec![message("assistant", "CAPACITY_SEED_DONE", OLD)],
++    )
++    .await?;
++    session
++        .record_conversation_items(
++            &turn,
++            turn.model_info(),
++            &[message("user", "CURRENT_UNCONSUMED_CANARY", &turn.sub_id)],
++        )
++        .await;
++    let prefix = session
++        .capacity_prefix(&turn, &turn.model_info().slug)
++        .await
++        .unwrap();
++    assert!(prefix.needs_fresh_summary());
++    let before = session.clone_history().await;
++    let suffix = before.annotated_items()[prefix.prefix.len..].to_vec();
++    let before_window = session.current_window().await;
++    let before_cp = session.capacity_checkpoint_for_test().await.unwrap();
++    let token = CancellationToken::new();
++    let step = session
++        .capture_step_context(Arc::clone(&turn), &token)
++        .await?;
++    let world = Arc::new(session.build_world_state_for_step(&step, true).await?);
++    let result = crate::compact_token_budget::run_inline_capacity_reset_with_old_gap(
++        Arc::clone(&session),
++        step,
++        world,
++        prefix,
++        codex_protocol::error::UnexpectedResponseError {
++            status: http::StatusCode::PAYLOAD_TOO_LARGE,
++            body: "Synthetic known pre-response capacity rejection".into(),
++            user_message: None,
++            url: None,
++            cf_ray: None,
++            request_id: None,
++            identity_authorization_error: None,
++            identity_error_code: None,
++        },
++        token,
++    )
++    .await;
++    assert_eq!(counts.pre.load(Ordering::SeqCst), 1);
++    assert!(
++        server.received_requests().await.unwrap().is_empty(),
++        "local reset/STOP sends no model request"
++    );
++    if stop {
++        assert!(
++            matches!(result,Err(ref e) if matches!(e.details(),codex_protocol::error::CodexErrorDetails::TurnAborted))
++        );
++        assert_eq!(
++            session.clone_history().await.annotated_items(),
++            before.annotated_items()
++        );
++        assert_eq!(session.current_window().await, before_window);
++        assert_eq!(
++            serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?,
++            serde_json::to_value(before_cp)?
++        );
++        assert_eq!(counts.post.load(Ordering::SeqCst), 0);
++        assert_eq!(compacted_count(&session, &rollout).await?, 0);
++    } else {
++        let crate::compact_token_budget::CapacityResetOutcome::Reset(proof) = result? else {
++            panic!("real local reset required")
++        };
++        assert!(
++            proof.is_some(),
++            "real ACK/CAS must mint old-gap continuation"
++        );
++        let after = session.clone_history().await;
++        assert_eq!(
++            &after.annotated_items()[after.annotated_items().len() - suffix.len()..],
++            suffix.as_slice()
++        );
++        assert!(
++            contains_text(&after, "POST_NATIVE_PREHOOK_CONTEXT_1"),
++            "context must be built after the actual native pre-hook"
++        );
++        assert_eq!(session.current_window().await.1, before_window.1 + 1);
++        assert_eq!(counts.post.load(Ordering::SeqCst), 1);
++        assert_eq!(compacted_count(&session, &rollout).await?, 1);
++        assert!(
++            session
++                .capacity_prefix(&turn, &turn.model_info().slug)
++                .await
++                .is_none(),
++            "same fence cannot be claimed again"
++        );
++    }
++    finish(&session).await
++}
++
++#[derive(Default)]
++struct WireState {
++    ordinary: usize,
++    summaries: usize,
++    accepted_images: Vec<String>,
++    last_summary: Option<String>,
++}
++fn image_urls(value: &Value, result: &mut Vec<String>) {
++    match value {
++        Value::Object(map) => {
++            if map.get("type").and_then(Value::as_str) == Some("input_image") {
++                result.push(
++                    map.get("image_url")
++                        .and_then(Value::as_str)
++                        .unwrap()
++                        .to_owned(),
++                );
++            }
++            for value in map.values() {
++                image_urls(value, result);
++            }
++        }
++        Value::Array(values) => {
++            for value in values {
++                image_urls(value, result);
++            }
++        }
++        _ => {}
++    }
++}
++fn is_compact(body: &Value) -> bool {
++    body["input"].as_array().unwrap().iter().any(|item| {
++        item["content"].as_array().is_some_and(|parts| {
++            parts.iter().any(|part| {
++                part["text"].as_str().is_some_and(|text| {
++                    text == crate::compact::SUMMARIZATION_PROMPT
++                        || text.starts_with("Compaction-only partial historical content:")
++                })
++            })
++        })
++    })
++}
++fn release(barrier: &(std::sync::Mutex<bool>, std::sync::Condvar)) {
++    *barrier.0.lock().unwrap() = true;
++    barrier.1.notify_all();
++}
++async fn request_or_end(
++    notify: &tokio::sync::Notify,
++    events: &async_channel::Receiver<codex_protocol::protocol::Event>,
++) -> anyhow::Result<()> {
++    loop {
++        tokio::select! {
++            biased;
++            _=notify.notified()=>return Ok(()),
++            event=events.recv()=>{
++                let event=event?;
++                if matches!(event.msg,EventMsg::TurnComplete(_)|EventMsg::TurnAborted(_)){
++                    anyhow::bail!("native turn ended before expected real ordinary request: {:?}",event.msg);
++                }
++            }
++        }
++    }
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn real_sampling_reset_then_413_fresh_old_gap_then_ordinary_preserves_current()
++-> anyhow::Result<()> {
++    let (_home, session, turn, server, events, counts, rollout) = fixture(false).await?;
++    let gap = vec![
++        serde_json::from_value(
++            json!({"type":"custom_tool_call","id":"ct_old_gap","status":"completed",
++            "call_id":"old-gap-pair","name":"fixture","input":"already completed; never execute",
++            "internal_chat_message_metadata_passthrough":{"turn_id":OLD}}),
++        )?,
++        serde_json::from_value(json!({"type":"custom_tool_call_output","id":"ctco_old_gap",
++            "call_id":"old-gap-pair","output":IMAGES.iter().map(|url|json!({"type":"input_image","image_url":url,"detail":"original"})).collect::<Vec<_>>(),
++            "internal_chat_message_metadata_passthrough":{"turn_id":OLD}}))?,
++    ];
++    seed_confirmed(&session, &turn, gap).await?;
++    let initial_cp = serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++    let initial_window = session.current_window().await;
++    let wire = Arc::new(std::sync::Mutex::new(WireState::default()));
++    let first = Arc::new(tokio::sync::Notify::new());
++    let second = Arc::new(tokio::sync::Notify::new());
++    let first_release = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
++    let second_release = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
++    let w = Arc::clone(&wire);
++    let n1 = Arc::clone(&first);
++    let n2 = Arc::clone(&second);
++    let b1 = Arc::clone(&first_release);
++    let b2 = Arc::clone(&second_release);
++    Mock::given(method("POST"))
++        .and(path("/v1/responses"))
++        .respond_with(move |request: &wiremock::Request| {
++            let encoding = request
++                .headers
++                .get("content-encoding")
++                .and_then(|v| v.to_str().ok());
++            let decoded = responses::decode_body_bytes(&request.body, encoding);
++            let body: Value = serde_json::from_slice(&decoded).unwrap();
++            let compact = is_compact(&body);
++            let mut images = Vec::new();
++            image_urls(&body["input"], &mut images);
++            let mut state = w.lock().unwrap();
++            if !compact {
++                state.ordinary += 1;
++                let number = state.ordinary;
++                drop(state);
++                if number <= 2 {
++                    let (notify, barrier) = if number == 1 { (&n1, &b1) } else { (&n2, &b2) };
++                    notify.notify_one();
++                    let (released, timed) = barrier
++                        .1
++                        .wait_timeout_while(
++                            barrier.0.lock().unwrap(),
++                            Duration::from_secs(10),
++                            |v| !*v,
++                        )
++                        .unwrap();
++                    assert!(
++                        *released && !timed.timed_out(),
++                        "actual ordinary request barrier"
++                    );
++                }
++            } else {
++                drop(state);
++            }
++            eprintln!(
++                "NATIVE_RESET_OLD_GAP_REQUEST compact={compact} images={} bytes={}",
++                images.len(),
++                decoded.len()
++            );
++            if decoded.len() > 262144 || images.len() > 6 {
++                return ResponseTemplate::new(413).set_body_json(
++                    json!({"error":{"message":"fixed byte and six-image capacity"}}),
++                );
++            }
++            let mut state = w.lock().unwrap();
++            let (text, response) = if compact {
++                assert!(
++                    body.get("tools")
++                        .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty))
++                );
++                if let Some(previous) = &state.last_summary {
++                    assert!(
++                        body["input"]
++                            .as_array()
++                            .unwrap()
++                            .iter()
++                            .any(|item| item["content"].as_array().is_some_and(|parts| parts
++                                .iter()
++                                .any(|p| p["text"].as_str() == Some(previous.as_str())))),
++                        "fresh compactor must carry the exact prior successful summary"
++                    );
++                }
++                for image in images {
++                    state.accepted_images.push(image);
++                }
++                state.summaries += 1;
++                let text = format!("OLD_GAP_FRESH_{}", state.summaries);
++                state.last_summary = Some(format!("{}\n{text}", crate::compact::SUMMARY_PREFIX));
++                (text, format!("old-gap-summary-{}", state.summaries))
++            } else {
++                ("FINAL_NATIVE_DONE".into(), "ordinary-after-gap".into())
++            };
++            ResponseTemplate::new(200)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(responses::sse(vec![
++                    responses::ev_assistant_message("native-result", &text),
++                    responses::ev_completed(&response),
++                ]))
++        })
++        .mount(&server)
++        .await;
++    session
++        .spawn_task(
++            Arc::clone(&turn),
++            vec![TurnInput::UserInput {
++                metadata: Default::default(),
++                content: vec![codex_protocol::user_input::UserInput::Text {
++                    text: "CURRENT_UNCONSUMED_CANARY".into(),
++                    text_elements: Vec::new(),
++                }],
++                client_id: None,
++            }],
++            crate::tasks::RegularTask::new(),
++        )
++        .await;
++    request_or_end(&first, &events).await?;
++    let before = session.clone_history().await;
++    let original_gap_end=before.annotated_items().iter().position(|e|
++        matches!(&e.item,ResponseItem::CustomToolCallOutput{call_id,..} if call_id=="old-gap-pair")).unwrap()+1;
++    let current = before.annotated_items()[original_gap_end..].to_vec();
++    assert!(!current.is_empty());
++    release(&first_release);
++    request_or_end(&second, &events).await?;
++    let after_reset = session.clone_history().await;
++    assert_eq!(
++        &after_reset.annotated_items()[after_reset.annotated_items().len() - current.len()..],
++        current.as_slice()
++    );
++    assert_eq!(
++        session.current_window().await.1,
++        initial_window.1 + 1,
++        "native reset must precede second ordinary 413"
++    );
++    assert_eq!(compacted_count(&session, &rollout).await?, 1);
++    let reset_cp = serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++    assert_eq!(reset_cp["completed_epoch"], initial_cp["completed_epoch"]);
++    assert_eq!(reset_cp["response_id"], initial_cp["response_id"]);
++    assert_eq!(reset_cp["recovery_turn_id"], turn.sub_id);
++    assert_eq!(counts.pre.load(Ordering::SeqCst), 1);
++    assert_eq!(counts.post.load(Ordering::SeqCst), 1);
++    release(&second_release);
++    loop {
++        let event = events.recv().await?;
++        let value = serde_json::to_value(&event.msg)?;
++        assert_ne!(
++            value.get("call_id").and_then(Value::as_str),
++            Some("old-gap-pair"),
++            "historical tool effects cannot execute again"
++        );
++        match event.msg {
++            EventMsg::TurnComplete(_) => {
++                break;
++            }
++            EventMsg::TurnAborted(_) => anyhow::bail!("native old-gap turn aborted"),
++            _ => {}
++        }
++    }
++    let after = session.clone_history().await;
++    assert!(contains_text(&after, "FINAL_NATIVE_DONE"));
++    assert!(contains_text(&after, "CURRENT_UNCONSUMED_CANARY"));
++    assert_eq!(
++        compacted_count(&session, &rollout).await?,
++        2,
++        "one native reset and one whole fresh old-gap commit"
++    );
++    assert_eq!(session.current_window().await.1, initial_window.1 + 2);
++    assert_eq!(
++        counts.pre.load(Ordering::SeqCst),
++        2,
++        "later fresh is a new lifecycle"
++    );
++    assert_eq!(counts.post.load(Ordering::SeqCst), 2);
++    assert!(contains_text(&after, "POST_NATIVE_PREHOOK_CONTEXT_2"));
++    let state = wire.lock().unwrap();
++    assert_eq!(
++        state.ordinary, 3,
++        "real original ordinary, post-reset 413, post-fresh success"
++    );
++    assert_eq!(
++        state.accepted_images,
++        IMAGES.iter().map(|v| v.to_string()).collect::<Vec<_>>(),
++        "all exact old-gap images read once before final commit"
++    );
++    assert!(state.summaries >= 2);
++    drop(state);
++    let cp = serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++    assert!(
++        cp["completed_epoch"].as_u64().unwrap() > initial_cp["completed_epoch"].as_u64().unwrap()
++    );
++    assert!(cp["recovery_turn_id"].is_null());
++    assert_eq!(cp["response_id"], "ordinary-after-gap");
++    finish(&session).await
++}

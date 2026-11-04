@@ -29,6 +29,8 @@ POSIX start_new_session changes session/process-group ownership; it does not by 
 
 A yielded tool may outlive turn interruption. Check its exact owned process/session before resuming or launching the same operation again. Do not kill by executable name or assume that a stopped model proves a stopped child tool.
 
+On Linux, a PID printed by a sandboxed command may belong to an inner PID namespace. Prefer native turn, terminal and process controls. If host observation is necessary, map the reported PID through `NSpid` and verify the owned command, ancestry, boot ID and process start ticks. A missing host PID does not prove the sandbox process exited, and a matching numeric PID does not prove ownership. WSL wall-clock creation times alone are insufficient for this identity check.
+
 Resume using the original CDS home and exact UUID:
 
 ```text

@@ -1,4 +1,4 @@
-"""One explicit ordinary provider policy per isolated home; no inference fallback."""
+"""Explicit provider policy per isolated home; no inference fallback."""
 from contextlib import contextmanager
 import hashlib
 import json
@@ -6,21 +6,26 @@ import os
 from pathlib import Path
 import tempfile
 
-from .protocol import PROVIDER, STRUCTURED_PROVIDER
+from .protocol import PROVIDER, STRUCTURED_PROVIDER, SERIAL_PROVIDER, PEER_HOSTED_PROVIDER
 from .image_transport import _open_private_file, _private_file_stat, _strict_json, ImageTransportError
 from .platforms import file_lock, private_directory, private_fd, replace_file
 
 FILENAME = "provider-routing.json"
 LIMIT = 4096
 ALLOWED = frozenset({PROVIDER, STRUCTURED_PROVIDER})
+PEER_HOSTED_ALLOWED = frozenset({PEER_HOSTED_PROVIDER, SERIAL_PROVIDER})
 
 
 def validate(value):
-    if (not isinstance(value, dict) or set(value) != {"schema", "ordinary_default_provider"}
+    if (not isinstance(value, dict) or not {"schema", "ordinary_default_provider"} <= set(value)
+            or set(value) - {"schema", "ordinary_default_provider", "peer_hosted_provider"}
             or type(value["schema"]) is not int or value["schema"] != 1
             or not isinstance(value["ordinary_default_provider"], str)
             or value["ordinary_default_provider"] not in ALLOWED):
         raise ValueError("Provider policy must contain schema=1 and ordinary_default_provider=deepseek or morph/fp8")
+    if ("peer_hosted_provider" in value and (not isinstance(value["peer_hosted_provider"], str)
+            or value["peer_hosted_provider"] not in PEER_HOSTED_ALLOWED)):
+        raise ValueError("Peer hosted provider must be morph/fp8 or primeintellect")
     return dict(value)
 
 
@@ -91,12 +96,15 @@ def _status_locked(home, loaded):
     admitted = read_descriptor(home)
     running = (matches(admitted.get("pid"), admitted.get("birth"))
                or matches(admitted.get("worker_pid"), admitted.get("worker_birth")))
-    if running and any(key in admitted for key in ("provider_config", "provider_config_sha256", "ordinary_default_provider")):
-        _admitted_provider(admitted)
+    admitted_policy = None
+    if running and any(key in admitted for key in ("provider_config", "provider_config_sha256", "ordinary_default_provider", "peer_hosted_provider")):
+        admitted_policy = _admitted_provider(admitted)
     return {"configured_provider": loaded["policy"]["ordinary_default_provider"],
+            "configured_peer_hosted_provider": loaded["policy"].get("peer_hosted_provider", PEER_HOSTED_PROVIDER),
             "configured_config_sha256": loaded["sha256"], "configured_revision": loaded["revision"],
             "configured_source_sha256": loaded["source_sha256"],
             "admitted_provider": admitted.get("ordinary_default_provider") if running else None,
+            "admitted_peer_hosted_provider": admitted_policy.get("peer_hosted_provider", PEER_HOSTED_PROVIDER) if admitted_policy is not None else None,
             "admitted_config_sha256": admitted.get("provider_config_sha256") if running else None,
             "service_running": running, "native_active": native_active(home)}
 
@@ -118,10 +126,28 @@ def _service_lease_held(state):
 
 
 def set_provider(home, provider, *, expected_revision=None):
+    validate({"schema": 1, "ordinary_default_provider": provider})
+    return _set_policy(home, lambda value: {**value, "ordinary_default_provider": provider},
+                       expected_revision=expected_revision)
+
+
+def set_peer_hosted_provider(home, provider, *, expected_revision=None):
+    # "default" removes the extension, restoring schema-1 bytes accepted by older releases.
+    if provider != "default":
+        validate({**default(), "peer_hosted_provider": provider})
+    def update(value):
+        value = dict(value)
+        value.pop("peer_hosted_provider", None)
+        if provider != "default":
+            value["peer_hosted_provider"] = provider
+        return value
+    return _set_policy(home, update, expected_revision=expected_revision)
+
+
+def _set_policy(home, update, *, expected_revision=None):
     """Cooperative CAS under the existing service lock; never stop native/service owners."""
     from .service import native_active, read_descriptor
     from .processes import matches
-    value = validate({"schema": 1, "ordinary_default_provider": provider})
     observed = load(home)
     expected = observed["revision"] if expected_revision is None else expected_revision
     if not isinstance(expected, str) or (expected != "absent" and (len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected))):
@@ -137,6 +163,7 @@ def set_provider(home, provider, *, expected_revision=None):
                 or matches(admitted.get("worker_pid"), admitted.get("worker_birth"))
                 or _service_lease_held(state)):
             raise RuntimeError("Provider service is still admitted for this home; wait for its natural idle retirement before changing policy")
+        value = validate(update(before["policy"]))
         path = state / FILENAME
         temporary = None
         try:
@@ -156,8 +183,9 @@ def set_provider(home, provider, *, expected_revision=None):
 
 def command(home, arguments):
     if arguments == ["status"]: result = status(home)
-    elif len(arguments) in {2, 4} and arguments[0] == "set" and (len(arguments) == 2 or arguments[2] == "--if-match"):
-        result = set_provider(home, arguments[1], expected_revision=arguments[3] if len(arguments) == 4 else None)
+    elif len(arguments) in {2, 4} and arguments[0] in {"set", "set-peer-hosted"} and (len(arguments) == 2 or arguments[2] == "--if-match"):
+        setter = set_provider if arguments[0] == "set" else set_peer_hosted_provider
+        result = setter(home, arguments[1], expected_revision=arguments[3] if len(arguments) == 4 else None)
     else:
-        raise ValueError("Usage: runtime provider status | runtime provider set deepseek|morph/fp8 [--if-match REVISION]")
+        raise ValueError("Usage: runtime provider status | runtime provider set deepseek|morph/fp8 [--if-match REVISION] | runtime provider set-peer-hosted morph/fp8|primeintellect|default [--if-match REVISION]")
     print(json.dumps(result, indent=2)); return 0

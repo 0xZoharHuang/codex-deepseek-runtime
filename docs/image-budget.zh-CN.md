@@ -23,9 +23,11 @@ estimated_min_bytes 是**当前 occurrence 策略及现有 selector 下**，使�
 file ID 占位符得到的最小估算，不是实际上传后的 wire bytes。
 重复图的每次引用各占一个 slot；planned_unique_images 仅表示选中图中的唯一原始字节数量，
 不表示新上传数，实际缓存复用与新上传保持未知。明确的 low detail 不会转换为 Files 引用。
-当前最大 16 次引用依据受控 Responses 实测：同一文件 ID 重复 16 次被接受，17 次返回明确的 16-reference-limit 错误；并非只有上传不同文件才计数。
+当前本地策略默认 16 次引用，并限制配置为 0–16；依据是 2026-10-24 对固定模型、官方 DeepSeek 路由的受控 Responses 实测：同一文件 ID 重复 16 次被接受，17 次返回明确的 16-reference-limit 错误，并非只有上传不同文件才计数。这是当时服务端的观测结果，不是所有提供方、后续服务版本或请求形态的永久上限。
 [原始结果的脱敏摘要](../reports/payload-capacity/file-reference-boundary-20261025.json)同时记录固定 DeepSeek、官方 DeepSeek 路由及生成元数据回读。
-[官方 Files API 文档](https://openrouter.ai/docs/guides/features/files-api)仍将该 API 标为 beta，未把此请求引用数写成长期合同；升级或上游行为改变时需重新验证。
+[官方 Files API 文档](https://openrouter.ai/docs/guides/features/files-api)仍将该 API 标为 beta，未把此请求引用数写成长期合同；升级或上游行为改变时需重新验证。 2026-11-03 的[官方 OpenAPI](https://openrouter.ai/openapi.json)中，`input_image.file_id` 及 Responses 输入数组没有全请求 16 次的 schema 上限；schema 合法不等于实际服务准入，应以隔离、低字节的多引用请求重新区分引用数量限制与服务端展开后的字节限制。
+
+引用转换只减少此次发送的 JSON 字节，不扩大模型上下文或上游展开图片后的容量。图片历史持续累积时，可能先于 token 自动压缩触及 wire budget；12 或 16 引用的一次通过不能证明长任务稳定。容量恢复必须走[原生已确认前缀压缩与冷恢复机制](request-capacity-recovery.zh-CN.md)，保留尚未确认的完整后缀，并分别验收压缩终态及后续普通 turn；不能靠删图、缩图或网关生成摘要通过。
 
 小于等于 activation threshold 时沿用原 prepare 的提前返回，不扫描图或校验引用数量；
 因此 image_scan_performed=false，对应计数为 null，不能把它当作“没有图片”。

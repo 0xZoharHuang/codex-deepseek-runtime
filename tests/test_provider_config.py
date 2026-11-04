@@ -154,12 +154,16 @@ def test_code_identity_uses_admitted_snapshot_not_a_later_file_read(tmp_path):
     assert service.code_id(catalog,home=home)!=first
 
 
-def test_real_shared_home_worker_restart_preserves_snapshot_and_other_home_default(tmp_path,monkeypatch):
+@pytest.mark.parametrize('peer',[None,'primeintellect'])
+def test_real_shared_home_worker_restart_preserves_snapshot_and_other_home_default(tmp_path,monkeypatch,peer):
     monkeypatch.setenv('OPENROUTER_API_KEY','NONFUNCTIONAL-POLICY-TEST');monkeypatch.setenv('CODEX_DEEPSEEK_SERVICE_IDLE_SECONDS','1')
     home=tmp_path/'one';other=tmp_path/'two';policy.set_provider(home,'morph/fp8');catalog=ROOT/'catalog.json';store=Store(home/'provider-state/adapter.sqlite');value=None;other_value=None
+    if peer is not None:policy.set_peer_hosted_provider(home,peer)
+    snapshot=policy.load(home)['policy']
     try:
         value=service.ensure(home,catalog,owner=store.owner)
-        assert value['ordinary_default_provider']=='morph/fp8' and value['provider_config_sha256']==policy.digest({'schema':1,'ordinary_default_provider':'morph/fp8'})
+        assert value['ordinary_default_provider']=='morph/fp8' and value['provider_config_sha256']==policy.digest(snapshot)
+        assert value.get('peer_hosted_provider')==peer
         again=service.ensure(home,catalog,owner=store.owner);assert (again['pid'],again['port'],again['code_id'])==(value['pid'],value['port'],value['code_id'])
         with pytest.raises(RuntimeError):policy.set_provider(home,'deepseek')
         # Simulate an uncoordinated outside-file change. Restart must keep the
@@ -172,6 +176,7 @@ def test_real_shared_home_worker_restart_preserves_snapshot_and_other_home_defau
             if current.get('worker_pid')!=original['worker_pid'] and service.healthy(current):break
             time.sleep(.1)
         assert current['worker_pid']!=original['worker_pid'] and current['ordinary_default_provider']=='morph/fp8' and current['provider_config_sha256']==value['provider_config_sha256']
+        assert current.get('peer_hosted_provider')==peer
         with pytest.raises(RuntimeError,match='changed'):
             service.ensure(home,catalog,owner=store.owner)
         assert matches(value['pid'],value['birth'])
@@ -240,3 +245,101 @@ def test_dead_supervisor_live_recorded_worker_still_rejects_policy_change(tmp_pa
     with pytest.raises(RuntimeError,match='still admitted'):policy.set_provider(home,'morph/fp8')
     assert path.read_bytes()==original
     status=policy.status(home);assert status['service_running'] and status['admitted_provider'] is None
+
+
+@pytest.mark.parametrize('capture',CAPTURES,ids=lambda c:c['name'])
+def test_explicit_peer_provider_changes_only_the_peer_hosted_branch(capture):
+    body=copy.deepcopy(capture['request']);before=copy.deepcopy(body)
+    payload,registry=protocol.prepare(body,peer_hosted_provider='primeintellect')
+    expected=copy.deepcopy(capture['payload'])
+    if capture['registry']['route_reason']=='native_peer_or_continuation_with_hosted_tools':
+        expected['provider']['only']=['primeintellect']
+    assert body==before and payload==expected
+    assert normalized(vars(registry))==capture['registry']
+    # Explicit default remains exactly the historical request and Registry.
+    baseline,baseline_registry=protocol.prepare(body,peer_hosted_provider='morph/fp8')
+    assert baseline==capture['payload']
+    assert normalized(vars(baseline_registry))==capture['registry']
+
+
+@pytest.mark.parametrize('value',['deepseek','cohere','morph','',None,{},True])
+def test_peer_provider_policy_and_prepare_reject_unqualified_routes(value):
+    with pytest.raises(ValueError):policy.validate({**policy.default(),'peer_hosted_provider':value})
+    with pytest.raises(ValueError):protocol.prepare({'model':protocol.MODEL},peer_hosted_provider=value)
+
+
+def test_peer_CAS_preserves_ordinary_policy_and_default_restores_old_schema_bytes(tmp_path):
+    home=tmp_path/'one';other=tmp_path/'two'
+    first=policy.set_peer_hosted_provider(home,'primeintellect',expected_revision='absent')
+    assert first['configured_provider']=='deepseek' and first['configured_peer_hosted_provider']=='primeintellect'
+    assert policy.load(home)['policy']=={**policy.default(),'peer_hosted_provider':'primeintellect'}
+    original=(home/'provider-state'/policy.FILENAME).read_bytes()
+    with pytest.raises(ValueError,match='CAS'):
+        policy.set_peer_hosted_provider(home,'default',expected_revision='absent')
+    assert (home/'provider-state'/policy.FILENAME).read_bytes()==original
+    changed=policy.set_provider(home,'morph/fp8',expected_revision=first['configured_revision'])
+    assert changed['configured_peer_hosted_provider']=='primeintellect'
+    defaulted=policy.set_peer_hosted_provider(home,'default',expected_revision=changed['configured_revision'])
+    expected={'schema':1,'ordinary_default_provider':'morph/fp8'}
+    assert policy.load(home)['policy']==expected
+    assert (home/'provider-state'/policy.FILENAME).read_bytes()==b'{"ordinary_default_provider":"morph/fp8","schema":1}\n'
+    assert defaulted['configured_config_sha256']==policy.digest(expected)
+    assert defaulted['configured_peer_hosted_provider']=='morph/fp8'
+    assert policy.load(other)['policy']==policy.default() and not other.exists()
+
+
+@pytest.mark.parametrize('setter,value',[(policy.set_peer_hosted_provider,'primeintellect'),
+                                         (policy.set_peer_hosted_provider,'default')])
+def test_peer_CAS_uses_existing_native_and_service_admission_guards(tmp_path,monkeypatch,setter,value):
+    home=tmp_path/'home';policy.set_provider(home,'deepseek')
+    path=home/'provider-state'/policy.FILENAME;before=path.read_bytes()
+    monkeypatch.setattr(service,'terminate',lambda *a,**k:pytest.fail('must not terminate an admitted owner'))
+    monkeypatch.setattr(service,'native_active',lambda h:True)
+    with pytest.raises(RuntimeError,match='active native'):setter(home,value)
+    assert path.read_bytes()==before
+    monkeypatch.setattr(service,'native_active',lambda h:False)
+    monkeypatch.setattr(service,'read_descriptor',lambda h:{'pid':101,'birth':'owned'})
+    monkeypatch.setattr('codex_deepseek.processes.matches',lambda p,b:p==101 and b=='owned')
+    with pytest.raises(RuntimeError,match='still admitted'):setter(home,value)
+    assert path.read_bytes()==before
+
+
+def test_peer_CAS_rejects_an_unknown_held_service_lease(tmp_path):
+    from codex_deepseek.platforms import file_lock
+    home=tmp_path/'home';policy.set_provider(home,'deepseek')
+    state=home/'provider-state';before=(state/policy.FILENAME).read_bytes()
+    with (state/'gateway.lease').open('a') as stream,file_lock(stream):
+        with pytest.raises(RuntimeError,match='still admitted'):
+            policy.set_peer_hosted_provider(home,'primeintellect')
+    assert (state/policy.FILENAME).read_bytes()==before
+
+
+def test_legacy_descriptor_stays_readable_and_peer_snapshot_must_match():
+    old=policy.default()
+    descriptor={'provider_config':old,'provider_config_sha256':policy.digest(old),
+                'ordinary_default_provider':'deepseek'}
+    assert service._admitted_provider(descriptor)==old
+    selected={**old,'peer_hosted_provider':'primeintellect'}
+    descriptor.update(provider_config=selected,provider_config_sha256=policy.digest(selected),
+                      peer_hosted_provider='primeintellect')
+    assert service._admitted_provider(descriptor)==selected
+    for changed in [{**descriptor,'peer_hosted_provider':'morph/fp8'},
+                    {k:v for k,v in descriptor.items() if k!='peer_hosted_provider'}]:
+        with pytest.raises(RuntimeError,match='inconsistent'):service._admitted_provider(changed)
+
+
+async def test_peer_provider_CLI_is_offline_and_can_remove_the_extension(tmp_path,monkeypatch,capsys):
+    from codex_deepseek import cli
+    monkeypatch.setattr(cli,'data_root',lambda:tmp_path/'install-root')
+    monkeypatch.delenv('CODEX_DEEPSEEK_HOME',raising=False)
+    def forbidden(*a,**k):pytest.fail('provider management must not launch native, read credentials or start IPC')
+    monkeypatch.setattr(cli,'native',forbidden);monkeypatch.setattr(cli,'credential',forbidden)
+    monkeypatch.setattr(cli,'check_home_ipc',forbidden)
+    assert await cli.run(['runtime','provider','set-peer-hosted','primeintellect','--if-match','absent'])==0
+    changed=json.loads(capsys.readouterr().out)
+    assert changed['configured_peer_hosted_provider']=='primeintellect'
+    assert changed['admitted_peer_hosted_provider'] is None
+    assert await cli.run(['runtime','provider','set-peer-hosted','default','--if-match',changed['configured_revision']])==0
+    restored=json.loads(capsys.readouterr().out)
+    assert restored['configured_peer_hosted_provider']=='morph/fp8'
+    assert policy.load(tmp_path/'install-root/codex-home')['policy']==policy.default()

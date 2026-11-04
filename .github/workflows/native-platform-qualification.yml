@@ -109,6 +109,11 @@ jobs:
         run: |
           set -euo pipefail
           python -I ci/qualify_guardian_pool.py --package "$RUNNER_TEMP/cds-native-package" --build-work "$RUNNER_TEMP/cds-build" --evidence "$RUNNER_TEMP/cds-ci-artifact/guardian-pool"
+      - name: Qualify actual restored-call and byte-prefix capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I ci/qualify_guardian_pool.py --suite capacity-core --package "$RUNNER_TEMP/cds-native-package" --build-work "$RUNNER_TEMP/cds-build" --evidence "$RUNNER_TEMP/cds-ci-artifact/capacity-core"
       - name: Run real native payload and recovery fixtures
         shell: bash
         run: |

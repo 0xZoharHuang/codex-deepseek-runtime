@@ -22,7 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
-    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch'}]}
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch'}]}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -690,5 +690,89 @@ def test_capacity_replay_overlay_cannot_be_omitted_reordered_duplicated_or_retar
         elif problem=='reorder':recipe['overlays'][index-1:index+1]=reversed(recipe['overlays'][index-1:index+1])
         elif problem=='duplicate':recipe['overlays'].append(copy.deepcopy(recipe['overlays'][index]))
         else:recipe['overlays'][index]['changes_by_target'].pop(TARGETS[0])
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):build.runtime_recipe()
+
+
+
+def test_cancel_owned_commit_overlay_is_final_shared_and_preserves_exact_p28():
+    recipe=recipe_prefix_through(build.runtime_recipe(),'capacity-cancel-owned-commit-0164.patch')
+    archive=ROOT/'native/runtime-overlays-pre-cancel-p28.json'
+    raw=archive.read_bytes()
+    assert hashlib.sha256(raw).hexdigest()=='49a5abb49db82d429e5c83ef5fb923a61bb01304b3819bdeff1f9148efebad36'
+    previous=json.loads(raw)
+    assert len(previous['overlays'])==28
+    assert {**recipe,'overlays':recipe['overlays'][:-1]}==previous
+    leaf=recipe['overlays'][-1]
+    assert leaf['file']=='capacity-cancel-owned-commit-0164.patch'
+    assert leaf['sha256']=='7f851ebd15bfd38d7c64d88f1d19c785f36b5a4d037cb43a319f44267ccf0b87'
+    assert build.sha(ROOT/'native'/leaf['file'])==leaf['sha256']
+    assert set(leaf['changes_by_target'])==set(TARGETS)
+    rows=leaf['changes_by_target'][TARGETS[0]]
+    assert len(rows)==9
+    assert all(leaf['changes_by_target'][target]==rows for target in TARGETS)
+    new=[row for row in rows if row['before_sha256'] is None]
+    assert [row['path'] for row in new]==['codex-rs/core/src/session/capacity_commit_tests.rs']
+    for target in TARGETS:
+        assert build.native_recipe_identity(target,recipe)!=build.native_recipe_identity(target,previous)
+
+
+@pytest.mark.parametrize('problem',['omit','reorder','unknown','missing_target'])
+def test_cancel_owned_commit_overlay_requires_exact_order_and_all_platforms(tmp_path,monkeypatch,problem):
+    def edit(value):
+        index=overlay_index(value,'capacity-cancel-owned-commit-0164.patch')
+        if problem=='omit':value['overlays'].pop(index)
+        elif problem=='reorder':value['overlays'][index-1:index+1]=reversed(value['overlays'][index-1:index+1])
+        elif problem=='unknown':value['overlays'][index]['file']='unreviewed-cancellation.patch'
+        else:value['overlays'][index]['changes_by_target'].pop(TARGETS[0])
+    recipe_copy(tmp_path,monkeypatch,edit)
+    with pytest.raises(ValueError):
+        build.runtime_recipe()
+
+
+
+def test_p30_windows_host_preserves_exact_p29_prefix_and_both_unix_identities():
+    raw=(ROOT/'native/runtime-overlays-pre-typed-projection-p30.json').read_bytes()
+    assert hashlib.sha256(raw).hexdigest()=='a821691d592d7d12d84bf013fd2dc05a7c895671255403406f6c0b836483fd74'
+    archived=(ROOT/'native/runtime-overlays-pre-host-p29.json').read_bytes()
+    assert hashlib.sha256(archived).hexdigest()=='edf767baf89d86c1da0c073252c3f746560c4d3da961445d888e0aa348c74965'
+    previous=json.loads(archived);current=recipe_prefix_through(build.runtime_recipe(),'windows-host-boundaries-0164.patch')
+    assert current==json.loads(raw)
+    assert len(previous['overlays'])==29 and len(current['overlays'])==30
+    assert {**current,'overlays':current['overlays'][:-1]}==previous
+    leaf=current['overlays'][-1]
+    assert leaf['file']=='windows-host-boundaries-0164.patch'
+    assert leaf['sha256']=='36c4a9a964c98d3998abfe99846f3cbf34b0b3982046e7c5eef3724b01a31087'
+    assert build.sha(ROOT/'native'/leaf['file'])==leaf['sha256']
+    assert set(leaf['changes_by_target'])=={WIN}
+    assert {r['path'] for r in leaf['changes_by_target'][WIN]}=={
+        'codex-rs/windows-sandbox-rs/src/'+name for name in (
+            'desktop.rs','elevated/runner_client.rs','identity.rs','private_acl_lock.rs','setup.rs')}
+    expected_unix={
+        'aarch64-apple-darwin':'0955be666466f04a3d291919ded07c42a6946fcee95c8b5dee489e65d4d70963',
+        'x86_64-unknown-linux-gnu':'0b3eef79298011fc273954b2da80fb7a7eacb8c9f941b99632978db76c2ae42f'}
+    for target,identity in expected_unix.items():
+        assert previous['required_base_inputs'][target]==current['required_base_inputs'][target]
+        assert [r for r in previous['overlays'] if target in r['changes_by_target']]==[
+            r for r in current['overlays'] if target in r['changes_by_target']]
+        assert build.overlay_source_hashes(target,previous)==build.overlay_source_hashes(target,current)
+        assert build.native_recipe_identity(target,previous)==build.native_recipe_identity(target,current)==identity
+    assert build.native_recipe_identity(WIN,current)=='e278759029942311f975fc7faebc8e95ea8f6b9c688ef3506f9307f4360b3580'
+    assert build.native_recipe_identity(WIN,current)!=build.native_recipe_identity(WIN,previous)
+
+
+@pytest.mark.parametrize('problem',['omit','reorder','unknown','unix_retarget','extra_unix_target'])
+def test_p30_host_overlay_requires_named_windows_only_tail(tmp_path,monkeypatch,problem):
+    def edit(value):
+        index=overlay_index(value,'windows-host-boundaries-0164.patch')
+        if problem=='omit':value['overlays'].pop(index)
+        elif problem=='reorder':value['overlays'][index-1:index+1]=reversed(value['overlays'][index-1:index+1])
+        elif problem=='unknown':value['overlays'][index]['file']='unreviewed-host.patch'
+        elif problem=='unix_retarget':
+            leaf=value['overlays'][index]
+            leaf['changes_by_target']['x86_64-unknown-linux-gnu']=leaf['changes_by_target'].pop(WIN)
+        else:
+            leaf=value['overlays'][index]
+            leaf['changes_by_target']['x86_64-unknown-linux-gnu']=copy.deepcopy(leaf['changes_by_target'][WIN])
     recipe_copy(tmp_path,monkeypatch,edit)
     with pytest.raises(ValueError):build.runtime_recipe()

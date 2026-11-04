@@ -1,4 +1,4 @@
-"""Qualify Guardian or State tests on the fresh producer's actual source/cache.
+"""Qualify native mechanism tests on the fresh producer's actual source/cache.
 
 No model, credential, installed runtime or native package is modified.
 """
@@ -56,6 +56,111 @@ STATE_TESTS = (
 )
 
 
+# The new restored-call/byte-prefix cases must run alongside the existing
+# crossing/unfinished-pair guards. Exact names reject empty or partial filters.
+HISTORY_PREFIX = "context_manager::history::tests::"
+CAPACITY_NEW_TESTS = (
+    *(HISTORY_PREFIX + "request_capacity_restored_calls_use_native_aborted_outputs_without_mutating_live_history::" + kind
+      for kind in ("function", "custom", "local_shell", "tool_search")),
+    HISTORY_PREFIX + "request_capacity_restored_custom_call_output_id_is_stable_across_independent_rebuilds",
+    "compact::tests::request_capacity_byte_prefix_bounds_dense_data_instead_of_counting_small_notes",
+    "compact::tests::request_capacity_byte_prefix_dominant_first_input_does_not_retry_every_trailing_note",
+    "compact::tests::request_capacity_byte_prefix_requires_new_real_input_after_the_previous_summary",
+)
+CAPACITY_PAIR_TESTS = (
+    *(HISTORY_PREFIX + "request_capacity_prefix_protects_crossing_and_unfinished_native_pairs::" + kind
+      for kind in ("function_pair", "custom_pair", "local_shell_function_output_pair", "client_tool_search_pair")),
+    HISTORY_PREFIX + "request_capacity_prefix_rechecks_pairs_after_moving_boundary_back",
+    HISTORY_PREFIX + "request_capacity_prefix_keeps_native_standalone_server_tool_search_output",
+)
+# Exact expanded test-case labels follow test-case-core3.3.1 escape_test_name.
+# Qualification still requires actual producer Rust executions of every name.
+CAPACITY_FRESH_TESTS = (
+    HISTORY_PREFIX + "request_capacity_fresh_summary_keeps_current_turn_and_completes_only_restored_old_pairs",
+    HISTORY_PREFIX + "request_capacity_fresh_summary_requires_current_turn_and_stops_before_ambiguous_input",
+    HISTORY_PREFIX + "request_capacity_fresh_summary_does_not_cross_pair_ending_in_current_turn",
+    *("compact::tests::request_capacity_fresh_summary_recovers_old_cp6_without_manual_or_ordinary_warmup::" + label
+      for label in ("old_cp6_direct_fresh_summary",
+                    "byte_bounded_subset_preserves_all_unsent_history",
+                    "completed_without_summary_cannot_install",
+                    "failed_upstream_cannot_install",
+                    "changed_native_lifetime_cannot_install",
+                    "changed_auth_owner_cannot_install",
+                    "seven_image_budget_six_requires_whole_transaction",
+                    "cancelled_after_partial_response_cannot_install")),
+)
+# Existing real native capacity mechanisms are part of the same release gate.
+# --exact selects each declared node, including expanded HTTP-classification cases.
+CAPACITY_LEGACY_TESTS = (
+    "compact::tests::byte_capacity_compaction_preserves_unconsumed_suffix_and_fences_epoch",
+    "compact::tests::irreducible_capacity_failure_keeps_history_and_failed_attempt_fence",
+    "compact::tests::capacity_token_budget_reset_preserves_pending_and_concurrent_suffix_without_model",
+    "compact::tests::capacity_token_budget_without_confirmed_cursor_preserves_input",
+    "compact::tests::capacity_token_budget_stale_prefix_returns_original_http413",
+    *("compact::tests::manual_partition_does_not_treat_other_http_errors_as_byte_capacity::" + label
+      for label in ("unauthorized", "rate_limited", "unavailable")),
+)
+# Additions verified once each in the actual 7f851e producer libtest --list.
+# List SHA256: 5495ba3bb2de03e04185ce8066fe073bb3c41ff78502073cf55fceafe7f38a96
+# Producer receipt SHA256: 499d67e3d7aff90a04aa03e195a3c448f20f7bd544d3d65b9d05035b3f6d0537
+# Discovery qualifies exact names only; actual execution must still pass below.
+CAPACITY_CANCELLATION_TESTS = (
+    'compact::tests::capacity_installer_rechecks_real_cancel_token_after_waiting_for_native_state_lock',
+    'compact::tests::capacity_token_budget_already_cancelled_helper_preserves_native_state_without_model',
+    'compact::tests::capacity_token_cancel_prevents_summary_install_without_dropping_future::cancel_and_release_final_summary_inside_native_grace',
+    'compact::tests::capacity_token_cancel_prevents_summary_install_without_dropping_future::stopped_helper_emits_no_request',
+    'session::tests::capacity_commit_tests::capacity_complete_cancel_before_guard_keeps_real_window_history_and_writer_unchanged',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::after_add_ack_withheld_with_native_interruption_marker',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::after_add_ack_withheld_without_native_interruption_marker',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::before_add_with_native_interruption_marker',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::before_add_without_native_interruption_marker',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::shutdown_admission_closes_before_add_finishes',
+    'session::tests::capacity_commit_tests::capacity_owned_commit_survives_native_force_abort_and_orders_real_writer::shutdown_admission_closes_while_append_ack_withheld',
+)
+CAPACITY_PREVIOUS_TESTS = CAPACITY_NEW_TESTS + CAPACITY_FRESH_TESTS + CAPACITY_PAIR_TESTS + CAPACITY_LEGACY_TESTS
+# Typed projection names are from the actual producer libtest --list.
+# List SHA256: 642d1361efdd3594e4ea6ef98fcf2d7d2d346a7ac717bd98911c656d2ed4a7b7
+# Discovery fixes selection only; every actual Rust execution is required.
+CAPACITY_TYPED_PROJECTION_TESTS = (
+    'compact::tests::historical_typed_projection_tests::historical_projection_message_keeps_positional_metadata_and_media',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_current_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_encrypted_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_in_progress_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_incomplete_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_missing_output_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_refuses_unattributed_current_or_incomplete_items::_unknown_expects',
+    'compact::tests::historical_typed_projection_tests::historical_projection_rejects_extra_suffix_or_changed_native_instruction',
+    'compact::tests::historical_typed_projection_tests::historical_projection_requires_fresh_summary_exact_parts_and_carry_chain',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::exact_completed_pair_seven_images_budget_six',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::interleaved_parallel_pairs_three_plus_four_and_empty_output',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::later_completed_without_fresh_summary_installs_nothing',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::later_typed_part_upstream_failure_installs_nothing',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::native_function_output_seven_images_budget_six',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::one_historical_message_seven_images_and_positional_metadata',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::real_token_cancelled_after_first_typed_part_summary',
+)
+# Text names were individually confirmed once in actual sealed libtest --list.
+# List SHA256: d4dda3ee1660772dd99ee250e479e211253c61d4a4bb9b98f2f34894e005771c
+# Listing selects cases; only actual Rust execution satisfies the native gate.
+CAPACITY_TEXT_PROJECTION_TESTS = (
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::single_historical_text_512k_bytes_budget_256k',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::confirmed_current_turn_unicode_text_budget_256k',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::real_token_cancelled_after_first_text_byte_range_summary',
+    'compact::tests::historical_typed_projection_tests::historical_typed_projection_reads_all_parts_before_one_durable_install::later_text_byte_range_upstream_failure_installs_nothing',
+)
+# Actual libtest listing confirms each new reset continuation name once.
+# Listing SHA256: 20a36e396376b800daafc5f85fde1f776e6650b27f93b4a3b75c86316f395030
+# Runtime qualification still requires every selected native execution.
+CAPACITY_RESET_CONTINUATION_TESTS = (
+    'session::capacity_reset_continuation::tests::local_reset_with_old_gap_keeps_native_hook_and_writer_contract::post_native_hook_plan_retains_exact_old_assistant_and_current_suffix',
+    'session::capacity_reset_continuation::tests::local_reset_with_old_gap_keeps_native_hook_and_writer_contract::stopped_native_hook_changes_no_history_window_checkpoint_or_model',
+    'session::capacity_reset_continuation::tests::real_sampling_reset_then_413_fresh_old_gap_then_ordinary_preserves_current',
+)
+CAPACITY_TESTS = (CAPACITY_PREVIOUS_TESTS + CAPACITY_CANCELLATION_TESTS
+                  + CAPACITY_TYPED_PROJECTION_TESTS + CAPACITY_TEXT_PROJECTION_TESTS
+                  + CAPACITY_RESET_CONTINUATION_TESTS)
+
+
 def suite_spec(suite: str) -> dict:
     if suite == "guardian-pool":
         return {"tests": EXPECTED_TESTS, "crate": "codex-guardian-v2",
@@ -67,7 +172,45 @@ def suite_spec(suite: str) -> dict:
                 "filter": "migrations::tests::", "log": "native-state.log",
                 "scope": "State migration exact EOL forms, six stores, strict ledgers and old-reader compatibility",
                 "passed": "passed_native_state_migrations_scope"}
+    if suite == "capacity-core":
+        return {"tests": CAPACITY_TESTS, "crate": "codex-core",
+                "filter": None, "exact": True, "log": "native-capacity.log",
+                "scope": "Restored calls, fresh and legacy capacity transactions, native token cancellation, owned writer checkpoint ordering, lossless UTF-8 historical text views, one-turn reset old-gap continuation and native hooks, epoch fences, token-budget reset and live pair guards",
+                "passed": "passed_native_capacity_core_scope"}
     raise ValueError("Unknown native test suite")
+
+
+def validated_test_profile(command: list[str], suite: str) -> dict | None:
+    """Allow one invocation-local core test override, never a global/file config.
+
+    This changes every codex-core target compiled in this test graph, including
+    normal libraries, not only the libtest target. Packaged production binaries
+    keep their producer profile and remain covered by the identity guard.
+    """
+    suite_spec(suite)
+    cargo_args = command[:command.index("--")] if "--" in command else command
+    configs = []
+    for index, arg in enumerate(cargo_args):
+        if arg == "--config":
+            if index + 1 == len(cargo_args):
+                raise ValueError("Missing native test profile config value")
+            configs.append(cargo_args[index + 1])
+        elif arg.startswith("--config="):
+            configs.append(arg.partition("=")[2])
+    expected = (["profile.release.package.codex-core.opt-level=0"]
+                if suite == "capacity-core" else [])
+    if configs != expected:
+        raise ValueError("Native test profile differs from the exact suite override")
+    if cargo_args.count("--release") != 1 or any(
+            arg == "--profile" or arg.startswith("--profile=") for arg in cargo_args):
+        raise ValueError("Native tests must retain the producer release base profile")
+    if suite != "capacity-core":
+        return None
+    return {"base_profile": "release", "inline_cargo_config": configs,
+            "package_overrides": {"codex-core": {"opt-level": 0}},
+            "applies_to": "all codex-core targets in this test dependency graph, including normal libraries",
+            "other_settings": "inherited producer release settings; debug assertions, overflow checks, features and test assertions are not overridden",
+            "production_optimization_qualified": False, "performance_claim": False}
 
 
 PROFILE_KEYS = (
@@ -146,7 +289,7 @@ def main() -> int:
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--build-work", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
-    parser.add_argument("--suite", choices=("guardian-pool", "state-migrations"),
+    parser.add_argument("--suite", choices=("guardian-pool", "state-migrations", "capacity-core"),
                         default="guardian-pool")
     args = parser.parse_args()
     selected = suite_spec(args.suite)
@@ -188,14 +331,29 @@ def main() -> int:
             raise ValueError("Native producer release profile is not completely declared")
         env.update(profile, CARGO_TARGET_DIR=str(work / "target"))
         env.update(bundled_bwrap_environment(package, work, receipt, before["target"]))
-        command = [*cargo, "test", "--locked", "--release", "-p", selected["crate"],
-                   "--lib", selected["filter"], "--",
-                   "--test-threads=2", "--show-output"]
+        selection = (["--", "--exact", *selected["tests"]] if selected.get("exact")
+                     else [selected["filter"], "--"])
+        inline_config = (["--config", "profile.release.package.codex-core.opt-level=0"]
+                         if args.suite == "capacity-core" else [])
+        command = [*cargo, *inline_config, "test", "--locked", "--release", "-p", selected["crate"],
+                   "--lib", *selection, "--test-threads=2", "--show-output"]
+        test_profile = validated_test_profile(command, args.suite)
         record.update(package=before, source_sha256=source_before, producer=source_proof,
                       command=command, environment={k: env[k] for k in PROFILE_KEYS},
                       upstream_source_archive={"path": str(archive), "sha256": native.sha(archive)},
                       cargo_target_dir=env["CARGO_TARGET_DIR"],
                       bundled_sandbox_environment={k: v for k, v in env.items() if k=="CODEX_BWRAP_SHA256"})
+        if test_profile is not None:
+            record["test_profile_override"] = test_profile
+            # Deep history fixtures need the native Windows executable's 8 MiB
+            # stack reserve on libtest's spawned test threads too. Keep this
+            # inside the capacity-core invocation, never the producer profile.
+            env["RUST_MIN_STACK"] = "8388608"
+            record["test_process_settings"] = {
+                "environment": {"RUST_MIN_STACK": env["RUST_MIN_STACK"]},
+                "libtest_output": "--show-output",
+                "scope": "capacity-core test invocation only; no production environment or source change",
+            }
         log_path = evidence / selected["log"]
         with log_path.open("wb") as log:
             process = native.run_observed(command, cwd=tree / "codex-rs", env=env,

@@ -1,0 +1,1919 @@
+diff --git a/codex-rs/core/src/compact.rs b/codex-rs/core/src/compact.rs
+index e4625e5..e9782a2 100644
+--- a/codex-rs/core/src/compact.rs
++++ b/codex-rs/core/src/compact.rs
+@@ -71,6 +71,11 @@ use tokio_util::sync::CancellationToken;
+ use tracing::error;
+ use tracing::warn;
+ 
++#[path = "compact_capacity_projection.rs"]
++mod capacity_projection;
++use capacity_projection::CapacityProjection;
++use capacity_projection::ProjectionReceipt;
++
+ pub use codex_prompts::SUMMARIZATION_PROMPT;
+ pub use codex_prompts::SUMMARY_PREFIX;
+ const COMPACT_USER_MESSAGE_MAX_TOKENS: usize = 20_000;
+@@ -448,6 +453,13 @@ async fn run_compact_task_inner_impl(
+         sess.services
+             .executed_tool_calls
+             .attach_to_compaction_prompt(&mut turn_input);
++        if let Some(work) = &mut capacity_work {
++            work.prepare_prompt(
++                &mut turn_input,
++                &compact_input,
++                &turn_context.model_info().input_modalities,
++            )?;
++        }
+         let turn_input_len = turn_input.len();
+         let base_instructions = if turn_input
+             .iter()
+@@ -497,9 +509,16 @@ async fn run_compact_task_inner_impl(
+                     if !work.complete_selected(&response, carried_response_id)? {
+                         // Only model-local carry changes here. The native session,
+                         // original target, protected suffix and claimed fence do not.
+-                        let selected = work.selected_history();
+-                        let user_messages =
+-                            collect_annotated_user_messages(selected.annotated_items());
++                        let selected = work.selected_history()?;
++                        // Partial user-message views must not become additional
++                        // retained messages with the original ID. Their content is
++                        // carried by this fresh summary; final retention uses target.
++                        let retained_input = if work.projection.is_some() {
++                            &selected.annotated_items()[..work.carry_len]
++                        } else {
++                            selected.annotated_items()
++                        };
++                        let user_messages = collect_annotated_user_messages(retained_input);
+                         let summary_text = work
+                             .coverage
+                             .carry_summary
+@@ -515,7 +534,7 @@ async fn run_compact_task_inner_impl(
+                         )
+                         .await;
+                         work.advance(carry)?;
+-                        history = work.selected_history();
++                        history = work.selected_history()?;
+                         history.record_items(
+                             &[compact_input.clone()],
+                             turn_context.model_info().truncation_policy.into(),
+@@ -623,13 +642,13 @@ async fn run_compact_task_inner_impl(
+                     .as_mut()
+                     .expect("capacity summary transaction");
+                 let selected = work.selected_len;
+-                let next_len = work.smaller_prefix(matches!(
+-                    e.details(),
+-                    CodexErrorDetails::ContextWindowExceeded
+-                ));
+-                let Some(next_len) = next_len else {
++                if !work.reduce(
++                    matches!(e.details(), CodexErrorDetails::ContextWindowExceeded),
++                    &turn_context.sub_id,
++                )? {
+                     return Err(e);
+-                };
++                }
++                let next_len = work.selected_len;
+                 if let Some(delay) = e.server_retry_delay() {
+                     tokio::time::sleep(delay)
+                         .or_cancel(cancellation_token)
+@@ -642,14 +661,14 @@ async fn run_compact_task_inner_impl(
+                     return Err(e);
+                 }
+                 work.selected_len = next_len;
+-                history = work.selected_history();
++                history = work.selected_history()?;
+                 history.record_items(
+                     &[compact_input.clone()],
+                     turn_context.model_info().truncation_policy.into(),
+                 );
+                 retries = 0;
+                 capacity_trims.attempts += 1;
+-                capacity_trims.items += selected - next_len;
++                capacity_trims.items += selected.saturating_sub(next_len);
+                 warn!(
+                     selected_items = next_len,
+                     previous_items = selected,
+@@ -1252,6 +1271,7 @@ struct CapacitySummarySegment {
+     end: usize,
+     response_id: String,
+     carried_response_id: Option<String>,
++    projection: Option<ProjectionReceipt>,
+ }
+ 
+ impl CapacitySummaryCoverage {
+@@ -1288,12 +1308,37 @@ impl CapacitySummaryCoverage {
+         }
+         let mut covered = 0;
+         let mut previous = None;
++        let mut partial: Option<&ProjectionReceipt> = None;
+         for segment in &self.segments {
+             if segment.start != covered
+-                || segment.end <= segment.start
+                 || segment.end > self.covered
+                 || segment.response_id.is_empty()
+                 || segment.carried_response_id.as_deref() != previous
++            {
++                return false;
++            }
++            if let Some(receipt) = &segment.projection {
++                if receipt.source_start != covered
++                    || !receipt.matches_target(target)
++                    || match partial {
++                        Some(last) => !receipt.continues(last),
++                        None => !receipt.starts_source(),
++                    }
++                {
++                    return false;
++                }
++                let complete = receipt.completes_source();
++                let end = if complete {
++                    receipt.source_end
++                } else {
++                    covered
++                };
++                if segment.end != end {
++                    return false;
++                }
++                partial = if complete { None } else { Some(receipt) };
++            } else if partial.is_some()
++                || segment.end <= segment.start
+                 || target.pair_safe_prefix_len(segment.end) != segment.end
+             {
+                 return false;
+@@ -1301,7 +1346,7 @@ impl CapacitySummaryCoverage {
+             covered = segment.end;
+             previous = Some(segment.response_id.as_str());
+         }
+-        covered == self.covered && previous == Some(final_response_id)
++        partial.is_none() && covered == self.covered && previous == Some(final_response_id)
+     }
+ }
+ 
+@@ -1310,6 +1355,8 @@ struct CapacitySummaryWork {
+     working_history: crate::context_manager::ContextManager,
+     carry_len: usize,
+     selected_len: usize,
++    projection: Option<CapacityProjection>,
++    verified_projection: Option<ProjectionReceipt>,
+ }
+ 
+ impl CapacitySummaryWork {
+@@ -1318,6 +1365,8 @@ impl CapacitySummaryWork {
+             selected_len: target.annotated_items().len(),
+             working_history: target.clone(),
+             carry_len: 0,
++            projection: None,
++            verified_projection: None,
+             coverage: CapacitySummaryCoverage {
+                 target,
+                 segments: Vec::new(),
+@@ -1362,12 +1411,105 @@ impl CapacitySummaryWork {
+         candidate(lower)
+     }
+ 
+-    fn selected_history(&self) -> crate::context_manager::ContextManager {
++    fn reduce(&mut self, context_capacity: bool, current_turn: &str) -> CodexResult<bool> {
++        self.verified_projection = None;
++        if let Some(projection) = &mut self.projection {
++            return Ok(projection.shrink());
++        }
++        if let Some(len) = self.smaller_prefix(context_capacity) {
++            self.selected_len = len;
++            return Ok(true);
++        }
++        let Some(added) = self.selected_len.checked_sub(self.carry_len) else {
++            return Ok(false);
++        };
++        let Some(end) = self.coverage.covered.checked_add(added) else {
++            return Ok(false);
++        };
++        let Some(projection) = CapacityProjection::new(
++            &self.coverage.target,
++            self.coverage.covered,
++            end,
++            current_turn,
++        ) else {
++            return Ok(false);
++        };
++        self.selected_len = self.carry_len + projection.envelope_len();
++        self.projection = Some(projection);
++        Ok(true)
++    }
++
++    fn selected_history(&self) -> CodexResult<crate::context_manager::ContextManager> {
+         let mut history = self.working_history.clone();
+-        history.replace_annotated(
+-            self.working_history.annotated_items()[..self.selected_len].to_vec(),
+-        );
+-        history
++        let items = if let Some(projection) = &self.projection {
++            let mut items = self.working_history.annotated_items()[..self.carry_len].to_vec();
++            items.extend(projection.items(&self.coverage.target)?);
++            items
++        } else {
++            self.working_history.annotated_items()[..self.selected_len].to_vec()
++        };
++        history.replace_annotated(items);
++        Ok(history)
++    }
++
++    fn prepare_prompt(
++        &mut self,
++        input: &mut [ResponseItem],
++        compact_input: &ResponseItem,
++        input_modalities: &[codex_protocol::openai_models::InputModality],
++    ) -> CodexResult<()> {
++        self.verified_projection = None;
++        let Some(projection) = &self.projection else {
++            return Ok(());
++        };
++        // Validate after native normalization and execution-inventory attachment.
++        // Even a text-only instruction gains positional Unknown metadata during
++        // native unsupported-media normalization. Normalize its known prototype
++        // through that exact path; never accept the actual tail as its own proof
++        // or discard provenance to make the comparison pass.
++        let mut instruction_history = crate::context_manager::ContextManager::new();
++        instruction_history
++            .replace_annotated(vec![ResponseItemEnvelope::new(compact_input.clone())]);
++        let expected_instructions = instruction_history.for_prompt(input_modalities);
++        let [expected_instruction] = expected_instructions.as_slice() else {
++            return Err(CodexErr::InvalidRequest(
++                "Native compaction instruction did not normalize to exactly one item".to_owned(),
++            ));
++        };
++        let receipt = projection.verify_prompt(
++            &self.coverage.target,
++            input,
++            self.carry_len,
++            expected_instruction,
++        )?;
++        let Some(instruction) = input.last_mut() else {
++            return Err(CodexErr::InvalidRequest(
++                "Compaction projection lost its instructions".to_owned(),
++            ));
++        };
++        if !matches!(&*instruction, ResponseItem::Message { role, .. } if role == "user") {
++            return Err(CodexErr::InvalidRequest(
++                "Compaction projection lost its user instructions".to_owned(),
++            ));
++        }
++        let mut parts =
++            codex_context_fragments::to_annotated_content(instruction).ok_or_else(|| {
++                CodexErr::InvalidRequest(
++                    "Compaction projection lost instruction annotations".to_owned(),
++                )
++            })?;
++        parts.push(AnnotatedContent::text(
++            projection.instruction(),
++            ContentItemKind("unknown".to_owned()),
++            codex_protocol::models::ContentItemMetadata::harness(),
++        ));
++        set_annotated_content(instruction, parts).ok_or_else(|| {
++            CodexErr::InvalidRequest(
++                "Compaction projection lost instruction annotations".to_owned(),
++            )
++        })?;
++        self.verified_projection = Some(receipt);
++        Ok(())
+     }
+ 
+     fn complete_selected(
+@@ -1385,43 +1527,71 @@ impl CapacitySummaryWork {
+                         .to_owned(),
+                 )
+             })?;
+-        let added = self
+-            .selected_len
+-            .checked_sub(self.carry_len)
+-            .filter(|added| *added > 0)
+-            .ok_or_else(|| {
+-                CodexErr::InvalidRequest(
+-                    "Capacity partition made no original-input progress".to_owned(),
+-                )
+-            })?;
+-        let end = self
+-            .coverage
+-            .covered
+-            .checked_add(added)
+-            .filter(|end| *end <= self.coverage.target.annotated_items().len())
+-            .ok_or_else(|| {
+-                CodexErr::InvalidRequest(
+-                    "Capacity partition exceeded its captured original target".to_owned(),
+-                )
+-            })?;
+-        if self.coverage.target.pair_safe_prefix_len(end) != end
+-            || carried_response_id.as_deref()
+-                != self
+-                    .coverage
+-                    .segments
+-                    .last()
+-                    .map(|segment| segment.response_id.as_str())
++        if carried_response_id.as_deref()
++            != self
++                .coverage
++                .segments
++                .last()
++                .map(|segment| segment.response_id.as_str())
+             || response.response_id.is_empty()
+         {
+             return Err(CodexErr::InvalidRequest(
+                 "Capacity partition has invalid pair or carry lineage".to_owned(),
+             ));
+         }
++        let (end, projection) = if let Some(selected) = &self.projection {
++            let receipt = self
++                .verified_projection
++                .take()
++                .filter(|receipt| {
++                    selected
++                        .receipt(&self.coverage.target)
++                        .is_ok_and(|expected| expected == *receipt)
++                })
++                .ok_or_else(|| {
++                    CodexErr::InvalidRequest(
++                        "Capacity part completion lacks its exact sent projection".to_owned(),
++                    )
++                })?;
++            let end = if receipt.completes_source() {
++                receipt.source_end
++            } else {
++                self.coverage.covered
++            };
++            (end, Some(receipt))
++        } else {
++            let added = self
++                .selected_len
++                .checked_sub(self.carry_len)
++                .filter(|added| *added > 0)
++                .ok_or_else(|| {
++                    CodexErr::InvalidRequest(
++                        "Capacity partition made no original-input progress".to_owned(),
++                    )
++                })?;
++            let end = self
++                .coverage
++                .covered
++                .checked_add(added)
++                .filter(|end| *end <= self.coverage.target.annotated_items().len())
++                .ok_or_else(|| {
++                    CodexErr::InvalidRequest(
++                        "Capacity partition exceeded its captured original target".to_owned(),
++                    )
++                })?;
++            if self.coverage.target.pair_safe_prefix_len(end) != end {
++                return Err(CodexErr::InvalidRequest(
++                    "Capacity partition has invalid pair or carry lineage".to_owned(),
++                ));
++            }
++            (end, None)
++        };
+         self.coverage.segments.push(CapacitySummarySegment {
+             start: self.coverage.covered,
+             end,
+             response_id: response.response_id.clone(),
+             carried_response_id,
++            projection,
+         });
+         self.coverage.covered = end;
+         self.coverage.carry_summary = Some(format!("{SUMMARY_PREFIX}\n{summary}"));
+@@ -1433,6 +1603,14 @@ impl CapacitySummaryWork {
+         let mut next = carry;
+         next.extend_from_slice(&self.coverage.target.annotated_items()[self.coverage.covered..]);
+         self.working_history.replace_annotated(next);
++        self.verified_projection = None;
++        if let Some(projection) = &mut self.projection {
++            if projection.advance_parts() {
++                self.selected_len = self.carry_len + projection.envelope_len();
++                return Ok(());
++            }
++            self.projection = None;
++        }
+         self.selected_len = self.working_history.annotated_items().len();
+         if self.selected_len <= self.carry_len {
+             return Err(CodexErr::InvalidRequest(
+diff --git a/codex-rs/core/src/compact_capacity_projection.rs b/codex-rs/core/src/compact_capacity_projection.rs
+new file mode 100644
+index 0000000..f2ccb1b
+--- /dev/null
++++ b/codex-rs/core/src/compact_capacity_projection.rs
+@@ -0,0 +1,457 @@
++//! Prompt-only views of a completed historical typed item.
++//! Original envelopes remain the transaction target. A view is never installed.
++use super::CodexErr;
++use super::CodexResult;
++use super::ResponseItem;
++use super::ResponseItemEnvelope;
++use crate::context_manager::ContextManager;
++use codex_context_fragments::set_annotated_content;
++use codex_context_fragments::to_annotated_content;
++use codex_protocol::models::FunctionCallOutputContentItem;
++use serde::Serialize;
++use sha2::Digest;
++use sha2::Sha256;
++
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub(super) struct ProjectionReceipt {
++    pub(super) source_start: usize,
++    pub(super) source_end: usize,
++    atom_index: usize,
++    atom_count: usize,
++    part_item: usize,
++    call_item: Option<usize>,
++    whole: bool,
++    pub(super) part_start: usize,
++    pub(super) part_end: usize,
++    pub(super) part_count: usize,
++    source_turn: String,
++    source_hash: [u8; 32],
++    projection_hash: [u8; 32],
++}
++
++#[derive(Clone)]
++struct ProjectionAtom {
++    item: usize,
++    call: Option<usize>,
++    parts: usize,
++    whole: bool,
++}
++
++#[derive(Clone)]
++pub(super) struct CapacityProjection {
++    pub(super) source_start: usize,
++    pub(super) source_end: usize,
++    atoms: Vec<ProjectionAtom>,
++    atom_index: usize,
++    pub(super) part_start: usize,
++    pub(super) part_end: usize,
++    source_turn: String,
++}
++
++fn invalid(message: &str) -> CodexErr {
++    CodexErr::InvalidRequest(message.to_owned())
++}
++
++fn fingerprint<T: Serialize + ?Sized>(value: &T) -> CodexResult<[u8; 32]> {
++    let bytes = serde_json::to_vec(value)
++        .map_err(|_| invalid("Cannot fingerprint historical compaction projection"))?;
++    Ok(Sha256::digest(bytes).into())
++}
++
++fn without_execution_metadata(mut item: ResponseItem) -> ResponseItem {
++    // This metadata is attached by the native call inventory after normalization.
++    // It is not original content and must not turn replay context into new progress.
++    item.clear_executed_tool_calls();
++    item
++}
++
++impl CapacityProjection {
++    pub(super) fn new(
++        target: &ContextManager,
++        source_start: usize,
++        source_end: usize,
++        current_turn: &str,
++    ) -> Option<Self> {
++        let mut projection = Self::source(target, source_start, source_end)?;
++        if current_turn.is_empty() || projection.source_turn == current_turn {
++            return None;
++        }
++        // A multi-atom block becomes one complete pair/message per request.
++        // For a single atom the full body just failed: strictly reduce its parts.
++        if projection.atoms.len() == 1 {
++            projection.part_end /= 2;
++        }
++        (projection.part_end > 0).then_some(projection)
++    }
++
++    fn source(target: &ContextManager, source_start: usize, source_end: usize) -> Option<Self> {
++        if source_end <= source_start
++            || target.pair_safe_prefix_len(source_start) != source_start
++            || target.pair_safe_prefix_len(source_end) != source_end
++        {
++            return None;
++        }
++        let source = target.annotated_items().get(source_start..source_end)?;
++        let turn = source.first()?.item.turn_id()?.to_owned();
++        if turn.is_empty()
++            || source
++                .iter()
++                .any(|item| item.item.turn_id() != Some(turn.as_str()))
++        {
++            return None;
++        }
++        let mut atoms = Vec::new();
++        let mut used_calls = std::collections::HashSet::new();
++        for (index, envelope) in source.iter().enumerate() {
++            let call = match &envelope.item {
++                ResponseItem::Message {
++                    encrypted_content: None,
++                    content,
++                    status,
++                    ..
++                } if status.as_deref().is_none_or(|status| status == "completed") => {
++                    atoms.push(ProjectionAtom {
++                        item: index,
++                        call: None,
++                        parts: content.len().max(1),
++                        whole: content.is_empty(),
++                    });
++                    continue;
++                }
++                ResponseItem::CustomToolCall {
++                    encrypted_content: None,
++                    status,
++                    ..
++                }
++                | ResponseItem::FunctionCall {
++                    encrypted_content: None,
++                    encrypted_function_args: None,
++                    status,
++                    ..
++                } if status.as_deref().is_none_or(|status| status == "completed") => continue,
++                ResponseItem::CustomToolCallOutput { call_id, .. } => {
++                    let matches = source.iter().enumerate().filter(|(_, item)| matches!(
++                        &item.item, ResponseItem::CustomToolCall { call_id: id, .. } if id == call_id
++                    )).map(|(index, _)| index).collect::<Vec<_>>();
++                    if matches.len() != 1 {
++                        return None;
++                    }
++                    matches[0]
++                }
++                ResponseItem::FunctionCallOutput {
++                    call_id: Some(call_id),
++                    ..
++                } => {
++                    let matches = source.iter().enumerate().filter(|(_, item)| matches!(
++                        &item.item, ResponseItem::FunctionCall { call_id: id, .. } if id == call_id
++                    )).map(|(index, _)| index).collect::<Vec<_>>();
++                    if matches.len() != 1 {
++                        return None;
++                    }
++                    matches[0]
++                }
++                _ => return None,
++            };
++            if call >= index || !used_calls.insert(call) {
++                return None;
++            }
++            let output = match &envelope.item {
++                ResponseItem::FunctionCallOutput { output, .. }
++                | ResponseItem::CustomToolCallOutput { output, .. } => output,
++                _ => return None,
++            };
++            let (parts, whole) = match output.content_items() {
++                Some(parts) => {
++                    if parts.iter().any(|part| {
++                        matches!(part, FunctionCallOutputContentItem::EncryptedContent { .. })
++                    }) {
++                        return None;
++                    }
++                    (parts.len().max(1), parts.is_empty())
++                }
++                // Plain text remains one indivisible original payload.
++                None => (1, true),
++            };
++            atoms.push(ProjectionAtom {
++                item: index,
++                call: Some(call),
++                parts,
++                whole,
++            });
++        }
++        let call_count = source
++            .iter()
++            .filter(|item| {
++                matches!(
++                    item.item,
++                    ResponseItem::CustomToolCall { .. } | ResponseItem::FunctionCall { .. }
++                )
++            })
++            .count();
++        if used_calls.len() != call_count || atoms.iter().map(|atom| atom.parts).sum::<usize>() <= 1
++        {
++            return None;
++        }
++        let part_end = atoms.first()?.parts;
++        Some(Self {
++            source_start,
++            source_end,
++            atoms,
++            atom_index: 0,
++            part_start: 0,
++            part_end,
++            source_turn: turn,
++        })
++    }
++
++    pub(super) fn envelope_len(&self) -> usize {
++        if self.atoms[self.atom_index].call.is_some() {
++            2
++        } else {
++            1
++        }
++    }
++
++    pub(super) fn items(&self, target: &ContextManager) -> CodexResult<Vec<ResponseItemEnvelope>> {
++        let atom = self
++            .atoms
++            .get(self.atom_index)
++            .ok_or_else(|| invalid("Historical compaction atom disappeared"))?;
++        if self.part_start >= self.part_end || self.part_end > atom.parts {
++            return Err(invalid("Invalid historical compaction part range"));
++        }
++        let source = target
++            .annotated_items()
++            .get(self.source_start..self.source_end)
++            .ok_or_else(|| invalid("Historical compaction source disappeared"))?;
++        let mut items = Vec::with_capacity(self.envelope_len());
++        if let Some(call) = atom.call {
++            items.push(source[call].clone());
++        }
++        items.push(source[atom.item].clone());
++        if atom.whole {
++            if self.part_start != 0 || self.part_end != 1 {
++                return Err(invalid("Whole historical payload cannot be fragmented"));
++            }
++            return Ok(items);
++        }
++        let item = &mut items
++            .last_mut()
++            .ok_or_else(|| invalid("Historical compaction part source disappeared"))?
++            .item;
++        match item {
++            ResponseItem::Message { .. } => {
++                let parts = to_annotated_content(item)
++                    .ok_or_else(|| invalid("Historical message lost typed content"))?;
++                let selected = parts
++                    .get(self.part_start..self.part_end)
++                    .ok_or_else(|| invalid("Historical message part range changed"))?
++                    .to_vec();
++                set_annotated_content(item, selected)
++                    .ok_or_else(|| invalid("Historical message lost annotations"))?;
++            }
++            ResponseItem::FunctionCallOutput { output, .. }
++            | ResponseItem::CustomToolCallOutput { output, .. } => {
++                // Slice a clone through the native API. Text bodies remain intact;
++                // success, media/detail and the original output identity survive.
++                if let Some(parts) = output.content_items_mut() {
++                    let selected = parts
++                        .get(self.part_start..self.part_end)
++                        .ok_or_else(|| invalid("Historical output part range changed"))?
++                        .to_vec();
++                    *parts = selected;
++                } else if self.part_start != 0 || self.part_end != 1 {
++                    return Err(invalid("Plain historical output cannot be fragmented"));
++                }
++            }
++            _ => return Err(invalid("Historical compaction source is not typed content")),
++        }
++        Ok(items)
++    }
++
++    pub(super) fn receipt(&self, target: &ContextManager) -> CodexResult<ProjectionReceipt> {
++        let atom = &self.atoms[self.atom_index];
++        let items = self.items(target)?;
++        let prompt_items = items
++            .into_iter()
++            .map(|item| without_execution_metadata(item.item))
++            .collect::<Vec<_>>();
++        Ok(ProjectionReceipt {
++            source_start: self.source_start,
++            source_end: self.source_end,
++            atom_index: self.atom_index,
++            atom_count: self.atoms.len(),
++            part_item: atom.item,
++            call_item: atom.call,
++            whole: atom.whole,
++            part_start: self.part_start,
++            part_end: self.part_end,
++            part_count: atom.parts,
++            source_turn: self.source_turn.clone(),
++            // Native envelopes intentionally do not implement Serialize.
++            // Hash item + harness provenance, and the internal success bit that
++            // the wire payload serializer deliberately omits.
++            source_hash: fingerprint(
++                &target.annotated_items()[self.source_start..self.source_end]
++                    .iter()
++                    .map(|envelope| {
++                        let success = match &envelope.item {
++                            ResponseItem::FunctionCallOutput { output, .. }
++                            | ResponseItem::CustomToolCallOutput { output, .. } => output.success,
++                            _ => None,
++                        };
++                        (&envelope.item, &envelope.metadata, success)
++                    })
++                    .collect::<Vec<_>>(),
++            )?,
++            projection_hash: fingerprint(&prompt_items)?,
++        })
++    }
++
++    pub(super) fn verify_prompt(
++        &self,
++        target: &ContextManager,
++        input: &[ResponseItem],
++        carry_len: usize,
++        compact_input: &ResponseItem,
++    ) -> CodexResult<ProjectionReceipt> {
++        let expected = self
++            .items(target)?
++            .into_iter()
++            .map(|item| without_execution_metadata(item.item))
++            .collect::<Vec<_>>();
++        if input.len() != carry_len + expected.len() + 1
++            || input.last().cloned().map(without_execution_metadata)
++                != Some(without_execution_metadata(compact_input.clone()))
++        {
++            return Err(invalid(
++                "Historical projection has extra input or changed compaction instructions",
++            ));
++        }
++        let actual = input
++            .get(carry_len..carry_len + expected.len())
++            .ok_or_else(|| invalid("Historical projection was removed from the normalized prompt"))?
++            .iter()
++            .cloned()
++            .map(without_execution_metadata)
++            .collect::<Vec<_>>();
++        if actual != expected {
++            return Err(invalid(
++                "Normalized compaction prompt changed original typed parts",
++            ));
++        }
++        // Native pairing uses call_id. Each request has one copy of the selected
++        // completed pair; the other original pairs remain unread, never executed.
++        if let Some(call) = expected.first().filter(|_| expected.len() == 2) {
++            let (calls, outputs) = match call {
++                ResponseItem::CustomToolCall { call_id, .. } => (
++                    input.iter().filter(|item| matches!(item, ResponseItem::CustomToolCall { call_id: id, .. } if id == call_id)).count(),
++                    input.iter().filter(|item| matches!(item, ResponseItem::CustomToolCallOutput { call_id: id, .. } if id == call_id)).count(),
++                ),
++                ResponseItem::FunctionCall { call_id, .. } => (
++                    input.iter().filter(|item| matches!(item, ResponseItem::FunctionCall { call_id: id, .. } if id == call_id)).count(),
++                    input.iter().filter(|item| matches!(item, ResponseItem::FunctionCallOutput { call_id: Some(id), .. } if id == call_id)).count(),
++                ),
++                _ => return Err(invalid("Historical projection lost its original call")),
++            };
++            if calls != 1 || outputs != 1 {
++                return Err(invalid("Historical projection repeated a call/output pair"));
++            }
++        }
++        self.receipt(target)
++    }
++
++    pub(super) fn instruction(&self) -> String {
++        let atom = &self.atoms[self.atom_index];
++        format!(
++            "Compaction-only partial historical content: original block {}..{}, source content envelope {}, source call envelope {:?}, ordered content unit {} of {}, whole original payload {}, content parts {}..{} of {}. These source positions describe the original history order. This is a view of an already completed historical item, not a new tool invocation or a complete block/output. Other original units and parts still exist and will be read separately. Preserve these parts and the exact previous fresh summary in the next summary; do not execute or repeat historical calls.",
++            self.source_start,
++            self.source_end,
++            self.source_start + atom.item,
++            atom.call.map(|call| self.source_start + call),
++            self.atom_index,
++            self.atoms.len(),
++            atom.whole,
++            self.part_start,
++            self.part_end,
++            atom.parts,
++        )
++    }
++
++    pub(super) fn shrink(&mut self) -> bool {
++        let count = self.part_end - self.part_start;
++        if count <= 1 {
++            return false;
++        }
++        self.part_end = self.part_start + count / 2;
++        true
++    }
++
++    pub(super) fn advance_parts(&mut self) -> bool {
++        if self.part_end < self.atoms[self.atom_index].parts {
++            self.part_start = self.part_end;
++            self.part_end = self.atoms[self.atom_index].parts;
++            return true;
++        }
++        if self.atom_index + 1 == self.atoms.len() {
++            return false;
++        }
++        self.atom_index += 1;
++        self.part_start = 0;
++        self.part_end = self.atoms[self.atom_index].parts;
++        true
++    }
++}
++
++impl ProjectionReceipt {
++    pub(super) fn starts_source(&self) -> bool {
++        self.atom_index == 0 && self.part_start == 0
++    }
++
++    pub(super) fn completes_source(&self) -> bool {
++        self.atom_index + 1 == self.atom_count && self.part_end == self.part_count
++    }
++
++    pub(super) fn matches_target(&self, target: &ContextManager) -> bool {
++        let Some(mut source) =
++            CapacityProjection::source(target, self.source_start, self.source_end)
++        else {
++            return false;
++        };
++        let Some(atom) = source.atoms.get(self.atom_index) else {
++            return false;
++        };
++        if atom.item != self.part_item
++            || atom.call != self.call_item
++            || atom.parts != self.part_count
++            || atom.whole != self.whole
++            || source.atoms.len() != self.atom_count
++            || source.source_turn != self.source_turn
++        {
++            return false;
++        }
++        source.atom_index = self.atom_index;
++        source.part_start = self.part_start;
++        source.part_end = self.part_end;
++        source.receipt(target).is_ok_and(|receipt| receipt == *self)
++    }
++
++    pub(super) fn continues(&self, previous: &Self) -> bool {
++        self.source_start == previous.source_start
++            && self.source_end == previous.source_end
++            && self.atom_count == previous.atom_count
++            && self.source_turn == previous.source_turn
++            && self.source_hash == previous.source_hash
++            && if self.atom_index == previous.atom_index {
++                self.part_item == previous.part_item
++                    && self.call_item == previous.call_item
++                    && self.whole == previous.whole
++                    && self.part_count == previous.part_count
++                    && self.part_start == previous.part_end
++            } else {
++                previous.part_end == previous.part_count
++                    && self.atom_index == previous.atom_index + 1
++                    && self.part_start == 0
++            }
++    }
++}
+diff --git a/codex-rs/core/src/compact_capacity_projection_tests.rs b/codex-rs/core/src/compact_capacity_projection_tests.rs
+new file mode 100644
+index 0000000..952a26e
+--- /dev/null
++++ b/codex-rs/core/src/compact_capacity_projection_tests.rs
+@@ -0,0 +1,1017 @@
++use super::*;
++use crate::rollout::recorder::RolloutRecorder;
++use codex_protocol::models::ContentItemMetadata;
++use codex_protocol::models::FunctionCallOutputBody;
++use codex_protocol::openai_models::InputModality;
++use codex_protocol::protocol::{SessionSource, ThreadMemoryMode};
++use codex_thread_store::*;
++use codex_utils_output_truncation::TruncationPolicy;
++use pretty_assertions::assert_eq;
++use std::collections::HashMap;
++use std::sync::Mutex;
++use std::time::Duration;
++
++const ORIGINAL_PAIR: &str = r########"[{"type":"custom_tool_call","id":"ct_R337_pending","status":"completed","call_id":"call_R337_pending","name":"exec","input":"image((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/8.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/9.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/10.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/11.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/12.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/13.png\",detail:\"original\"})).image_url,\"original\");\nimage((await tools.view_image({path:\"/home/codex/cds-capacity-r336-e69e7ca7/proofs/cp6-P29-r362/work/14.png\",detail:\"original\"})).image_url,\"original\");","internal_chat_message_metadata_passthrough":{"turn_id":"01a1a1fc-c598-7870-a58b-e9d0ee722432"}},{"type":"custom_tool_call_output","id":"ctco_01a1a1fc-c5ea-7092-b570-eb63b7496dc3","call_id":"call_R337_pending","output":[{"type":"input_text","text":"Script completed\nWall time 0.0 seconds\nOutput:\n"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYPgOAAETAQC5prJ2AAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZPgGAAEVAQDVMkJTAAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYvgKAAEXAQBnG1/BAAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZvgCAAEZAQAFnP5cAAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgYfgMAAEbAQA210JbAAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgZfgEAAEdAQBaQ7J+AAAAAElFTkSuQmCC","detail":"original"},{"type":"input_image","image_url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgY/gIAAEfAQDoaq/sAAAAAElFTkSuQmCC","detail":"original"}],"internal_chat_message_metadata_passthrough":{"turn_id":"01a1a1fc-c598-7870-a58b-e9d0ee722432","create_time":1793719059.9465458}}]"########;
++const OLD_TURN: &str = "01a1a1fc-c598-7870-a58b-e9d0ee722432";
++
++fn exact_pair() -> anyhow::Result<Vec<ResponseItem>> {
++    let mut items: Vec<ResponseItem> = serde_json::from_str(ORIGINAL_PAIR)?;
++    for item in &mut items {
++        item.set_turn_id_if_missing(OLD_TURN);
++    }
++    Ok(items)
++}
++
++fn typed_source(scenario: &str) -> anyhow::Result<Vec<ResponseItem>> {
++    let pair = exact_pair()?;
++    if scenario == "function" {
++        let mut call = serde_json::to_value(&pair[0])?;
++        let code = call["input"].as_str().unwrap().to_owned();
++        call["type"] = json!("function_call");
++        call["arguments"] = json!({"code":code}).to_string().into();
++        call.as_object_mut().unwrap().remove("input");
++        call["id"] = json!("fc_original-historical-function");
++        let mut output = serde_json::to_value(&pair[1])?;
++        output["type"] = json!("function_call_output");
++        output["id"] = json!("fco_original-historical-function");
++        return Ok(vec![
++            serde_json::from_value(call)?,
++            serde_json::from_value(output)?,
++        ]);
++    }
++    if scenario == "parallel" {
++        let ResponseItem::CustomToolCallOutput { output, .. } = &pair[1] else {
++            unreachable!()
++        };
++        let parts = output.content_items().unwrap();
++        let mut calls = Vec::new();
++        let mut outputs = Vec::new();
++        // Include an empty completed output and success=false. It must be read
++        // as a whole original unit rather than disappearing from block coverage.
++        for (id, selected) in [
++            ("parallel-A", parts[..4].to_vec()),
++            ("parallel-B", parts[4..].to_vec()),
++            ("parallel-empty", Vec::new()),
++        ] {
++            let mut call = pair[0].clone();
++            let ResponseItem::CustomToolCall {
++                call_id,
++                id: item_id,
++                ..
++            } = &mut call
++            else {
++                unreachable!()
++            };
++            *call_id = id.to_owned();
++            *item_id = Some(ResponseItemId::with_suffix("ctc", id));
++            calls.push(call);
++            let mut result = pair[1].clone();
++            let ResponseItem::CustomToolCallOutput {
++                call_id,
++                id: item_id,
++                output,
++                ..
++            } = &mut result
++            else {
++                unreachable!()
++            };
++            *call_id = id.to_owned();
++            *item_id = Some(ResponseItemId::with_suffix("ctco", id));
++            output.body = FunctionCallOutputBody::ContentItems(selected);
++            output.success = Some(false);
++            outputs.push(result);
++        }
++        calls.extend(outputs);
++        return Ok(calls);
++    }
++    if scenario == "message" {
++        let value: serde_json::Value = serde_json::from_str(ORIGINAL_PAIR)?;
++        let mut item: ResponseItem = serde_json::from_value(json!({
++            "type":"message", "id":"msg_original-seven-part-message", "role":"user",
++            "status":"completed", "content":value[1]["output"],
++            "internal_chat_message_metadata_passthrough":{
++                "turn_id":OLD_TURN,
++                "content_item_kinds":(0..8).map(|index| format!("source-part-{index}")).collect::<Vec<_>>(),
++                "content_item_metadata":(0..8).map(|index| if index % 2 == 0 {
++                    ContentItemMetadata::user()
++                } else { ContentItemMetadata::tool(None) }).collect::<Vec<_>>()
++            }
++        }))?;
++        item.set_turn_id_if_missing(OLD_TURN);
++        return Ok(vec![item]);
++    }
++    Ok(pair)
++}
++
++fn target(items: Vec<ResponseItem>) -> ContextManager {
++    let mut target = ContextManager::new();
++    target.replace_annotated(items.into_iter().map(ResponseItemEnvelope::new).collect());
++    target
++}
++
++fn native_input() -> ResponseItem {
++    user_message("Summarize the original historical content.")
++}
++
++fn recorded_prompt(
++    mut history: ContextManager,
++    input: &ResponseItem,
++    modalities: &[InputModality],
++) -> Vec<ResponseItem> {
++    // Match the real pipeline: the instruction is recorded before for_prompt,
++    // so native normalization processes its content and positional metadata.
++    history.record_items(&[input.clone()], TruncationPolicy::Tokens(10_000));
++    history.for_prompt(modalities)
++}
++
++fn prepare(
++    work: &mut CapacitySummaryWork,
++    input: &ResponseItem,
++) -> anyhow::Result<Vec<ResponseItem>> {
++    let mut prompt = recorded_prompt(work.selected_history()?, input, &[InputModality::Image]);
++    work.prepare_prompt(&mut prompt, input, &[InputModality::Image])?;
++    Ok(prompt)
++}
++
++#[test]
++fn historical_projection_rejects_extra_suffix_or_changed_native_instruction() -> anyhow::Result<()>
++{
++    let original = target(exact_pair()?);
++    let mut work = CapacitySummaryWork::new(original);
++    assert!(work.reduce(false, "current-turn")?);
++    let input = native_input();
++    assert!(matches!(
++        &input,
++        ResponseItem::Message {
++            internal_chat_message_metadata_passthrough: None,
++            ..
++        }
++    ));
++    let mut prompt = recorded_prompt(work.selected_history()?, &input, &[InputModality::Image]);
++    assert!(
++        matches!(prompt.last(), Some(ResponseItem::Message {
++        internal_chat_message_metadata_passthrough: Some(metadata), ..
++    }) if metadata.content_item_kinds.as_ref().is_some_and(|kinds|
++        kinds.len() == 1 && kinds[0].0 == "unknown")),
++        "the known native instruction must actually gain positional metadata"
++    );
++    let original_instruction = prompt.last().unwrap().clone();
++    let mut extra = prompt.clone();
++    extra.push(user_message("CURRENT-SUFFIX-MUST-NOT-ENTER"));
++    assert!(
++        work.prepare_prompt(&mut extra, &input, &[InputModality::Image])
++            .is_err()
++    );
++    let mut extra_image = prompt.clone();
++    extra_image.insert(extra_image.len() - 1, typed_source("message")?.remove(0));
++    assert!(
++        work.prepare_prompt(&mut extra_image, &input, &[InputModality::Image])
++            .is_err()
++    );
++    let mut missing = prompt.clone();
++    missing.pop();
++    assert!(
++        work.prepare_prompt(&mut missing, &input, &[InputModality::Image])
++            .is_err()
++    );
++    let mut changed = prompt.clone();
++    *changed.last_mut().unwrap() = user_message("different arbitrary user tail");
++    assert!(
++        work.prepare_prompt(&mut changed, &input, &[InputModality::Image])
++            .is_err()
++    );
++    let mut duplicate = prompt.clone();
++    duplicate.push(input.clone());
++    assert!(
++        work.prepare_prompt(&mut duplicate, &input, &[InputModality::Image])
++            .is_err()
++    );
++    work.prepare_prompt(&mut prompt, &input, &[InputModality::Image])?;
++    let mut framed = prompt.last().unwrap().clone();
++    let parts = codex_context_fragments::to_annotated_content(&mut framed).unwrap();
++    assert_eq!(parts.len(), 2);
++    let (_, kind, provenance) = parts[1].clone().into_parts();
++    assert_eq!(kind.0, "unknown");
++    assert_eq!(provenance, ContentItemMetadata::harness());
++    codex_context_fragments::set_annotated_content(&mut framed, parts[..1].to_vec()).unwrap();
++    assert_eq!(
++        framed, original_instruction,
++        "appending framing must preserve the original instruction and all positional metadata"
++    );
++    Ok(())
++}
++
++#[test_case::test_case("current")]
++#[test_case::test_case("unknown")]
++#[test_case::test_case("in_progress")]
++#[test_case::test_case("incomplete")]
++#[test_case::test_case("missing_output")]
++#[test_case::test_case("encrypted")]
++fn historical_projection_refuses_unattributed_current_or_incomplete_items(
++    kind: &str,
++) -> anyhow::Result<()> {
++    let mut items = typed_source("message")?;
++    let current = if kind == "current" {
++        OLD_TURN
++    } else {
++        "current-turn"
++    };
++    match kind {
++        "unknown" => {
++            let ResponseItem::Message {
++                internal_chat_message_metadata_passthrough,
++                ..
++            } = &mut items[0]
++            else {
++                unreachable!()
++            };
++            internal_chat_message_metadata_passthrough
++                .as_mut()
++                .unwrap()
++                .turn_id = None;
++        }
++        "in_progress" | "incomplete" => {
++            let ResponseItem::Message { status, .. } = &mut items[0] else {
++                unreachable!()
++            };
++            *status = Some(kind.to_owned());
++        }
++        "missing_output" => items = vec![exact_pair()?.remove(0)],
++        "encrypted" => {
++            let ResponseItem::Message {
++                encrypted_content, ..
++            } = &mut items[0]
++            else {
++                unreachable!()
++            };
++            *encrypted_content = Some("opaque-cannot-project".to_owned());
++        }
++        _ => {}
++    }
++    let source = target(items);
++    assert!(CapacityProjection::new(&source, 0, source.annotated_items().len(), current).is_none());
++    Ok(())
++}
++
++#[test]
++fn historical_projection_message_keeps_positional_metadata_and_media() -> anyhow::Result<()> {
++    let source = target(typed_source("message")?);
++    let projection = CapacityProjection::new(&source, 0, 1, "current-turn").unwrap();
++    let original = source.annotated_items().to_vec();
++    let selected = projection.items(&source)?;
++    let mut full = source.annotated_items()[0].item.clone();
++    let full_parts = codex_context_fragments::to_annotated_content(&mut full).unwrap();
++    assert_eq!(full_parts.len(), 8);
++    for (index, part) in full_parts.iter().cloned().enumerate() {
++        let (_, kind, metadata) = part.into_parts();
++        assert_eq!(kind.0, format!("source-part-{index}"));
++        assert_eq!(
++            metadata,
++            if index % 2 == 0 {
++                ContentItemMetadata::user()
++            } else {
++                ContentItemMetadata::tool(None)
++            },
++            "the fixture must load actual non-default positional provenance"
++        );
++    }
++    let mut view = selected[0].item.clone();
++    let view_parts = codex_context_fragments::to_annotated_content(&mut view).unwrap();
++    assert_eq!(view_parts, full_parts[..4]);
++    assert_eq!(source.annotated_items(), original);
++    let mut normalized = source.clone();
++    normalized.replace_annotated(selected);
++    let input = native_input();
++    let mut work = CapacitySummaryWork::new(source.clone());
++    assert!(work.reduce(false, "current-turn")?);
++    let mut prompt = recorded_prompt(normalized, &input, &[InputModality::Image]);
++    work.prepare_prompt(&mut prompt, &input, &[InputModality::Image])?;
++    // Unsupported modality stripping cannot qualify as original typed coverage.
++    let mut stripped = source.clone();
++    stripped.replace_annotated(projection.items(&source)?);
++    let mut prompt = recorded_prompt(stripped, &input, &[]);
++    assert!(work.prepare_prompt(&mut prompt, &input, &[]).is_err());
++    Ok(())
++}
++
++#[test]
++fn historical_projection_requires_fresh_summary_exact_parts_and_carry_chain() -> anyhow::Result<()>
++{
++    let original = target(exact_pair()?);
++    let mut work = CapacitySummaryWork::new(original.clone());
++    assert!(work.reduce(false, "current-turn")?);
++    let input = native_input();
++    let _ = prepare(&mut work, &input)?;
++    let no_summary = CompactionResponse {
++        response_id: "first".to_owned(),
++        summary: None,
++    };
++    assert!(work.complete_selected(&no_summary, None).is_err());
++    let first = CompactionResponse {
++        response_id: "first".to_owned(),
++        summary: Some("first original parts".to_owned()),
++    };
++    assert!(!work.complete_selected(&first, None)?);
++    assert_eq!(
++        work.coverage.covered, 0,
++        "partial parts are not a consumed pair"
++    );
++    let summary = work.coverage.carry_summary.clone().unwrap();
++    work.advance(build_compacted_history(Vec::new(), &[], &summary))?;
++    let mut prompt = prepare(&mut work, &input)?;
++    assert_eq!(
++        work.coverage.prompt_carry(&prompt)?,
++        Some("first".to_owned())
++    );
++    let final_response = CompactionResponse {
++        response_id: "final".to_owned(),
++        summary: Some("all original parts".to_owned()),
++    };
++    assert!(
++        work.complete_selected(&final_response, None).is_err(),
++        "missing carry proof"
++    );
++    // An invalid completion must not consume the prepared projection.
++    assert!(work.complete_selected(&final_response, Some("first".to_owned()))?);
++    assert!(work.coverage.matches_target(&original, "final"));
++    work.coverage.segments[1]
++        .projection
++        .as_mut()
++        .unwrap()
++        .part_start += 1;
++    assert!(
++        !work.coverage.matches_target(&original, "final"),
++        "missing original part"
++    );
++    work.coverage.segments[1]
++        .projection
++        .as_mut()
++        .unwrap()
++        .part_start -= 1;
++    work.coverage.segments[1]
++        .projection
++        .as_mut()
++        .unwrap()
++        .part_start = 0;
++    assert!(
++        !work.coverage.matches_target(&original, "final"),
++        "duplicated original part"
++    );
++    prompt.retain(|item| !matches!(item, ResponseItem::Message { content, .. }
++        if content.iter().any(|part| matches!(part, ContentItem::InputText { text } if text == &summary))));
++    assert!(work.coverage.prompt_carry(&prompt).is_err());
++    Ok(())
++}
++
++async fn attach_real_writer(session: &mut Session) -> anyhow::Result<std::path::PathBuf> {
++    // Same native API and materialization path as session/tests.rs.
++    let config = session.get_config().await;
++    let live_thread = LiveThread::create(
++        Arc::clone(&session.services.thread_store),
++        CreateThreadParams {
++            creator_user_id: None,
++            creator_account_id: None,
++            session_id: session.session_id(),
++            thread_id: session.thread_id,
++            extra_config: None,
++            forked_from_id: None,
++            parent_thread_id: None,
++            source: SessionSource::Exec,
++            thread_source: None,
++            originator: "historical_projection_test".to_owned(),
++            base_instructions: BaseInstructions::default(),
++            dynamic_tools: Vec::new(),
++            selected_capability_roots: Vec::new(),
++            multi_agent_version: None,
++            history_mode: Default::default(),
++            subagent_history_start_ordinal: None,
++            history_base: None,
++            initial_window_id: uuid::Uuid::now_v7().to_string(),
++            runtime_workspace_roots: None,
++            metadata: ThreadPersistenceMetadata {
++                cwd: Some(config.cwd.to_path_buf()),
++                model_provider: config.model_provider_id.clone(),
++                memory_mode: if config.memories.generate_memories {
++                    ThreadMemoryMode::Enabled
++                } else {
++                    ThreadMemoryMode::Disabled
++                },
++            },
++        },
++    )
++    .await?;
++    session.services.live_thread = Some(live_thread);
++    session
++        .ensure_rollout_materialized(PersistContext::Standard)
++        .await;
++    session.flush_rollout().await?;
++    Ok(session
++        .current_rollout_path()
++        .await?
++        .expect("real native rollout"))
++}
++
++#[derive(Default)]
++struct ProjectionWireState {
++    accepted_parts: HashMap<String, usize>,
++    accepted_empty: Vec<String>,
++    projection_requests: usize,
++    rejections: usize,
++    last_summary: Option<String>,
++}
++
++#[test_case::test_case("single"; "exact completed pair seven images budget six")]
++#[test_case::test_case("function"; "native function output seven images budget six")]
++#[test_case::test_case("parallel"; "interleaved parallel pairs three plus four and empty output")]
++#[test_case::test_case("message"; "one historical message seven images and positional metadata")]
++#[test_case::test_case("cancel"; "real token cancelled after first typed part summary")]
++#[test_case::test_case("upstream_error"; "later typed part upstream failure installs nothing")]
++#[test_case::test_case("no_summary"; "later completed without fresh summary installs nothing")]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn historical_typed_projection_reads_all_parts_before_one_durable_install(
++    scenario: &str,
++) -> anyhow::Result<()> {
++    skip_if_no_network!(Ok(()));
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, ResponseTemplate};
++    let (home, mut session, turn, server, events) = manual_partition_test_session().await?;
++    let rollout =
++        attach_real_writer(Arc::get_mut(&mut session).expect("unique native fixture session"))
++            .await?;
++    assert!(session.live_thread().is_some());
++    let mut consumed = user_message("CONFIRMED-ANCHOR-BEFORE-TYPED-OUTPUT");
++    consumed.set_turn_id_if_missing(OLD_TURN);
++    session
++        .record_conversation_items(&turn, turn.model_info(), &[consumed])
++        .await;
++    session
++        .confirm_capacity_completion(
++            &turn,
++            &turn.model_info().slug,
++            session.capture_capacity_send().await,
++            "ordinary-before-typed-projection",
++        )
++        .await;
++    let mut source = typed_source(scenario)?;
++    source.push(user_message("CURRENT-PROTECTED-SUFFIX-AFTER-TYPED-OUTPUT"));
++    session
++        .record_conversation_items(&turn, turn.model_info(), &source)
++        .await;
++    let prefix = session
++        .capacity_prefix(&turn, &turn.model_info().slug)
++        .await
++        .expect("native historical prefix");
++    assert!(prefix.needs_fresh_summary());
++    let before = session.clone_history().await;
++    let before_window = session.current_window().await;
++    let checkpoint = session.capacity_checkpoint_for_test().await.unwrap();
++    let cp_path = home
++        .path()
++        .join("cache/request-capacity-v1")
++        .join(format!("{}.json", session.thread_id));
++    let disk_before = std::fs::read(&cp_path)?;
++    assert_eq!(
++        serde_json::from_slice::<serde_json::Value>(&disk_before)?["checkpoint"],
++        serde_json::to_value(&checkpoint)?
++    );
++    let original = before
++        .raw_items()
++        .map(serde_json::to_value)
++        .collect::<serde_json::Result<Vec<_>>>()?;
++    // Keep independent raw history Original. The official request formatter
++    // selects the wire detail from the actual model capability, never from the
++    // observed request; it clones without changing source bytes or history.
++    let raw_parts = original
++        .iter()
++        .filter_map(|item| {
++            if item["type"] == "custom_tool_call_output" || item["type"] == "function_call_output" {
++                item["output"].as_array()
++            } else if scenario == "message" && item["id"] == "msg_original-seven-part-message" {
++                item["content"].as_array()
++            } else {
++                None
++            }
++        })
++        .flatten()
++        .collect::<Vec<_>>();
++    assert_eq!(
++        raw_parts
++            .iter()
++            .filter(|part| part["type"] == "input_image")
++            .count(),
++        7
++    );
++    assert!(
++        raw_parts
++            .iter()
++            .filter(|part| part["type"] == "input_image")
++            .all(|part| part["detail"] == "original"),
++        "raw native source retains Original detail"
++    );
++    let expected_wire = Prompt {
++        input: before.raw_items().cloned().collect(),
++        ..Default::default()
++    }
++    .get_formatted_input_for_request(turn.model_info())
++    .iter()
++    .map(serde_json::to_value)
++    .collect::<serde_json::Result<Vec<_>>>()?;
++    assert_eq!(
++        session.clone_history().await.annotated_items(),
++        before.annotated_items(),
++        "native wire formatting cannot mutate live source history"
++    );
++    let mut expected = HashMap::<String, Vec<serde_json::Value>>::new();
++    let mut expected_calls = HashMap::<String, serde_json::Value>::new();
++    let mut expected_order = Vec::new();
++    for item in &original {
++        if item["type"] == "custom_tool_call" || item["type"] == "function_call" {
++            expected_calls.insert(item["call_id"].as_str().unwrap().to_owned(), item.clone());
++        }
++    }
++    for item in &expected_wire {
++        if item["type"] == "custom_tool_call_output" || item["type"] == "function_call_output" {
++            let key = item["call_id"].as_str().unwrap().to_owned();
++            expected_order.push(key.clone());
++            expected.insert(key, item["output"].as_array().unwrap().clone());
++        } else if scenario == "message" && item["id"] == "msg_original-seven-part-message" {
++            expected_order.push("message".to_owned());
++            expected.insert(
++                "message".to_owned(),
++                item["content"].as_array().unwrap().clone(),
++            );
++        }
++    }
++    assert_eq!(
++        expected
++            .values()
++            .flat_map(|parts| parts.iter())
++            .filter(|part| part["type"] == "input_image")
++            .count(),
++        7
++    );
++    let state = Arc::new(Mutex::new(ProjectionWireState::default()));
++    let inspect = Arc::new(tokio::sync::Notify::new());
++    let release = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
++    let fixture_state = Arc::clone(&state);
++    let fixture_inspect = Arc::clone(&inspect);
++    let fixture_release = Arc::clone(&release);
++    let scenario_owned = scenario.to_owned();
++    let expected_for_mock = expected.clone();
++    let expected_order_for_mock = expected_order.clone();
++    Mock::given(method("POST"))
++        .and(path("/v1/responses"))
++        .respond_with(move |request: &wiremock::Request| {
++            let body: serde_json::Value =
++                serde_json::from_slice(&native_mock_decoded_json_body(request)).unwrap();
++            assert!(
++                body.get("tools")
++                    .is_none_or(|tools| tools.as_array().is_some_and(Vec::is_empty)),
++                "compactor has no tool executor declarations"
++            );
++            let images = capacity_test_image_count(&body);
++            eprintln!(
++                "NATIVE_TYPED_REQUEST scenario={} images={} input_items={} tail_content_parts={}",
++                scenario_owned,
++                images,
++                body["input"].as_array().map_or(0, Vec::len),
++                body["input"]
++                    .as_array()
++                    .and_then(|items| items.last())
++                    .and_then(|item| item["content"].as_array())
++                    .map_or(0, Vec::len),
++            );
++            if images > 6 {
++                fixture_state.lock().unwrap().rejections += 1;
++                return ResponseTemplate::new(413)
++                    .set_body_json(json!({"error":{"message":"fixed six image capacity"}}));
++            }
++            let input = body["input"].as_array().unwrap();
++            let projected = input.iter().any(|item| {
++                item["content"].as_array().is_some_and(|parts| {
++                    parts.iter().any(|part| {
++                        part["text"].as_str().is_some_and(|text| {
++                            text.starts_with("Compaction-only partial historical content:")
++                        })
++                    })
++                })
++            });
++            if projected {
++                let tail = input.last().expect("native compaction instruction tail");
++                let content = tail["content"]
++                    .as_array()
++                    .expect("typed instruction content");
++                let metadata = tail["internal_chat_message_metadata_passthrough"]
++                    .as_object()
++                    .expect(
++                        "framed instruction keeps native positional metadata on the actual wire",
++                    );
++                let kinds = metadata["content_item_kinds"]
++                    .as_array()
++                    .expect("framed instruction kinds");
++                // Native ordinary Responses deliberately clears per-content
++                // attribution (client.rs); only RLite accepts that host field.
++                // Source-side annotated provenance remains checked above.
++                assert!(
++                    !metadata.contains_key("content_item_metadata"),
++                    "ordinary Responses must omit host-only source attribution"
++                );
++                assert_eq!(
++                    kinds.len(),
++                    content.len(),
++                    "every actual wire tail part has a kind"
++                );
++                assert_eq!(kinds.last().unwrap(), "unknown");
++                assert!(
++                    content.last().unwrap()["text"]
++                        .as_str()
++                        .unwrap()
++                        .starts_with("Compaction-only partial historical content:")
++                );
++            }
++            let mut observed = fixture_state.lock().unwrap();
++            let mut block = false;
++            let mut later_failure = false;
++            if projected {
++                observed.projection_requests += 1;
++                if let Some(last) = &observed.last_summary {
++                    assert!(
++                        input
++                            .iter()
++                            .any(|item| item["content"].as_array().is_some_and(|parts| parts
++                                .iter()
++                                .any(|part| part["text"].as_str() == Some(last.as_str())))),
++                        "actual next request carries exact fresh summary"
++                    );
++                }
++                let selected = input
++                    .iter()
++                    .filter(|item| {
++                        item["type"] == "custom_tool_call_output"
++                            || item["type"] == "function_call_output"
++                    })
++                    .collect::<Vec<_>>();
++                let (key, parts) = if scenario_owned == "message" {
++                    let message = input
++                        .iter()
++                        .find(|item| item["id"] == "msg_original-seven-part-message")
++                        .expect("original message view");
++                    (
++                        "message".to_owned(),
++                        message["content"].as_array().unwrap().clone(),
++                    )
++                } else {
++                    assert_eq!(
++                        selected.len(),
++                        1,
++                        "one projected completed pair per request"
++                    );
++                    let output = selected[0];
++                    let key = output["call_id"].as_str().unwrap().to_owned();
++                    let call_type = if output["type"] == "function_call_output" {
++                        "function_call"
++                    } else {
++                        "custom_tool_call"
++                    };
++                    let calls = input
++                        .iter()
++                        .filter(|item| item["type"] == call_type && item["call_id"] == key)
++                        .collect::<Vec<_>>();
++                    assert_eq!(calls.len(), 1);
++                    let original_call = &expected_calls[&key];
++                    for field in [
++                        "type",
++                        "id",
++                        "call_id",
++                        "input",
++                        "arguments",
++                        "name",
++                        "namespace",
++                        "status",
++                    ] {
++                        assert_eq!(calls[0][field], original_call[field]);
++                    }
++                    (key, output["output"].as_array().unwrap().clone())
++                };
++                later_failure = observed.projection_requests > 1
++                    && matches!(
++                        scenario_owned.as_str(),
++                        "upstream_error" | "no_summary" | "cancel"
++                    );
++                if later_failure {
++                    block = true;
++                } else {
++                    let source = &expected_for_mock[&key];
++                    let offset = *observed.accepted_parts.get(&key).unwrap_or(&0);
++                    if source.is_empty() {
++                        assert!(parts.is_empty());
++                        assert!(!observed.accepted_empty.contains(&key));
++                        observed.accepted_empty.push(key.clone());
++                    } else {
++                        assert!(!parts.is_empty());
++                        assert_eq!(parts, source[offset..offset + parts.len()]);
++                        observed
++                            .accepted_parts
++                            .insert(key.clone(), offset + parts.len());
++                    }
++                    let all = expected_order_for_mock.iter().all(|key| {
++                        let source = &expected_for_mock[key];
++                        if source.is_empty() {
++                            observed.accepted_empty.contains(key)
++                        } else {
++                            observed.accepted_parts.get(key) == Some(&source.len())
++                        }
++                    });
++                    block = all;
++                }
++            }
++            let response_id = format!("typed-projection-response-{}", observed.projection_requests);
++            let summary = format!("FRESH-TYPED-SUMMARY-{}", observed.projection_requests);
++            if projected && !later_failure {
++                observed.last_summary = Some(format!("{SUMMARY_PREFIX}\n{summary}"));
++            }
++            drop(observed);
++            if block {
++                fixture_inspect.notify_one();
++                let (lock, condition) = &*fixture_release;
++                let (released, timed) = condition
++                    .wait_timeout_while(lock.lock().unwrap(), Duration::from_secs(10), |released| {
++                        !*released
++                    })
++                    .unwrap();
++                assert!(
++                    *released && !timed.timed_out(),
++                    "typed summary release barrier"
++                );
++            }
++            if later_failure && scenario_owned == "upstream_error" {
++                return ResponseTemplate::new(500).set_body_string("synthetic later part failure");
++            }
++            let mut output = Vec::new();
++            if !(later_failure && scenario_owned == "no_summary") {
++                output.push(responses::ev_assistant_message("typed-summary", &summary));
++            }
++            output.push(responses::ev_completed(&response_id));
++            ResponseTemplate::new(200)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(responses::sse(output))
++        })
++        .mount(&server)
++        .await;
++    eprintln!(
++        "NATIVE_TYPED_MODALITIES scenario={} modalities={:?}",
++        scenario,
++        turn.model_info().input_modalities
++    );
++    let token = CancellationToken::new();
++    let step = session
++        .capture_step_context(Arc::clone(&turn), &token)
++        .await?;
++    let world = Arc::new(session.build_world_state_for_step(&step, true).await?);
++    let attempt = run_inline_capacity_compact_task(
++        Arc::clone(&session),
++        Arc::clone(&turn),
++        step,
++        world,
++        prefix,
++        capacity_rejection_for_test(),
++        token.child_token(),
++    );
++    // Discovery spans native partition retries. The existing whole-case/batch
++    // budget bounds that work; the ten-second barrier budget begins only once
++    // the provider actually holds the response. An early native return fails
++    // immediately instead of hanging while waiting for a nonexistent barrier.
++    let check_and_release = async {
++        assert_eq!(
++            session.clone_history().await.annotated_items(),
++            before.annotated_items(),
++            "all original envelopes remain live until final summary"
++        );
++        assert_eq!(session.current_window().await, before_window);
++        assert_eq!(
++            std::fs::read(&cp_path)?,
++            disk_before,
++            "partial summaries cannot publish CP"
++        );
++        session.flush_rollout().await?;
++        let (items, _, errors) = RolloutRecorder::load_rollout_items(&rollout).await?;
++        assert_eq!(errors, 0);
++        assert_eq!(
++            items
++                .iter()
++                .filter(|item| matches!(item, codex_history::RolloutItem::Compacted(_)))
++                .count(),
++            0
++        );
++        if scenario == "cancel" {
++            token.cancel();
++        }
++        let (lock, condition) = &*release;
++        *lock.lock().unwrap() = true;
++        condition.notify_all();
++        Ok::<(), anyhow::Error>(())
++    };
++    tokio::pin!(attempt);
++    let mut early_result = None;
++    let checked = tokio::select! {
++        biased;
++        result = &mut attempt => {
++            early_result = Some(result);
++            Err(anyhow::anyhow!("native recovery returned before the expected provider barrier"))
++        }
++        _ = inspect.notified() => {
++            match tokio::time::timeout(Duration::from_secs(10), check_and_release).await {
++                Ok(result) => result,
++                Err(error) => Err(anyhow::Error::from(error)),
++            }
++        }
++    };
++    // Always release the owned synthetic provider on a failed check as well.
++    // This does not cancel or drop the native attempt; observe its real result.
++    let (lock, condition) = &*release;
++    *lock.lock().unwrap() = true;
++    condition.notify_all();
++    let result = match early_result {
++        Some(result) => result,
++        None => attempt.await,
++    };
++    // Diagnostics for this synthetic native fixture only. Both failures remain
++    // errors; preserve the original timeout and every installation assertion.
++    eprintln!(
++        "NATIVE_TYPED_RESULT scenario={} attempt={:?} barrier={:?}",
++        scenario,
++        result
++            .as_ref()
++            .map(|_| ())
++            .map_err(|error| error.to_string()),
++        checked
++            .as_ref()
++            .map(|_| ())
++            .map_err(|error| error.to_string()),
++    );
++    checked?;
++    session.flush_rollout().await?;
++    let success = matches!(scenario, "single" | "function" | "parallel" | "message");
++    let after = session.clone_history().await;
++    if success {
++        result?;
++        let after_window = session.current_window().await;
++        assert_eq!(after_window.1, before_window.1 + 1);
++        assert_ne!(after_window.2, before_window.2);
++        assert_ne!(
++            after.annotated_items(),
++            before.annotated_items(),
++            "live original target must actually be replaced"
++        );
++        let final_summary = state
++            .lock()
++            .unwrap()
++            .last_summary
++            .clone()
++            .expect("last fresh typed summary");
++        assert!(after.raw_items().any(|item| matches!(item, ResponseItem::Message { content, .. }
++            if content.iter().any(|part| matches!(part, ContentItem::InputText { text } if text == &final_summary)))));
++        assert!(
++            after.raw_items().all(|item| match item {
++                ResponseItem::CustomToolCallOutput { .. }
++                | ResponseItem::FunctionCallOutput { .. } => false,
++                ResponseItem::Message { content, .. } => !content
++                    .iter()
++                    .any(|part| matches!(part, ContentItem::InputImage { .. })),
++                _ => true,
++            }),
++            "original typed target cannot remain as an unmodified no-op replacement"
++        );
++        assert!(
++            session
++                .capacity_checkpoint_matches_history_for_test(after.annotated_items())
++                .await?
++        );
++        assert_eq!(
++            after.annotated_items().last(),
++            before.annotated_items().last(),
++            "protected suffix remains exact"
++        );
++        let current = session.capacity_checkpoint_for_test().await.unwrap();
++        let current_value = serde_json::to_value(&current)?;
++        let checkpoint_value = serde_json::to_value(&checkpoint)?;
++        assert_eq!(
++            current_value["completed_epoch"],
++            checkpoint_value["completed_epoch"]
++        );
++        assert_eq!(
++            current_value["recovery_turn_id"],
++            checkpoint_value["recovery_turn_id"]
++        );
++        assert_eq!(
++            current_value["response_id"],
++            checkpoint_value["response_id"]
++        );
++        assert_eq!(current_value["origin"], "translated_prefix");
++        assert_eq!(current_value["binding"]["history_anchor"], after_window.0);
++        assert_eq!(
++            serde_json::from_slice::<serde_json::Value>(&std::fs::read(&cp_path)?)?["checkpoint"],
++            serde_json::to_value(&current)?
++        );
++        let observed = state.lock().unwrap();
++        assert!(observed.rejections > 0);
++        assert!(observed.projection_requests >= 2);
++        for (key, source) in &expected {
++            if source.is_empty() {
++                assert_eq!(
++                    observed
++                        .accepted_empty
++                        .iter()
++                        .filter(|seen| *seen == key)
++                        .count(),
++                    1
++                );
++            } else {
++                assert_eq!(observed.accepted_parts[key], source.len());
++            }
++        }
++    } else {
++        let error = result.expect_err("later failure cannot install a partial result");
++        if scenario == "cancel" {
++            assert!(matches!(error.details(), CodexErrorDetails::TurnAborted));
++        }
++        assert_eq!(after.annotated_items(), before.annotated_items());
++        assert_eq!(session.current_window().await, before_window);
++        assert_eq!(std::fs::read(&cp_path)?, disk_before);
++        assert!(
++            session
++                .capacity_prefix(&turn, &turn.model_info().slug)
++                .await
++                .is_none(),
++            "failed attempt does not rearm fence"
++        );
++    }
++    let (items, _, errors) = RolloutRecorder::load_rollout_items(&rollout).await?;
++    assert_eq!(errors, 0);
++    assert_eq!(
++        items
++            .iter()
++            .filter(|item| matches!(item, codex_history::RolloutItem::Compacted(_)))
++            .count(),
++        usize::from(success),
++        "one final durable installation only"
++    );
++    if success {
++        let compacted = items
++            .iter()
++            .filter_map(|item| match item {
++                codex_history::RolloutItem::Compacted(item) => Some(item),
++                _ => None,
++            })
++            .collect::<Vec<_>>();
++        assert_eq!(compacted.len(), 1);
++        // Native CompactedItem encoding writes default metadata for None slots
++        // when its positional metadata array exists. Roundtrip the independent
++        // live expected value through the official codec, then compare the full
++        // envelopes; do not discard or mask any non-default metadata.
++        let mut expected_compacted: codex_history::CompactedItem =
++            serde_json::from_value(json!({"message":"independent live replacement codec"}))?;
++        expected_compacted.replacement_history = Some(after.annotated_items().to_vec());
++        let replay_expected: codex_history::CompactedItem =
++            serde_json::from_slice(&serde_json::to_vec(&expected_compacted)?)?;
++        assert_eq!(
++            compacted[0].replacement_history, replay_expected.replacement_history,
++            "durable replacement must equal independent live history after native replay"
++        );
++        let after_window = session.current_window().await;
++        assert_eq!(compacted[0].window_number, Some(after_window.1));
++        assert_eq!(
++            compacted[0].window_id.as_deref(),
++            Some(after_window.2.to_string().as_str())
++        );
++        // Native prefix compaction stores the summary in rich replacement
++        // history (already checked exactly above), leaving this legacy field empty.
++        assert!(compacted[0].message.is_empty());
++        let cp = serde_json::to_value(session.capacity_checkpoint_for_test().await.unwrap())?;
++        assert_eq!(
++            cp["binding"]["history_anchor"],
++            format!(
++                "{}:{}",
++                session.thread_id,
++                compacted[0].window_number.unwrap()
++            )
++        );
++        assert!(
++            session
++                .capacity_checkpoint_matches_history_for_test(
++                    compacted[0].replacement_history.as_ref().unwrap()
++                )
++                .await?
++        );
++    }
++    let completed = std::iter::from_fn(|| events.try_recv().ok())
++        .filter(|event| {
++            matches!(&event.msg,
++        EventMsg::ItemCompleted(event) if matches!(event.item,TurnItem::ContextCompaction(_)))
++        })
++        .count();
++    assert_eq!(completed, usize::from(success));
++    session.drain_capacity_native_persistence_for_test().await;
++    session.live_thread().unwrap().shutdown().await?;
++    Ok(())
++}
+diff --git a/codex-rs/core/src/compact_tests.rs b/codex-rs/core/src/compact_tests.rs
+index 28c330c..72547b4 100644
+--- a/codex-rs/core/src/compact_tests.rs
++++ b/codex-rs/core/src/compact_tests.rs
+@@ -3366,3 +3366,6 @@ async fn capacity_token_budget_already_cancelled_helper_preserves_native_state_w
+     assert!(server.received_requests().await.unwrap().is_empty());
+     Ok(())
+ }
++
++#[path = "compact_capacity_projection_tests.rs"]
++mod historical_typed_projection_tests;
+diff --git a/codex-rs/core/src/session/mod.rs b/codex-rs/core/src/session/mod.rs
+index 1ca43ab..ecf193b 100644
+--- a/codex-rs/core/src/session/mod.rs
++++ b/codex-rs/core/src/session/mod.rs
+@@ -5183,6 +5183,23 @@ impl Session {
+         self.state.lock().await.request_capacity_checkpoint.clone()
+     }
+ 
++    #[cfg(test)]
++    pub(crate) async fn capacity_checkpoint_matches_history_for_test(
++        &self,
++        history: &[ResponseItemEnvelope],
++    ) -> anyhow::Result<bool> {
++        let state = self.state.lock().await;
++        match &state.request_capacity_checkpoint {
++            Some(checkpoint) => checkpoint.matches_prefix(history),
++            None => Ok(false),
++        }
++    }
++
++    #[cfg(test)]
++    pub(crate) async fn drain_capacity_native_persistence_for_test(&self) {
++        self.drain_code_mode_messages().await;
++    }
++
+     #[cfg(test)]
+     pub(crate) async fn capacity_state_lock_for_test(
+         &self,

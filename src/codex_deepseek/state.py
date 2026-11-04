@@ -18,6 +18,8 @@ SCHEMA_VERSION = 3
 SERVICE_CLIENT_PREFIX = "service-launcher-v1:"
 
 
+
+
 class Store:
     def __init__(self, path: Path):
         self.path = path
@@ -44,7 +46,7 @@ class Store:
         self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('database_id',str(uuid.uuid4())))
         self.database_id=self.db.execute("SELECT value FROM adapter_metadata WHERE key='database_id'").fetchone()[0]
         columns = {row[1] for row in self.db.execute('PRAGMA table_info(receipts)')}
-        for name in ('provider', 'owner_id', 'context_key', 'network_policy', 'route_reason', 'structured_output_mapping'):
+        for name in ('provider', 'owner_id', 'context_key', 'network_policy', 'route_reason', 'structured_output_mapping', 'native_request'):
             if name not in columns:
                 self.db.execute(f'ALTER TABLE receipts ADD COLUMN {name} TEXT')
         self.db.execute(f'PRAGMA user_version={SCHEMA_VERSION}')
@@ -98,12 +100,14 @@ class Store:
         self.db.commit()
 
     def start(self, provider=PROVIDER, *, context_key=None, network_policy=None, route_reason=None,
-              structured_output_mapping=None):
+              structured_output_mapping=None, native_request=None):
         key = str(uuid.uuid4())
         mapping=(json.dumps(structured_output_mapping,allow_nan=False,sort_keys=True,separators=(',',':'))
                  if structured_output_mapping is not None else None)
-        self.db.execute('INSERT INTO receipts(id,started,status,provider,owner_id,context_key,network_policy,route_reason,structured_output_mapping) VALUES (?,?,?,?,?,?,?,?,?)',
-                        (key, time.time(), 'running', provider, self.owner, context_key, network_policy, route_reason, mapping))
+        native=(json.dumps(native_request,allow_nan=False,sort_keys=True,separators=(',',':'))
+                if native_request is not None else None)
+        self.db.execute('INSERT INTO receipts(id,started,status,provider,owner_id,context_key,network_policy,route_reason,structured_output_mapping,native_request) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                        (key, time.time(), 'running', provider, self.owner, context_key, network_policy, route_reason, mapping, native))
         self.db.commit()
         return key
 

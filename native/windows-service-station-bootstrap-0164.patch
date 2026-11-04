@@ -1,0 +1,798 @@
+--- a/codex-rs/windows-sandbox-rs/src/desktop.rs
++++ b/codex-rs/windows-sandbox-rs/src/desktop.rs
+@@ -68,6 +68,9 @@
+ use windows_sys::Win32::System::StationsAndDesktops::OpenDesktopW;
+ use windows_sys::Win32::System::StationsAndDesktops::UOI_NAME;
+ 
++#[path = "service_station.rs"]
++mod service_station;
++
+ const PRIVATE_DESKTOP_PREFIX: &str = "CodexSandboxDesktop-";
+ 
+ const DESKTOP_ALL_ACCESS: u32 = DESKTOP_READOBJECTS
+@@ -187,7 +190,12 @@
+ 
+ fn current_window_station_name() -> Result<Vec<u16>> {
+     // This is a borrowed process handle. It must not be closed or rebound.
+-    let station = unsafe { GetProcessWindowStation() };
++    station_name_for_handle(unsafe { GetProcessWindowStation() })
++}
++
++fn station_name_for_handle(
++    station: windows_sys::Win32::System::StationsAndDesktops::HWINSTA,
++) -> Result<Vec<u16>> {
+     if station.is_null() {
+         anyhow::bail!("GetProcessWindowStation failed: {}", unsafe {
+             GetLastError()
+@@ -354,6 +362,9 @@
+ ) -> Result<String> {
+     let sandbox_sid =
+         string_from_sid_bytes(&resolve_sid(sandbox_username)?).map_err(anyhow::Error::msg)?;
++    // The target has a different logon token. Authorize only this caller-owned
++    // noninteractive station before every launch, including a desktop cache hit.
++    service_station::ensure_access(&sandbox_sid)?;
+     let mut desktops = SHARED_PRIVATE_DESKTOPS
+         .get_or_init(|| Mutex::new(HashMap::new()))
+         .lock()
+@@ -370,8 +381,8 @@
+         sid?
+     };
+     let owner_user_sid = string_from_sid_bytes(&owner_user_sid).map_err(anyhow::Error::msg)?;
+-    // CreateProcessWithLogonW shares the caller's logon SID with the sandbox account.
+-    // Grant ACL-management rights to the caller's user SID instead.
++    // Keep ACL-management rights with the caller. CreateProcessWithLogonW does
++    // not guarantee a shared logon SID; the target receives participant rights.
+     // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createprocesswithlogonw
+     let sddl = to_wide(format!(
+         "D:P(A;;0x{DESKTOP_ALL_ACCESS:x};;;{owner_user_sid})(A;;0x{DESKTOP_PARTICIPANT_ACCESS:x};;;{sandbox_sid})"
+--- /dev/null
++++ b/codex-rs/windows-sandbox-rs/src/service_station.rs
+@@ -0,0 +1,317 @@
++//! Native access required when an alternate-user runner joins a caller-owned
++//! noninteractive service window station. No desktop, station binding, or agent
++//! execution policy is changed here.
++use super::station_name_for_handle;
++use crate::private_acl_lock::PrivateLockDirectory;
++use crate::token::{get_current_token_for_restriction, get_user_sid_bytes};
++use crate::winutil::sid_bytes_from_string;
++use anyhow::{Context, Result, ensure};
++use sha2::{Digest, Sha256};
++use std::{ffi::c_void, fs::File, mem::size_of, ptr};
++use windows_sys::Win32::Foundation::{
++    CloseHandle, ERROR_SUCCESS, GetLastError, HANDLE, HLOCAL, LocalFree,
++};
++use windows_sys::Win32::Security::Authorization::{
++    EXPLICIT_ACCESS_W, GRANT_ACCESS, GetSecurityInfo, SE_WINDOW_OBJECT, SetEntriesInAclW,
++    SetSecurityInfo, TRUSTEE_IS_SID, TRUSTEE_IS_USER, TRUSTEE_W,
++};
++use windows_sys::Win32::Security::{
++    ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, DACL_SECURITY_INFORMATION, EqualSid, GENERIC_MAPPING,
++    GetAce, GetLengthSid, GetTokenInformation, IsValidSid, MapGenericMask,
++    OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, TOKEN_STATISTICS, TokenSessionId,
++    TokenStatistics,
++};
++use windows_sys::Win32::System::StationsAndDesktops::{
++    GetProcessWindowStation, GetUserObjectInformationW, UOI_FLAGS, USEROBJECTFLAGS,
++};
++
++// GENERIC_EXECUTE for a noninteractive station, plus READATTRIBUTES for the
++// existing runner's station-name query. Actual Session0/alternate-token tests
++// prove every component; no clipboard, desktop creation, or ACL-management rights.
++const REQUIRED_ACCESS: u32 = 0x0002_0062;
++const INHERIT_ONLY: u8 = 0x08;
++
++struct LocalMemory(*mut c_void);
++impl Drop for LocalMemory {
++    fn drop(&mut self) {
++        unsafe {
++            LocalFree(self.0 as HLOCAL);
++        }
++    }
++}
++// Keep this zero-byte coordination inode. Per-operation deletion would race a
++// new opener after unlock; the file stores no lease or application state.
++struct StationLock {
++    _file: File,
++    _directory: PrivateLockDirectory,
++    _leaf: String,
++}
++fn lock_station(session: u32, station: &[u16], owner: &[u8]) -> Result<StationLock> {
++    let mut hash = Sha256::new();
++    hash.update(b"native-service-window-station\0");
++    hash.update(session.to_le_bytes());
++    for unit in station {
++        hash.update(unit.to_le_bytes());
++    }
++    hash.update(owner);
++    let leaf = format!("station-{:x}.lock", hash.finalize());
++    // Known-folder caller-owned location shared across homes, versions, CDS and
++    // CADSG. Never derive the lock root/key from a provider or CODEX_HOME.
++    let directory = PrivateLockDirectory::open()?;
++    let file = directory.open_leaf(&leaf)?;
++    file.lock()
++        .context("lock current service window station ACL")?;
++    Ok(StationLock {
++        _file: file,
++        _directory: directory,
++        _leaf: leaf,
++    })
++}
++fn caller_identity() -> Result<(Vec<u8>, u32, TOKEN_STATISTICS)> {
++    let token = unsafe { get_current_token_for_restriction()? };
++    let result = (|| {
++        let user = unsafe { get_user_sid_bytes(token)? };
++        let mut session = 0_u32;
++        let mut stats: TOKEN_STATISTICS = unsafe { std::mem::zeroed() };
++        let mut returned = 0;
++        ensure!(
++            unsafe {
++                GetTokenInformation(
++                    token,
++                    TokenSessionId,
++                    (&mut session as *mut u32).cast(),
++                    size_of::<u32>() as u32,
++                    &mut returned,
++                )
++            } != 0,
++            "query caller session: {}",
++            unsafe { GetLastError() }
++        );
++        ensure!(
++            returned as usize == size_of::<u32>(),
++            "invalid caller session size"
++        );
++        ensure!(
++            unsafe {
++                GetTokenInformation(
++                    token,
++                    TokenStatistics,
++                    (&mut stats as *mut TOKEN_STATISTICS).cast(),
++                    size_of::<TOKEN_STATISTICS>() as u32,
++                    &mut returned,
++                )
++            } != 0,
++            "query caller logon identity: {}",
++            unsafe { GetLastError() }
++        );
++        ensure!(
++            returned as usize == size_of::<TOKEN_STATISTICS>(),
++            "invalid caller statistics size"
++        );
++        Ok((user, session, stats))
++    })();
++    unsafe {
++        CloseHandle(token);
++    }
++    result
++}
++fn station_security(station: HANDLE) -> Result<(LocalMemory, *mut c_void, *mut ACL)> {
++    let mut owner = ptr::null_mut();
++    let mut acl = ptr::null_mut();
++    let mut sd: PSECURITY_DESCRIPTOR = ptr::null_mut();
++    let error = unsafe {
++        GetSecurityInfo(
++            station,
++            SE_WINDOW_OBJECT,
++            OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
++            &mut owner,
++            ptr::null_mut(),
++            &mut acl,
++            ptr::null_mut(),
++            &mut sd,
++        )
++    };
++    ensure!(
++        error == ERROR_SUCCESS,
++        "read current service station ACL: {error}"
++    );
++    let allocation = LocalMemory(sd);
++    ensure!(
++        !sd.is_null() && !owner.is_null(),
++        "missing current service station owner"
++    );
++    Ok((allocation, owner, acl))
++}
++fn map_station_mask(mut mask: u32) -> u32 {
++    // Microsoft WinSta generic mappings; retain all pre-existing generic grants.
++    let mapping = GENERIC_MAPPING {
++        GenericRead: 0x0002_0103,
++        GenericWrite: 0x0002_000c,
++        GenericExecute: 0x0002_0060,
++        GenericAll: 0x000f_037f,
++    };
++    unsafe {
++        MapGenericMask(&mut mask, &mapping);
++    }
++    mask
++}
++fn target_masks(acl: *const ACL, target: &[u8]) -> Result<(u32, u32)> {
++    let mut allowed = 0;
++    let mut denied = 0;
++    for index in 0..unsafe { (*acl).AceCount } {
++        let mut raw = ptr::null_mut();
++        ensure!(
++            unsafe { GetAce(acl, index as u32, &mut raw) } != 0,
++            "read service station ACE: {}",
++            unsafe { GetLastError() }
++        );
++        let header = unsafe { &*raw.cast::<ACE_HEADER>() };
++        if !matches!(header.AceType, 0 | 1) || header.AceFlags & INHERIT_ONLY != 0 {
++            continue;
++        }
++        ensure!(
++            header.AceSize as usize >= 16,
++            "truncated station access ACE"
++        );
++        let ace = unsafe { &*raw.cast::<ACCESS_ALLOWED_ACE>() };
++        let sid = ptr::addr_of!(ace.SidStart).cast_mut().cast();
++        let size = unsafe { GetLengthSid(sid) } as usize;
++        ensure!(
++            size >= 8 && size <= header.AceSize as usize - 8 && unsafe { IsValidSid(sid) } != 0,
++            "invalid station ACE SID"
++        );
++        if unsafe { EqualSid(sid, target.as_ptr().cast_mut().cast()) } == 0 {
++            continue;
++        }
++        if header.AceType == 0 {
++            allowed |= map_station_mask(ace.Mask);
++        } else {
++            denied |= map_station_mask(ace.Mask);
++        }
++    }
++    Ok((allowed, denied))
++}
++pub(super) fn ensure_access(target_sid: &str) -> Result<()> {
++    // Scope this additive compatibility grant to the exact held current object.
++    // Outside that scope, preserve the existing native launch path unchanged.
++    let station = unsafe { GetProcessWindowStation() };
++    if station.is_null() {
++        return Ok(());
++    }
++    let Ok(name) = station_name_for_handle(station) else {
++        return Ok(());
++    };
++    let mut flags: USEROBJECTFLAGS = unsafe { std::mem::zeroed() };
++    let mut returned = 0;
++    if unsafe {
++        GetUserObjectInformationW(
++            station,
++            UOI_FLAGS,
++            (&mut flags as *mut USEROBJECTFLAGS).cast(),
++            size_of::<USEROBJECTFLAGS>() as u32,
++            &mut returned,
++        )
++    } == 0
++        || returned as usize != size_of::<USEROBJECTFLAGS>()
++        || flags.dwFlags & 1 != 0
++    {
++        return Ok(());
++    }
++    let Ok(station_name) = String::from_utf16(&name) else {
++        return Ok(());
++    };
++    if !station_name.to_ascii_lowercase().starts_with("service-0x") || !station_name.ends_with('$')
++    {
++        return Ok(());
++    }
++    let Ok((caller, session, statistics)) = caller_identity() else {
++        return Ok(());
++    };
++    let expected = format!(
++        "Service-0x{:x}-{:x}$",
++        statistics.AuthenticationId.HighPart as u32, statistics.AuthenticationId.LowPart
++    );
++    if !station_name.eq_ignore_ascii_case(&expected) {
++        return Ok(());
++    }
++    let Ok((_scope_sd, owner, _)) = station_security(station) else {
++        return Ok(());
++    };
++    if unsafe { EqualSid(owner, caller.as_ptr().cast_mut().cast()) } == 0 {
++        return Ok(());
++    }
++    let target = sid_bytes_from_string(target_sid)?;
++    let _lock = lock_station(session, &name, &caller)?;
++    // Read the latest descriptor only after the cross-process lock. All original
++    // deny/allow/inheritance entries are retained by the native GRANT merge.
++    let (_old_sd, owner, acl) = station_security(station)?;
++    if unsafe { EqualSid(owner, caller.as_ptr().cast_mut().cast()) } == 0 {
++        return Ok(());
++    }
++    // A pre-existing NULL DACL grants all access. Do not replace it with a more
++    // restrictive DACL or pretend ownership of pre-existing authorization.
++    if acl.is_null() {
++        return Ok(());
++    }
++    let (existing, denied) = target_masks(acl, &target)?;
++    ensure!(
++        denied & REQUIRED_ACCESS == 0,
++        "current service station explicitly denies runner startup access"
++    );
++    let missing = REQUIRED_ACCESS & !existing;
++    if missing == 0 {
++        return Ok(());
++    }
++    let entry = EXPLICIT_ACCESS_W {
++        grfAccessPermissions: missing,
++        grfAccessMode: GRANT_ACCESS,
++        grfInheritance: 0,
++        Trustee: TRUSTEE_W {
++            pMultipleTrustee: ptr::null_mut(),
++            MultipleTrusteeOperation: 0,
++            TrusteeForm: TRUSTEE_IS_SID,
++            TrusteeType: TRUSTEE_IS_USER,
++            ptstrName: target.as_ptr().cast_mut().cast(),
++        },
++    };
++    let mut updated = ptr::null_mut();
++    let error = unsafe { SetEntriesInAclW(1, &entry, acl, &mut updated) };
++    ensure!(
++        error == ERROR_SUCCESS,
++        "merge native service station startup grant: {error}"
++    );
++    let _updated = LocalMemory(updated.cast());
++    let error = unsafe {
++        SetSecurityInfo(
++            station,
++            SE_WINDOW_OBJECT,
++            DACL_SECURITY_INFORMATION,
++            ptr::null_mut(),
++            ptr::null_mut(),
++            updated,
++            ptr::null_mut(),
++        )
++    };
++    ensure!(
++        error == ERROR_SUCCESS,
++        "authorize native service station startup: {error}"
++    );
++    let (_readback_sd, owner, readback_acl) = station_security(station)?;
++    ensure!(
++        unsafe { EqualSid(owner, caller.as_ptr().cast_mut().cast()) } != 0
++            && !readback_acl.is_null(),
++        "service station owner/DACL changed during grant"
++    );
++    let (actual, denied) = target_masks(readback_acl, &target)?;
++    ensure!(
++        actual & REQUIRED_ACCESS == REQUIRED_ACCESS && denied & REQUIRED_ACCESS == 0,
++        "native service station startup grant did not persist"
++    );
++    // Add-only for this ephemeral object lifetime, like the existing private
++    // desktop cache. Per-run revoke/whole-SD restore would race other runners and
++    // erase pre-existing grants; the OS retires this station with its logon.
++    Ok(())
++}
++#[cfg(test)]
++#[path = "service_station_tests.rs"]
++mod tests;
+--- /dev/null
++++ b/codex-rs/windows-sandbox-rs/src/service_station_tests.rs
+@@ -0,0 +1,428 @@
++use super::*;
++use crate::desktop::current_window_station_name;
++use crate::winutil::string_from_sid_bytes;
++use codex_protocol::models::PermissionProfile;
++use serde_json::json;
++use std::{
++    collections::HashMap,
++    path::{Path, PathBuf},
++    process::{Command, Stdio},
++};
++use windows_sys::Win32::Security::Authorization::DENY_ACCESS;
++use windows_sys::Win32::Security::GetSecurityDescriptorLength;
++
++fn sd_bytes(sd: &LocalMemory) -> Vec<u8> {
++    let len = unsafe { GetSecurityDescriptorLength(sd.0) } as usize;
++    assert!(len > 0 && len <= 1024 * 1024);
++    unsafe { std::slice::from_raw_parts(sd.0.cast::<u8>(), len) }.to_vec()
++}
++struct ExclusiveFixtureRestore {
++    station: HANDLE,
++    original: LocalMemory,
++    acl: *mut ACL,
++    out: PathBuf,
++    restored: bool,
++}
++impl ExclusiveFixtureRestore {
++    fn restore(&mut self) -> Result<()> {
++        if self.restored {
++            return Ok(());
++        }
++        let error = unsafe {
++            SetSecurityInfo(
++                self.station,
++                SE_WINDOW_OBJECT,
++                DACL_SECURITY_INFORMATION,
++                ptr::null_mut(),
++                ptr::null_mut(),
++                self.acl,
++                ptr::null_mut(),
++            )
++        };
++        ensure!(
++            error == ERROR_SUCCESS,
++            "exclusive test fixture restore: {error}"
++        );
++        let (actual, _, _) = station_security(self.station)?;
++        let equal = sd_bytes(&actual) == sd_bytes(&self.original);
++        std::fs::write(
++            self.out.join("exclusive-fixture-restore.json"),
++            serde_json::to_vec_pretty(
++                &json!({"test_fixture_only_not_production_cleanup":true,"original_SD_byte_equal":equal}),
++            )?,
++        )?;
++        ensure!(equal, "exclusive test station was not restored");
++        self.restored = true;
++        Ok(())
++    }
++}
++impl Drop for ExclusiveFixtureRestore {
++    fn drop(&mut self) {
++        if !self.restored {
++            let _ = self.restore();
++        }
++    }
++}
++fn fixture_merge(station: HANDLE, sid: &str, mask: u32, deny: bool) -> Result<()> {
++    let bytes = sid_bytes_from_string(sid)?;
++    let (_sd, _, acl) = station_security(station)?;
++    ensure!(
++        !acl.is_null(),
++        "test requires a concrete original station DACL"
++    );
++    let entry = EXPLICIT_ACCESS_W {
++        grfAccessPermissions: mask,
++        grfAccessMode: if deny { DENY_ACCESS } else { GRANT_ACCESS },
++        grfInheritance: 0,
++        Trustee: TRUSTEE_W {
++            pMultipleTrustee: ptr::null_mut(),
++            MultipleTrusteeOperation: 0,
++            TrusteeForm: TRUSTEE_IS_SID,
++            TrusteeType: TRUSTEE_IS_USER,
++            ptstrName: bytes.as_ptr().cast_mut().cast(),
++        },
++    };
++    let mut updated = ptr::null_mut();
++    let error = unsafe { SetEntriesInAclW(1, &entry, acl, &mut updated) };
++    ensure!(error == ERROR_SUCCESS, "merge test fixture ACL: {error}");
++    let _updated = LocalMemory(updated.cast());
++    let error = unsafe {
++        SetSecurityInfo(
++            station,
++            SE_WINDOW_OBJECT,
++            DACL_SECURITY_INFORMATION,
++            ptr::null_mut(),
++            ptr::null_mut(),
++            updated,
++            ptr::null_mut(),
++        )
++    };
++    ensure!(error == ERROR_SUCCESS, "install test fixture ACE: {error}");
++    Ok(())
++}
++fn other_aces(acl: *const ACL, excluded: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
++    let mut result = vec![];
++    for index in 0..unsafe { (*acl).AceCount } {
++        let mut raw = ptr::null_mut();
++        ensure!(
++            unsafe { GetAce(acl, index as u32, &mut raw) } != 0,
++            "read test ACE"
++        );
++        let head = unsafe { &*raw.cast::<ACE_HEADER>() };
++        let own = if matches!(head.AceType, 0 | 1) && head.AceSize >= 16 {
++            let ace = unsafe { &*raw.cast::<ACCESS_ALLOWED_ACE>() };
++            let sid = ptr::addr_of!(ace.SidStart).cast_mut().cast();
++            excluded
++                .iter()
++                .any(|s| unsafe { EqualSid(sid, s.as_ptr().cast_mut().cast()) } != 0)
++        } else {
++            false
++        };
++        if !own {
++            result.push(
++                unsafe { std::slice::from_raw_parts(raw.cast::<u8>(), head.AceSize as usize) }
++                    .to_vec(),
++            );
++        }
++    }
++    result.sort();
++    Ok(result)
++}
++fn native_readonly(
++    home: &Path,
++    cwd: &Path,
++    label: &str,
++    target: &str,
++) -> Result<serde_json::Value> {
++    let output_name = format!("native-station-forbidden-{label}.txt");
++    ensure!(
++        !cwd.join(&output_name).exists(),
++        "forbidden test destination pre-exists"
++    );
++    let nonce = format!("CDS_NATIVE_AUTOMATIC_STATION_{label}");
++    let command = vec![
++        std::env::var("SystemRoot")? + "\\System32\\cmd.exe",
++        "/d".into(),
++        "/c".into(),
++        format!(
++            "type native-station-input.txt & (echo forbidden> {output_name}) 2>nul & if exist {output_name} (exit /b 21) else (echo {nonce} & whoami /user)"
++        ),
++    ];
++    let profile = PermissionProfile::read_only();
++    let capture = crate::run_windows_sandbox_capture_for_permission_profile_elevated(
++        crate::ElevatedSandboxProfileCaptureRequest {
++            permission_profile: &profile,
++            workspace_roots: &[],
++            codex_home: home,
++            command,
++            cwd,
++            env_map: std::env::vars().collect::<HashMap<_, _>>(),
++            timeout_ms: Some(60000),
++            cancellation: None,
++            proxy_enforced: false,
++            network_proxy_restricting_sid: None,
++            read_roots_override: None,
++            read_roots_include_platform_defaults: false,
++            write_roots_override: None,
++            deny_read_paths_override: &[],
++            deny_write_paths_override: &[],
++        },
++    )?;
++    let stdout = String::from_utf8_lossy(&capture.stdout);
++    let stderr = String::from_utf8_lossy(&capture.stderr);
++    ensure!(
++        capture.exit_code == 0
++            && !capture.timed_out
++            && stdout.contains(&nonce)
++            && stdout.contains("CDS_NATIVE_READ_ALLOWED")
++            && stdout.contains(target),
++        "native readonly command failed: rc={} timedout={} stdout={stdout} stderr={stderr}",
++        capture.exit_code,
++        capture.timed_out
++    );
++    ensure!(
++        !cwd.join(&output_name).exists(),
++        "readonly sandbox wrote forbidden file"
++    );
++    Ok(
++        json!({"label":label,"exit_code":capture.exit_code,"timed_out":capture.timed_out,"stdout":stdout,"stderr":stderr,"forbidden_file_absent":true}),
++    )
++}
++#[test]
++#[ignore = "requires the project's controlled own standard-user Session0 task"]
++fn actual_owned_service_station_concurrent_child() -> Result<()> {
++    let sid = std::env::var("CDS_OWN_STATION_CHILD_SID")?;
++    let (caller, session, _) = caller_identity()?;
++    ensure!(session == 0, "child requires own Session0");
++    ensure!(
++        string_from_sid_bytes(&caller).map_err(anyhow::Error::msg)?
++            == std::env::var("CDS_OWN_EXPECTED_USER_SID")?,
++        "wrong child caller"
++    );
++    ensure_access(&sid)?;
++    let name = current_window_station_name()?;
++    let lock = lock_station(session, &name, &caller)?;
++    println!("OWN_STATION_CHILD_ACTUAL_GRANT {}", lock._leaf);
++    Ok(())
++}
++#[test]
++#[ignore = "requires the project's exclusive controlled own standard-user Session0 task"]
++fn actual_owned_service_station_native_automatic_allow_deny_and_concurrency() -> Result<()> {
++    let home = PathBuf::from(std::env::var_os("CDS_OWN_HOST_HOME").context("own home required")?);
++    let cwd = PathBuf::from(std::env::var_os("CDS_OWN_HOST_WORK").context("own work required")?);
++    let out = PathBuf::from(
++        std::env::var_os("CDS_OWN_NATIVE_STATION_OUT").context("own output required")?,
++    );
++    let target = std::env::var("CDS_OWN_EXPECTED_TARGET_SID")?;
++    let (caller, session, _) = caller_identity()?;
++    ensure!(session == 0, "fixture requires Session0");
++    ensure!(
++        string_from_sid_bytes(&caller).map_err(anyhow::Error::msg)?
++            == std::env::var("CDS_OWN_EXPECTED_USER_SID")?,
++        "wrong fixture caller"
++    );
++    ensure!(
++        !home.as_os_str().is_empty() && cwd.is_dir() && out.is_dir(),
++        "invalid controlled paths"
++    );
++    let station = unsafe { GetProcessWindowStation() };
++    let (original, owner, acl) = station_security(station)?;
++    ensure!(
++        unsafe { EqualSid(owner, caller.as_ptr().cast_mut().cast()) } != 0 && !acl.is_null(),
++        "wrong exclusive station owner"
++    );
++    let target_bytes = sid_bytes_from_string(&target)?;
++    ensure!(
++        target_masks(acl, &target_bytes)? == (0, 0),
++        "fixture must start without target pregrant"
++    );
++    let mut restore = ExclusiveFixtureRestore {
++        station,
++        original,
++        acl,
++        out: out.clone(),
++        restored: false,
++    };
++    let original_other = other_aces(acl, std::slice::from_ref(&target_bytes))?;
++    // First prove automatic admission from a fresh station with ZERO target ACE.
++    std::fs::write(
++        cwd.join("native-station-input.txt"),
++        b"CDS_NATIVE_READ_ALLOWED\r\n",
++    )?;
++    let mut captures = vec![native_readonly(&home, &cwd, "freshzero", &target)?];
++    let (fresh_sd, _, fresh_acl) = station_security(station)?;
++    ensure!(
++        target_masks(fresh_acl, &target_bytes)? == (REQUIRED_ACCESS, 0),
++        "fresh automatic startup grant is incomplete or excessive"
++    );
++    ensure!(
++        other_aces(fresh_acl, std::slice::from_ref(&target_bytes))? == original_other,
++        "fresh grant changed other original ACEs"
++    );
++    let cache_names = super::super::SHARED_PRIVATE_DESKTOPS
++        .get()
++        .context("native private desktop cache was not populated")?
++        .lock()
++        .map_err(|_| anyhow::anyhow!("desktop cache poisoned"))?
++        .values()
++        .map(|d| d.name.clone())
++        .collect::<std::collections::BTreeSet<_>>();
++    ensure!(
++        !cache_names.is_empty(),
++        "native private desktop cache is empty"
++    );
++    // Exclusive TEST fixture reset only: retain the live private desktop cache,
++    // remove the earlier station grant, then require real cache-hit reauthorization.
++    let error = unsafe {
++        SetSecurityInfo(
++            station,
++            SE_WINDOW_OBJECT,
++            DACL_SECURITY_INFORMATION,
++            ptr::null_mut(),
++            ptr::null_mut(),
++            restore.acl,
++            ptr::null_mut(),
++        )
++    };
++    ensure!(
++        error == ERROR_SUCCESS,
++        "exclusive cache-hit fixture reset failed: {error}"
++    );
++    let (reset_sd, _, reset_acl) = station_security(station)?;
++    ensure!(
++        sd_bytes(&reset_sd) == sd_bytes(&restore.original)
++            && target_masks(reset_acl, &target_bytes)? == (0, 0),
++        "cache-hit fixture reset is incomplete"
++    );
++    drop(fresh_sd);
++    // A pre-existing partial allow, extra unrelated right, and deny must survive.
++    fixture_merge(station, &target, 0x20100, false)?;
++    fixture_merge(station, &target, 0x8, true)?;
++    captures.push(native_readonly(
++        &home,
++        &cwd,
++        "cachehit_reauthorize",
++        &target,
++    )?);
++    let after_cache_names = super::super::SHARED_PRIVATE_DESKTOPS
++        .get()
++        .context("native desktop cache disappeared")?
++        .lock()
++        .map_err(|_| anyhow::anyhow!("desktop cache poisoned"))?
++        .values()
++        .map(|d| d.name.clone())
++        .collect::<std::collections::BTreeSet<_>>();
++    ensure!(
++        cache_names == after_cache_names,
++        "test did not exercise the same native private desktop cache"
++    );
++    let (first, _, first_acl) = station_security(station)?;
++    ensure!(
++        target_masks(first_acl, &target_bytes)? == (0x20162, 0x8),
++        "pre-existing target permissions lost or overgranted"
++    );
++    ensure!(
++        other_aces(first_acl, std::slice::from_ref(&target_bytes))? == original_other,
++        "other original ACEs changed"
++    );
++    captures.push(native_readonly(&home, &cwd, "idempotent", &target)?);
++    let (second, _, _) = station_security(station)?;
++    ensure!(
++        sd_bytes(&first) == sd_bytes(&second),
++        "cache hit must be idempotent"
++    );
++    let mut threads = vec![];
++    for n in 0..2 {
++        let h = home.clone();
++        let w = cwd.clone();
++        let t = target.clone();
++        threads.push(std::thread::spawn(move || {
++            native_readonly(&h, &w, &format!("parallel{n}"), &t)
++        }));
++    }
++    let joined = threads.into_iter().map(|t| t.join()).collect::<Vec<_>>();
++    for result in joined {
++        captures.push(result.map_err(|_| anyhow::anyhow!("native parallel thread panicked"))??);
++    }
++    // Separate process/home values still take the same caller/session/station lock.
++    let prefix = target
++        .rsplit_once('-')
++        .context("local account SID required")?
++        .0;
++    let synthetic = [
++        format!("{prefix}-4294967293"),
++        format!("{prefix}-4294967294"),
++    ];
++    let mut children = vec![];
++    for (n, sid) in synthetic.iter().enumerate() {
++        let child_home = out.join(format!("child-home-{n}"));
++        std::fs::create_dir(&child_home)?;
++        children.push(Command::new(std::env::current_exe()?).args(["--exact","desktop::service_station::tests::actual_owned_service_station_concurrent_child","--ignored","--show-output","--test-threads=1"]).env("CDS_OWN_STATION_CHILD_SID",sid).env("CODEX_HOME",child_home).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?);
++    }
++    let joined = children
++        .into_iter()
++        .map(|c| c.wait_with_output())
++        .collect::<Vec<_>>();
++    let mut child_outputs = vec![];
++    let expected_key = {
++        let name = current_window_station_name()?;
++        let lock = lock_station(session, &name, &caller)?;
++        lock._leaf.clone()
++    };
++    for child in joined {
++        let r = child?;
++        let text = String::from_utf8_lossy(&r.stdout).into_owned();
++        ensure!(
++            r.status.success()
++                && text.contains(&format!("OWN_STATION_CHILD_ACTUAL_GRANT {expected_key}"))
++                && text.contains("1 passed; 0 failed; 0 ignored"),
++            "child did not actually execute native grant: {} {text}",
++            r.status
++        );
++        child_outputs.push(text);
++    }
++    let (_current_sd, _, current_acl) = station_security(station)?;
++    for sid in &synthetic {
++        ensure!(
++            target_masks(current_acl, &sid_bytes_from_string(sid)?)?.0 == REQUIRED_ACCESS,
++            "concurrent distinct SID grant lost"
++        );
++    }
++    ensure!(
++        target_masks(current_acl, &target_bytes)? == (0x20162, 0x8),
++        "concurrent grant lost existing target rights"
++    );
++    let mut excluded = vec![target_bytes.clone()];
++    for sid in &synthetic {
++        excluded.push(sid_bytes_from_string(sid)?);
++    }
++    ensure!(
++        other_aces(current_acl, &excluded)? == original_other,
++        "concurrent grant changed other original ACEs"
++    );
++    let (before_invalid, _, _) = station_security(station)?;
++    ensure!(ensure_access("not-a-sid").is_err(), "invalid SID accepted");
++    let (after_invalid, _, _) = station_security(station)?;
++    ensure!(
++        sd_bytes(&before_invalid) == sd_bytes(&after_invalid),
++        "invalid SID mutated ACL"
++    );
++    fixture_merge(station, &target, 0x20, true)?;
++    let (before_deny, _, _) = station_security(station)?;
++    ensure!(
++        ensure_access(&target).is_err(),
++        "explicit target deny was overridden"
++    );
++    let (after_deny, _, _) = station_security(station)?;
++    ensure!(
++        sd_bytes(&before_deny) == sd_bytes(&after_deny),
++        "denied startup changed ACL"
++    );
++    let report = json!({"status":"ACTUAL_NATIVE_AUTOMATIC_STATION_GRANT_AND_READONLY_PASSED","production_required_mask":"0x20062","external_pregrant":false,"fresh_zero_target_ACE_native_passed":true,"same_private_desktop_cache_reauthorized_after_fixture_reset":true,"preexisting_allow_and_deny_preserved":true,"other_original_aces_preserved":true,"cache_hit_SD_byte_equal":true,"native_readonly_captures":captures,"distinct_process_different_home_same_station_key":expected_key,"concurrent_child_outputs":child_outputs,"invalid_sid_failed_without_mutation":true,"required_target_deny_failed_without_mutation":true,"no_CREATE_SUSPENDED_or_admin_token_hook":true});
++    std::fs::write(
++        out.join("native-station-result.json"),
++        serde_json::to_vec_pretty(&report)?,
++    )?;
++    restore.restore()?;
++    Ok(())
++}

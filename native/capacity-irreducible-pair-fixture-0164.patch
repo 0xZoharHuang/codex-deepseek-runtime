@@ -1,0 +1,25 @@
+--- a/codex-rs/core/src/compact_tests.rs
++++ b/codex-rs/core/src/compact_tests.rs
+@@ -977,9 +977,21 @@
+         .respond_with(move |request: &wiremock::Request| {
+             let decoded = native_mock_decoded_json_body(request);
+             let body: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
++            // This negative fixture rejects the same original pair in every
++            // prompt view. A valid UTF-8 text view may split the literal marker;
++            // its native call/output identity still makes the source irreducible.
+             let too_large = decoded
+                 .windows(b"BIG-CONSUMED-".len())
+-                .any(|window| window == b"BIG-CONSUMED-");
++                .any(|window| window == b"BIG-CONSUMED-")
++                || body["input"].as_array().is_some_and(|items| {
++                    items.iter().any(|item| {
++                        item["call_id"] == "consumed-pair"
++                            && matches!(
++                                item["type"].as_str(),
++                                Some("custom_tool_call") | Some("custom_tool_call_output")
++                            )
++                    })
++                });
+             observed.lock().unwrap().push(body);
+             if too_large {
+                 ResponseTemplate::new(413)

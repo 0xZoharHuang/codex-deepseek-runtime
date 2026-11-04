@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "version": "0.6.10",
+  "status": "LINUX_LOCAL_QUALIFIED_REAL96_ACCEPTED_AFTER_CONTROLLED_REPAIRS_PUBLICATION_RECEIPT_AUTHORITATIVE",
+  "public_release_asserted": false,
+  "final_commit": null,
+  "final_product_source_id": null,
+  "platforms": {
+    "x86_64-unknown-linux-gnu": {
+      "native_artifact_locally_validated": true,
+      "python_normal_install_validated": true,
+      "real96_reviewer_and_long_task": "passed_after_multiple_preserved_attempts",
+      "public_download_and_tag_install": "external_actual_publication_receipt_required",
+      "target_recipe_id": "08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b"
+    },
+    "x86_64-pc-windows-msvc": {
+      "qualified_for_this_tag": false,
+      "new_tag_manifest": "absent",
+      "preserved_public_tag": "v0.6.9"
+    },
+    "aarch64-apple-darwin": {
+      "qualified_for_this_tag": false,
+      "new_tag_manifest": "absent",
+      "preserved_public_tag": "v0.6.9"
+    }
+  },
+  "components": {
+    "native_version": "0.164.0-alpha.7",
+    "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "raw_recipe_sha256": "ecb4674b926992022d36cc0eef527627a415b61633356129b44fd9add864c83e",
+    "cli_sha256": "3682953b5ae307593bdfe0e6f8e41fdd269dca55af3dcb90797eb87b631cb626",
+    "archive_sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1",
+    "archive_bytes": 159347453,
+    "private_0610_manifest_sha256": "25bd2ee6137ea43253b4612461daedb95146b80c6e2f80a28a4a219cec4e6057",
+    "python_installed_modules": 32,
+    "installed_origins_sha256": "44839ac2a1f12177542583db52a9977d12b8c5fcbe24832b86f03135217cf897"
+  },
+  "cohorts": [
+    {
+      "name": "new3",
+      "result_sha256": "bd56e4b1c464c342f906c7c570b81602573e5fc3c6bd53ab5857a99dec8b9cbb",
+      "passed": 3
+    },
+    {
+      "name": "original64_separate_run",
+      "result_sha256": "75f8f0a7747f182bd5115e11e4fc459f6d7fc21317d0bea610a4e4f0b91d9be6",
+      "passed": 64
+    },
+    {
+      "name": "installed_native14",
+      "result_sha256": "27931d41b6d7b12b708951cddf715676c26b081e7ca27dbb7dd07805147e9536",
+      "passed": 14,
+      "skipped": 0
+    },
+    {
+      "name": "public8",
+      "result_sha256": "38915980772183c89ceb74e53f45e17a482cdea2a832da4f904b58f80288af23",
+      "scope": "2 public receive-window +6 early cancel; precise tokens separate"
+    },
+    {
+      "name": "strict2cold",
+      "result_sha256": "0467519d0ad0a85d2866f0f64d7bc692ad8837b7f4aadf53595d1ee31c37d8a6",
+      "fixed_image_budget": 6,
+      "covered_images": 14
+    },
+    {
+      "name": "installed_linux_0610_peer_policy",
+      "result_sha256": "13ad3aa2ecfb4b294edf41fea5d52edcd99ddf7e7c660809164d74e436b7bca3",
+      "passed": 297,
+      "skipped": 0
+    }
+  ],
+  "real_history_scope": {
+    "root_independent_technical_receipts_sha256": [
+      "51ef3eb271ce3caa1f9141eb938e184c05125db6ed02694bdcedc05c8108e3bd",
+      "cc454dae2c2e60ac7ba3a20ce3e193685655a6c26acc019d00bab3ecc7b2c586"
+    ],
+    "old_prefix_bytes": 318538647,
+    "old_prefix_hash_unchanged": true,
+    "compacted_observed": true,
+    "reported_items": 11,
+    "subsequent_ordinary_deepseek_completed": 12,
+    "ordinary_route": "official_default/deepseek",
+    "not_a_network_body_size_or_all_business_tools_claim": true
+  },
+  "publication": {
+    "tag": "v0.6.10",
+    "tag_commit": null,
+    "asset_ids": null,
+    "public_download_receipt": null,
+    "url_values_are_only_plans_until_verified": true,
+    "authority": "actual external final source/tag/asset/download/install receipt; no self-referential future hash"
+  },
+  "aggregation": "cohorts overlap; do not sum into all-runtime coverage",
+  "excluded_claims": [
+    "OpenAI cloud/account/private finance/sports services",
+    "model quality or inherent modalities",
+    "CADSG/App acceptance",
+    "all RPC/tool inputs on everyOS"
+  ],
+  "history": "original failures, provider errors, launcher/fixture repairs, and uncertain process observations remain preserved",
+  "real96": {
+    "final_private_qualification_index_sha256": "b4612cbacca01eb15ce65347da8b7a11500adac22cadb937421da3be8945ca7f",
+    "core_result_sha256": "24945235966b3a31adff482ba82319c158164eb37c75d00e4c331fe586ba92eb",
+    "strict96_records_and_summary": true,
+    "original96_PNG_bytes_unchanged": true,
+    "workspace_tests": 912,
+    "independent_heldout_tests": 908,
+    "failures_errors_skips": 0,
+    "natural_compactions": 6,
+    "unique_large_completed_main_image_joins": 66,
+    "ordinary_completed_joins": 62,
+    "local_compaction_completed_joins": 4,
+    "join_sha256": "d10bf3b930320bbcfe69386c9651bcdc9aacfb2ac06631eff8ce13e196e56e8a",
+    "cold4_and8": true,
+    "new_final_review_turn_in_existing_readonly_child": true,
+    "new_reviewer_thread_claimed": false,
+    "old_EOF_failed_transaction_preserved_once": true,
+    "independent_new_transaction_RPC_interrupt_and_worker_exit": true,
+    "both_ledgers_exactly_once": true,
+    "audited_native_tool_calls": 173,
+    "gold_controller_credential_target_reads_observed": false,
+    "actual_generation_GET_samples": 5,
+    "actual_model_canonical": "deepseek/deepseek-v4.1-flash-20261017",
+    "actual_billed_provider_samples": "Morph",
+    "single_continuous75minute_claim": false,
+    "original_phase_timeouts_unchanged": true,
+    "multiple_attempts_all_failures_and_provider_CAS_retained": true,
+    "source_inputs_163_unchanged": true,
+    "installed_modules_32_unchanged": true,
+    "native_provider_tool_remaining": 0
+  },
+  "provider_compatibility": {
+    "official_ordinary_default_preserved": true,
+    "qualified_long_image_ordinary": "morph/fp8",
+    "qualified_long_image_peer_hosted": "morph/fp8",
+    "normal_policy_commands": [
+      "runtime provider set morph/fp8 --if-match REVISION",
+      "runtime provider set-peer-hosted default --if-match NEW_REVISION"
+    ],
+    "Prime": "limited text-peer payload/generation qualified; actual22imagecontinuation400 retained; no blanket image compatibility",
+    "fallback": false
+  },
+  "cache_uncertainty": {
+    "known_completed_requests_pinned": 0,
+    "unknown_upload_assets": 0,
+    "unknown_consumption_calls": 3,
+    "protected_unknown_pins": 36,
+    "sources": [
+      "originalEOF",
+      "newRPCplannedCancel",
+      "502missingGenerationID"
+    ],
+    "bounded_normal_reconcile_preserved_unknown": true,
+    "forceclear": false,
+    "all_cloud_assets_deleted_claimed": false,
+    "summary_sha256": "526e6bb0ab5be6731fa164fea840aa276d187f9d1d56a6568a21025e7ec2ecd3"
+  }
+}

@@ -28,11 +28,42 @@ def test_shared_eol_source_promotion_preserves_exact_068_recipe_and_assets():
     old = json.loads(raw)
     assert raw == (ROOT / "native/guardian-provider-transport-0164-candidate.json").read_bytes()
     current = build.runtime_recipe()
-    assert current["overlays"][:-1] == old["overlays"]
+    # Later source admissions append after the exact historical Guardian prefix.
+    # Preserve the whole old recipe and require the complete reviewed suffix.
+    assert len(old["overlays"]) == 26
+    prefix_count = len(old["overlays"])
+    assert current["overlays"][:prefix_count] == old["overlays"]
+    suffix = current["overlays"][prefix_count:]
+    assert [item["file"] for item in suffix] == [
+        PATCH, "restored-call-capacity-0164.patch", "capacity-cancel-owned-commit-0164.patch",
+        "windows-host-boundaries-0164.patch", "capacity-historical-typed-projection-0164.patch",
+        "windows-service-station-bootstrap-0164.patch", "capacity-historical-text-projection-0164.patch",
+        "capacity-irreducible-pair-fixture-0164.patch",
+        "capacity-token-budget-old-gap-continuation-0164.patch",
+    ]
+    for target in build.PLATFORM_ASSETS:
+        known = {row["path"]: row["after_sha256"]
+                 for item in old["overlays"]
+                 for row in item["changes_by_target"].get(target, [])}
+        for item in suffix:
+            if item["file"] in {"windows-host-boundaries-0164.patch", "windows-service-station-bootstrap-0164.patch"}:
+                assert set(item["changes_by_target"]) == {"x86_64-pc-windows-msvc"}
+                if target != "x86_64-pc-windows-msvc":
+                    continue
+            else:
+                assert set(item["changes_by_target"]) == set(build.PLATFORM_ASSETS)
+                first = item["changes_by_target"][next(iter(build.PLATFORM_ASSETS))]
+                assert item["changes_by_target"][target] == first
+            for row in item["changes_by_target"][target]:
+                if row["path"] in known:
+                    assert row["before_sha256"] == known[row["path"]]
+                elif row["before_sha256"] is None:
+                    assert row["path"] not in known
+                known[row["path"]] = row["after_sha256"]
     assert {key: value for key, value in current.items() if key != "overlays"} == {
         key: value for key, value in old.items() if key != "overlays"
     }
-    leaf = current["overlays"][-1]
+    leaf = suffix[0]
     assert leaf["file"] == PATCH
     patch = ROOT / "native" / PATCH
     assert build.sha(patch) == leaf["sha256"]
@@ -54,16 +85,17 @@ def test_shared_eol_source_promotion_preserves_exact_068_recipe_and_assets():
 @pytest.mark.parametrize("problem", ["omit", "reorder", "duplicate", "missing_target", "unknown_overlay"])
 def test_active_eol_recipe_cannot_silently_drop_or_retarget_compatibility(tmp_path, monkeypatch, problem):
     current = copy.deepcopy(build.runtime_recipe())
+    index = next(i for i,item in enumerate(current["overlays"]) if item["file"] == PATCH)
     if problem == "omit":
-        current["overlays"].pop()
+        current["overlays"].pop(index)
     elif problem == "reorder":
-        current["overlays"][-2:] = reversed(current["overlays"][-2:])
+        current["overlays"][index-1:index+1] = reversed(current["overlays"][index-1:index+1])
     elif problem == "duplicate":
-        current["overlays"].append(copy.deepcopy(current["overlays"][-1]))
+        current["overlays"].append(copy.deepcopy(current["overlays"][index]))
     elif problem == "missing_target":
-        current["overlays"][-1]["changes_by_target"].pop("x86_64-unknown-linux-gnu")
+        current["overlays"][index]["changes_by_target"].pop("x86_64-unknown-linux-gnu")
     else:
-        current["overlays"][-1]["file"] = "unreviewed-migration.patch"
+        current["overlays"][index]["file"] = "unreviewed-migration.patch"
     source = tmp_path / "source"
     (source / "native").mkdir(parents=True)
     (source / "native/runtime-overlays.json").write_bytes(json.dumps(current).encode())
