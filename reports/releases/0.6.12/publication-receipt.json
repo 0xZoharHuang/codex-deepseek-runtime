@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "version": "0.6.12",
+  "tag": "v0.6.12",
+  "commit": "879e6632659c815f83ffb54204d1fb852b1ff20f",
+  "status": "PUBLISHED_STABLE_LINUX_AND_MACOS",
+  "release_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.12",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-11-04T21:43:14Z",
+  "verified_at": 1793828823.9752233,
+  "qualification_source_commit": "b9bc76fbc27150cb78b84816f69f8b32f883dfb3",
+  "normal_installed_source_id": "510fadcee6338d1d273a",
+  "public_tag_source": {
+    "source_tag": "v0.6.12",
+    "archive_sha256": "9d89c8cf4271ff8a7459d6f4ac39742da723db97d4059c5ca08cfee8d577c579",
+    "exact_behavior_and_manifest_matches": [
+      {
+        "file": "src/codex_deepseek/arguments.py",
+        "public_sha256": "0a8b99e629f97354fb8bc744ff2929a95eca455f271e03d6b6d5e8ffa2eb6516"
+      },
+      {
+        "file": "src/codex_deepseek/bootstrap.py",
+        "public_sha256": "a68c7204283ad21d553dd0eeca60dcfb30c4d3187f7766731f08f66d8ba32704"
+      },
+      {
+        "file": "src/codex_deepseek/browser.py",
+        "public_sha256": "ae242793f25abfa2e39923b3f7ae09f8917d28dd54f1676512658f7a6358b192"
+      },
+      {
+        "file": "src/codex_deepseek/cli.py",
+        "public_sha256": "7d914a362d27f01f36ba460e59862bb23bf4d1a48253fdf619ae8f5fa1d53c7f"
+      },
+      {
+        "file": "src/codex_deepseek/credentials.py",
+        "public_sha256": "031b121584e088367b88a35852e2f17c9618af7b9b5856ebf62d029208865003"
+      },
+      {
+        "file": "src/codex_deepseek/formats.py",
+        "public_sha256": "3f8f027b56731c30ec0ffb518da9a09671059b364785a8e39688fb1052ea8f47"
+      },
+      {
+        "file": "src/codex_deepseek/gateway.py",
+        "public_sha256": "44ffc8cce7b256a7917e286caae92a4c639698e10379f3244b58a16737122e32"
+      },
+      {
+        "file": "src/codex_deepseek/image_budget.py",
+        "public_sha256": "996bf4493cc06e77ad855bcedc64fb7d6710722f012758d8de06993a69b384b5"
+      },
+      {
+        "file": "src/codex_deepseek/image_call_reconciliation.py",
+        "public_sha256": "3a433ba3628657da959def5bebac8eaf731edff619579cb635e6976e1b0e6108"
+      },
+      {
+        "file": "src/codex_deepseek/image_maintenance.py",
+        "public_sha256": "e21c4e4a8a1904104906ad85dbd7cca286bf17c7171e307806f957d874a1c0f9"
+      },
+      {
+        "file": "src/codex_deepseek/image_provider.py",
+        "public_sha256": "889490357e1ebcbfa3dd4733f1c833e0f1f956730d6a39b98de9d608f6600413"
+      },
+      {
+        "file": "src/codex_deepseek/image_transport.py",
+        "public_sha256": "f7502a227f2266ef6fcb7caf9fc46f0fc98e09828daf2788d9ccebba63cd43bf"
+      },
+      {
+        "file": "src/codex_deepseek/isolation.py",
+        "public_sha256": "f965e47758715e30527d81cf1bd7a609a66f6834d58c7d6a2e78a5678c0cf598"
+      },
+      {
+        "file": "src/codex_deepseek/native_http.py",
+        "public_sha256": "c63626d4c4f792353725ecd8d88deaf26dd7b49a31313d9fa580cabf77ec9ef1"
+      },
+      {
+        "file": "src/codex_deepseek/platforms.py",
+        "public_sha256": "1bb26549997abfe14facff2e470bb7ce006da5a4a9083695062d2c4da5688c94"
+      },
+      {
+        "file": "src/codex_deepseek/policy.py",
+        "public_sha256": "2f91fbc1025414670c546e3fcdd050dd9a60018558955fdce4a6bdd219eab9b0"
+      },
+      {
+        "file": "src/codex_deepseek/processes.py",
+        "public_sha256": "3ca59198e616ef7c7929b6a54645219e61c278da3b541e4d8872d6bdb95968f3"
+      },
+      {
+        "file": "src/codex_deepseek/protocol.py",
+        "public_sha256": "fd4a552e07c7d054e860926713e843d7f05e75364205a71a17385fcba9118482"
+      },
+      {
+        "file": "src/codex_deepseek/protocol_errors.py",
+        "public_sha256": "446636771b39e39d36065a4ace549f4c5608d1f9005ff2723c75a573e1129452"
+      },
+      {
+        "file": "src/codex_deepseek/provider_config.py",
+        "public_sha256": "03b8c774eaea750197c1f60af435fa34afbfae227b15216884b8719a8ad305b3"
+      },
+      {
+        "file": "src/codex_deepseek/request_metadata.py",
+        "public_sha256": "bc693cd985e62b6e8591223aeb6ee069e77a2e4a585612082348cc2c36ae3cec"
+      },
+      {
+        "file": "src/codex_deepseek/search.py",
+        "public_sha256": "438a157d92e0c1e717fbfe7c9f7856df1edf38cf3d9a0d63188636e693500030"
+      },
+      {
+        "file": "src/codex_deepseek/service.py",
+        "public_sha256": "e80d08617e516a4afd0d9ebd0668e6ccf367c017cefa798547d3a881519a79bb"
+      },
+      {
+        "file": "src/codex_deepseek/state.py",
+        "public_sha256": "f964536cbfedc78016e4de0f9ca5f3bf2b3361edb4ec7020edd88b3bf42707be"
+      },
+      {
+        "file": "src/codex_deepseek/structured.py",
+        "public_sha256": "8f54e9a5ad190bcfdd9d580adc00b184d5d440cd7376f5c5465a9a6c2e1c9d8a"
+      },
+      {
+        "file": "src/codex_deepseek/supervisor.py",
+        "public_sha256": "a2d383e3086fd36600e2f3af76dcf6a0308c106eea963d124e80695e99f8d985"
+      },
+      {
+        "file": "src/codex_deepseek/web_config.py",
+        "public_sha256": "737ee7418db8803c5c0951a74cb95b46be3f4db7115be6ff45f5d1194cfe6754"
+      },
+      {
+        "file": "src/codex_deepseek/web_mcp.py",
+        "public_sha256": "9050f7526c00f5ce7d2d96fa87222347829db92c4ebea7ee25a18c49b67dfba8"
+      },
+      {
+        "file": "src/codex_deepseek/windows_asyncio.py",
+        "public_sha256": "d2778f52c6978dd61c70e0d6c384f012d654bad72ff7119c2baf1e7ae67441a5"
+      },
+      {
+        "file": "src/codex_deepseek/windows_launchers.py",
+        "public_sha256": "99c5f6692c74b3a58e78f99984a288514a538fe159d9c0021b6917876e78d80f"
+      },
+      {
+        "file": "src/codex_deepseek/windows_sockets.py",
+        "public_sha256": "7667ba065d3152fc026acf71a8a1118304ab2e1530adf26ecc910561ef82caf8"
+      },
+      {
+        "file": "src/codex_deepseek/__init__.py",
+        "public_sha256": "109c8c8e079f8d7d289055e7119ea2da842013b3febc51096e179925e5fd4a6c"
+      },
+      {
+        "file": "pyproject.toml",
+        "public_sha256": "fcd270877ca0c1c43a71b715d1ed85e38fbcc07a9630865d27e911ec2b51df34"
+      },
+      {
+        "file": "install.py",
+        "public_sha256": "06e6f8efbfc6ca203c7a4c2ae93ba0a675f16b47073cb51fa7cd4b9eb91f10f8"
+      },
+      {
+        "file": "native/runtime.json",
+        "public_sha256": "871d5af85ddcbdbcdccef56740fb335f532ead2e806f4a41b4720f7a633fc1c2"
+      },
+      {
+        "file": "native/runtime-x86_64-unknown-linux-gnu.json",
+        "public_sha256": "9ee40f020ccd59f114cdc498193dfaaec6de8bb56a11df2a2977c71683d7857e"
+      },
+      {
+        "file": "native/runtime-x86_64-pc-windows-msvc.json",
+        "public_sha256": "2a5a7aaab4b8a84a21fee82ffd28bcebe5162e0faa73b41ee9da9907ae50265e"
+      },
+      {
+        "file": "native/runtime-overlays.json",
+        "public_sha256": "ae28ba09b8b38fe8891d7499cf44c16ced50da6af9161cf88f0ac24772f69113"
+      }
+    ],
+    "status": "PUBLIC_TAG_PRODUCT_INPUTS_MATCH_QUALIFIED_SOURCE"
+  },
+  "assets": [
+    {
+      "asset_id": 711044286,
+      "name": "installed-linux-41913744242.zip",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/installed-linux-41913744242.zip",
+      "size": 438433,
+      "sha256": "1d766e7183ebeb1abf9c460bcf7431af52078938922f3197faebda7b0a92b55a",
+      "http_status": 200,
+      "prior_failures": []
+    },
+    {
+      "asset_id": 711044291,
+      "name": "installed-macos-41913744242.zip",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/installed-macos-41913744242.zip",
+      "size": 444508,
+      "sha256": "a35ddc2e32526ef4727c37711169a85e59caa650186287afdffc9d43d6cee68b",
+      "http_status": 200,
+      "prior_failures": []
+    },
+    {
+      "asset_id": 711044295,
+      "name": "qualification-index.json",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/qualification-index.json",
+      "size": 6571,
+      "sha256": "956c8581759a8f7485d28e4e6167fc2a9cb008d876ec31a7b12f02ed3b9db8a8",
+      "http_status": 200,
+      "prior_failures": []
+    },
+    {
+      "asset_id": 711044288,
+      "name": "runtime-x86_64-unknown-linux-gnu.json",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/runtime-x86_64-unknown-linux-gnu.json",
+      "size": 424058,
+      "sha256": "9ee40f020ccd59f114cdc498193dfaaec6de8bb56a11df2a2977c71683d7857e",
+      "http_status": 200,
+      "prior_failures": []
+    },
+    {
+      "asset_id": 711044292,
+      "name": "runtime.json",
+      "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/runtime.json",
+      "size": 410228,
+      "sha256": "871d5af85ddcbdbcdccef56740fb335f532ead2e806f4a41b4720f7a633fc1c2",
+      "http_status": 200,
+      "prior_failures": []
+    }
+  ],
+  "platforms": [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-apple-darwin"
+  ],
+  "windows_new_gap_closed": false,
+  "cadsg_app_accepted": false,
+  "all_goal_complete": false,
+  "normal_install_ci_run": 41913744242,
+  "native_rebuilds": 0,
+  "initial_direct_download_failure_preserved": "Windows WinError10054; same URLs retried with per-attempt readback"
+}
