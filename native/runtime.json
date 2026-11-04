@@ -10,8 +10,8 @@
   "native_recipe_id": "fbb213a8d3a7648191d9ab19bbaf4428fa6d95850a6559ee9f50d356d06c3675",
   "build_toolchain_pin": "1.99.1",
   "archive": {
-    "filename": "codex-deepseek-native-0.6.12-aarch64-apple-darwin.tar.gz",
-    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/codex-deepseek-native-0.6.12-aarch64-apple-darwin.tar.gz",
+    "filename": "codex-native-aarch64-apple-darwin-p35.tar.gz",
+    "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/native-macos-p35/codex-native-aarch64-apple-darwin-p35.tar.gz",
     "sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b"
   },
   "files": {
