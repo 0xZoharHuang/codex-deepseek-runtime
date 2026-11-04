@@ -241,18 +241,44 @@ def test_observed_test_process_success_and_timeout_are_distinct(tmp_path):
         assert all(not matches(row["pid"],row["birth"]) for row in result["observed"])
 
 
-def test_leaked_owned_child_is_cleaned_without_becoming_a_pass(tmp_path):
-    import os
+@pytest.mark.parametrize("observer_delay", [0.0, 0.5])
+def test_leaked_owned_child_is_cleaned_without_becoming_a_pass(tmp_path,monkeypatch,observer_delay):
+    import os,time
     from codex_deepseek.processes import matches
+    pid_file=tmp_path/"child-pid.json"
+    release=tmp_path/"release-parent"
     child="import time;time.sleep(30)"
-    parent="import subprocess,sys,time;subprocess.Popen([sys.executable,'-I','-B','-c',"+repr(child)+"]);time.sleep(.3)"
+    parent=("import subprocess,sys,time,json;from pathlib import Path;"
+            "p=subprocess.Popen([sys.executable,'-I','-B','-c',"+repr(child)+"]);"
+            "Path("+repr(str(pid_file))+").write_text(json.dumps({'pid':p.pid}));"
+            "release=Path("+repr(str(release))+");deadline=time.monotonic()+5\n"
+            "while not release.exists() and time.monotonic()<deadline:time.sleep(.01)\n"
+            "assert release.exists(), 'observer did not prove child ownership before fixture deadline'")
+    observe=native._observe_process_family
+    delayed=False
+    def observed(seen,uncertain,rejected,errors):
+        nonlocal delayed
+        if not delayed:
+            delayed=True
+            time.sleep(observer_delay)
+        observe(seen,uncertain,rejected,errors)
+        try:child_pid=json.loads(pid_file.read_text())["pid"]
+        except (OSError,ValueError,KeyError):return
+        # The real observer, not the fixture, must establish the direct-parent
+        # edge before the parent exits. A fixed 300ms lifetime was racy on CI.
+        if any(row["pid"]==child_pid and row.get("ownership")=="stable_direct_parent_edge"
+               for row in seen.values()):
+            release.touch()
+    monkeypatch.setattr(native,"_observe_process_family",observed)
     with (tmp_path/"leaked.log").open("wb") as log:
         result=native.run_observed([sys.executable,"-I","-B","-c",parent],
                                   cwd=tmp_path,env=dict(os.environ),log=log,timeout=10)
-    assert result["returncode"]==0 and not result["passed"]
-    assert result["remaining_before_cleanup"] and result["forced_cleanup"]
-    assert not result["remaining_after_cleanup"] and not result["unknown_live"], result
-    assert all(not matches(row["pid"],row["birth"]) for row in result["observed"])
+    proof=json.dumps(result,indent=2,sort_keys=True)
+    (tmp_path/"leaked-observer.json").write_text(proof)
+    assert result["returncode"]==0 and not result["passed"], proof
+    assert result["remaining_before_cleanup"] and result["forced_cleanup"], proof
+    assert not result["remaining_after_cleanup"] and not result["unknown_live"], proof
+    assert all(not matches(row["pid"],row["birth"]) for row in result["observed"]), proof
 
 
 def test_pinned_macos_layout_may_contain_its_empty_resource_directory(tmp_path):

@@ -346,8 +346,10 @@ def main():
     parser = argparse.ArgumentParser()
     for name in ("download", "package", "evidence", "source-archive"):
         parser.add_argument("--"+name, type=Path, required=True)
+    parser.add_argument("--pins", type=Path, default=PINS,
+                        help="Explicit reviewed native input; default release pin is unchanged")
     args = parser.parse_args()
-    pins = legacy.unique_json(PINS.read_bytes())
+    pins = legacy.unique_json(args.pins.read_bytes())
     target = build.build_target()
     need(target in pins["targets"], "No reviewed retained artifact for this platform")
     pin = pins["targets"][target]
@@ -417,7 +419,7 @@ def main():
               **provenance, "ready": False,
               "original_run": run, "original_job": job, "original_artifact": artifact,
               "current_source_sha256": native.source_identity(), "package": identity,
-              "pins_sha256": native.sha(PINS), "source_archive_sha256": native.sha(args.source_archive),
+              "pins_sha256": native.sha(args.pins), "source_archive_sha256": native.sha(args.source_archive),
               "carry": carry, "original_native_evidence_sha256": native.sha(scope/"native-qualification/qualification.json")}
     (args.evidence/"acquisition.json").write_bytes(json.dumps(record, indent=2).encode())
     # Current native22 and complete offline run are subsequent unchanged controllers.

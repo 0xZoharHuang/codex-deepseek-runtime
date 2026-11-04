@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "scope": "retained-native-build-and-transport-only",
+  "repository": "0xZoharHuang/codex-deepseek-runtime",
+  "repository_id": 1427487253,
+  "producer_commit": "f958d4cbeae19a66af6c9dc4bfa01390295713ea",
+  "run_id": 41839521557,
+  "run_attempt": 1,
+  "workflow_path": ".github/workflows/native-platform-qualification.yml",
+  "recipe_sha256": "ecb4674b926992022d36cc0eef527627a415b61633356129b44fd9add864c83e",
+  "recipe_bytes": 93162,
+  "temporary_expiring_input": true,
+  "stable_release_policy": "Exact P35 macOS native input only. Original six offline fixture failures remain failures. New complete current offline/native qualification required, no Rust rebuild, no old pins rewritten. Stable publication requires independent permanent assets.",
+  "targets": {
+    "aarch64-apple-darwin": {
+      "job_id": 126607090435,
+      "job_name": "macos-arm64",
+      "job_conclusion": "failure",
+      "required_steps": {
+        "Build the pinned native package": "success",
+        "Qualify actual State migration EOL compatibility": "success",
+        "Qualify actual Guardian provider transport and cancellation": "success",
+        "Qualify actual restored-call and byte-prefix capacity": "success",
+        "Run real native payload and recovery fixtures": "success",
+        "Check adapter and platform regressions": "failure",
+        "Retain package provenance and original failures": "success",
+        "Upload bounded qualification artifacts": "success"
+      },
+      "artifact_id": 13346764748,
+      "artifact_name": "cds-macos-arm64-f958d4cbeae19a66af6c9dc4bfa01390295713ea-1",
+      "zip_bytes": 163260031,
+      "zip_sha256": "60057159cbb9af3cb7dfd765bf673046966a6cd4628e75142496306fb6d4cfd4",
+      "expires_at": "2026-11-11T17:31:55Z",
+      "archive_bytes": 143687920,
+      "archive_sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b",
+      "receipt_sha256": "8c5866e37bd427f05d16d9224c169ca806bde8e24ab1a11691e45ece787f2fa1",
+      "cli_sha256": "4145a341fc49b6d6fa7b7c77871b983b6b36c6efeb21f718eb11ab1a5c75b681",
+      "helper_sha256": "a304194ff520e23c44793e2ab78b00b0520d985f1aeca1c078a52872810730d3",
+      "recipe_id": "fbb213a8d3a7648191d9ab19bbaf4428fa6d95850a6559ee9f50d356d06c3675",
+      "checkpoint_member": "compile-checkpoints/b-b8e74b53/compile-checkpoint.json",
+      "members": {
+        "adapter-qualification/adapter.xml": {
+          "bytes": 465641,
+          "sha256": "df90ea93676e9726a327746fd28b245b9fe27e04796c94e32d32b23ffb14a817"
+        },
+        "adapter-qualification/qualification.json": {
+          "bytes": 228273,
+          "sha256": "f72bd42f00a0f3ab5211afb92fd1f99a53c61837ed1fbe65cb504b9af94fbfa3"
+        },
+        "capacity-core/native-capacity.log": {
+          "bytes": 75501,
+          "sha256": "f98089f345021932dc405f89cd089706bd277189b6b40b6ff4f75aa9a1ed0f49"
+        },
+        "capacity-core/qualification.json": {
+          "bytes": 2050976,
+          "sha256": "a1222e5c14febd8c16bc54dabed4f43841249f938dc7172293e6b916d244d258"
+        },
+        "guardian-pool/native-pool.log": {
+          "bytes": 106283,
+          "sha256": "24eedf86e9dbb43ba60ae6016103c8fb0eda0cd97049e7586380382b5af8940d"
+        },
+        "guardian-pool/qualification.json": {
+          "bytes": 2555487,
+          "sha256": "960c7b83dc25b8402dcb98636c559859adf33c7a4fff7b9e97b65f52194c9347"
+        },
+        "native-qualification/native.xml": {
+          "bytes": 3397,
+          "sha256": "f3ec300679be99e7925b1af0729a17910f9ab163b4f6fee2b6779a6eeff7393b"
+        },
+        "native-qualification/qualification.json": {
+          "bytes": 143729,
+          "sha256": "5a7de2ff4e418fc3fd1e85931b4bd7d230ac4b4ea0cc6f0e59cb554f3aae304a"
+        },
+        "retained-build-scope.json": {
+          "bytes": 1344,
+          "sha256": "14e461f3252d226303ac12250a245485cda64c96d63e4259544db2ad6a3a3dcd"
+        },
+        "state-migrations/native-state.log": {
+          "bytes": 11735,
+          "sha256": "42c47e748800ba8c19f71d087096f999acf633ba5357dad61436829116eca76f"
+        },
+        "state-migrations/qualification.json": {
+          "bytes": 2098913,
+          "sha256": "9fd8628d7d8753b6c10869768fa90c4da49b38b84854cdb813ad24d2bcd117c7"
+        },
+        "compile-checkpoints/b-b8e74b53/compile-checkpoint.json": {
+          "bytes": 1314527,
+          "sha256": "34b02fd87bf550bd0c1df116d9c389cbb942b79894e6f55747b0104db574e448"
+        }
+      }
+    }
+  }
+}

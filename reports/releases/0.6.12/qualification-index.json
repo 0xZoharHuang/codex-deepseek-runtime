@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "version": "0.6.12",
+  "status": "QUALIFIED_NATIVE_COMPONENTS_NORMAL_RELEASE_INSTALL_VALIDATION_PENDING",
+  "behavior_changes": "Only distribution version literals;31 behavior modules byte-identical to0.6.11. Existing native binaries are reused without a Rust rebuild.",
+  "components": [
+    {
+      "target": "aarch64-apple-darwin",
+      "manifest": "runtime.json",
+      "manifest_sha256": "88c1540f214cf1c2b615191647ac74ab9856e067a8a624773212b669703fc45c",
+      "native_recipe_id": "fbb213a8d3a7648191d9ab19bbaf4428fa6d95850a6559ee9f50d356d06c3675",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.12-aarch64-apple-darwin.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.12/codex-deepseek-native-0.6.12-aarch64-apple-darwin.tar.gz",
+        "sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b"
+      },
+      "files": 2973
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "manifest": "runtime-x86_64-unknown-linux-gnu.json",
+      "manifest_sha256": "9ee40f020ccd59f114cdc498193dfaaec6de8bb56a11df2a2977c71683d7857e",
+      "native_recipe_id": "08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1"
+      },
+      "files": 3074
+    },
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "manifest": "runtime-x86_64-pc-windows-msvc.json",
+      "manifest_sha256": "2a5a7aaab4b8a84a21fee82ffd28bcebe5162e0faa73b41ee9da9907ae50265e",
+      "native_recipe_id": "514fdfdc2231046dbe124d47ffb32b4f172194ff462d14b62be32e1c06c54e79",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.11/codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz",
+        "sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32"
+      },
+      "files": 3018
+    }
+  ],
+  "existing_evidence": {
+    "linux": "v0.6.10 public normal install and preserved long-task/runtime records",
+    "windows": "v0.6.11 public normal install and scoped native/runtime records; Jinja business benchmark remains failed",
+    "macos": {
+      "source_commit": "8700fc3983da3a2d495670f0d22fa4c2886477dc",
+      "run_id": 41902167361,
+      "artifact_id": 13358413873,
+      "artifact_zip_sha256": "6c3dea851f6982cc9eda64256e9a3afb4a03f03a313bdb6cc4adcc512a785576",
+      "host": "macOS26 arm64",
+      "controller_cases": 332,
+      "native_cases": 22,
+      "offline_cases": 2870,
+      "offline_failed": 0,
+      "offline_errors": 0,
+      "offline_skipped": 56,
+      "skips_not_counted_as_passes": true
+    }
+  },
+  "remaining": [
+    "normal default-manifest install and wrapper IPC for this source on each platform",
+    "current Unix native/offline qualification against the exact installed native package",
+    "public delivery receipt and stable promotion"
+  ],
+  "all_goal_complete": false
+}

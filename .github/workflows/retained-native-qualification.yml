@@ -7,6 +7,11 @@ on:
         description: Exact reviewed retained artifact target; unavailable pins fail closed
         required: true
         type: string
+      pin_file:
+        description: Explicit repository pin; all provenance checks remain mandatory
+        required: false
+        type: string
+        default: ci/qualified-native-build-0.6.9.json
 
 permissions:
   contents: read
@@ -19,9 +24,10 @@ concurrency:
 jobs:
   qualify:
     name: retained-${{ inputs.platform }}
-    runs-on: ${{ inputs.platform == 'linux-x64' && 'ubuntu-24.04' || 'macos-15' }}
+    runs-on: ${{ inputs.platform == 'linux-x64' && 'ubuntu-24.04' || 'macos-26' }}
     timeout-minutes: 45
     env:
+      CDS_RETAINED_PIN: ${{ inputs.pin_file }}
       PYTHONDONTWRITEBYTECODE: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
@@ -42,7 +48,7 @@ jobs:
           test "$RUNNER_ENVIRONMENT" = github-hosted
           if [[ "${{ inputs.platform }}" = linux-x64 ]]; then test "$(uname -m)" = x86_64; else test "$(uname -m)" = arm64; fi
           mkdir "$RUNNER_TEMP/cds-reuse-evidence"
-          python -c 'import json,platform; from ci.reuse_retained_native import PINS; p=json.loads(PINS.read_bytes()); t="x86_64-unknown-linux-gnu" if platform.system()=="Linux" else "aarch64-apple-darwin"; assert t in p["targets"], "No reviewed exact retained artifact for this target"'
+          python -c 'import json,platform,os; from pathlib import Path; from ci.reuse_retained_native import PINS; PINS=Path(os.environ.get("CDS_RETAINED_PIN",str(PINS))); p=json.loads(PINS.read_bytes()); t="x86_64-unknown-linux-gnu" if platform.system()=="Linux" else "aarch64-apple-darwin"; assert t in p["targets"], "No reviewed exact retained artifact for this target"'
           python -c 'import json,os,platform,shutil; d=shutil.disk_usage(os.environ["RUNNER_TEMP"]); r={"platform":platform.platform(),"machine":platform.machine(),"free_bytes":d.free,"minimum_free_bytes":4*1024**3}; print(json.dumps(r)); assert d.free>=r["minimum_free_bytes"]' > "$RUNNER_TEMP/cds-reuse-evidence/runner-capacity.json"
       - name: Install Linux runtime libraries
         if: runner.os == 'Linux'
@@ -73,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -I -B ci/reuse_retained_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
+          python -I -B ci/reuse_retained_native.py --download "$RUNNER_TEMP/cds-reuse-download" --package "$RUNNER_TEMP/cds-reused-package" --evidence "$RUNNER_TEMP/cds-reuse-evidence/acquisition" --source-archive "$RUNNER_TEMP/cds-reuse-source/source.tar.gz" --pins "$CDS_RETAINED_PIN" 2>&1 | tee "$RUNNER_TEMP/cds-reuse-evidence/acquisition.log"
       - name: Run the complete declared native transport cases
         shell: bash
         run: |
@@ -92,7 +98,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/cds-reuse-evidence"
           git rev-parse HEAD > "$RUNNER_TEMP/cds-reuse-evidence/current-source-commit.txt"
           cp native/runtime-overlays.json "$RUNNER_TEMP/cds-reuse-evidence/current-runtime-overlays.json"
-          python -c 'import os,shutil; from ci.reuse_retained_native import PINS; shutil.copyfile(PINS, os.path.join(os.environ["RUNNER_TEMP"], "cds-reuse-evidence", "reviewed-native-input-pin.json"))'
+          python -c 'import os,shutil; from pathlib import Path; from ci.reuse_retained_native import PINS; PINS=Path(os.environ.get("CDS_RETAINED_PIN",str(PINS))); shutil.copyfile(PINS, os.path.join(os.environ["RUNNER_TEMP"], "cds-reuse-evidence", "reviewed-native-input-pin.json"))'
           cp ci/requirements-test.lock "$RUNNER_TEMP/cds-reuse-evidence/requirements-test.lock"
           if [[ -f "$RUNNER_TEMP/cds-reused-package/build-receipt.json" ]]; then
             cp "$RUNNER_TEMP/cds-reused-package/build-receipt.json" "$RUNNER_TEMP/cds-reuse-evidence/original-build-receipt.json"

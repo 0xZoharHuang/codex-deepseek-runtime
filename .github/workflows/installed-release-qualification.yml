@@ -1,0 +1,94 @@
+name: Installed release qualification
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: cds-installed-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  qualify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macos-arm64
+            runner: macos-26
+            architecture: arm64
+          - label: linux-x64
+            runner: ubuntu-24.04
+            architecture: x64
+    name: installed-${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.13.3"
+          architecture: ${{ matrix.architecture }}
+      - name: Verify disposable host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          mkdir "$RUNNER_TEMP/cds-installed-evidence"
+          python -c 'import platform; print(platform.platform()); print(platform.machine())'
+      - name: Linux runtime libraries
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libcap2 libasound2t64
+      - name: Install locked QA environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/cds-qa-venv"
+          echo "$RUNNER_TEMP/cds-qa-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/cds-qa-venv/bin/python" -m pip install --only-binary=:all: --require-hashes -r ci/requirements-test.lock
+          "$RUNNER_TEMP/cds-qa-venv/bin/python" -m pip install --no-deps --no-build-isolation .
+      - name: Normal public install and wrapper IPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B ci/qualify_installed_release.py --root "$RUNNER_TEMP/cds-normal-install" --evidence "$RUNNER_TEMP/cds-installed-evidence/install"
+      - name: Exact source archive for existing offline checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c 'import os,pathlib; import build_native; from ci.reuse_qualified_native import download; target=build_native.build_target(); url,digest=build_native.build_assets(target)["source"]; download(url,pathlib.Path(os.environ["RUNNER_TEMP"])/"cds-source.tar.gz",digest)'
+      - name: Current native transport and recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          CDS_PACKAGE=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/cds-installed-evidence/install/qualification.json"))["native_package"])')
+          python -I -B ci/qualify_native.py --package "$CDS_PACKAGE" --archived-recipe native/runtime-overlays-pre-interactive-bootstrap-p35.json --evidence "$RUNNER_TEMP/cds-installed-evidence/native" --work "$RUNNER_TEMP/cds-installed-native-work"
+      - name: Complete current offline collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          CDS_PACKAGE=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/cds-installed-evidence/install/qualification.json"))["native_package"])')
+          python -I -B ci/qualify_adapter.py --package "$CDS_PACKAGE" --archived-recipe native/runtime-overlays-pre-interactive-bootstrap-p35.json --source-archive "$RUNNER_TEMP/cds-source.tar.gz" --native-evidence "$RUNNER_TEMP/cds-installed-evidence/native" --evidence "$RUNNER_TEMP/cds-installed-evidence/offline" --work "$RUNNER_TEMP/cds-installed-offline-work"
+      - name: Record source
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/cds-installed-evidence"
+          git rev-parse HEAD > "$RUNNER_TEMP/cds-installed-evidence/source-commit.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: cds-installed-${{ matrix.label }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-installed-evidence/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
