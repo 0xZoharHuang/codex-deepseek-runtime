@@ -1,5 +1,9 @@
 """Verified archive boundaries and immutable repair preserve existing native files."""
 import hashlib
+import contextlib
+import http.server
+import ssl
+import threading
 import importlib.util
 import io
 import json
@@ -252,7 +256,8 @@ def test_download_uses_exclusive_staging_without_overwriting_unowned_partial(tmp
     cache.mkdir(parents=True)
     outside=tmp_path/'sentinel';outside.write_bytes(b'preserve external bytes')
     prior_partial=(cache/source.name).with_suffix('.partial');os.link(outside,prior_partial)
-    monkeypatch.setattr(installer.urllib.request,'urlopen',lambda *a,**k:io.BytesIO(source.read_bytes()))
+    response = io.BytesIO(source.read_bytes()); response.status = 200; response.headers = {}
+    monkeypatch.setattr(installer.urllib.request,'urlopen',lambda *a,**k:response)
     package=installer.native_package(root,manifest)
     assert installer.valid_native(package,manifest)
     assert outside.read_bytes()==b'preserve external bytes'
@@ -362,3 +367,164 @@ def test_artifact_permissions_require_complete_regular_unredirected_manifest(tmp
         assert canary.read_bytes()==b'PRIVATE'
     finally:
         if link is not None:link.rmdir() if installer.WINDOWS else link.unlink()
+
+@contextlib.contextmanager
+def native_http_fixture(responses):
+    """Real HTTP framing, including incomplete bodies and a fresh URL request on retry."""
+    ranges = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            index = len(ranges)
+            ranges.append(self.headers.get('Range'))
+            if index >= len(responses):
+                self.send_error(500, 'unexpected additional request')
+                return
+            status, headers, body = responses[index]
+            if status == 0:
+                self.close_connection = True
+                return
+            self.send_response(status)
+            for key, value in headers.items():
+                self.send_header(key, str(value))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_):
+            pass
+
+    with http.server.HTTPServer(('127.0.0.1', 0), Handler) as server:
+        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.01},
+                                  daemon=True)
+        thread.start()
+        try:
+            yield f'http://127.0.0.1:{server.server_port}/release', ranges
+        finally:
+            server.shutdown()
+            thread.join()
+
+
+@pytest.mark.parametrize('case', ['stable', 'no-length', 'resume', 'full-restart', 'short-ranges',
+                                  'first-empty', 'disconnect-before-headers'])
+def test_native_public_http_recovers_and_verifies_actual_package(tmp_path, monkeypatch, case):
+    monkeypatch.setenv('no_proxy', '127.0.0.1')
+    source = tmp_path/'archive.tar.gz'
+    manifest = archive_at(source, {name:b'verified fixture' for name in installer.required_binaries()})
+    data = source.read_bytes()
+    n = len(data)
+    full = (200, {'Content-Length': n}, data)
+    initial = (200, {'Content-Length': n}, data[:7])
+    def part(start, stop):
+        return 206, {'Content-Range':f'bytes {start}-{stop-1}/{n}',
+                     'Content-Length':stop-start}, data[start:stop]
+    scripts = {
+        'stable': ([full], [None]),
+        'no-length': ([(200, {}, data)], [None]),
+        'resume': ([initial, part(7,n)], [None, 'bytes=7-']),
+        'full-restart': ([initial, full], [None, 'bytes=7-']),
+        'short-ranges': ([initial, part(7,8), part(8,n)], [None, 'bytes=7-', 'bytes=8-']),
+        'first-empty': ([(200, {'Content-Length':n}, b''), full], [None,None]),
+        'disconnect-before-headers': ([(0, {}, b''), full], [None,None]),
+    }
+    responses, expected_ranges = scripts[case]
+    with native_http_fixture(responses) as (url, ranges):
+        manifest['archive']['url'] = url
+        package = installer.native_package(tmp_path/'install', manifest)
+    assert ranges == expected_ranges
+    assert installer.valid_native(package, manifest)
+    cached = tmp_path/'install'/'downloads'/manifest['archive']['sha256'][:24]
+    assert (cached/source.name).read_bytes() == data
+    assert not list(cached.glob('*.partial'))
+
+
+@pytest.mark.parametrize('case', [
+    'unexpected-206', 'bad-start', 'bad-end', 'new-total', 'length-mismatch', 'no-content-range',
+    'whole-200-with-range', 'zero', 'three-short', 'corrupt', '401', '403', '404', '429',
+])
+def test_native_public_http_rejects_incomplete_or_invalid_archive(tmp_path, monkeypatch, case):
+    monkeypatch.setenv('no_proxy', '127.0.0.1')
+    source = tmp_path/'archive.tar.gz'
+    manifest = archive_at(source, {name:b'never run' for name in installer.required_binaries()})
+    data = source.read_bytes()
+    n = len(data)
+    initial = (200, {'Content-Length':n}, data[:7])
+    empty = (200, {'Content-Length':n}, b'')
+    if case.isdigit():
+        responses, match = [(int(case), {}, b'')], case
+    elif case == 'corrupt':
+        responses, match = [(200, {'Content-Length':n}, b'x' + data[1:])], 'checksum mismatch'
+    elif case == 'zero':
+        responses, match = [empty] * 3, 'after 3 attempts'
+    elif case == 'three-short':
+        responses = [initial] + [(206, {'Content-Range':f'bytes {i}-{n-1}/{n}',
+                                         'Content-Length':n-i}, data[i:i+1]) for i in (7,8)]
+        match = 'after 3 attempts'
+    elif case == 'unexpected-206':
+        responses, match = [(206, {'Content-Range':f'bytes 0-{n-1}/{n}'}, data)], 'HTTP status 206'
+    elif case == 'whole-200-with-range':
+        responses = [initial, (200, {'Content-Range':f'bytes 7-{n-1}/{n}'}, data)]
+        match = 'Unexpected Content-Range'
+    else:
+        bounds = {'bad-start': f'bytes 8-{n-1}/{n}', 'bad-end': f'bytes 7-{n}/{n}',
+                  'new-total': f'bytes 7-{n-1}/{n+1}', 'length-mismatch': f'bytes 7-{n-1}/{n}',
+                  'no-content-range': None}[case]
+        headers = {'Content-Length': n-7+(case=='length-mismatch')}
+        if bounds:
+            headers['Content-Range'] = bounds
+        responses, match = [initial, (206, headers, data[7:])], 'Content-Range'
+    root = tmp_path/'install'
+    cache = root/'downloads'/manifest['archive']['sha256'][:24]
+    cache.mkdir(parents=True)
+    previous = cache/'.native-other-run.partial'
+    previous.write_bytes(b'unrelated file')
+    with native_http_fixture(responses) as (url, ranges):
+        manifest['archive']['url'] = url
+        error = installer.urllib.error.HTTPError if case.isdigit() else SystemExit
+        with pytest.raises(error, match=match):
+            installer.native_package(root, manifest)
+    assert len(ranges) == len(responses)
+    assert previous.read_bytes() == b'unrelated file'
+    assert set(cache.iterdir()) == {previous}
+    assert not (root/'native').exists()
+
+
+def test_download_cleanup_never_removes_replaced_staging_file(tmp_path):
+    staging = tmp_path/'.native-owned.partial'
+    staging.write_bytes(b'original')
+    identity = staging.stat()
+    staging.rename(tmp_path/'moved-original')
+    staging.write_bytes(b'replacement')
+    installer.discard_owned_download(tmp_path, staging, identity)
+    assert staging.read_bytes() == b'replacement'
+
+@pytest.mark.parametrize('reason, expected_attempts', [
+    (TimeoutError('transport timed out'), 3),
+    (ConnectionRefusedError('connection refused'), 3),
+    (ssl.SSLCertVerificationError('untrusted certificate'), 1),
+])
+def test_only_transient_network_open_failures_retry(monkeypatch, reason, expected_attempts):
+    calls = []
+    def fail_open(request, timeout):
+        calls.append((request.full_url, request.get_header('Range'), timeout))
+        raise installer.urllib.error.URLError(reason)
+    monkeypatch.setattr(installer.urllib.request, 'urlopen', fail_open)
+    output = io.BytesIO()
+    url = 'https://release.invalid/native'
+    error = SystemExit if expected_attempts == 3 else installer.urllib.error.URLError
+    with pytest.raises(error, match=str(reason)):
+        installer.download_native_archive(url, output)
+    assert calls == [(url,None,90)] * expected_attempts
+    assert not output.getvalue()
+
+
+def test_native_public_http_resumes_across_read_buffers(monkeypatch):
+    monkeypatch.setenv('no_proxy', '127.0.0.1')
+    data = hashlib.shake_256(b'large transfer regression').digest(300000)
+    cut = 2 * 65536 + 117
+    responses = [(200, {'Content-Length':len(data)}, data[:cut]),
+                 (206, {'Content-Range':f'bytes {cut}-{len(data)-1}/{len(data)}'}, data[cut:])]
+    output = io.BytesIO()
+    with native_http_fixture(responses) as (url, ranges):
+        installer.download_native_archive(url, output)
+    assert ranges == [None, f'bytes={cut}-']
+    assert output.getvalue() == data

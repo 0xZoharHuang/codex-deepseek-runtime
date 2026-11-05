@@ -4,6 +4,7 @@ import argparse
 import base64
 import importlib.util
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path,PurePosixPath
@@ -16,6 +17,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 import uuid
 import venv
@@ -176,6 +179,97 @@ def readable_native_package(root,package,manifest):
     return package
 
 
+def native_response_bounds(response, offset, previous_total):
+    """Validate the complete range before writing any bytes from this response."""
+    length = response.headers.get('Content-Length')
+    if length is not None:
+        if not re.fullmatch(r'[0-9]+', length):
+            raise SystemExit('Invalid native download Content-Length')
+        length = int(length)
+
+    if response.status == 200:
+        if response.headers.get('Content-Range') is not None:
+            raise SystemExit('Unexpected Content-Range on full native download')
+        total = length if length is not None else previous_total
+        return 0, total, total
+    if response.status != 206 or not offset:
+        raise SystemExit(f'Unexpected native download HTTP status {response.status}')
+
+    match = re.fullmatch(r'bytes ([0-9]+)-([0-9]+)/([0-9]+)',
+                         response.headers.get('Content-Range', ''))
+    if not match:
+        raise SystemExit('Invalid native download Content-Range')
+    start, end, total = map(int, match.groups())
+    if (start != offset or end < start or end >= total
+            or (length is not None and length != end - start + 1)
+            or (previous_total is not None and total != previous_total)):
+        raise SystemExit('Inconsistent native download Content-Range')
+    return start, end + 1, total
+
+
+def download_native_archive(url, output):
+    """Resume only bytes in this call's open staging file, at the same release URL."""
+    if urllib.request.Request(url).type not in {'http', 'https'}:
+        with urllib.request.urlopen(url, timeout=90) as response:
+            shutil.copyfileobj(response, output)
+        return
+    max_attempts = 3
+    total = None
+    for attempt in range(1, max_attempts + 1):
+        offset = output.tell()
+        headers = {'Accept-Encoding': 'identity'}
+        if offset:
+            headers['Range'] = f'bytes={offset}-'
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                start, end, total = native_response_bounds(response, offset, total)
+                if offset and not start:
+                    # Range was ignored. Never append a full entity to a prefix.
+                    output.seek(0)
+                    output.truncate()
+                last_report = time.monotonic()
+                expected = total if total is not None else "unknown"
+                print(f'Downloading native archive ({output.tell()} of {expected} bytes)',
+                      file=sys.stderr)
+                while chunk := response.read(64 * 1024):
+                    if end is not None and output.tell() + len(chunk) > end:
+                        raise SystemExit('Native download exceeds its declared range')
+                    output.write(chunk)
+                    if time.monotonic() - last_report >= 30:
+                        print(f'Native download received {output.tell()} bytes', file=sys.stderr)
+                        last_report = time.monotonic()
+                count = output.tell()
+                if count and (total is None or count == total):
+                    return
+                reason = f'incomplete response ({count} of {expected} bytes)'
+        except urllib.error.HTTPError:
+            raise
+        except urllib.error.URLError as error:
+            if not isinstance(error.reason, (TimeoutError, ConnectionError)):
+                raise
+            reason = str(error.reason)
+        except (TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
+            reason = str(error)
+
+        count = output.tell()
+        if attempt == max_attempts:
+            raise SystemExit(f'Native download interrupted after {attempt} attempts '
+                             f'({count} bytes received): {reason}')
+        print(f'Native download interrupted after {count} bytes ({reason}); '
+              f'retrying {attempt + 1}/{max_attempts}', file=sys.stderr)
+
+
+def discard_owned_download(root, staging, identity):
+    """Only retire this invocation's private, verified staging file on failure."""
+    try:
+        owned_native_path(root, staging)
+        if os.path.samestat(identity, staging.lstat()):
+            staging.unlink()
+    except (OSError, SystemExit) as error:
+        print(f'Could not retire native download staging file {staging}: {error}', file=sys.stderr)
+
+
 def native_package(root,manifest,archive_override=None):
     info,target,downloads,archive,candidates=native_storage(root,manifest)
     checksum=info['sha256']
@@ -197,12 +291,17 @@ def native_package(root,manifest,archive_override=None):
         # unrelated file may be a hardlink, symlink, or an operator's evidence.
         descriptor,temporary_name=tempfile.mkstemp(prefix='.native-',suffix='.partial',dir=downloads)
         staging=Path(temporary_name)
-        with os.fdopen(descriptor,'wb') as output:
-            if supplied is not None:
-                with supplied.open('rb') as payload:shutil.copyfileobj(payload,output)
-            else:
-                with urllib.request.urlopen(info['url'],timeout=90) as payload:shutil.copyfileobj(payload,output)
-        if sha(staging)!=checksum:raise SystemExit('Downloaded native archive checksum mismatch')
+        identity = os.fstat(descriptor)
+        try:
+            with os.fdopen(descriptor,'wb') as output:
+                if supplied is not None:
+                    with supplied.open('rb') as payload:shutil.copyfileobj(payload,output)
+                else:
+                    download_native_archive(info['url'], output)
+            if sha(staging)!=checksum:raise SystemExit('Downloaded native archive checksum mismatch')
+        except BaseException:
+            discard_owned_download(root, staging, identity)
+            raise
         owned_native_path(root,staging);owned_native_path(root,archive)
         if archive.exists():raise SystemExit('Native archive cache changed during download; preserving both files')
         replace_file(staging,archive)
