@@ -13,6 +13,7 @@ import re
 import stat
 import shlex
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -246,10 +247,10 @@ def download_native_archive(url, output):
         except urllib.error.HTTPError:
             raise
         except urllib.error.URLError as error:
-            if not isinstance(error.reason, (TimeoutError, ConnectionError)):
+            if not isinstance(error.reason, (TimeoutError, ConnectionError, ssl.SSLEOFError)):
                 raise
             reason = str(error.reason)
-        except (TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
+        except (TimeoutError, ConnectionError, ssl.SSLEOFError, http.client.IncompleteRead) as error:
             reason = str(error)
 
         count = output.tell()

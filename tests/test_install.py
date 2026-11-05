@@ -2,6 +2,8 @@
 import hashlib
 import contextlib
 import http.server
+import socket
+import socketserver
 import ssl
 import threading
 import importlib.util
@@ -369,6 +371,19 @@ def test_artifact_permissions_require_complete_regular_unredirected_manifest(tmp
         if link is not None:link.rmdir() if installer.WINDOWS else link.unlink()
 
 @contextlib.contextmanager
+def loopback_server(handler):
+    with http.server.HTTPServer(('127.0.0.1', 0), handler) as server:
+        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.01},
+                                  daemon=True)
+        thread.start()
+        try:
+            yield server.server_port
+        finally:
+            server.shutdown()
+            thread.join()
+
+
+@contextlib.contextmanager
 def native_http_fixture(responses):
     """Real HTTP framing, including incomplete bodies and a fresh URL request on retry."""
     ranges = []
@@ -393,15 +408,8 @@ def native_http_fixture(responses):
         def log_message(self, *_):
             pass
 
-    with http.server.HTTPServer(('127.0.0.1', 0), Handler) as server:
-        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.01},
-                                  daemon=True)
-        thread.start()
-        try:
-            yield f'http://127.0.0.1:{server.server_port}/release', ranges
-        finally:
-            server.shutdown()
-            thread.join()
+    with loopback_server(Handler) as port:
+        yield f'http://127.0.0.1:{port}/release', ranges
 
 
 @pytest.mark.parametrize('case', ['stable', 'no-length', 'resume', 'full-restart', 'short-ranges',
@@ -528,3 +536,60 @@ def test_native_public_http_resumes_across_read_buffers(monkeypatch):
         installer.download_native_archive(url, output)
     assert ranges == [None, f'bytes={cut}-']
     assert output.getvalue() == data
+
+def test_native_https_premature_handshake_eof_exhausts_only_three_requests(monkeypatch):
+    monkeypatch.setenv('no_proxy', '127.0.0.1')
+    greetings = []
+
+    class CloseHandshake(socketserver.BaseRequestHandler):
+        def handle(self):
+            self.request.settimeout(5)
+            greetings.append(self.request.recv(8192)[:1])
+            self.request.shutdown(socket.SHUT_WR)
+
+    with loopback_server(CloseHandshake) as port:
+        with pytest.raises(SystemExit, match='after 3 attempts'):
+            installer.download_native_archive(f'https://127.0.0.1:{port}/asset', io.BytesIO())
+    assert greetings == [bytes([0x16])] * 3
+
+
+def test_native_https_untrusted_server_certificate_fails_after_one_request(tmp_path, monkeypatch):
+    from datetime import datetime, timezone, timedelta
+    from ipaddress import ip_address
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+
+    monkeypatch.setenv('no_proxy', '127.0.0.1')
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'isolated downloader test')])
+    now = datetime.now(timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject)
+            .public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now-timedelta(minutes=1)).not_valid_after(now+timedelta(days=1))
+            .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ip_address('127.0.0.1'))]), False)
+            .sign(key, hashes.SHA256()))
+    cert_file, key_file = tmp_path/'certificate.pem', tmp_path/'key.pem'
+    cert_file.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    key_file.write_bytes(key.private_bytes(serialization.Encoding.PEM,
+                                           serialization.PrivateFormat.PKCS8,
+                                           serialization.NoEncryption()))
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(cert_file, key_file)
+    handshakes = []
+
+    class UntrustedServer(socketserver.BaseRequestHandler):
+        def handle(self):
+            handshakes.append(True)
+            try:
+                with tls.wrap_socket(self.request, server_side=True):
+                    pass
+            except ssl.SSLError:
+                pass  # The client should close the handshake on this untrusted certificate.
+
+    with loopback_server(UntrustedServer) as port:
+        with pytest.raises(installer.urllib.error.URLError) as error:
+            installer.download_native_archive(f'https://127.0.0.1:{port}/asset', io.BytesIO())
+    assert len(handshakes) == 1
+    assert isinstance(error.value.reason, ssl.SSLCertVerificationError)
