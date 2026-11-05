@@ -1,4 +1,4 @@
-"""Qualify a normal default-manifest install on a disposable hosted Unix runner."""
+"""Qualify a normal default-manifest install on a disposable hosted runner."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -121,21 +121,73 @@ def ipc_worker(binding_path):
         write(output/"ipc.json", record)
     return 0 if record["status"] == "passed_normal_wrapper_ipc" else 1
 
+def windows_public_pin(source, env):
+    import urllib.request
+
+    # urllib also reads Windows' Internet Settings if the environment is empty.
+    if {"http", "https", "all"} & urllib.request.getproxies().keys():
+        raise ValueError("Direct consumer gate requires a runner without a proxy")
+    tag, commit = os.environ["RELEASE_TAG"], os.environ["RELEASE_COMMIT"]
+    repo = "https://github.com/0xZoharHuang/codex-deepseek-runtime"
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(source), *args], env=env,
+                                       text=True, timeout=30).strip()
+    if (git("remote", "get-url", "origin") != repo + ".git" or git("rev-parse", "HEAD") != commit
+            or git("rev-parse", "refs/tags/" + tag + "^{commit}") != commit or git("status", "--porcelain")):
+        raise ValueError("Public checkout differs from the pinned release")
+    manifest_path = source / "native/runtime-x86_64-pc-windows-msvc.json"
+    if sha(manifest_path) != os.environ["RELEASE_MANIFEST_SHA256"]:
+        raise ValueError("Public Windows manifest hash differs")
+    manifest = json.loads(manifest_path.read_bytes())
+    archive = manifest["archive"]
+    if (manifest["status"] != "ready" or manifest["target"] != "x86_64-pc-windows-msvc"
+            or tag != "v" + manifest["distribution_version"]
+            or archive["sha256"] != os.environ["RELEASE_ARCHIVE_SHA256"]
+            or archive["url"] != f"{repo}/releases/download/{tag}/{archive['filename']}"):
+        raise ValueError("Default manifest must identify the pinned public asset")
+    return manifest, {"public_tag": tag, "public_commit": commit, "archive_url": archive["url"],
+                      "manifest_sha256": sha(manifest_path), "direct_transport": True}
+
+
+def windows_installed_identity(source, release, root, installation, manifest):
+    # Use the tagged installer's complete physical package verifier, including
+    # reparse, hardlink, extra-file and missing-file checks.
+    spec = importlib.util.spec_from_file_location("public_install", source / "install.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    package = Path(installation["native_package"]).resolve()
+    descriptor = manifest["archive"]
+    archive = root / "downloads" / descriptor["sha256"][:24] / descriptor["filename"]
+    if (not package.is_relative_to(root / "native") or sha(archive) != descriptor["sha256"]
+            or json.loads((release / "native-runtime.json").read_bytes()) != manifest
+            or installation["source_id"] != os.environ["RELEASE_SOURCE_ID"]
+            or installation["native_recipe_id"] != manifest["native_recipe_id"]
+            or installation["native_archive_sha256"] != descriptor["sha256"]
+            or sha(installer.console_entry(release / "venv")) != installation["console_script_sha256"]):
+        raise ValueError("Installed bytes or their identities differ from the public release")
+    files = installer.native_package_files(package, manifest)
+    return {"native_files": len(files), "native_cli_sha256": files["bin/codex.exe"],
+            "native_recipe_id": manifest["native_recipe_id"], "archive_bytes": archive.stat().st_size,
+            "downloaded_archive_sha256": descriptor["sha256"]}
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--public-windows-source", type=Path)
     parser.add_argument("--ipc-worker", type=Path)
     args = parser.parse_args()
     if args.ipc_worker:
         return ipc_worker(args.ipc_worker)
+    windows = args.public_windows_source is not None
+    source = args.public_windows_source.resolve(strict=True) if windows else SOURCE
     if (os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
-            or sys.platform not in {"darwin", "linux"}):
-        raise ValueError("Use a disposable GitHub-hosted Unix runner")
+            or sys.platform not in ({"win32"} if windows else {"darwin", "linux"})):
+        raise ValueError("Use a disposable GitHub-hosted runner for the selected platform")
     root, evidence = args.root.resolve(), args.evidence.resolve()
     if (root.exists() or evidence.exists() or root == evidence
             or root.is_relative_to(evidence) or evidence.is_relative_to(root)
-            or root.is_relative_to(SOURCE) or evidence.is_relative_to(SOURCE)):
+            or any(p.is_relative_to(s) or s.is_relative_to(p) for p in (root, evidence) for s in (SOURCE, source))):
         raise ValueError("Fresh disjoint roots outside the source are required")
     evidence.mkdir(parents=True)
     sys.path.insert(0, str(SOURCE))
@@ -146,14 +198,17 @@ def main():
               "native_builds": 0, "processes": []}
     def run(label, argv, env, timeout):
         with (evidence/(label+".log")).open("wb") as log:
-            result = run_observed(argv, cwd=SOURCE, env=env, log=log, timeout=timeout)
+            result = run_observed(argv, cwd=source, env=env, log=log, timeout=timeout)
         record["processes"].append({"stage": label, **result})
         write(evidence/"qualification.json", record)
         if not result["passed"]:
             raise RuntimeError(label+" or owned-process cleanup failed")
     try:
         env = isolated_environment(root/"codex-home")
-        run("install", [sys.executable, "-I", "-B", str(SOURCE/"install.py"),
+        if windows:
+            manifest, pin = windows_public_pin(source, env)
+            record.update(pin)
+        run("install", [sys.executable, "-I", "-B", str(source/"install.py"),
                         "--root", str(root), "--no-activate"], env, 900)
         releases = [p for p in (root/"releases").iterdir() if (p/"installation.json").is_file()]
         if len(releases) != 1:
@@ -161,13 +216,17 @@ def main():
         release = releases[0]
         installation = json.loads((release/"installation.json").read_bytes())
         package = Path(installation["native_package"])
-        archived = SOURCE/"native/runtime-overlays-pre-interactive-bootstrap-p35.json"
-        identity = package_identity(package, archived)
-        entry, python = release/"venv/bin/codex-deepseek", release/"venv/bin/python"
+        if windows:
+            identity = windows_installed_identity(source, release, root, installation, manifest)
+            entry, python = release/"venv/Scripts/codex-deepseek.exe", release/"venv/Scripts/python.exe"
+        else:
+            archived = SOURCE/"native/runtime-overlays-pre-interactive-bootstrap-p35.json"
+            identity = package_identity(package, archived)
+            entry, python = release/"venv/bin/codex-deepseek", release/"venv/bin/python"
         run("version", [str(entry), "--version"], env, 45)
         origin_code = (
             "import pathlib,importlib.util,hashlib,json,codex_deepseek;"
-            "source=pathlib.Path("+repr(str(SOURCE/"src"))+");rows=[]\n"
+            "source=pathlib.Path("+repr(str(source/"src"))+");rows=[]\n"
             "for path in sorted((source/'codex_deepseek').rglob('*.py')):\n"
             " parts=list(path.relative_to(source).with_suffix('').parts)\n"
             " if parts[-1]=='__init__':parts=parts[:-1]\n"
@@ -182,15 +241,19 @@ def main():
         if origin.returncode:
             raise RuntimeError("Installed module origin verification failed")
         origins = json.loads(origin.stdout)
-        distribution_version = validate_installed_origins(origins, release)
+        distribution_version = validate_installed_origins(origins, release, source)
         binding = {"home": str(root/"codex-home"), "entry": str(entry),
-                   "cwd": str(SOURCE), "output": str(evidence)}
+                   "cwd": str(source), "output": str(evidence)}
         write(evidence/"ipc-binding.json", binding)
         run("normal-ipc", [str(python), "-I", "-B", str(Path(__file__).resolve()),
                           "--ipc-worker", str(evidence/"ipc-binding.json")], env, 300)
         ipc = json.loads((evidence/"ipc.json").read_bytes())
         if ipc["status"] != "passed_normal_wrapper_ipc":
             raise RuntimeError("Normal wrapper IPC probe failed")
+        if windows and (ipc["initialize"].get("platformOs") != "windows"
+                        or manifest["upstream_version"] not in ipc["initialize"]["userAgent"]
+                        or manifest["upstream_version"] not in (evidence/"version.log").read_text(encoding="utf-8")):
+            raise RuntimeError("Installed CLI/native app-server version or platform mismatch")
         record.update(status="passed_normal_public_install", package=identity,
                       native_package=str(package), installation_sha256=sha(release/"installation.json"),
                       source_id=installation["source_id"],
