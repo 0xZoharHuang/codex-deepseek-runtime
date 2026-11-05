@@ -1,0 +1,90 @@
+{
+  "status": "WINDOWS_P39_CANDIDATE_FULL_PACKAGE_AND_PUBLIC_ACCEPTANCE_PENDING",
+  "version": "0.6.14",
+  "native_recipe_id": "03a66332e89736c56894aae267cc5cb0541636251792b81d517ce4593ef0b81a",
+  "source_inventory_sha256": "a855479c46133641ffe15b250e0e30f35411433f81754f174ba4182bbed27d37",
+  "source_files": 9384,
+  "patch_sha256": "ba237f557e83847a07823cbc31ee5ea4c637de33da77d591b0b86e2ed7c2620d",
+  "source_admission": {
+    "passed": 111,
+    "source_only": true,
+    "log_sha256": "82f6ee9b69c47efc5d0192ef2a150845cf9d8f5a1dd8cdf04fe1d99e0f877e09",
+    "earlier_independent_stage_attempt": {
+      "passed": 106,
+      "log_sha256": "b4836fccca4b86ebaf4537006bc5270da5b5378a2988a1837f743a288c493931",
+      "scope": "retained before the final reviewed P39 source tests were adopted"
+    }
+  },
+  "native_focused": {
+    "passed": 48,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_scope": "separately supplied external home and SID read-only check",
+    "native_result_sha256": "765fb8e0144be350666fc1e09d6d241fb70ebbdf6927607f2eabf3ecbe99388e"
+  },
+  "original_p38_candidate": {
+    "recipe_id": "b635d73ef2350648716954b69178c42ea0117322aa7aa1ce1a0aa28c707bff92",
+    "manifest_sha256": "e6a9fa584fe724b8f14d5ab97aa586bd7dbb32eb0e0778fc51d2b6bb397dc531",
+    "archive_sha256": "bf0e9d84736eaf793961584f81ebb1fe8897f12b523b53ddf4f1a2024a4fd468",
+    "installed_source_id": "c62652bae9f1da1a05e0",
+    "normal_install_scope": "isolated normal install and wrapper IPC passed",
+    "ordinary_warm_and_cold_after_system_maintenance": "passed",
+    "ordinary_UAC_elevated_native_maintenance": {
+      "status": "FAILED_PRESERVED",
+      "exit_code": 1,
+      "error": "helper_sandbox_lock_failed: opening an existing SYSTEM-owned .sandbox-bin with WRITE_DAC returns Windows error 5"
+    },
+    "original_binary_publication": "unpublished Windows candidate; its archive digest identifies the local P38 artifact only"
+  },
+  "p39_uac_maintenance": {
+    "helper_sha256": "6d9dd82202d92491898cd25862df658f9257df2e35f0e01c5e3ed3259b9c9297",
+    "producer": "P39 focused setup helper paired with the exact P38 normal installed CLI for the specific maintenance regression",
+    "full_production_package": false,
+    "receipt_sha256": "9193f19d4c90221d268d1800c88c1b0ceea1775af4326a16310e971546edec5c",
+    "observed_elevated_desktop_session": 3,
+    "native_exit_code": 0,
+    "setup_process_actual_image_checked": true,
+    "ordinary_owner_write_dac_unchanged": true,
+    "privilege_attributes_before_after": {
+      "SeRestorePrivilege": 0,
+      "SeBackupPrivilege": 0,
+      "SeTakeOwnershipPrivilege": 0
+    },
+    "all_process_privileges_changed_by_test": false,
+    "namespace_home_sids_unchanged": true,
+    "existing_runner_bytes_file_identity_and_descriptor_unchanged": true
+  },
+  "child_inheritance": {
+    "legacy_explicit_only": {
+      "control_before": "0x8004",
+      "control_after": "0x9404",
+      "namespace_ace_added": false
+    },
+    "explicitly_protected": {
+      "control_before": "0x9004",
+      "control_after": "0x9004",
+      "descriptor_changed": false
+    },
+    "automatic": {
+      "control_before": "0x8404",
+      "control_after": "0x8404",
+      "inherited_group_old_mask": "0x80",
+      "inherited_group_final_mask": "0x1200a9"
+    },
+    "actual_original_P38_SYSTEM_and_P39_UAC_results_equal": true,
+    "all_three_cases_equal_initial_descriptors_and_payload_bytes": true,
+    "file_identity_preserved_in_each_case": true,
+    "original_failed_assertion": "AssertionError('original native SetSecurityInfo failed to propagate group RX to unprotected child')",
+    "first_attempt_status": "FAILED_PRESERVED",
+    "original_failure_receipt_sha256": "d597ef203e08fd6b84e6a615c066e624e93d8deef91e0008adc3a478890c0f11",
+    "initial_fixture_setup_failure_preserved": true,
+    "canaries_retired_from_own_fixture": 13
+  },
+  "remaining": [
+    "normal P39 production build/package and source audit",
+    "normal install, elevated maintenance, ordinary host warm/cold on complete final package",
+    "public tagged-source and default archive installation",
+    "downstream actual consuming task acceptance"
+  ],
+  "unix_latest_qualified_version": "0.6.13"
+}

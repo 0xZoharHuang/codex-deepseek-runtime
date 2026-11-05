@@ -1,16 +1,16 @@
 # Codex CLI + DeepSeek
 
-> Windows 受管普通用户升级补充：已确认，当原 namespace 位于管理员拥有的共享祖先下、host 仅有 RX、旧 namespace 仅有 0x80 时，v0.6.13 的普通刷新会因无 WRITE_DAC 失败；该布局未被原管理员 host 验收覆盖。原生 `sandbox setup` 的 ProvisionOnly 元数据准备正在修复。在修复版通过该布局验收前，保留原安装，不通过扩大 host 权限或关闭沙箱绕过。Linux/macOS 和原验证布局的结果保持原有范围。
+CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-**用原生 Codex CLI 的工具、审批、沙箱、会话恢复和子智能体，连接 OpenRouter 上的固定 DeepSeek 模型。** CDS 独立安装与配置，不接管本机 Codex App 的订阅或会话。
+安装时按平台固定源码 tag，并使用该 tag 的原生包清单。版本发布状态、已验证的功能和原始失败记录在对应报告中。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
-**Windows / Linux / macOS 当前稳定版本为 v0.6.13。** 已完成各自默认公开 URL 的正常安装、入口通信、原生恢复与完整离线检查，见[本版资格与原始回执](reports/releases/0.6.13/README.md)。Linux 的真实长任务仍绑定 v0.6.10 相同原生组件和共享行为代码；macOS 不冒称重跑该业务任务。
+| 平台 | 源码 tag | 适用环境与版本记录 |
+| --- | --- | --- |
+| Windows x86_64 | `v0.6.14` | P39 原生组件。Windows 受管目录维护、安装和恢复的实测范围见 [v0.6.14 报告](reports/releases/0.6.14/README.md)。 |
+| Linux x86_64 GNU | `v0.6.13` | Ubuntu 24.04 / WSL，使用清单中的固定 Linux 组件。[v0.6.13 报告](reports/releases/0.6.13/README.md) |
+| macOS Apple Silicon | `v0.6.13` | 使用固定的 P35 macOS 组件。[v0.6.13 报告](reports/releases/0.6.13/README.md) |
 
-| 平台 | 当前选择 |
-| --- | --- |
-| Linux x86_64 GNU | v0.6.13，复用 v0.6.10 原生组件；Ubuntu 24.04 / WSL 条件保持。 |
-| macOS Apple Silicon | v0.6.13，固定 P35 组件；在隔离 macOS 26 托管主机完成正常安装与当前测试。 |
-| Windows x86_64 | v0.6.13 / P37：修复私有祖先目录中的 Node `EPERM lstat`，正常安装、原目录升级和冷启动已实测；公开交付见 [版本索引](reports/releases/0.6.13/README.md)。 |
+Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
 真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
 
@@ -107,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.14 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -126,14 +126,14 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 
 ### 下载受限或并行验证版本
 
-可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。0.6.13 清单分别固定 Linux/macOS 的既有原生组件及 Windows P37；每个平台按清单配套管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+安装器可以使用预先下载的归档。Linux/macOS 在 `v0.6.13` 源码中读取各自的原生组件清单。Windows 在 `v0.6.14` 源码中读取 P39 清单。版本、平台、recipe 和归档散列均须一致。
 
 ```sh
 python3 install.py --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json \
   --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-Linux v0.6.10 使用其已公开验证的 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.13 配套文件名为 `codex-deepseek-native-0.6.13-x86_64-pc-windows-msvc.tar.gz`，实际 URL 和下载后安装验证以该版本发布回执为准。Windows/macOS v0.6.9 资产仍仅配各自旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+Linux 的清单使用 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.14 对应 `codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz`，可以通过 `python install.py --native-archive "C:\path\to\archive.tar.gz"` 安装。使用 `--wheelhouse <目录>` 时，安装器仍会检查 Python 依赖的固定散列。归档地址和版本验证结果均在[平台报告](reports/releases/0.6.14/README.md)中。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 

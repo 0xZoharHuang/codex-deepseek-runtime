@@ -1,0 +1,47 @@
+{
+  "status": "PUBLIC_ARCHIVE_SCAN_PASSED",
+  "archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+  "manifest_sha256": "d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+  "verified_regular_members": 3018,
+  "disallowed_member_or_content_categories": [],
+  "original_findings_record_sha256": "ea033c526f11c6293e7d99127957f33896e5f1543653a69260c6a077b2fd4ebd",
+  "resolution": "Each full matched sequence is six separate upstream prefix strings with independently located pointer-length descriptors in the PE image.",
+  "source_path": "codex-rs/network-proxy/src/credential_broker/providers/github.rs",
+  "pinned_source_sha256": "830cbce2b697f972244a6fccc2b4cb4c437d751cfcc15fa63efa8165adcb2f7c",
+  "initial_finding_count": 2,
+  "structural_proof": [
+    {
+      "member": "bin/codex-windows-sandbox-service.exe",
+      "sha256": "bd59fb8db7089bbe24c037c7870c2c06451d5eb1681641a49e4d5df447cbe853",
+      "section": ".rdata",
+      "match_offset": 53628328,
+      "match_sha256": "20d7912322665ad8c8132e45399413bd7914baf557bd88e1c40c0b40314c59ab",
+      "slice_table_offset": 53628360,
+      "separate_slice_lengths": [
+        11,
+        4,
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "member": "bin/codex.exe",
+      "sha256": "5359e8d42b787d3e21f7ca77193094f6cf112f0c6a15ffc81cd023efcb05c63e",
+      "section": ".rdata",
+      "match_offset": 328051792,
+      "match_sha256": "20d7912322665ad8c8132e45399413bd7914baf557bd88e1c40c0b40314c59ab",
+      "slice_table_offset": 328051824,
+      "separate_slice_lengths": [
+        11,
+        4,
+        4,
+        4,
+        4,
+        4
+      ]
+    }
+  ],
+  "raw_secret_values_logged": false
+}

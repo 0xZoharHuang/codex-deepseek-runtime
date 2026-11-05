@@ -5,3 +5,6 @@ native/*.patch -text whitespace=-blank-at-eol
 
 # Captured P30 recipe bytes include CRLF; preserve the attested historical SHA.
 native/runtime-overlays-pre-typed-projection-p30.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Preserve the exact historical P38 recipe used to qualify the new Windows leaf.
+native/runtime-overlays-pre-managed-admin-p38.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "status": "candidate_ordinary_fixture_and_native_tests_pass_final_normal_package_pending",
+  "version": "0.6.14",
+  "snapshot_utc_seconds": 1793846869.8222184,
+  "previous_snapshot": "qualification-progress-r532.json",
+  "recipe_id": "b635d73ef2350648716954b69178c42ea0117322aa7aa1ce1a0aa28c707bff92",
+  "source_inventory_sha256": "9d7404983620e1e2cbfa1840ce0cd9838d8eb9a10e8a107d1669439869ed9958",
+  "source_tests": {
+    "passed": 105,
+    "native_execution": false,
+    "evidence": "source-regression-final-r534.json"
+  },
+  "native_tests": {
+    "passed": 44,
+    "failed": 0,
+    "ignored": 1,
+    "groups": {
+      "ancestor_metadata": 32,
+      "marker": 3,
+      "startup_reason": 9
+    },
+    "ignored_scope": "explicitly confirmed external-home subject SID check, not part of owned fixtures",
+    "evidence": "native-tests-final-r534.json"
+  },
+  "ordinary_command_failure_resolution": {
+    "classification": "owned test fixture executable was outside intended native read roots",
+    "correction": "same Node bytes copied into work/tools; original location and failed receipt retained",
+    "node_sha256": "d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5",
+    "original_and_corrected_bytes_independently_rehashed": true,
+    "controller_acl_modified": false,
+    "permission_policy_expanded": false,
+    "failure_not_relabelled_as_pass": true,
+    "native_diagnostic_followup": "runner_client preserves typed error chain but renders actual startup cause/code; no permission or execution mechanism changed"
+  },
+  "ordinary_native_tool_matrix": {
+    "status": "passed",
+    "policies": [
+      "readonly_first",
+      "workspace_online",
+      "readonly_after_write"
+    ],
+    "actual_offline_online_offline_identities_verified": true,
+    "workspace_seed_read_all": true,
+    "workspace_write_allowed_only_online": true,
+    "shared_parent_list_denied_all": true,
+    "shared_parent_write_denied_all": true,
+    "private_canary_read_denied_all": true,
+    "native_eof_exit": 0,
+    "model_requests": 0,
+    "cold_restart_qualified": false,
+    "evidence": "ordinary-node-in-work-r533-result.json"
+  },
+  "scope_boundary": {
+    "maintenance_version": "r530 maintenance-only helper with P37 runtime; original mixed-producer diagnostic scope retained",
+    "final_normal_package_tested": false,
+    "released": false,
+    "no_final_artifact_or_install_result_inferred": true
+  },
+  "remaining": [
+    "final full production package and complete source/receipt audit",
+    "normal installation and same ordinary-host acceptance with final package",
+    "cold recovery and downstream actual consumption"
+  ],
+  "evidence_inventory": {
+    "fixture-tool-location-correction-r533.json": {
+      "sha256": "8a0b3f580a08493c8e551104a6fac5c31b38d858f191e28589a50e95af45cd7a",
+      "bytes": 480
+    },
+    "ordinary-node-in-work-r533-result.json": {
+      "sha256": "ce3c0bb943dbbb28aa736702c4bb3dac49690d0a9672753f4977fd0de252dd55",
+      "bytes": 6654
+    },
+    "plan-node-in-work-r533.json": {
+      "sha256": "f16a308dfc61aaf72f8a07885e75b1b85c7841fa55c62614e7a8a8b119f58655",
+      "bytes": 1813
+    },
+    "native-tests-final-r534.json": {
+      "sha256": "a0bda0aaa8dace042c5cc0e99255ef7ec3d16dd00aafef4f84878b204a6d57cb",
+      "bytes": 6541
+    },
+    "source-regression-final-r534.json": {
+      "sha256": "d6b1d04a11e87d202d0324bf68995bce428217d08c457c181cde5f9487056481",
+      "bytes": 864
+    },
+    "source-regression-final-r534.log": {
+      "sha256": "6a14f7461ad45c4535f9dd7f8b29bf79d7e8df17e104382425a001614ce81efa",
+      "bytes": 184
+    },
+    "native-final-ancestor_metadata__tests__.log": {
+      "sha256": "d0540ceebb686096fc5ec848bbd258e8fc04fb36eb4807bf5d514bf4847889d9",
+      "bytes": 4082
+    },
+    "native-final-elevated__runner_client__startup_observation_tests__.log": {
+      "sha256": "bfc80987af4e4b17c65396cd1b7a86463dfbe23d9a74cd824b6b8b6062a666ff",
+      "bytes": 1239
+    },
+    "native-final-legacy_marker_modes_preserve_reopen_lifetime.log": {
+      "sha256": "734f6fd3a060939d29808f9b3e21bdb18f90885b063a4a884fa4260e74e2a7da",
+      "bytes": 213
+    },
+    "native-final-managed_marker_is_read_shared_write_delete_exclusive_until_commit.log": {
+      "sha256": "42c475f06870d8b5621c0a0a2df882e09a7e0a151ef864ce05e2882b27598428",
+      "bytes": 234
+    },
+    "native-final-managed_uncommitted_marker_is_readable_but_never_ready.log": {
+      "sha256": "3ae48cad2f01e55eb8ce4914d2e18922500250b2fcd2eed2eb037f439207b1f0",
+      "bytes": 223
+    }
+  },
+  "raw_evidence_location": "Windows owned release staging/evidence-progress-r534; prior raw evidence-progress-r532 unchanged; not public release assets yet"
+}

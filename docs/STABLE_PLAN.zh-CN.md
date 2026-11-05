@@ -1,6 +1,8 @@
 # CDS 按平台安装、升级与回滚方案
 
-Windows / Linux / macOS 当前使用 v0.6.13，默认公开安装和当前原生机制的各平台实测见[本版索引](../reports/releases/0.6.13/README.md)。正常安装复用清单固定的已发布原生归档，无需编译 Rust。Windows 0.6.13 / P37 已完成 Node 私有祖先目录问题的原生修复、正常安装、原目录升级和冷启动验证，公开下载状态见[本版索引](../reports/releases/0.6.13/README.md)。旧入口、home 和任务保持；CADSG / Codex App 单独验收。
+Windows 的 v0.6.14 使用 P39，Linux 与 macOS 继续固定 v0.6.13。选择平台 tag 时同时核对发行页、该平台的原生清单和[对应资格记录](../reports/releases/0.6.14/README.md)。历史跨平台结果见 [v0.6.13 索引](../reports/releases/0.6.13/README.md)。Windows 的受管用户如果需要升级既有 home，先按[原生维护指南](windows-managed-maintenance.md)确认目标账号和目录，再用该版原生工具执行一次维护。保留原安装、会话与回滚入口。
+
+P39 的变化集中在 Windows 沙箱的目录元数据与权限维护。它复用原生工具、沙箱、会话及子智能体机制。Unix 原生组件、DeepSeek 模型路由和协议行为沿用各自已发布的固定组合。CADSG 的桌面 App 有独立安装和验收记录。
 
 ## 原生机制与模型的分工
 
@@ -91,3 +93,5 @@ Linux/WSL 超时保留原时间界限，先看实际导入/函数/等待位置�
 ## 0.6.10 公开交付回读
 
 Linux 0.6.10 已正式发布。公开资产下载及默认 manifest 的正常隔离安装已通过；固定源码为 `6d6ccd32c92d06fc52ecd72712140f24496c30a2`，安装 CID 为 `2752f58dbefb9114c9a8`。参见[发布回执](../reports/releases/0.6.10/publication-receipt.json)及[发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。Windows/macOS/CADSG 的后续验收保持独立。
+
+Windows 上的异步 Python 工程可能需要本机回环。受管配置、实测的允许与拒绝结果见 [Windows Python 回环说明](windows-python-loopback.zh-CN.md)。

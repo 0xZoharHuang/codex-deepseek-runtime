@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "qualification": "Windows local runtime scope; exact candidate installation and ordinary warm/cold verification",
+  "version": "0.6.14",
+  "target": "x86_64-pc-windows-msvc",
+  "native_recipe_id": "03a66332e89736c56894aae267cc5cb0541636251792b81d517ce4593ef0b81a",
+  "source_inventory_sha256": "a855479c46133641ffe15b250e0e30f35411433f81754f174ba4182bbed27d37",
+  "source_files": 9384,
+  "installed_candidate_source_id": "b78fbc4332161ca41d7f",
+  "git_stage_and_archive_inputs_equal": true,
+  "native_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+  "native_archive_bytes": 204359096,
+  "native_manifest_sha256": "d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+  "binary_sha256": {
+    "codex-http-transport": "85864768aaaa4956006e26790ea0752424c05915097c20bb584edeed6bd1145d",
+    "codex-windows-sandbox-service": "bd59fb8db7089bbe24c037c7870c2c06451d5eb1681641a49e4d5df447cbe853",
+    "codex": "5359e8d42b787d3e21f7ca77193094f6cf112f0c6a15ffc81cd023efcb05c63e",
+    "codex-windows-sandbox-setup": "d206cdad5048eae2ea7bb59a0d196c4bab7d1d62cd69bf3289b3b65ea3c3f772",
+    "codex-windows-managed-deny-probe": "ee5a54d36119c2e54f9aeb0539952be958c8be86d2f11f467bdc055eb620f95f",
+    "codex-command-runner": "309ef4b7755dc723721299c7ca7bc4060293f93ce8e308aa5c854933af3c8fde"
+  },
+  "normal_install": {
+    "runtime_modules": 32,
+    "native_eof": true,
+    "test_model_requests": 0
+  },
+  "managed_windows": {
+    "native_tests_passed": 48,
+    "native_tests_failed": 0,
+    "native_tests_ignored": 1,
+    "ignored_condition": "separate externally supplied native home/SID case",
+    "real_interactive_elevated_maintenance_exit": 0,
+    "normal_setup_image_verified": true,
+    "ordinary_warm_and_cold_policy_sequences": [
+      [
+        "readonly_first",
+        "workspace_online",
+        "readonly_after_write"
+      ],
+      [
+        "readonly_first",
+        "workspace_online",
+        "readonly_after_write"
+      ]
+    ],
+    "actual_host_write_dac_denied": true,
+    "parent_listing_writing_private_read_denied": true,
+    "different_cold_native_owner_and_eof_verified": true,
+    "outside_tools_rejection_includes_windows_cause": true
+  },
+  "historical_failures": {
+    "P38_elevated_maintenance_error": 5,
+    "P39_initial_child_assertion": "kept; original P38 control distinguished legacy flags and actual auto-inherited child behavior",
+    "normal_build_lifecycle_passed": false,
+    "compiler_observations": {
+      "return_codes": [
+        0,
+        0
+      ],
+      "telemetry_children_cleaned": 1,
+      "historical_identity_observations_uncertain": 18,
+      "expired_parent_edge_samples": 1,
+      "unidentified_live_processes_at_exit": 0,
+      "remaining_owned_at_exit": 0
+    }
+  },
+  "records_sha256": {
+    "producer": "251b5887705b55566e99dab5e79d142c9f77a33674be239aef18f5a362fa35ab",
+    "package": "dac09a62bff91d7d54995995a71b6766928c895bec9ebf1118161372b14b8f04",
+    "normal_install": "bc4ef218e394da4ba0b18e92f4d4ad624cf43544df434df8b4a99a20c1e34fab",
+    "normal_maintenance": "04e81c3dbe86658cc5fd7245e02f0f7811b55f2004190ebcd7a95eb1e8efc59d",
+    "canonical_source": "2029534fb677983488d21066402ffc88b8e05426c26f15a4d274b50cc52e4caf",
+    "warm": "987bb0675f7a62642482ae25109988e2651a9473d7846ca6200641b413473a1d",
+    "warm_worker": "454f8a7452fa8b8a911dd6b6e1e0198548643c45f4e18143f554702be6a264d3",
+    "cold": "ba0e33c3bebcd8c2709d5f13a2deaacf456d38915c4d2e1263d5baef13672336",
+    "cold_worker": "fb799cbfbd5cb845d5cb9d9d783e884ba6c6b26048d7bfdaae5855cc41156a17"
+  },
+  "public_default_url_readback": "separate post-publication receipt",
+  "unix_qualified_tag": "v0.6.13"
+}

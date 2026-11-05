@@ -1,0 +1,556 @@
+diff --git a/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs b/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs
+--- a/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs
++++ b/codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs
+@@ -136,6 +136,23 @@
+     .with_context(|| format!("open directory {}", path.display()))
+ }
+ 
++/// Opens an existing target only. The caller must hold and compare a physical
++/// no-reparse pin before using this handle for a private managed ACL update.
++pub(crate) fn reopen_managed_acl(path: &Path) -> Result<OwnedHandle> {
++    use windows_sys::Win32::Storage::FileSystem::{FILE_SHARE_DELETE, READ_CONTROL, WRITE_DAC};
++    const FILE_OPEN_FOR_BACKUP_INTENT: u32 = 0x0000_4000;
++    let mut nt_path = local_directory_nt_path(path)?;
++    open_no_reparse(
++        ptr::null_mut(),
++        &mut nt_path,
++        READ_CONTROL | WRITE_DAC,
++        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
++        FILE_OPEN,
++        FILE_DIRECTORY_FILE | FILE_OPEN_FOR_BACKUP_INTENT,
++    )
++    .context("reopen existing managed sandbox bin")
++}
++
+ fn local_directory_nt_path(path: &Path) -> Result<Vec<u16>> {
+     validate_local_directory_path(path)?;
+     let source_offset = if matches!(
+diff --git a/codex-rs/windows-sandbox-rs/src/acl_lock.rs b/codex-rs/windows-sandbox-rs/src/acl_lock.rs
+--- a/codex-rs/windows-sandbox-rs/src/acl_lock.rs
++++ b/codex-rs/windows-sandbox-rs/src/acl_lock.rs
+@@ -58,6 +58,9 @@
+                 .collect::<String>()
+         )
+     }
++}
++pub(crate) fn same_file_identity(left: HANDLE, right: HANDLE) -> Result<bool> {
++    Ok(Identity::read(left)? == Identity::read(right)?)
+ }
+ fn physical_path(handle: HANDLE) -> Result<PathBuf> {
+     let mut buffer = vec![0u16; 32768];
+diff --git a/codex-rs/windows-sandbox-rs/src/token.rs b/codex-rs/windows-sandbox-rs/src/token.rs
+--- a/codex-rs/windows-sandbox-rs/src/token.rs
++++ b/codex-rs/windows-sandbox-rs/src/token.rs
+@@ -396,7 +396,7 @@
+ 
+ pub(crate) use crate::token_user::get_user_sid_bytes;
+ 
+-unsafe fn enable_single_privilege(h_token: HANDLE, name: &str) -> Result<()> {
++pub(crate) unsafe fn enable_single_privilege(h_token: HANDLE, name: &str) -> Result<()> {
+     let mut luid = LUID {
+         LowPart: 0,
+         HighPart: 0,
+diff --git a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+@@ -3,6 +3,7 @@
+ //! Command-line account provisioning cannot enter the service's admitted Core path.
+ 
+ mod firewall;
++mod managed_bin_acl;
+ mod service;
+ pub use service::provision_sandbox_in_process;
+ mod read_acl_mutex;
+@@ -155,9 +156,10 @@
+ }
+ 
+ #[derive(Clone, Copy)]
+-enum DaclInheritance {
++enum DaclInheritance<'a> {
+     Inherited,
+     Protected,
++    ManagedBin(&'a Payload),
+ }
+ 
+ fn log_line(log: &mut dyn Write, msg: &str) -> Result<()> {
+@@ -344,12 +346,13 @@
+     sandbox_group_access_mode: i32,
+     sandbox_group_mask: u32,
+     real_user_mask: u32,
+-    dacl_inheritance: DaclInheritance,
++    dacl_inheritance: DaclInheritance<'_>,
+     setup_mode: SetupMode,
+ ) -> Result<()> {
+     // ProvisionOnly accepts another user's CODEX_HOME; keep its ACL mutation
+     // bound to a no-reparse handle without changing interactive setup behavior.
+     use std::os::windows::fs::OpenOptionsExt;
++    let mut denied_open = None;
+     let directory: std::os::windows::io::OwnedHandle = match setup_mode {
+         SetupMode::Full | SetupMode::InteractiveProvision | SetupMode::ReadAclsOnly => {
+             std::fs::create_dir_all(dir)?;
+@@ -360,12 +363,40 @@
+                 .open(dir)?
+                 .into()
+         }
+-        SetupMode::ProvisionOnly => open_directory_no_reparse(
++        SetupMode::ProvisionOnly => match open_directory_no_reparse(
+             dir,
+             READ_CONTROL | WRITE_DAC,
+             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+             DirectoryOpenDisposition::OpenOrCreate,
+-        )?,
++        ) {
++            Ok(directory) => directory,
++            Err(error)
++                if matches!(dacl_inheritance, DaclInheritance::ManagedBin(_))
++                    && managed_bin_acl::access_denied(&error) =>
++            {
++                let pin = (|| -> Result<_> {
++                    let DaclInheritance::ManagedBin(payload) = dacl_inheritance else {
++                        unreachable!()
++                    };
++                    let namespace = validate_payload_namespace(payload)?;
++                    namespace.validate_existing_state()?;
++                    anyhow::ensure!(
++                        dir == sandbox_bin_dir(&namespace.home),
++                        "unexpected managed ACL target"
++                    );
++                    anyhow::ensure!(
++                        resolve_sandbox_users_group_sid(&namespace.key.group())?
++                            == sandbox_group_sid,
++                        "managed bin group no longer belongs to this namespace"
++                    );
++                    managed_bin_acl::pin_existing(dir)
++                })()
++                .with_context(|| format!("initial managed bin ACL open failed: {error:#}"))?;
++                denied_open = Some(error);
++                pin
++            }
++            Err(error) => return Err(error),
++        },
+     };
+     // Read/write and coordination all refer to this same pinned object.
+     let _acl_scope =
+@@ -432,23 +463,34 @@
+         }
+         let security_information = match dacl_inheritance {
+             DaclInheritance::Inherited => DACL_SECURITY_INFORMATION,
+-            DaclInheritance::Protected => {
++            DaclInheritance::Protected | DaclInheritance::ManagedBin(_) => {
+                 DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION
+             }
+         };
+-        let res = SetSecurityInfo(
+-            directory.as_raw_handle() as _,
+-            SE_FILE_OBJECT,
+-            security_information,
+-            std::ptr::null_mut(),
+-            std::ptr::null_mut(),
+-            new_dacl,
+-            std::ptr::null_mut(),
+-        );
+-        let api = "SetSecurityInfo";
+-        if res != 0 {
+-            return Err(anyhow::anyhow!("{api} sandbox dir failed: {res}"));
+-        }
++        let applied = (|| -> Result<()> {
++            let reopened;
++            let writable = if let Some(initial) = denied_open {
++                reopened = managed_bin_acl::reopen_matching_bin(dir, &directory, new_dacl)
++                    .with_context(|| format!("initial managed bin ACL open failed: {initial:#}"))?;
++                &reopened
++            } else {
++                &directory
++            };
++            let res = SetSecurityInfo(
++                writable.as_raw_handle() as _,
++                SE_FILE_OBJECT,
++                security_information,
++                std::ptr::null_mut(),
++                std::ptr::null_mut(),
++                new_dacl,
++                std::ptr::null_mut(),
++            );
++            let api = "SetSecurityInfo";
++            if res != 0 {
++                return Err(anyhow::anyhow!("{api} sandbox dir failed: {res}"));
++            }
++            Ok(())
++        })();
+         if !new_dacl.is_null() {
+             LocalFree(new_dacl as HLOCAL);
+         }
+@@ -457,6 +499,7 @@
+                 LocalFree(sid as HLOCAL);
+             }
+         }
++        applied?;
+     }
+     Ok(())
+ }
+@@ -867,7 +910,11 @@
+         GRANT_ACCESS,
+         FILE_GENERIC_READ | FILE_GENERIC_EXECUTE,
+         FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE | DELETE | WRITE_DAC,
+-        DaclInheritance::Protected,
++        if matches!(payload.mode, SetupMode::ProvisionOnly) {
++            DaclInheritance::ManagedBin(payload)
++        } else {
++            DaclInheritance::Protected
++        },
+         payload.mode,
+     )
+     .map_err(|err| {
+diff --git a/codex-rs/windows-sandbox-rs/src/setup_provisioning/managed_bin_acl.rs b/codex-rs/windows-sandbox-rs/src/setup_provisioning/managed_bin_acl.rs
+new file mode 100644
+--- /dev/null
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning/managed_bin_acl.rs
+@@ -0,0 +1,348 @@
++//! Reopen a SYSTEM-owned protected bin installed by this same namespace.
++//! The normal open remains the first choice. This path never creates a target.
++use crate::file_security::get_raw_file_security;
++use crate::no_reparse_dir::{DirectoryOpenDisposition, open_directory_no_reparse};
++use anyhow::{Context, Result, ensure};
++use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
++use std::path::Path;
++use std::ptr;
++use windows_sys::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_NO_TOKEN, LocalFree};
++use windows_sys::Win32::Security::{
++    ACE_HEADER, ACL, DACL_SECURITY_INFORMATION, DuplicateTokenEx, GetAce,
++    GetSecurityDescriptorControl, IsValidAcl, IsValidSid, IsWellKnownSid,
++    OWNER_SECURITY_INFORMATION, SE_DACL_PROTECTED, SecurityImpersonation, TOKEN_ADJUST_PRIVILEGES,
++    TOKEN_DUPLICATE, TOKEN_IMPERSONATE, TOKEN_QUERY, TokenImpersonation, WinLocalSystemSid,
++};
++use windows_sys::Win32::Storage::FileSystem as fs;
++use windows_sys::Win32::System::Threading::{
++    GetCurrentProcess, GetCurrentThread, OpenProcessToken, OpenThreadToken, SetThreadToken,
++};
++
++pub(super) fn access_denied(error: &anyhow::Error) -> bool {
++    error
++        .downcast_ref::<std::io::Error>()
++        .and_then(|e| e.raw_os_error())
++        == Some(ERROR_ACCESS_DENIED as i32)
++}
++
++pub(super) fn pin_existing(path: &Path) -> Result<OwnedHandle> {
++    open_directory_no_reparse(
++        path,
++        fs::READ_CONTROL | fs::FILE_READ_ATTRIBUTES | fs::FILE_TRAVERSE,
++        fs::FILE_SHARE_READ | fs::FILE_SHARE_WRITE,
++        DirectoryOpenDisposition::OpenExisting,
++    )
++}
++
++// Compare each ACE with the ACL generated for this payload, including type,
++// SID, mask, inheritance and order. The ACL's reserved storage is irrelevant.
++unsafe fn exact_bin_aces(actual: *mut ACL, expected: *mut ACL) -> bool {
++    if actual.is_null()
++        || expected.is_null()
++        || IsValidAcl(actual) == 0
++        || IsValidAcl(expected) == 0
++        || (*actual).AclRevision != (*expected).AclRevision
++        || (*actual).AceCount != 4
++        || (*expected).AceCount != 4
++    {
++        return false;
++    }
++    (0..4).all(|index| {
++        let mut left = ptr::null_mut();
++        let mut right = ptr::null_mut();
++        if GetAce(actual, index, &mut left) == 0 || GetAce(expected, index, &mut right) == 0 {
++            return false;
++        }
++        let left_header = &*left.cast::<ACE_HEADER>();
++        let right_header = &*right.cast::<ACE_HEADER>();
++        left_header.AceType == 0
++            && right_header.AceType == 0
++            && left_header.AceSize == right_header.AceSize
++            && std::slice::from_raw_parts(left.cast::<u8>(), left_header.AceSize as usize)
++                == std::slice::from_raw_parts(right.cast::<u8>(), right_header.AceSize as usize)
++    })
++}
++
++unsafe fn require_native_bin(handle: &OwnedHandle, expected: *mut ACL) -> Result<()> {
++    let (mut owner, mut acl, mut sd) = (ptr::null_mut(), ptr::null_mut(), ptr::null_mut());
++    let code = get_raw_file_security(
++        handle.as_raw_handle() as _,
++        1,
++        OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
++        &mut owner,
++        ptr::null_mut(),
++        &mut acl,
++        ptr::null_mut(),
++        &mut sd,
++    );
++    let checked = (|| -> Result<()> {
++        ensure!(code == 0, "read managed sandbox bin owner and DACL: {code}");
++        ensure!(
++            !owner.is_null()
++                && IsValidSid(owner) != 0
++                && IsWellKnownSid(owner, WinLocalSystemSid) != 0,
++            "managed ACL retry requires the SYSTEM-owned namespace bin"
++        );
++        let (mut control, mut revision) = (0, 0);
++        ensure!(
++            GetSecurityDescriptorControl(sd, &mut control, &mut revision) != 0
++                && control & SE_DACL_PROTECTED != 0,
++            "managed ACL retry requires a protected namespace bin"
++        );
++        ensure!(
++            exact_bin_aces(acl, expected),
++            "managed ACL retry refuses a different or denied bin layout"
++        );
++        Ok(())
++    })();
++    if !sd.is_null() {
++        LocalFree(sd);
++    }
++    checked
++}
++
++// Duplicate the effective caller. A pre-existing impersonation that cannot be
++// opened is an error, never a reason to substitute the more privileged process.
++fn duplicate_effective_token() -> Result<OwnedHandle> {
++    let mut raw = ptr::null_mut();
++    unsafe {
++        if OpenThreadToken(
++            GetCurrentThread(),
++            TOKEN_DUPLICATE | TOKEN_QUERY,
++            1,
++            &mut raw,
++        ) == 0
++        {
++            let e = std::io::Error::last_os_error();
++            if e.raw_os_error() != Some(ERROR_NO_TOKEN as i32) {
++                return Err(e).context("open effective thread token");
++            }
++            if OpenProcessToken(GetCurrentProcess(), TOKEN_DUPLICATE | TOKEN_QUERY, &mut raw) == 0 {
++                return Err(std::io::Error::last_os_error())
++                    .context("open effective process token");
++            }
++        }
++        let source = OwnedHandle::from_raw_handle(raw);
++        if DuplicateTokenEx(
++            source.as_raw_handle() as _,
++            TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES | TOKEN_IMPERSONATE,
++            ptr::null(),
++            SecurityImpersonation,
++            TokenImpersonation,
++            &mut raw,
++        ) == 0
++        {
++            return Err(std::io::Error::last_os_error())
++                .context("duplicate effective token for managed bin");
++        }
++        Ok(OwnedHandle::from_raw_handle(raw))
++    }
++}
++
++fn caller_copy() -> Result<OwnedHandle> {
++    let copy = duplicate_effective_token()?;
++    unsafe {
++        crate::token::enable_single_privilege(copy.as_raw_handle() as _, "SeRestorePrivilege")
++    }
++    .context("existing caller token lacks managed bin restore privilege")?;
++    Ok(copy)
++}
++
++fn scoped_reopen(path: &Path) -> Result<OwnedHandle> {
++    let copy = caller_copy()?;
++    std::thread::scope(|scope| {
++        // A new joined thread cannot alter the caller thread's token, even on
++        // panic or failure to revert. No other work runs on this thread.
++        let opener = std::thread::Builder::new()
++            .spawn_scoped(scope, move || -> Result<OwnedHandle> {
++                unsafe {
++                    if SetThreadToken(ptr::null(), copy.as_raw_handle() as _) == 0 {
++                        return Err(std::io::Error::last_os_error())
++                            .context("set managed bin opener token");
++                    }
++                }
++                let opened = crate::no_reparse_dir::reopen_managed_acl(path);
++                if unsafe { SetThreadToken(ptr::null(), ptr::null_mut()) } == 0 {
++                    let revert = std::io::Error::last_os_error();
++                    return match opened {
++                        Err(error) => {
++                            Err(error).context(format!("clear managed bin opener token: {revert}"))
++                        }
++                        Ok(_) => Err(revert).context("clear managed bin opener token"),
++                    };
++                }
++                opened
++            })
++            .context("start managed bin opener")?;
++        opener
++            .join()
++            .map_err(|_| anyhow::anyhow!("managed bin opener panicked"))?
++    })
++}
++
++// The caller keeps its original no-delete pin and native ACL coordination lock
++// throughout both checks, the privileged open, and the original SetSecurityInfo.
++pub(super) unsafe fn reopen_matching_bin(
++    path: &Path,
++    pin: &OwnedHandle,
++    expected: *mut ACL,
++) -> Result<OwnedHandle> {
++    require_native_bin(pin, expected)?;
++    let writable = scoped_reopen(path)?;
++    ensure!(
++        crate::acl_lock::same_file_identity(
++            pin.as_raw_handle() as _,
++            writable.as_raw_handle() as _
++        )?,
++        "managed bin identity changed during ACL reopen"
++    );
++    require_native_bin(&writable, expected)?;
++    Ok(writable)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use windows_sys::Win32::Security::{
++        ACL_REVISION, AddAccessAllowedAceEx, AddAccessDeniedAceEx, InitializeAcl,
++    };
++
++    fn fixture_acl(
++        deny_index: Option<usize>,
++        extra: bool,
++        flags: u32,
++        mask: u32,
++    ) -> Result<Vec<u32>> {
++        let mut buf = vec![0u32; 256];
++        let acl = buf.as_mut_ptr().cast::<ACL>();
++        ensure!(
++            unsafe { InitializeAcl(acl, (buf.len() * 4) as u32, ACL_REVISION) } != 0,
++            "fixture ACL"
++        );
++        for (i, text) in [
++            "S-1-5-18",
++            "S-1-5-32-544",
++            "S-1-5-21-1-2-3-2100",
++            "S-1-5-21-1-2-3-2101",
++            "S-1-1-0",
++        ]
++        .iter()
++        .enumerate()
++        .take(if extra { 5 } else { 4 })
++        {
++            let sid = crate::token::LocalSid::from_string(text)?;
++            let ok = if deny_index == Some(i) {
++                unsafe { AddAccessDeniedAceEx(acl, ACL_REVISION, flags, mask, sid.as_ptr()) }
++            } else {
++                unsafe { AddAccessAllowedAceEx(acl, ACL_REVISION, flags, mask, sid.as_ptr()) }
++            };
++            ensure!(ok != 0, "fixture ACE");
++        }
++        Ok(buf)
++    }
++
++    #[test]
++    fn layout_retry_refuses_changed_denied_or_extra_aces() -> Result<()> {
++        let mut expected = fixture_acl(None, false, 3, fs::FILE_GENERIC_READ)?;
++        let p = expected.as_mut_ptr().cast::<ACL>();
++        for (mut candidate, matches) in [
++            (fixture_acl(None, false, 3, fs::FILE_GENERIC_READ)?, true),
++            (
++                fixture_acl(Some(1), false, 3, fs::FILE_GENERIC_READ)?,
++                false,
++            ),
++            (fixture_acl(None, true, 3, fs::FILE_GENERIC_READ)?, false),
++            (fixture_acl(None, false, 1, fs::FILE_GENERIC_READ)?, false),
++            (fixture_acl(None, false, 3, fs::FILE_GENERIC_WRITE)?, false),
++        ] {
++            assert_eq!(
++                unsafe { exact_bin_aces(candidate.as_mut_ptr().cast(), p) },
++                matches
++            );
++        }
++        Ok(())
++    }
++
++    #[test]
++    fn missing_or_redirected_managed_bin_cannot_be_retry_target() -> Result<()> {
++        let temp = tempfile::tempdir()?;
++        let absent = temp.path().join(".sandbox-bin");
++        assert!(pin_existing(&absent).is_err());
++        assert!(!absent.exists());
++        let target = temp.path().join("real");
++        std::fs::create_dir(&target)?;
++        let alias = temp.path().join("alias");
++        let status = std::process::Command::new("cmd")
++            .args(["/C", "mklink", "/J"])
++            .arg(&alias)
++            .arg(&target)
++            .output()?;
++        ensure!(status.status.success(), "owned junction fixture failed");
++        let denied = pin_existing(&alias);
++        std::fs::remove_dir(&alias)?;
++        assert!(denied.is_err());
++        assert!(target.is_dir());
++        Ok(())
++    }
++
++    #[test]
++    fn restricted_thread_cannot_borrow_process_restore_privilege() -> Result<()> {
++        use windows_sys::Win32::Security::{
++            AdjustTokenPrivileges, LookupPrivilegeValueW, SE_PRIVILEGE_REMOVED, SE_RESTORE_NAME,
++            TOKEN_PRIVILEGES,
++        };
++        std::thread::spawn(|| -> Result<()> {
++            let restricted = duplicate_effective_token()?;
++            unsafe {
++                let mut state = TOKEN_PRIVILEGES::default();
++                state.PrivilegeCount = 1;
++                ensure!(
++                    LookupPrivilegeValueW(
++                        ptr::null(),
++                        SE_RESTORE_NAME,
++                        &mut state.Privileges[0].Luid
++                    ) != 0,
++                    "resolve fixture restore privilege"
++                );
++                state.Privileges[0].Attributes = SE_PRIVILEGE_REMOVED;
++                ensure!(
++                    AdjustTokenPrivileges(
++                        restricted.as_raw_handle() as _,
++                        0,
++                        &state,
++                        0,
++                        ptr::null_mut(),
++                        ptr::null_mut()
++                    ) != 0,
++                    "remove any restore privilege from test-only copy"
++                );
++                ensure!(
++                    SetThreadToken(ptr::null(), restricted.as_raw_handle() as _) != 0,
++                    "set restricted test token"
++                );
++                let result = caller_copy();
++                ensure!(
++                    SetThreadToken(ptr::null(), ptr::null_mut()) != 0,
++                    "clear restricted test token"
++                );
++                assert!(
++                    result.is_err(),
++                    "the effective restricted token must not borrow the process token"
++                );
++            }
++            Ok(())
++        })
++        .join()
++        .expect("restricted token test worker")
++    }
++
++    #[test]
++    fn retry_classifier_accepts_only_real_win32_access_denied() {
++        let denied =
++            anyhow::Error::new(std::io::Error::from_raw_os_error(5)).context("NtCreateFile");
++        let sharing = anyhow::Error::new(std::io::Error::from_raw_os_error(32));
++        assert!(access_denied(&denied));
++        assert!(!access_denied(&sharing));
++        assert!(!access_denied(&anyhow::anyhow!("Access denied")));
++    }
++}

@@ -1,0 +1,94 @@
+{
+  "scope": "Independent impact of Windows P39 on previously measured long-image behavior. This identifies source equality only for inherited paths; new normal-package acceptance is separate.",
+  "upstream": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+  "native_baseline": {
+    "version": "P36",
+    "recipe_id": "514fdfdc2231046dbe124d47ffb32b4f172194ff462d14b62be32e1c06c54e79",
+    "public_runtime_package_sha256": "f8b68f137d56ea4456442dfaf727d7f09d7994946ffaf80096753991fdd8bd32",
+    "source_files": 9383,
+    "source_inventory_sha256": "d16358e78ec5bcaebfdff46c408e28438164923da90a299501cc0ce184e9a874"
+  },
+  "candidate": {
+    "version": "P39",
+    "recipe_id": "03a66332e89736c56894aae267cc5cb0541636251792b81d517ce4593ef0b81a",
+    "source_files": 9384,
+    "source_inventory_sha256": "a855479c46133641ffe15b250e0e30f35411433f81754f174ba4182bbed27d37"
+  },
+  "native_source_changes": [
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/acl_lock.rs",
+      "before_sha256": "25241bf95dd7ecfea708c0de37102db0c9fcc63041102ffac2d06fbc2b999275",
+      "after_sha256": "1cf40fa61a3d8ea4080021a8c213fc8328fbb9e3036fbbb9c97b8446c3cca973"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs",
+      "before_sha256": "65813376be9f034714bde6806fc1b910ad731824ee094e434bc97a71180b1d6b",
+      "after_sha256": "76b15f22b4f5b0e7c5991daff94cab32b0a9d03d648da228be42112700f2b22d"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs",
+      "before_sha256": "b45410cb42f4a12bfbf8288c84a699f31ee247d0762a6c44e1d51f4fb973cf78",
+      "after_sha256": "b77e5e58036452f589a5d4fa0f8180ffaa60ef6646b0d26baf66e1a1b9922120"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/no_reparse_dir.rs",
+      "before_sha256": "fb4058281eff1abd56c875c894647d47e34b0be891a0bb3f10e1592401b09713",
+      "after_sha256": "4bf6e1df3118a75ccfd6fc50f8804236b75f48e8dc94c06b3971c66ea993fce4"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning.rs",
+      "before_sha256": "41db70097e3e9158738603f8cf82787dcf2006b1f1b2ea1306d00b34684b27b9",
+      "after_sha256": "8ccedc20a6d92a7c03b056a934e70ad74333fc9ca4fa89aaf5ed60d891a5c1cc"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/managed_bin_acl.rs",
+      "before_sha256": null,
+      "after_sha256": "1fed4df7142140dd36d029af903ea67f23352af1363ac250c8966f18a1139fce"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users.rs",
+      "before_sha256": "3fbf218a28b6f9ace8db4971f0a9f243c6f396849613e82056eccfc7f661191c",
+      "after_sha256": "d586e946c1a5caea170bc7a6e7130c5ca5c53addf02682254519180eaf28e57a"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users_tests.rs",
+      "before_sha256": "2d239824ddd3f0451a21a9af1c6911b51ace593763d8a9c11c55b14d9340ca43",
+      "after_sha256": "c647f67929cf7331b4b34aefbdba61124c057ec36ceea310a22a3082927bc73e"
+    },
+    {
+      "path": "codex-rs/windows-sandbox-rs/src/token.rs",
+      "before_sha256": "3e93fcc70cfe1707a4f21c1578dd955b0efd66b5456f30744f8980ec2718cc31",
+      "after_sha256": "ebf707452ae3cf9160a5d667e8dcfc6749bf516177b931d4676421e2a36c1fb3"
+    }
+  ],
+  "unchanged_native_paths": 9375,
+  "adapter_delta_from_public_v0_6_13": [
+    "src/codex_deepseek/__init__.py"
+  ],
+  "adapter_business_modules_byte_identical": 31,
+  "historical_linux_real96": {
+    "source_report_sha256": "bb9ccf1e4b026e12837bc8e16a0419b39517439873a2f167b4c6e82e1f69f52f",
+    "strict_records": true,
+    "workspace_tests": 912,
+    "heldout_tests": 908,
+    "natural_compactions": 6,
+    "cold_reopens": [
+      4,
+      8
+    ],
+    "billed_provider_sample": "Morph"
+  },
+  "historical_windows_real96": {
+    "source_report_sha256": "a057a0d72a56c2bbfd347e6ad9d23be56ed789d55f8b5e5da9cc549e21d1e0ac",
+    "rows": 96,
+    "large_completions_same_runtime": 6,
+    "natural_compactions": 4,
+    "cold_reopens": [
+      4,
+      8
+    ],
+    "business_status": "FAIL_OR_INCOMPLETE_PRESERVED",
+    "workspace_failed_tests": 1
+  },
+  "not_reexecuted_here": "The historical long tasks are bound to their original platforms. New Windows permission and install gates must use actual P39. CADSG requires its own actual desktop history."
+}

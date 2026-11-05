@@ -22,7 +22,7 @@ def recipe_prefix_through(recipe, filename):
 
 def qualified_recipe_before_capacity_replay(recipe):
     """Keep historical public recipe pins independent of the new shared overlay."""
-    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch','windows-interactive-runner-bootstrap-0164.patch','windows-ancestor-metadata-synchronize-0164.patch'}]}
+    recipe={**recipe,'overlays':[row for row in recipe['overlays'] if row['file'] not in {'guardian-provider-transport-0164.patch','migration-checksum-eol-0164.patch','restored-call-capacity-0164.patch','capacity-cancel-owned-commit-0164.patch','windows-host-boundaries-0164.patch','capacity-historical-typed-projection-0164.patch','windows-service-station-bootstrap-0164.patch','capacity-historical-text-projection-0164.patch','capacity-irreducible-pair-fixture-0164.patch','capacity-token-budget-old-gap-continuation-0164.patch','windows-interactive-runner-bootstrap-0164.patch','windows-ancestor-metadata-synchronize-0164.patch','windows-managed-metadata-provision-0164.patch','windows-managed-admin-maintenance-0164.patch'}]}
     index=overlay_index(recipe,'payload-request-capacity-replay.patch')
     return {**recipe,'overlays':recipe['overlays'][:index]+recipe['overlays'][index+1:]}
 
@@ -809,7 +809,7 @@ def test_p37_metadata_handle_patch_preserves_exact_previous_targets():
     raw = (ROOT/'native/runtime-overlays-pre-metadata-synchronize-p36.json').read_bytes()
     assert hashlib.sha256(raw).hexdigest() == 'ae28ba09b8b38fe8891d7499cf44c16ced50da6af9161cf88f0ac24772f69113'
     previous = json.loads(raw)
-    current = build.runtime_recipe()
+    current = recipe_prefix_through(build.runtime_recipe(), 'windows-ancestor-metadata-synchronize-0164.patch')
     assert len(previous['overlays']) == 36 and len(current['overlays']) == 37
     assert {**current, 'overlays': current['overlays'][:-1]} == previous
     leaf = current['overlays'][-1]

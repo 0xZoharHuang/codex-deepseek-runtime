@@ -1,0 +1,95 @@
+{
+  "scope": "CDS-owned private workspace outside the runtime home on Windows. Separate consumer integration must be verified by that host.",
+  "release": "0.6.14",
+  "native_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+  "source_id": "b78fbc4332161ca41d7f",
+  "result": "EXTERNAL_WORKSPACE_METADATA_AND_SCOPE_PASSED",
+  "controller_receipt_sha256": "a32199b562848dd86899f2208b27210b43e78ce7f520b08d04500d85c9c919c2",
+  "ordinary_receipt_sha256": "7f00177ce384ecd204ebe9c5a3f8e76089d6a98ca555237736f25c73e452b50a",
+  "node_sha256": "d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5",
+  "host_changes": {
+    "directories": 2,
+    "mask_before": "0x80",
+    "mask_after": "0x100080",
+    "ace_inheritance_flags": 0,
+    "owner_file_identity_other_aces_and_child_descriptors_verified_identical_at_update": true
+  },
+  "observations": [
+    {
+      "phase": "before-ro-inline",
+      "sandbox": "readOnly",
+      "node_returned_observations": true,
+      "lstat_code_on_each_parent": [
+        "EPERM",
+        "EPERM"
+      ]
+    },
+    {
+      "phase": "before-ro-entry",
+      "sandbox": "readOnly",
+      "node_returned_observations": false,
+      "node_module_entry_failed_lstat": true
+    },
+    {
+      "phase": "before-rw-inline",
+      "sandbox": "workspaceWrite",
+      "node_returned_observations": true,
+      "lstat_code_on_each_parent": [
+        "EPERM",
+        "EPERM"
+      ]
+    },
+    {
+      "phase": "before-rw-entry",
+      "sandbox": "workspaceWrite",
+      "node_returned_observations": false,
+      "node_module_entry_failed_lstat": true
+    },
+    {
+      "phase": "after-ro-inline",
+      "sandbox": "readOnly",
+      "node_returned_observations": true,
+      "both_parent_metadata_reads": true,
+      "realpath_succeeded": true,
+      "parent_listing_writing_denied": true,
+      "private_sibling_read_write_listing_denied": true,
+      "workspace_write_succeeded": false
+    },
+    {
+      "phase": "after-ro-entry",
+      "sandbox": "readOnly",
+      "node_returned_observations": true,
+      "both_parent_metadata_reads": true,
+      "realpath_succeeded": true,
+      "parent_listing_writing_denied": true,
+      "private_sibling_read_write_listing_denied": true,
+      "workspace_write_succeeded": false
+    },
+    {
+      "phase": "after-rw-inline",
+      "sandbox": "workspaceWrite",
+      "node_returned_observations": true,
+      "both_parent_metadata_reads": true,
+      "realpath_succeeded": true,
+      "parent_listing_writing_denied": true,
+      "private_sibling_read_write_listing_denied": true,
+      "workspace_write_succeeded": true
+    },
+    {
+      "phase": "after-rw-entry",
+      "sandbox": "workspaceWrite",
+      "node_returned_observations": true,
+      "both_parent_metadata_reads": true,
+      "realpath_succeeded": true,
+      "parent_listing_writing_denied": true,
+      "private_sibling_read_write_listing_denied": true,
+      "workspace_write_succeeded": true
+    }
+  ],
+  "native_eof_exit": 0,
+  "restored_original_test_entry": true,
+  "first_fixture": {
+    "outcome": "A protected executable subdirectory denied process creation before Node ran. The corrected fixture places the unchanged Node executable directly in the native workspace.",
+    "raw_sha256": "d95bf3441844bba59fee24b70614fb7b2f1adf77e8e764608d6a863d449d5a73"
+  }
+}

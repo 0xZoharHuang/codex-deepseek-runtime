@@ -1,0 +1,238 @@
+{
+  "engineering": {
+    "actual_changed_source_files": [
+      "src/jinja2/environment.py",
+      "src/jinja2/filters.py",
+      "src/jinja2/runtime.py"
+    ],
+    "actual_cold_full_suite": {
+      "exit": 0,
+      "passed": 908,
+      "tool_call_id": "exec-4e656873-84e8-4e74-9847-9504e21fdcb9"
+    },
+    "actual_diff_sha256": "bba0167852de089de66d8167fa6d48e4716846a95be31284e282417815634b9f",
+    "actual_parent_full_suite": {
+      "exit": 0,
+      "passed": 908,
+      "tool_call_id": "exec-80fd8e00-ebb7-47ea-823a-e70cc5df5aaf"
+    },
+    "baseline_commit": "a85c60daac4e6d7044164dd55b3a36621572fd71",
+    "controller_changed_business_source": false,
+    "final_report_sha256": "4ebaab923aba46bd397b7b15f179ef2c61af612738496152d87a89b743ca4bf8",
+    "independent_930": {
+      "cases": 930,
+      "errors": 0,
+      "failed": 0,
+      "private": 22,
+      "public": 908,
+      "skipped": 0,
+      "unique_cases": 930
+    },
+    "independent_grader_result_sha256": "7ad6f26fdbcbb589b6709698e8717b1a3d39d686f436d620d4816f4a632b9d7e",
+    "independent_semantic_review_sha256": "3b002a6410371cd2009ba7da5163cdbacbfc3d3ab49dad6bee5e3b010f1bf40a",
+    "inputs": 123,
+    "junit_sha256": "cb2997b92a3700926cfd081ee3a7cd48a93a996e7858bf7b46c538c79dda2afe",
+    "protected_input_files": 120,
+    "separate_pristine_baseline": {
+      "failed": 6,
+      "passed": 902,
+      "raw_sha256": "aa8cbb7e5e3df24c174bbb500cf8446af9e1fb30e98aa858bb1cfa63b044edab",
+      "source_fixture": "Separate original Git tree. It is expressly distinct from the primary offline run, which did not complete."
+    }
+  },
+  "provider": {
+    "actual_provider_reasons_preserved": true,
+    "all_observed_completed_requests_across_original_and_corrected_history": 172,
+    "all_other_receipt_statuses": {
+      "adapter_error": 2,
+      "cancelled": 1
+    },
+    "all_verified_request_traces_have_one_provider_and_fallbacks_false": true,
+    "failure_limit": "These exact truncated streams contained no tool calls. This does not establish a universal absence of duplicate effects.",
+    "joined_completion_counts_by_phase": {
+      "cold_parent": {
+        "completed_requests": 6,
+        "providers": {
+          "morph/fp8": 6
+        },
+        "reasons": {
+          "native_peer_or_continuation_with_hosted_tools": 6
+        }
+      },
+      "original_failed_parent_official": {
+        "completed_requests": 52,
+        "providers": {
+          "deepseek": 52
+        },
+        "reasons": {
+          "official_default": 52
+        }
+      },
+      "qualified_parent": {
+        "completed_requests": 22,
+        "providers": {
+          "deepseek": 17,
+          "morph/fp8": 5
+        },
+        "reasons": {
+          "native_peer_or_continuation_with_hosted_tools": 5,
+          "official_default": 17
+        }
+      },
+      "successful_reviewer": {
+        "completed_requests": 40,
+        "providers": {
+          "morph/fp8": 40
+        },
+        "reasons": {
+          "native_peer_or_continuation_with_hosted_tools": 39,
+          "unattested_native_history_with_hosted_tools": 1
+        }
+      }
+    },
+    "observed_truncated_streams": [
+      {
+        "events": 5905,
+        "http": 200,
+        "later_same_child_turn_same_provider_completed_receipts_at_check": 17,
+        "provider": "morph/fp8",
+        "same_child_window_native_tool_dispatches": 0,
+        "seconds": 302.85,
+        "tool_call_ids_observed_in_failed_stream": 0
+      },
+      {
+        "events": 5674,
+        "http": 200,
+        "later_same_child_turn_same_provider_completed_receipts_at_check": 17,
+        "provider": "morph/fp8",
+        "same_child_window_native_tool_dispatches": 0,
+        "seconds": 303.53,
+        "tool_call_ids_observed_in_failed_stream": 0
+      }
+    ],
+    "official_deepseek_completions_across_all_history": 69,
+    "pinned_model": "deepseek/deepseek-v4.1-flash-1017"
+  },
+  "receipts": {
+    "independent_grader_receipt_sha256": "f598a9040f4270d5834dbcaefce7a172a0b62fbe9d6d77afb9168bd90cc9bef9",
+    "model_continuation_sha256": "3a366a40a84ce3784355cae4efdaae77ce7035707ddd1443a05e0892c63d5802",
+    "normal_package_install_sha256": "bc4ef218e394da4ba0b18e92f4d4ad624cf43544df434df8b4a99a20c1e34fab",
+    "normal_uac_sha256": "04e81c3dbe86658cc5fd7245e02f0f7811b55f2004190ebcd7a95eb1e8efc59d",
+    "ordinary_cold_sha256": "ba0e33c3bebcd8c2709d5f13a2deaacf456d38915c4d2e1263d5baef13672336",
+    "ordinary_warm_sha256": "987bb0675f7a62642482ae25109988e2651a9473d7846ca6200641b413473a1d",
+    "upstream_stream_detail_sha256": "67b2cab455dd4af1ee3741cf7481e56b098a2602730202b80ff1ab6e8c9d9e1f"
+  },
+  "release": {
+    "archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+    "codex": "0.164.0-alpha.7",
+    "installed_entry_sha256": "a8cd9935e19e446bf701ee14726053f1c68a036c48edf693e7a620b7753fad06",
+    "kernel_observed_native_executable_sha256": "5359e8d42b787d3e21f7ca77193094f6cf112f0c6a15ffc81cd023efcb05c63e",
+    "native_manifest_sha256": "d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+    "native_recipe_id": "03a66332e89736c56894aae267cc5cb0541636251792b81d517ce4593ef0b81a",
+    "normal_installed_source_id": "b78fbc4332161ca41d7f",
+    "target": "x86_64-pc-windows-msvc",
+    "version": "0.6.14"
+  },
+  "retained_original_attempts": [
+    "Offline full test stalled in CPython local socketpair; escalated auxiliary probes were excluded from constrained acceptance.",
+    "First cold short contrast RPC expired during native setup refresh; the warmed contrast retains the same time bound.",
+    "Unscoped * is rejected by the native domain policy parser; actual configuration uses scoped exact allow/deny rules.",
+    "An older QA helper demanded a legacy sandbox_mode before any native turn; proper named-profile admission used the existing native transport.",
+    "The original completed warm turn was once rejected by a lexical path test. Physical drive alias, file ID and home ancestry established its real identity.",
+    "A subsequent QA readback of source text was not a successful scope probe. The actual warm tool denial and actual cold positive command are recorded separately."
+  ],
+  "runtime": {
+    "approval": "on-request / auto_review",
+    "conditional_positive_evidence": {
+      "host_reachable_external_direct_connection_denied_with_winerror": 10013,
+      "in_turn_warm_explicit_domain_denial": "Native tool rejected the combined command on explicit example.com deny. Reading its source is not successful execution.",
+      "independent_same_profile_probe_explicit_domain": "HTTP 403 blocked-by-denylist",
+      "independent_same_profile_probe_unlisted_domain": "HTTP 403 blocked-by-allowlist",
+      "native_socketpair_bytes_roundtripped_in_cold_turn": true,
+      "negative_standalone_offline_profile": "Small bounded probe independently reproduced socket.accept with the original offline SID.",
+      "private_oracle_read_denied": true,
+      "workspace_write": true
+    },
+    "corrected_named_profile": "cds_local_only, extends :workspace, managed network enabled with limited local proxy and localhost-only allowlist. This permits host loopback more broadly than one socketpair.",
+    "native_children": {
+      "child_permission_profile": "same managed :workspace profile as parent; a read-only review role, not an OS read-only guarantee",
+      "child_terminal_then_parent_successful_wait_milliseconds": 25,
+      "completed_scoped_reviewer": 1,
+      "explicit_close_tool_claimed": false,
+      "native_spawn_wait_joined": true,
+      "old_offline_reviewer_aborted": true
+    },
+    "normal_cold_resume": {
+      "new_native_pid_and_birth": true,
+      "previous_owners_registered_eof_exit_zero": true,
+      "same_native_image": true,
+      "same_thread_uuid": true
+    },
+    "operator_windows_credential": "existing Windows Credential Manager via the normal installed wrapper; no key environment override",
+    "original_default_profile": "workspace-write, network restricted, direct local binding disabled",
+    "original_observer_actuated_any_termination": false,
+    "original_offline_failure": "CPython 3.11 Windows asyncio awaited its TCP socketpair accept under the offline namespace; the original complete suite did not pass. Two birth-bound frozen Python stacks and loopback LISTEN-only state were captured.",
+    "same_original_thread_used": true,
+    "warm_and_cold_persisted_profile_names": [
+      "cds_local_only",
+      "cds_local_only"
+    ],
+    "web": {
+      "example": {
+        "source_sha256": "6cb879e3f8d58892935513c0f04d3d55e99cc8cd60277af8d09b08336937ac0c",
+        "source_url": "https://jinja.palletsprojects.com/en/stable/api/",
+        "target_sha256": "04df40fc6e077ccfdae3b63352499093f73a384d160dd1bb9ff8ed037fc2c0f5",
+        "target_url": "https://jinja.palletsprojects.com/en/stable/templates/"
+      },
+      "matched_chains": 1,
+      "native_open_find_follow_link": true
+    },
+    "windows_host": "ordinary admin interactive token, native elevated sandbox backend"
+  },
+  "schema": 1,
+  "scope": "Known supervised Jinja multi-file regression. Runtime behavior, provider delivery and engineering correctness have separate evidence. This is not a blind model benchmark.",
+  "status": "FINAL_NORMAL_P39_MODEL_RUNTIME_AND_ENGINEERING_ACCEPTANCE_PASSED_WITH_RETAINED_FAILURES",
+  "reviewed_engineering_aggregate_sha256": "50c5283f24c2823fcbbcf4a0f390ac0f5316e78e7de6299a5a866874ca77efae",
+  "independent_generation_lookups": {
+    "query": "OpenRouter generation statistics; read-only",
+    "receipt_sha256": "f85cbfb305d87c4de2a39a00b2da6e113a90e3c8a9501b36a15e2fc0c00724ea",
+    "samples": [
+      {
+        "role": "managed_parent",
+        "requested_provider": "deepseek",
+        "requested_model": "deepseek/deepseek-v4.1-flash-1017",
+        "response_id_sha256": "bef36517aad1ca40c8bc885fac9d3ab7abd2e97dc7fb9037442d36c9494ccdd8",
+        "native_turn_id_sha256": "b8ae7ebe04c9c1227f3885953914d492dd6bba3c533ae2cd43d1466a386119da",
+        "http": 200,
+        "returned_id_matches": true,
+        "model": "deepseek/deepseek-v4.1-flash-20261017",
+        "provider": "DeepSeek",
+        "finish_reason": null
+      },
+      {
+        "role": "cold_parent",
+        "requested_provider": "morph/fp8",
+        "requested_model": "deepseek/deepseek-v4.1-flash-1017",
+        "response_id_sha256": "b57b9bc4ebe4783031f6a3f8c7df82a5734708a0cb62a6be43365a51c054b155",
+        "native_turn_id_sha256": "c841784859eacf84cdc00fd5cb43b6e9063d926bbfff6422ec1c5c3d374eeae5",
+        "http": 200,
+        "returned_id_matches": true,
+        "model": "deepseek/deepseek-v4.1-flash-20261017",
+        "provider": "Morph",
+        "finish_reason": null
+      },
+      {
+        "role": "direct_reviewer",
+        "requested_provider": "morph/fp8",
+        "requested_model": "deepseek/deepseek-v4.1-flash-1017",
+        "response_id_sha256": "0b348fe0de26f935de5c36c72c9b8f0f74b2bb4153759b7b3e5a536ef805532c",
+        "native_turn_id_sha256": "25a70b68974c4572dff4354b5875ac7c78775e700dbb9435e0665c2f7896a666",
+        "http": 200,
+        "returned_id_matches": true,
+        "model": "deepseek/deepseek-v4.1-flash-20261017",
+        "provider": "Morph",
+        "finish_reason": null
+      }
+    ]
+  }
+}

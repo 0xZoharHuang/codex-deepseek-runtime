@@ -1,0 +1,788 @@
+diff --git a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs
+@@ -893,6 +893,11 @@
+                 ))
+             })?;
+ 
++    // Managed provisioning is the elevated public --user/--codex-home path.
++    // Prepare only this validated namespace's home ancestors here so later
++    // ordinary refresh never needs WRITE_DAC on administrator-owned parents.
++    crate::ancestor_metadata::grant(&validate_payload_namespace(payload)?, &sandbox_group_sid)?;
++
+     lock_sandbox_bin_dir(payload, &sandbox_group_sid)?;
+     lock_persistent_sandbox_dirs(payload, &sandbox_group_sid)?;
+     log_note("setup provisioning binary completed", Some(sbx_dir));
+diff --git a/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs b/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
+--- a/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
++++ b/codex-rs/windows-sandbox-rs/src/ancestor_metadata.rs
+@@ -350,6 +350,7 @@
+         return Ok(true);
+     }
+     let mut allowed = 0_u32;
++    let mut unclassified_metadata_deny = false;
+     for ace in entries {
+         if ace[1] & INHERIT_ONLY_ACE as u8 != 0 || ace.len() < 8 {
+             continue;
+@@ -368,6 +369,10 @@
+                         "explicit ancestor metadata denial must not be weakened"
+                     );
+                     allowed |= rights;
++                } else if ace[0] == 1 {
++                    // The future token can also contain logon or other local groups.
++                    // Never insert an explicit allow ahead of their inherited denial.
++                    unclassified_metadata_deny = true;
+                 }
+             }
+             // Conditional/object denials need a full token evaluation; do not override them.
+@@ -375,6 +380,10 @@
+             _ => {}
+         }
+     }
++    ensure!(
++        allowed == METADATA_ACCESS || !unclassified_metadata_deny,
++        "unclassified ancestor metadata denial cannot be bypassed"
++    );
+     Ok(allowed == METADATA_ACCESS)
+ }
+ 
+@@ -1171,6 +1180,325 @@
+                 .iter()
+                 .any(|ace| ace[0] == 0 && entry_sid(ace).is_ok_and(|v| v == parent_sid))
+         );
++        Ok(())
++    }
++
++    fn current_token_metadata_access(directory: &PinnedDirectory) -> Result<bool> {
++        use std::os::windows::io::FromRawHandle;
++        use windows_sys::Win32::Security::{
++            AccessCheck, DuplicateToken, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION,
++            PRIVILEGE_SET, SecurityImpersonation, TOKEN_DUPLICATE, TOKEN_QUERY,
++        };
++        use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
++        let mut raw = std::ptr::null_mut();
++        ensure!(
++            unsafe {
++                OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE, &mut raw)
++            } != 0,
++            "open own test token: {}",
++            std::io::Error::last_os_error()
++        );
++        let primary = unsafe { OwnedHandle::from_raw_handle(raw) };
++        let mut raw = std::ptr::null_mut();
++        ensure!(
++            unsafe {
++                DuplicateToken(
++                    primary.as_raw_handle() as _,
++                    SecurityImpersonation,
++                    &mut raw,
++                )
++            } != 0,
++            "duplicate own test token for read-only AccessCheck: {}",
++            std::io::Error::last_os_error()
++        );
++        let impersonation = unsafe { OwnedHandle::from_raw_handle(raw) };
++        // AccessCheck requires both owner and primary-group SIDs. Production
++        // mutation planning needs only owner+DACL; read a complete descriptor
++        // locally for this independent Windows access check.
++        let mut dacl = Dacl {
++            descriptor: std::ptr::null_mut(),
++            owner: std::ptr::null_mut(),
++            acl: std::ptr::null_mut(),
++        };
++        let mut group = std::ptr::null_mut();
++        let code = unsafe {
++            get_raw_file_security(
++                directory.handle.as_raw_handle() as _,
++                SE_FILE_OBJECT,
++                OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
++                &mut dacl.owner,
++                &mut group,
++                &mut dacl.acl,
++                std::ptr::null_mut(),
++                &mut dacl.descriptor,
++            )
++        };
++        ensure!(code == 0, "read AccessCheck descriptor: {code}");
++        ensure!(
++            !dacl.owner.is_null()
++                && !group.is_null()
++                && unsafe { IsValidSid(dacl.owner) } != 0
++                && unsafe { IsValidSid(group) } != 0,
++            "AccessCheck descriptor requires owner and group SIDs"
++        );
++        let mut mapping = GENERIC_MAPPING {
++            GenericRead: fs::FILE_GENERIC_READ,
++            GenericWrite: fs::FILE_GENERIC_WRITE,
++            GenericExecute: fs::FILE_GENERIC_EXECUTE,
++            GenericAll: fs::FILE_ALL_ACCESS,
++        };
++        let mut privileges = vec![0_u32; 256];
++        let mut bytes = (privileges.len() * size_of::<u32>()) as u32;
++        let (mut granted, mut allowed) = (0, 0);
++        ensure!(
++            unsafe {
++                AccessCheck(
++                    dacl.descriptor,
++                    impersonation.as_raw_handle() as _,
++                    METADATA_ACCESS,
++                    &mut mapping,
++                    privileges.as_mut_ptr().cast::<PRIVILEGE_SET>(),
++                    &mut bytes,
++                    &mut granted,
++                    &mut allowed,
++                )
++            } != 0,
++            "native metadata AccessCheck: {}",
++            std::io::Error::last_os_error()
++        );
++        Ok(allowed != 0 && granted & METADATA_ACCESS == METADATA_ACCESS)
++    }
++
++    fn metadata_fixture_snapshot(
++        directory: &PinnedDirectory,
++    ) -> Result<(Vec<u8>, (u16, u32, Vec<Vec<u8>>))> {
++        let dacl = Dacl::read(directory)?;
++        ensure!(
++            !dacl.owner.is_null() && unsafe { IsValidSid(dacl.owner) } != 0,
++            "fixture owner SID"
++        );
++        let owner = unsafe {
++            std::slice::from_raw_parts(dacl.owner.cast::<u8>(), GetLengthSid(dacl.owner) as usize)
++        }
++        .to_vec();
++        Ok((owner, raw_fixture_descriptor(directory)?))
++    }
++
++    // Only the own-temp fixture uses this pre-authorized handle after installing
++    // its inherited deny. Production writes still reopen and revalidate.
++    fn write_metadata_fixture_on_held_handle(
++        directory: &PinnedDirectory,
++        writable: &OwnedHandle,
++        entries: &[Vec<u8>],
++    ) -> Result<()> {
++        ensure!(
++            directory_id(writable.as_raw_handle() as _)? == directory.identity,
++            "own fixture handle identity"
++        );
++        let old = Dacl::read(directory)?;
++        let bytes = size_of::<ACL>() + entries.iter().map(Vec::len).sum::<usize>();
++        let mut storage = vec![0_u32; bytes.div_ceil(size_of::<u32>())];
++        let acl = storage.as_mut_ptr().cast::<ACL>();
++        let revision = unsafe { (*old.acl).AclRevision } as u32;
++        ensure!(
++            unsafe { InitializeAcl(acl, bytes as u32, revision) } != 0,
++            "initialize own fixture ACL"
++        );
++        for entry in entries {
++            ensure!(
++                unsafe {
++                    AddAce(
++                        acl,
++                        revision,
++                        u32::MAX,
++                        entry.as_ptr().cast(),
++                        entry.len() as u32,
++                    )
++                } != 0,
++                "append own fixture ACE"
++            );
++        }
++        unsafe {
++            crate::acl::set_directory_dacl_without_propagation(
++                writable.as_raw_handle() as _,
++                old.descriptor,
++                acl,
++            )
++        }
++    }
++
++    #[test]
++    fn unknown_inherited_metadata_deny_is_not_bypassed_in_native_dacl() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let home = root.path().join("home");
++        std::fs::create_dir(&home)?;
++        let namespace = SandboxNamespace::current(&home)?;
++        namespace.reserve_owner()?;
++        let directory = PinnedDirectory::open(&home)?;
++        let grant_directory = PinnedDirectory::open(&home)?;
++        let writable = directory.write_handle()?;
++        let original = metadata_fixture_snapshot(&directory)?;
++        let owner = crate::token::LocalSid::from_string(&namespace.owner_sid)?;
++        let owner_sid = unsafe {
++            std::slice::from_raw_parts(
++                owner.as_ptr().cast::<u8>(),
++                GetLengthSid(owner.as_ptr()) as usize,
++            )
++        }
++        .to_vec();
++        // Synthetic grant subject is Everyone only inside this own-temp private mechanism.
++        // The actual current-user SID is deliberately not among its classified principals.
++        // AccessCheck uses our own unchanged token, not a simulated ACE evaluator.
++        let subject = crate::resolve_sid("Everyone")?;
++        let mut owner_access = metadata_ace(&owner_sid)?;
++        owner_access[4..8]
++            .copy_from_slice(&(fs::READ_CONTROL | fs::WRITE_DAC | fs::FILE_TRAVERSE).to_le_bytes());
++        let mut legacy = metadata_ace(&subject)?;
++        legacy[4..8].copy_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
++        let mut deny = metadata_ace(&owner_sid)?;
++        deny[0] = 1;
++        deny[1] = INHERITED_ACE as u8;
++        deny[4..8].copy_from_slice(&fs::SYNCHRONIZE.to_le_bytes());
++        write_metadata_fixture_on_held_handle(
++            &directory,
++            &writable,
++            &[owner_access, legacy, deny],
++        )?;
++        let before = metadata_fixture_snapshot(&directory)?;
++        assert!(!current_token_metadata_access(&directory)?);
++        // Prove the real Windows ACE-order hazard independently of grant planning.
++        let mut unsafe_expansion = before.1.2.clone();
++        let index = unsafe_expansion
++            .iter()
++            .position(|entry| entry[1] & INHERITED_ACE as u8 != 0)
++            .unwrap();
++        unsafe_expansion.insert(index, metadata_ace(&subject)?);
++        write_metadata_fixture_on_held_handle(&directory, &writable, &unsafe_expansion)?;
++        assert!(current_token_metadata_access(&directory)?);
++        write_metadata_fixture_on_held_handle(&directory, &writable, &before.1.2)?;
++        assert_eq!(metadata_fixture_snapshot(&directory)?, before);
++        assert!(!current_token_metadata_access(&directory)?);
++        let result = grant_pinned(&namespace, &subject, &[grant_directory], &[]);
++        let after = metadata_fixture_snapshot(&directory)?;
++        let after_access = current_token_metadata_access(&directory)?;
++        // Preserve the deny/no-mutation witness, then restore the own fixture
++        // through the handle retained before the deny was installed.
++        write_metadata_fixture_on_held_handle(&directory, &writable, &original.1.2)?;
++        assert_eq!(metadata_fixture_snapshot(&directory)?, original);
++        drop(writable);
++        drop(directory);
++        root.close()?;
++        println!(
++            "unknown inherited metadata denial: result={result:?}, before_access=false, after_access={after_access}"
++        );
++        assert!(result.as_ref().err().is_some_and(|error| {
++            error
++                .to_string()
++                .contains("unclassified ancestor metadata denial")
++        }));
++        assert_eq!(after, before);
++        assert!(!after_access);
++        assert!(exact_index(&after.1.2, &metadata_ace(&subject)?)?.is_none());
++        Ok(())
++    }
++
++    #[test]
++    fn unclassified_metadata_denial_only_blocks_expansion_and_keeps_known_denials() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let directory = PinnedDirectory::open(root.path())?;
++        let dacl = Dacl::read(&directory)?;
++        let group = sid(1101);
++        let mut legacy = metadata_ace(&group)?;
++        legacy[4..8].copy_from_slice(&fs::FILE_READ_ATTRIBUTES.to_le_bytes());
++        for trustee in [
++            crate::winutil::sid_bytes_from_string("S-1-5-4")?,
++            crate::winutil::sid_bytes_from_string("S-1-2-0")?,
++            sid(1109),
++        ] {
++            for flags in [0, INHERITED_ACE as u8] {
++                for mask in [
++                    fs::FILE_READ_ATTRIBUTES,
++                    fs::SYNCHRONIZE,
++                    0x4000_0000,
++                    0x8000_0000,
++                    0x2000_0000,
++                    0x1000_0000,
++                ] {
++                    let mut deny = metadata_ace(&trustee)?;
++                    deny[0] = 1;
++                    deny[1] = flags;
++                    deny[4..8].copy_from_slice(&mask.to_le_bytes());
++                    assert!(
++                        already_readable(&dacl, &[legacy.clone(), deny.clone()], &[group.clone()])
++                            .is_err()
++                    );
++                    // Complete classified rights cause no new write and no newly introduced failure.
++                    assert!(already_readable(
++                        &dacl,
++                        &[metadata_ace(&group)?, deny.clone()],
++                        &[group.clone()]
++                    )?);
++                    let mut known = metadata_ace(&group)?;
++                    known[0] = 1;
++                    assert!(
++                        already_readable(
++                            &dacl,
++                            &[metadata_ace(&group)?, deny.clone(), known],
++                            &[group.clone()]
++                        )
++                        .is_err()
++                    );
++                    deny[1] |= INHERIT_ONLY_ACE as u8;
++                    assert!(!already_readable(
++                        &dacl,
++                        &[legacy.clone(), deny],
++                        &[group.clone()]
++                    )?);
++                }
++            }
++            let mut unrelated = metadata_ace(&trustee)?;
++            unrelated[0] = 1;
++            unrelated[1] = INHERITED_ACE as u8;
++            unrelated[4..8].copy_from_slice(&fs::FILE_WRITE_DATA.to_le_bytes());
++            assert!(!already_readable(
++                &dacl,
++                &[legacy.clone(), unrelated],
++                &[group.clone()]
++            )?);
++        }
++        Ok(())
++    }
++
++    #[test]
++    fn complete_metadata_with_unclassified_deny_is_raw_descriptor_noop() -> Result<()> {
++        let root = tempfile::tempdir()?;
++        let home = root.path().join("home");
++        std::fs::create_dir(&home)?;
++        let namespace = SandboxNamespace::current(&home)?;
++        namespace.reserve_owner()?;
++        let directory = PinnedDirectory::open(&home)?;
++        let group = sid(1101);
++        let original = metadata_fixture_snapshot(&directory)?;
++        let mut entries = original.1.2.clone();
++        entries.insert(0, metadata_ace(&group)?);
++        let mut deny = metadata_ace(&sid(1109))?;
++        deny[0] = 1;
++        deny[1] = INHERITED_ACE as u8;
++        entries.push(deny);
++        Dacl::read(&directory)?.write(&directory, &entries)?;
++        let before = metadata_fixture_snapshot(&directory)?;
++        grant_pinned(
++            &namespace,
++            &group,
++            &[PinnedDirectory::open(&home)?],
++            &[sid(1103), sid(1104)],
++        )?;
++        let after = metadata_fixture_snapshot(&directory)?;
++        Dacl::read(&directory)?.write(&directory, &original.1.2)?;
++        assert_eq!(metadata_fixture_snapshot(&directory)?, original);
++        drop(directory);
++        root.close()?;
++        assert_eq!(after, before);
+         Ok(())
+     }
+ 
+diff --git a/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users.rs b/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users.rs
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users.rs
+@@ -37,6 +37,7 @@
+ use windows_sys::Win32::Storage::FileSystem::CREATE_NEW;
+ use windows_sys::Win32::Storage::FileSystem::CreateFileW;
+ use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_NORMAL;
++use windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ;
+ 
+ use crate::SETUP_VERSION;
+ use crate::SetupErrorCode;
+@@ -395,7 +396,8 @@
+     Ok(())
+ }
+ 
+-/// Service provisioning retains the marker's exclusive handle; legacy setup reopens it at commit.
++/// Managed provisioning retains a read-shared, write/delete-exclusive marker handle.
++/// Legacy setup reopens the marker at commit.
+ pub(super) enum PreparedSetupMarker {
+     Retained(File),
+     Reopen,
+@@ -463,7 +465,13 @@
+         CreateFileW(
+             marker_path_wide.as_ptr(),
+             GENERIC_WRITE,
+-            /*dwsharemode*/ 0,
++            // Owned empty markers must remain readable by namespace validation.
++            // The retained handle still excludes all other writers and deletion.
++            if mode == SetupMode::ProvisionOnly {
++                FILE_SHARE_READ
++            } else {
++                0
++            },
+             &security_attributes,
+             CREATE_NEW,
+             FILE_ATTRIBUTE_NORMAL,
+diff --git a/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users_tests.rs b/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users_tests.rs
+--- a/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users_tests.rs
++++ b/codex-rs/windows-sandbox-rs/src/setup_provisioning/sandbox_users_tests.rs
+@@ -1,4 +1,5 @@
+-//! Native account repair regression; uses a disposable account and requires elevation.
++//! Native account repair and own-temp marker sharing regressions.
++//! The account repair test is ignored by default; marker tests never provision SAM users.
+ 
+ use super::ensure_local_user;
+ use crate::local_user_flags;
+@@ -80,3 +81,215 @@
+     assert_eq!(local_user_flags(&name)?, None);
+     Ok(())
+ }
++
++fn marker_snapshot(file: &std::fs::File) -> Result<(Vec<u8>, u64, [u8; 16])> {
++    use std::os::windows::io::AsRawHandle;
++    use windows_sys::Win32::Security::{
++        DACL_SECURITY_INFORMATION, GROUP_SECURITY_INFORMATION, GetKernelObjectSecurity,
++        OWNER_SECURITY_INFORMATION,
++    };
++    use windows_sys::Win32::Storage::FileSystem::{
++        FILE_ID_INFO, FileIdInfo, GetFileInformationByHandleEx,
++    };
++    let flags = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION;
++    let mut needed = 0;
++    unsafe {
++        GetKernelObjectSecurity(
++            file.as_raw_handle() as _,
++            flags,
++            std::ptr::null_mut(),
++            0,
++            &mut needed,
++        );
++    }
++    anyhow::ensure!((20..=1_048_576).contains(&needed), "marker descriptor size");
++    let mut storage = vec![0_u32; (needed as usize).div_ceil(size_of::<u32>())];
++    anyhow::ensure!(
++        unsafe {
++            GetKernelObjectSecurity(
++                file.as_raw_handle() as _,
++                flags,
++                storage.as_mut_ptr().cast(),
++                (storage.len() * size_of::<u32>()) as u32,
++                &mut needed,
++            )
++        } != 0,
++        "read marker descriptor: {}",
++        std::io::Error::last_os_error()
++    );
++    let bytes =
++        unsafe { std::slice::from_raw_parts(storage.as_ptr().cast::<u8>(), needed as usize) }
++            .to_vec();
++    let mut id = FILE_ID_INFO::default();
++    anyhow::ensure!(
++        unsafe {
++            GetFileInformationByHandleEx(
++                file.as_raw_handle() as _,
++                FileIdInfo,
++                (&mut id as *mut FILE_ID_INFO).cast(),
++                size_of::<FILE_ID_INFO>() as u32,
++            )
++        } != 0,
++        "read marker file identity: {}",
++        std::io::Error::last_os_error()
++    );
++    Ok((bytes, id.VolumeSerialNumber, id.FileId.Identifier))
++}
++
++#[test]
++fn managed_marker_is_read_shared_write_delete_exclusive_until_commit() -> Result<()> {
++    use std::io::{Read, Seek, SeekFrom};
++    use std::os::windows::fs::OpenOptionsExt;
++    use windows_sys::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION};
++    use windows_sys::Win32::Storage::FileSystem::{
++        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, MOVEFILE_REPLACE_EXISTING,
++        MoveFileExW,
++    };
++    let root = tempfile::tempdir()?;
++    let namespace = crate::namespace::SandboxNamespace::current(root.path())?;
++    namespace.reserve_owner()?;
++    std::fs::create_dir_all(crate::sandbox_dir(root.path()))?;
++    let real_user = crate::runtime_ownership::current_setup_user()?;
++    let prepared =
++        super::prepare_setup_marker(root.path(), &real_user, super::SetupMode::ProvisionOnly)?;
++    assert!(matches!(&prepared, super::PreparedSetupMarker::Retained(_)));
++    let marker = crate::setup::setup_marker_path(root.path());
++    let mut reader = std::fs::File::open(&marker)?;
++    let before = marker_snapshot(&reader)?;
++    let mut empty = Vec::new();
++    reader.read_to_end(&mut empty)?;
++    assert!(empty.is_empty());
++    namespace.validate_existing_state()?;
++    assert!(!crate::identity::sandbox_setup_is_complete(root.path()));
++    let write_error = std::fs::OpenOptions::new()
++        .write(true)
++        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
++        .open(&marker)
++        .err()
++        .expect("retained marker must reject another writer");
++    assert_eq!(
++        write_error.raw_os_error(),
++        Some(ERROR_SHARING_VIOLATION as i32)
++    );
++    let delete_error =
++        std::fs::remove_file(&marker).expect_err("retained marker must reject deletion");
++    assert_eq!(
++        delete_error.raw_os_error(),
++        Some(ERROR_SHARING_VIOLATION as i32)
++    );
++    let rename_error = std::fs::rename(&marker, marker.with_extension("renamed"))
++        .expect_err("retained marker must reject renaming");
++    assert_eq!(
++        rename_error.raw_os_error(),
++        Some(ERROR_SHARING_VIOLATION as i32)
++    );
++    let replacement = marker.with_extension("replacement");
++    std::fs::write(&replacement, b"not a marker")?;
++    let replaced = unsafe {
++        MoveFileExW(
++            to_wide(replacement.as_os_str()).as_ptr(),
++            to_wide(marker.as_os_str()).as_ptr(),
++            MOVEFILE_REPLACE_EXISTING,
++        )
++    };
++    let replacement_error = std::io::Error::last_os_error();
++    assert_eq!(replaced, 0);
++    // MoveFileExW can surface ACCESS_DENIED when replacing a target whose
++    // retained handle excludes deletion. The same operation must succeed below
++    // after commit and handle release, so an unrelated ACL failure cannot pass.
++    assert!(matches!(
++        replacement_error.raw_os_error(),
++        Some(code) if code == ERROR_SHARING_VIOLATION as i32 || code == ERROR_ACCESS_DENIED as i32
++    ));
++    assert_eq!(std::fs::read(&replacement)?, b"not a marker");
++    assert!(std::fs::read(&marker)?.is_empty());
++    assert_eq!(marker_snapshot(&reader)?, before);
++    super::commit_setup_marker(
++        prepared,
++        root.path(),
++        &namespace.key.offline(),
++        &namespace.key.online(),
++        &[8118],
++        true,
++        &namespace.key.id(),
++    )?;
++    reader.seek(SeekFrom::Start(0))?;
++    let mut committed = Vec::new();
++    reader.read_to_end(&mut committed)?;
++    let parsed: crate::setup::SetupMarker = serde_json::from_slice(&committed)?;
++    assert_eq!(
++        parsed.namespace.as_deref(),
++        Some(namespace.key.id().as_str())
++    );
++    assert_eq!(parsed.offline_username, namespace.key.offline());
++    assert_eq!(parsed.online_username, namespace.key.online());
++    assert!(parsed.version_matches());
++    assert_eq!(parsed.proxy_ports, [8118]);
++    assert!(parsed.allow_local_binding);
++    namespace.validate_existing_state()?;
++    assert_eq!(marker_snapshot(&reader)?, before);
++    assert_eq!(marker_snapshot(&std::fs::File::open(&marker)?)?, before);
++    // A committed marker alone is not complete account provisioning. No fake SAM state is made.
++    assert!(!crate::identity::sandbox_setup_is_complete(root.path()));
++    drop(reader);
++    let replaced_after_release = unsafe {
++        MoveFileExW(
++            to_wide(replacement.as_os_str()).as_ptr(),
++            to_wide(marker.as_os_str()).as_ptr(),
++            MOVEFILE_REPLACE_EXISTING,
++        )
++    };
++    anyhow::ensure!(
++        replaced_after_release != 0,
++        "same replacement must succeed after retained marker release: {}",
++        std::io::Error::last_os_error()
++    );
++    assert_eq!(std::fs::read(&marker)?, b"not a marker");
++    assert!(!replacement.exists());
++    root.close()?;
++    Ok(())
++}
++
++#[test]
++fn managed_uncommitted_marker_is_readable_but_never_ready() -> Result<()> {
++    let root = tempfile::tempdir()?;
++    let namespace = crate::namespace::SandboxNamespace::current(root.path())?;
++    namespace.reserve_owner()?;
++    std::fs::create_dir_all(crate::sandbox_dir(root.path()))?;
++    let real_user = crate::runtime_ownership::current_setup_user()?;
++    let prepared =
++        super::prepare_setup_marker(root.path(), &real_user, super::SetupMode::ProvisionOnly)?;
++    assert!(std::fs::read(crate::setup::setup_marker_path(root.path()))?.is_empty());
++    namespace.validate_existing_state()?;
++    assert!(!crate::identity::sandbox_setup_is_complete(root.path()));
++    drop(prepared);
++    assert!(std::fs::read(crate::setup::setup_marker_path(root.path()))?.is_empty());
++    assert!(!crate::identity::sandbox_setup_is_complete(root.path()));
++    root.close()?;
++    Ok(())
++}
++
++#[test]
++fn legacy_marker_modes_preserve_reopen_lifetime() -> Result<()> {
++    use std::os::windows::fs::OpenOptionsExt;
++    use windows_sys::Win32::Storage::FileSystem::{
++        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
++    };
++    for mode in [
++        super::SetupMode::Full,
++        super::SetupMode::InteractiveProvision,
++    ] {
++        let root = tempfile::tempdir()?;
++        std::fs::create_dir_all(crate::sandbox_dir(root.path()))?;
++        let user = crate::runtime_ownership::current_setup_user()?;
++        let prepared = super::prepare_setup_marker(root.path(), &user, mode)?;
++        assert!(matches!(prepared, super::PreparedSetupMarker::Reopen));
++        let writer = std::fs::OpenOptions::new()
++            .write(true)
++            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
++            .open(crate::setup::setup_marker_path(root.path()))?;
++        drop(writer);
++        root.close()?;
++    }
++    Ok(())
++}
+diff --git a/codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs b/codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs
+--- a/codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs
++++ b/codex-rs/windows-sandbox-rs/src/elevated/runner_client.rs
+@@ -359,12 +359,11 @@
+ impl std::fmt::Display for RunnerProcessObservation {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         match self {
+-            Self::Exited(code) => write!(
+-                f,
+-                "runner exited before IPC readiness (exit_code=0x{code:08x})"
+-            ),
++            Self::Exited(code) => {
++                write!(f, "runner exited during startup (exit_code=0x{code:08x})")
++            }
+             Self::StillActive => {
+-                f.write_str("runner was still active when IPC startup failure was inspected")
++                f.write_str("runner was still active when startup failure was inspected")
+             }
+             Self::InspectionFailed { operation, code } => write!(
+                 f,
+@@ -376,6 +375,17 @@
+             ),
+         }
+     }
++}
++
++// Keep the actual transport/SpawnChild cause visible to callers that display only
++// the outer error. The pinned process observation supplements that cause; it
++// does not imply that an already authenticated IPC connection never succeeded.
++fn with_runner_process_observation(
++    error: anyhow::Error,
++    observation: RunnerProcessObservation,
++) -> anyhow::Error {
++    let context = format!("{error:#}; runner process observation: {observation}");
++    error.context(context)
+ }
+ 
+ fn classify_runner_process(
+@@ -556,7 +566,7 @@
+         unsafe {
+             let _ = TerminateProcess(pi.hProcess, 1);
+         }
+-        return Err(err.context(observation.to_string()));
++        return Err(with_runner_process_observation(err, observation));
+     }
+ 
+     if registered_alias.is_some() {
+@@ -737,9 +747,14 @@
+ #[cfg(test)]
+ mod startup_observation_tests {
+     use super::{
+-        RunnerLogonError, RunnerProcessObservation, WAIT_OBJECT_0, classify_runner_process,
+-    };
+-    use windows_sys::Win32::Foundation::{WAIT_FAILED, WAIT_TIMEOUT};
++        RunnerLogonError, RunnerProcessObservation, RunnerStartupError, WAIT_OBJECT_0,
++        classify_runner_process, is_refreshable_sandbox_creds_error,
++        with_runner_process_observation,
++    };
++    use crate::ipc_framed::{ErrorPayload, ErrorStage};
++    use windows_sys::Win32::Foundation::{
++        ERROR_ACCESS_DENIED, ERROR_NO_SUCH_LOGON_SESSION, WAIT_FAILED, WAIT_TIMEOUT,
++    };
+ 
+     #[test]
+     fn session0_bootstrap_reports_only_actual_signaled_exit_code() {
+@@ -792,11 +807,82 @@
+     #[test]
+     fn session0_bootstrap_diagnostic_context_preserves_original_classification() {
+         let original = anyhow::Error::new(RunnerLogonError { code: 1326 });
+-        let contextual = original.context(RunnerProcessObservation::StillActive.to_string());
++        let contextual =
++            with_runner_process_observation(original, RunnerProcessObservation::StillActive);
+         assert_eq!(
+             contextual.downcast_ref::<RunnerLogonError>().unwrap().code,
+             1326
+         );
+-        assert!(format!("{contextual:#}").contains("CreateProcessWithLogonW failed: 1326"));
+-    }
+-}
++        assert!(
++            contextual
++                .to_string()
++                .contains("CreateProcessWithLogonW failed: 1326")
++        );
++    }
++
++    #[test]
++    fn child_failure_display_keeps_original_stage_reason_code_and_actual_exit() {
++        let original = anyhow::Error::new(RunnerStartupError::new(ErrorPayload {
++            message: "CreateProcessAsUserW rejected the authorized child image".to_owned(),
++            stage: ErrorStage::SpawnChild,
++            windows_error_code: Some(ERROR_ACCESS_DENIED),
++        }));
++        let error = with_runner_process_observation(original, RunnerProcessObservation::Exited(1));
++        let display = error.to_string();
++        assert!(display.starts_with("runner failed during SpawnChild:"));
++        assert!(display.contains("CreateProcessAsUserW rejected the authorized child image"));
++        assert!(display.contains("Windows error 5"));
++        assert!(display.contains("runner exited during startup (exit_code=0x00000001)"));
++        assert!(!display.contains("before IPC readiness"));
++        let typed = error.downcast_ref::<RunnerStartupError>().unwrap();
++        assert_eq!(typed.payload.stage, ErrorStage::SpawnChild);
++        assert_eq!(typed.payload.windows_error_code, Some(ERROR_ACCESS_DENIED));
++        assert!(!is_refreshable_sandbox_creds_error(
++            &error,
++            &["cmd.exe".to_owned()]
++        ));
++    }
++
++    #[test]
++    fn displayed_process_observation_preserves_existing_refresh_policy() {
++        let make_error = || {
++            with_runner_process_observation(
++                anyhow::Error::new(RunnerStartupError::new(ErrorPayload {
++                    message: "child logon session unavailable".to_owned(),
++                    stage: ErrorStage::SpawnChild,
++                    windows_error_code: Some(ERROR_NO_SUCH_LOGON_SESSION),
++                })),
++                RunnerProcessObservation::Exited(1),
++            )
++        };
++        assert!(is_refreshable_sandbox_creds_error(
++            &make_error(),
++            &["cmd.exe".to_owned()]
++        ));
++        assert!(!is_refreshable_sandbox_creds_error(
++            &make_error(),
++            &[r"C:\Users\fixture\AppData\Local\Microsoft\WindowsApps\pwsh.exe".to_owned()],
++        ));
++    }
++
++    #[test]
++    fn transport_failure_display_keeps_full_cause_and_typed_io_error() {
++        for kind in [
++            std::io::ErrorKind::TimedOut,
++            std::io::ErrorKind::UnexpectedEof,
++        ] {
++            let original = anyhow::Error::new(std::io::Error::new(kind, "native pipe failure"))
++                .context("wait for runner spawn_ready");
++            let error =
++                with_runner_process_observation(original, RunnerProcessObservation::StillActive);
++            let display = error.to_string();
++            assert!(display.starts_with("wait for runner spawn_ready: native pipe failure;"));
++            assert!(display.contains("runner was still active"));
++            assert_eq!(error.downcast_ref::<std::io::Error>().unwrap().kind(), kind);
++            assert!(!is_refreshable_sandbox_creds_error(
++                &error,
++                &["cmd.exe".to_owned()]
++            ));
++        }
++    }
++}

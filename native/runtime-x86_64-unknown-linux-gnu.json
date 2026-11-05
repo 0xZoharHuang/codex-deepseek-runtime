@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "status": "ready",
+  "status": "pending",
   "distribution": "codex-deepseek-runtime",
-  "distribution_version": "0.6.13",
+  "distribution_version": "0.6.14",
   "upstream_version": "0.164.0-alpha.7",
   "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
   "patch_sha256": "6fa4c8cd5dfcb4c88575170d1dc98b90af49ea6b8a026b7914a49b4d14cebb5c",
@@ -3089,5 +3089,13 @@
     "licenses/rust/spdx/WTFPL.txt": "13d8825a59e5e546d41e8711405d0f335a9934362a47c04a3b4280fa7932dc4a",
     "licenses/rust/spdx/Zlib.txt": "bfb1112d49db5b1daecdfef24bd7e2f3ea0bafb33aa67aa0ab51e2bf8407c03d",
     "licenses/rust/spdx/bzip2-1.0.6.txt": "0a56dbabe7d2ff65dea26e8b795fe42c6204a192b974d8e9304fe356ccda9fd1"
+  },
+  "qualification": {
+    "status": "not_requalified_for_windows_only_0614_source",
+    "latest_qualified_distribution": "0.6.13",
+    "source_tag": "v0.6.13",
+    "source_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/tree/v0.6.13",
+    "previous_immutable_manifest": "rollback/0.6.13/runtime-x86_64-unknown-linux-gnu.json",
+    "native_component_unchanged": true
   }
 }

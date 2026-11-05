@@ -1,0 +1,173 @@
+{
+  "schema": 1,
+  "status": "candidate_not_released_runner_readiness_failure_open",
+  "version": "0.6.14",
+  "scope": "Windows native managed ordinary-host namespace upgrade; no model requests",
+  "snapshot_utc_seconds": 1793846495.9752848,
+  "source": {
+    "recipe_id": "8b1fece0e1336c88483c24602406f86f85702205c7a1edcf64fd33b55156357d",
+    "inventory_sha256": "62aeb223555370c114e677dba78416a826470d2ccb7773cbaefacb5b5e500ecb",
+    "test_executable_sha256": "a450d19947db4b4fab18d43cd982d9a57150dedf8ffd80f10b9566059c8cd08e"
+  },
+  "source_tests": {
+    "passed": 105,
+    "native_execution": false,
+    "evidence": "source-regression-final-r532.json"
+  },
+  "native_unit_tests": {
+    "passed": 35,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_test": "ancestor_metadata::tests::confirmed_namespace_current_subjects_are_local_and_wrong_sid_is_rejected_read_only",
+    "ignored_reason": "requires explicitly confirmed external project home and full subject SIDs; not part of these owned fixtures",
+    "evidence": "native-tests-final-r532.json",
+    "clean_owned_process_lifecycles": true
+  },
+  "managed_maintenance": {
+    "public_native_entry": "codex sandbox setup --elevated --user USER --codex-home HOME",
+    "mode": "ProvisionOnly",
+    "exit_code": 0,
+    "helper_sha256": "fdbd76c847cc7b962f174388c952d8989935a1f57573cdfeafafbeb3c35b39d2",
+    "helper_recipe_id": "a41ad201c895c98f24adbd29904b0b692499579873f24fc02e2ca7d08f2d9a5f",
+    "package_kind": "maintenance-only mixed-producer diagnostic combination; not a qualified release",
+    "original_marker_failure_preserved": true,
+    "same_namespace_identity_preserved": true,
+    "original_aces_preserved": true,
+    "added_group_mask": "0x100080",
+    "added_group_flags": 0,
+    "ordinary_host_elevated": false,
+    "actual_host_WRITE_DAC_denied": true,
+    "evidence": [
+      "managed-provision-success-r530.json",
+      "ordinary-host-maintenance-readback-r530.json"
+    ]
+  },
+  "ordinary_native_tool_matrix": {
+    "status": "failed_first_command",
+    "actual_failure": "runner exited before IPC readiness (exit_code=0x00000001)",
+    "rpc_error_code": -32603,
+    "readonly_command_passed": false,
+    "workspace_write_command_passed": false,
+    "cold_restart_passed": false,
+    "model_requests": 0,
+    "evidence": "ordinary-command-after-maintenance-failure.json"
+  },
+  "artifact_boundary": {
+    "final_helper_sha256": "b780f9067333e09b52be6ecd4a717f145597bb4b702b3337e3af37c4d5f60f99",
+    "final_helper_bytes_differ_from_maintenance_helper": true,
+    "no_claim_final_normal_package_was_maintenance_tested": true,
+    "source_only_test_changes_not_relabelled_as_same_binary": true
+  },
+  "original_failures": [
+    {
+      "scope": "first ProvisionOnly maintenance",
+      "failure": "retained owned marker read sharing violation; native exit 1",
+      "evidence": "managed-provision-original-marker-failure.json"
+    },
+    {
+      "scope": "first native metadata AccessCheck fixture",
+      "failure": "invalid security descriptor, Win32 1338",
+      "evidence": "native-first-ancestor_metadata__tests__.log"
+    },
+    {
+      "scope": "first native marker fixture",
+      "failure": "expected Win32 32 but actual access-denied 5",
+      "evidence": "native-first-managed_marker_is_read_shared_write_delete_exclusive_until_commit.log"
+    },
+    {
+      "scope": "ordinary user command after successful maintenance",
+      "failure": "runner before-IPC exit 1",
+      "evidence": "ordinary-command-after-maintenance-failure.json"
+    }
+  ],
+  "release_gate": "blocked by open runtime failure, not stable and not published",
+  "remaining": [
+    "resolve first-command runner readiness failure",
+    "pass ordinary readonly/workspace-write/readonly matrix and neighboring denials",
+    "qualify final normal native package, matching source inventory, installation and cold restart",
+    "verify consuming downstream task result"
+  ],
+  "evidence_inventory": {
+    "managed-provision-original-marker-failure.json": {
+      "sha256": "cf2c8aa743a39f72f45454b2c5598a574f8a018b1fbcfb55654b21e55bcf8908",
+      "bytes": 504
+    },
+    "managed-provision-success-r530.json": {
+      "sha256": "232303db924c6f57b431370c611f984441bca11635bd83cc2de659541d26685c",
+      "bytes": 500
+    },
+    "ordinary-host-maintenance-readback-r530.json": {
+      "sha256": "166aecbe2b09fd1a58919a801f3b1625757b335184c596a0dcb4f5e84532db55",
+      "bytes": 5426
+    },
+    "ordinary-command-after-maintenance-failure.json": {
+      "sha256": "6db8e0ee97a20d06ec9ac57bf9c4ac11cd541099171ce1f4d99be5726706725e",
+      "bytes": 3375
+    },
+    "native-tests-first-r530.json": {
+      "sha256": "1600ac7cca7ec8de6625311804b8ec893a61c98091718d0a8a09c71b5e1b38b7",
+      "bytes": 4050
+    },
+    "native-tests-final-r532.json": {
+      "sha256": "9c3d1384aea3f0785ce8be8ac5709615926c6b8ad91ecb7adc3e4307c4568d1d",
+      "bytes": 4035
+    },
+    "helper-build-r530.json": {
+      "sha256": "0e1894eca637899e8ae9eea26e967a3afd67a7af0aff92d6d7d755a8ea99d79b",
+      "bytes": 38457
+    },
+    "helper-build-r532.json": {
+      "sha256": "89bcbf67812051e00a610cbfacdae8123b862eb6985121a01ba0586b11b3c2a4",
+      "bytes": 38263
+    },
+    "source-regression-final-r532.json": {
+      "sha256": "c609622b51ea97f099df289d2e845570254ca86bb3a999570e08176a54969fcb",
+      "bytes": 865
+    },
+    "source-regression-final-r532.log": {
+      "sha256": "f820d08175d9a0b3476735a59cbda8ae0c11f7d5d9dde96e9fe43fb9e9364b09",
+      "bytes": 184
+    },
+    "unix-release-admission.json": {
+      "sha256": "ab283650bd29d30966b5f5a9b0975e13faf28832b24d89e0a10315b281cd6411",
+      "bytes": 564
+    },
+    "unix-release-admission.log": {
+      "sha256": "a63ea0fadf7272aa2b837a64326a182cd8e45fe13dc1ffa16eb297dd8d5638e9",
+      "bytes": 100
+    },
+    "native-first-ancestor_metadata__tests__.log": {
+      "sha256": "9541b5b657c9f54f44127ad4afceafc3bd530405c2baf59f18b9faa076411ba8",
+      "bytes": 4143
+    },
+    "native-first-legacy_marker_modes_preserve_reopen_lifetime.log": {
+      "sha256": "5c5bde7c740f82e3678ec1d977e17fcb5e5b3e6adfbbc981d0ea8235df6e2f57",
+      "bytes": 213
+    },
+    "native-first-managed_marker_is_read_shared_write_delete_exclusive_until_commit.log": {
+      "sha256": "1c2807960e05311ed69c68e1438acdb6c5d3a5dcdaec42aa1e42b8d3e479d007",
+      "bytes": 854
+    },
+    "native-first-managed_uncommitted_marker_is_readable_but_never_ready.log": {
+      "sha256": "dfe2b5a9856b6765923d9b476a794cee1bacbaa79e8b9b9fc6515e5e44dc9994",
+      "bytes": 223
+    },
+    "native-final-ancestor_metadata__tests__.log": {
+      "sha256": "87bccb454ae297dc8e8f970cbd30423e53b01446fa50139202dadb13c0fdd760",
+      "bytes": 4082
+    },
+    "native-final-legacy_marker_modes_preserve_reopen_lifetime.log": {
+      "sha256": "5c5bde7c740f82e3678ec1d977e17fcb5e5b3e6adfbbc981d0ea8235df6e2f57",
+      "bytes": 213
+    },
+    "native-final-managed_marker_is_read_shared_write_delete_exclusive_until_commit.log": {
+      "sha256": "5f20ec2e9366f32fbeff6047dc50a6ee6d0ac4278a2b09977f1dd4743d7055c8",
+      "bytes": 234
+    },
+    "native-final-managed_uncommitted_marker_is_readable_but_never_ready.log": {
+      "sha256": "dfe2b5a9856b6765923d9b476a794cee1bacbaa79e8b9b9fc6515e5e44dc9994",
+      "bytes": 223
+    }
+  },
+  "raw_evidence_location": "Windows owned release staging/evidence-progress-r532; originals retained separately; not attached to a public release yet"
+}

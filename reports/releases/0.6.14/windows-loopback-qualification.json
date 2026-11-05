@@ -1,0 +1,33 @@
+{
+  "scope": "P39 Windows elevated sandbox; separate controlled namespace, local application network semantics",
+  "original_policy": {
+    "local_binding": false,
+    "ports": 0,
+    "expected_self_connection_result": "CPython TCP socketpair blocked in accept; bounded faulthandler probe retained original traceback.",
+    "process_exit": 1,
+    "eof": 0,
+    "receipt_sha256": "f0f78a30d0c30742188d52545c738bb530b73c990b3360b819a581ebf83b51f5"
+  },
+  "explicit_workspace_policy": {
+    "permissions_base": ":workspace",
+    "proxy": "enabled, limited; localhost allow, example.com deny; other domains unlisted",
+    "direct_host_loopback_permitted": true,
+    "actual_socketpair_roundtrip": true,
+    "offline_account_verified_by_native_fixture": true,
+    "workspace_write": true,
+    "private_oracle_denied": true,
+    "direct_positive_control_target_denied_in_sandbox_windows_code": 10013,
+    "proxy_explicit_denied_domain": {
+      "HTTP": 403,
+      "reason": "blocked-by-denylist"
+    },
+    "proxy_unlisted_domain": {
+      "HTTP": 403,
+      "reason": "blocked-by-allowlist"
+    },
+    "process_exit": 0,
+    "eof": 0,
+    "receipt_sha256": "d7ba9ced06413671122fba4f40c59469e7cb4c2311b0d9e7cbde948488e2f5c6"
+  },
+  "original_cold_diagnostic_failure_retained": "7863524496a9fc282edea66533fabffdb7fadfe60139d83735db27b51581423f"
+}
