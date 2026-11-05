@@ -1,5 +1,7 @@
 # Codex CLI + DeepSeek
 
+> Windows 受管普通用户升级补充：已确认，当原 namespace 位于管理员拥有的共享祖先下、host 仅有 RX、旧 namespace 仅有 0x80 时，v0.6.13 的普通刷新会因无 WRITE_DAC 失败；该布局未被原管理员 host 验收覆盖。原生 `sandbox setup` 的 ProvisionOnly 元数据准备正在修复。在修复版通过该布局验收前，保留原安装，不通过扩大 host 权限或关闭沙箱绕过。Linux/macOS 和原验证布局的结果保持原有范围。
+
 **用原生 Codex CLI 的工具、审批、沙箱、会话恢复和子智能体，连接 OpenRouter 上的固定 DeepSeek 模型。** CDS 独立安装与配置，不接管本机 Codex App 的订阅或会话。
 
 **Windows / Linux / macOS 当前稳定版本为 v0.6.13。** 已完成各自默认公开 URL 的正常安装、入口通信、原生恢复与完整离线检查，见[本版资格与原始回执](reports/releases/0.6.13/README.md)。Linux 的真实长任务仍绑定 v0.6.10 相同原生组件和共享行为代码；macOS 不冒称重跑该业务任务。

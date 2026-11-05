@@ -1,5 +1,7 @@
 # 0.6.13：Windows 私有目录中的原生 Node 执行
 
+> Windows 受管普通用户升级补充：已确认，当原 namespace 位于管理员拥有的共享祖先下、host 仅有 RX、旧 namespace 仅有 0x80 时，v0.6.13 的普通刷新会因无 WRITE_DAC 失败；该布局未被原管理员 host 验收覆盖。原生 `sandbox setup` 的 ProvisionOnly 元数据准备正在修复。在修复版通过该布局验收前，保留原安装，不通过扩大 host 权限或关闭沙箱绕过。Linux/macOS 和原验证布局的结果保持原有范围。
+
 **v0.6.13 已正式发布。** Windows 已完成公开 tag 源码与默认下载地址的全新正常安装，以及公开安装包中的普通 Node 工具复测；原失败目录自动升级和新进程冷启动均通过。Linux/macOS 同版正常安装、原生传输与完整离线回归也已通过。实际资产与安装来源见[发布回执](publication-receipt.json)，Unix 原始回执见 [ci](ci/)。
 
 这个修复针对下游实际遇到的 `node script.js` → `EPERM lstat`。旧的目录属性权限只有 `FILE_READ_ATTRIBUTES`，实际属性句柄还需要 `SYNCHRONIZE`。P37 通过原生 ACL 准备路径补齐精确、不继承的 0x100080 掩码，并分别核对两个沙箱用户的完整权限。原生工具、审批、会话、子智能体与模型请求机制保持原有实现。

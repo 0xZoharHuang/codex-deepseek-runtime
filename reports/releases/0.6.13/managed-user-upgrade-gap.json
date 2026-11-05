@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "CONFIRMED_RUNTIME_UPGRADE_GAP_OPEN",
+  "version": "0.6.13",
+  "native_archive_sha256": "238a896c158c7fd643ca717596de05debbdb9bd56ada247696563d4c6bae4640",
+  "condition": {
+    "shared_ancestor_owner": "BUILTIN Administrators",
+    "host_permissions": "RX without WRITE_DAC",
+    "existing_namespace_metadata_mask": "0x80"
+  },
+  "observed": "command/exec fails before tool startup with helper_unknown_error opening a shared ancestor",
+  "model_requests": 0,
+  "source_root_cause": "run_provision_only does not call the native namespace metadata grant; ordinary Full refresh is deliberately non-elevating",
+  "original_acceptance_scope": "ordinary child token under an administrator host with writable owned ancestors; not the reported managed-user layout",
+  "planned_native_change": "same validated namespace metadata grant in existing elevated public provisioning entry, without extra host permissions, inheritable data grants or a forged Full payload",
+  "consumer_workspace_modified_by_maintainer": false,
+  "Linux_macOS_qualification_not_invalidated": true
+}
