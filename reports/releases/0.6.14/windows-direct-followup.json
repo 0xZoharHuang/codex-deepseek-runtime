@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "release": "v0.6.14",
+  "scope": "Terminal outcome for the second unproxied target Windows 10 observation, previously in progress in publication-receipt.json.",
+  "outcome": "Scheduled task stopped the documented install during download",
+  "public_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+  "received_bytes": 53477376,
+  "archive_bytes": 204359096,
+  "partial_matches_canonical_prefix_sha256": "a2260763192bdd91613a91ae14be6be724ec503d23cf33bde54adcbd378a42af",
+  "kernel_exit_codes_hex": [
+    "0xc000013a",
+    "0xc000013a"
+  ],
+  "kernel_lifetimes_seconds": [
+    1800.041,
+    1800.027
+  ],
+  "task_execution_limit": "PT30M",
+  "runner_900s_acceptance": false,
+  "completed_install": false,
+  "post_install_ipc_executed": false,
+  "native_or_adapter_failure_demonstrated": false,
+  "stderr_bytes": 0,
+  "records_sha256": {
+    "normal-process-result.json": "6930ae938b008e9d530a0533a32fdd2fbd20f4f735c53dbb754001bf73b58195",
+    "release-observer.json": "ed2ce38241da7cfe076622e80678a59b920b3598fc0e09f8662c10e634bb1cdf",
+    "dispatch-limit-readback.xml": "8a6d1987b94349dce2ea4a164bbd67d70c4328427bc0816ad4029af686f158d2"
+  },
+  "other_transports": "See publication-receipt.json for the completed direct hosted Windows install and isolated target Windows TLS egress install."
+}

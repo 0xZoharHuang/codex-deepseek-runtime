@@ -49,3 +49,5 @@ DeepSeek 在这个已知的 Jinja 回归工程中修改了三个源文件，控�
 独立的 Windows Server 2025 runner 匿名检出公开 tag，直接访问默认 GitHub 地址，37.198 秒完成安装。它重新计算 204,359,096 字节归档的 SHA-256，逐一核对 3,018 个原生文件和 32 个 Python 模块的来源，并通过已安装入口启动原生 app-server。收到 EOF 后，进程和后台 provider 都自然退出。[Windows 直连 CI](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42008671976) · [公开回执](publication-receipt.json)
 
 目标 Windows 10 机器首次直连在 900 秒测试时限内收到 110,100,480 字节。与完整公开归档比较，这些字节逐字节匹配。在同一机器上，仅给单次安装使用独立 SSH 出口，Windows 自己与 GitHub 验证 TLS，139.936 秒完成相同默认 URL 的全新安装，通过原生入口和退出检查。安装测试没有发起模型请求。上面的 Jinja 工程单独验证了实际 DeepSeek 调用。
+
+目标机器的第二次直连在 Windows 计划任务的 30 分钟上限结束，两个进程的内核记录一致。已收到的 53,477,376 字节与完整公开归档前缀一致，此次未到达安装和启动阶段。[第二次直连的最终结果](windows-direct-followup.json)
