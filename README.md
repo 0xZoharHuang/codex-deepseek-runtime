@@ -2,13 +2,13 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，并使用该 tag 的原生包清单。版本发布状态、已验证的功能和原始失败记录在对应报告中。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。v0.6.15 更新了大文件下载和校验，当前发布状态与逐平台验收见 [v0.6.15 报告](reports/releases/0.6.15/README.md)。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag | 适用环境与版本记录 |
 | --- | --- | --- |
-| Windows x86_64 | `v0.6.14` | P39 原生组件。Windows 受管目录维护、安装和恢复的实测范围见 [v0.6.14 报告](reports/releases/0.6.14/README.md)。 |
-| Linux x86_64 GNU | `v0.6.13` | Ubuntu 24.04 / WSL，使用清单中的固定 Linux 组件。[v0.6.13 报告](reports/releases/0.6.13/README.md) |
-| macOS Apple Silicon | `v0.6.13` | 使用固定的 P35 macOS 组件。[v0.6.13 报告](reports/releases/0.6.13/README.md) |
+| Windows x86_64 | `v0.6.15` | P39。原生受管目录、安装和恢复见 [Windows 资格记录](reports/releases/0.6.14/README.md)。 |
+| Linux x86_64 GNU | `v0.6.15` | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
+| macOS Apple Silicon | `v0.6.15` | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
 
 Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
@@ -60,7 +60,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 
 ## 安装并运行
 
-先按上表选择平台版本，使用发行页里同一 tag 的源码和原生包。安装器会校验平台、构建配方、工具链、归档摘要和完整文件清单；正常使用不需要编译 Rust。
+先按上表选择平台版本，从发行页获取固定 tag 的源码，由该版本的平台清单选择原生包。安装器会校验平台、构建配方、工具链、归档摘要和完整文件清单；正常使用不需要编译 Rust。
 
 已有任务继续使用自己的不可变入口。并行验证或升级先用新目录及下文 --no-activate，当前任务完成后再切换，不覆盖正在使用的启动器、profile 或 sandbox 目录。
 
@@ -71,7 +71,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 在终端执行：
 
 ```sh
-git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -89,7 +89,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -107,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.14 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
