@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "version": "0.6.15",
+  "candidate_commit": "297641e224c9d10cd1b95ab67380d67560fc4c7a",
+  "previous_candidate": "6805b082079ffea8e7fb9d3189b40d37cfcaff2c",
+  "previous_candidate_known_regression": "TLS handshake EOF bypassed recovery. Retained even though the previous Unix workflow passed.",
+  "original_native_packages_reused": true,
+  "hosted": {
+    "windows": {
+      "run": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42011237299",
+      "artifact_id": 13406893099,
+      "artifact_sha256": "feca93adf6359bf209e28827e3e0385c31e3ec28c329b737844fb654c8adbce4",
+      "host": "Windows-2025Server-10.0.26100-SP0",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "installed_module_origins": 32,
+      "native_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+      "phase_seconds": {
+        "install": 24.503,
+        "version": 1.672,
+        "normal-ipc": 122.75
+      },
+      "native_eof_exit": 0,
+      "provider_retired": true,
+      "real_inference_calls_in_install_smoke": 0,
+      "qualification_sha256": "9bdd87bb56b5a2afdb69f412bff3f69b272f4a402478f0aa5847f0ba5069ccf6",
+      "ipc_sha256": "734809890c0c70cae634686a92d7b8e7cc6ab1ef60a0bedff1147f80965df636",
+      "native_files": 3018,
+      "scope": "direct public candidate checkout and original public release v0.6.14 archive",
+      "verifier_source": "aaf034c0c14231ac54be5a127f38bd519289b71a"
+    },
+    "linux": {
+      "run": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42011237224",
+      "artifact_id": 13407282335,
+      "artifact_sha256": "19cc76a4f49d4e421d010d3ee77c40aafd9ea61743e4c01903130b7df5662e31",
+      "host": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "installed_module_origins": 32,
+      "native_archive_sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1",
+      "phase_seconds": {
+        "install": 17.841,
+        "version": 0.514,
+        "normal-ipc": 122.078
+      },
+      "native_eof_exit": 0,
+      "provider_retired": true,
+      "real_inference_calls_in_install_smoke": 0,
+      "qualification_sha256": "992cc8fcea193aabbe2b75dde4ea6fd62207bf5e80d005f48a588b683929e5a7",
+      "ipc_sha256": "99285518ae462aefd309cd2d990fd10528172107b910cdf284206bc1844df548",
+      "scope": "normal install, native transport and complete collected offline suite",
+      "native_cases": 22,
+      "all_cases": 2952,
+      "passed": 2897,
+      "platform_conditional_skips": 55,
+      "deselected": 0,
+      "adapter_junit_sha256": "61bab63dbdc3414d6d4f0e3201974d5be2f3a1e181918d4aa8a7f58b28eca391",
+      "native_qualification_sha256": "49a4eb9b6c055fff917bc626907079c097574957e1f2b23ff7ef177ac35682b9",
+      "offline_qualification_sha256": "c55c4be6d7468aaf7f16b1ae6a314d45774bb3fa4698373fb62efb540f3bba7a"
+    },
+    "macos": {
+      "run": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42011237224",
+      "artifact_id": 13407637080,
+      "artifact_sha256": "1da4f0085224d7ef64b20764295058aabdbe5a2240f6a99be3ea2a84f4d5b17f",
+      "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "installed_module_origins": 32,
+      "native_archive_sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b",
+      "phase_seconds": {
+        "install": 17.751,
+        "version": 0.699,
+        "normal-ipc": 122.043
+      },
+      "native_eof_exit": 0,
+      "provider_retired": true,
+      "real_inference_calls_in_install_smoke": 0,
+      "qualification_sha256": "b2eac410eeca339ebc4710916b2553f71afa6fab67999d2732877406567635f0",
+      "ipc_sha256": "0d26f46651f5f70bd0bd54b4e27615f952636ea371e43bedfca243c1fa8edb56",
+      "scope": "normal install, native transport and complete collected offline suite",
+      "native_cases": 22,
+      "all_cases": 2952,
+      "passed": 2896,
+      "platform_conditional_skips": 56,
+      "deselected": 0,
+      "adapter_junit_sha256": "e7d569eb8bfaf20ade8cfbcd7e56c405430823dd70e8898faff1ea586a66d052",
+      "native_qualification_sha256": "cbca0a3a5bcda159b91dce03228875c1185c1ee611aa8e078d1c97ce540a35f4",
+      "offline_qualification_sha256": "4585147a14624a0cb1782e79f5cd3a65eae2b89c817ceb3757a2d263dcc65f4a"
+    }
+  }
+}

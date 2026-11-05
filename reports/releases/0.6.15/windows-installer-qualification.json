@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "version": "0.6.15",
+  "platform": "Windows 10 19045 x64",
+  "commit": "297641e224c9d10cd1b95ab67380d67560fc4c7a",
+  "source_id": "89d90737f607ae21d13b",
+  "strict_source_tests": 226,
+  "strict_tests_log_sha256": "129c9fee29fa94ed9b709351c21744f5a1ef6277d3800e1abf32d4e7366073c3",
+  "old_candidate": {
+    "commit": "6805b082079ffea8e7fb9d3189b40d37cfcaff2c",
+    "clean_public_install_completed": true,
+    "receipt_sha256": "6c2ec36bb30d568ddbce466045566a236dc083116e00d3cd5c5651ad746aaa8a",
+    "missed_tls_eof_counterexample_sha256": "f825c4dc8c8846ba95302cf55f1baaad8ff6a835f8ed16dbb7ba56c2f7348e23"
+  },
+  "final_public_url_through_scoped_tls_egress": {
+    "original_error": "TLS handshake EOF",
+    "first_interruption_observed": true,
+    "retry_same_url": true,
+    "resumed_transfer_after_retry": true,
+    "retained_consumer_timeout_seconds": 900,
+    "bytes_received_at_timeout": 160301056,
+    "full_archive_bytes": 204359096,
+    "prefix_sha256": "a1ea12b2e8c966141fa4798f01bf2b7ff61bf8a243c14d94c5f201a4ffc9d784",
+    "prefix_matches_public_archive": true,
+    "install_completed": false,
+    "raw_sha256": "89daf5c518c502adf97b7f798580cfa2b4927fa85367414a13883b0937d1174d"
+  },
+  "final_explicit_archive_install": {
+    "input": "complete independently verified public v0.6.14 Windows archive",
+    "archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+    "source_id": "89d90737f607ae21d13b",
+    "installed_modules": 32,
+    "install_seconds": 81.206,
+    "native_eof_exit": 0,
+    "provider_naturally_retired": true,
+    "model_requests_in_smoke": 0,
+    "raw_sha256": "a44fdda3829b70a6f2eb1299650a2cfb97545db93f02d86746ca43f78d70e65e"
+  },
+  "hosted_direct": "candidate-platform-qualification.json",
+  "runtime_scope": "Windows P39 core/adapter behavior bound to v0.6.14 model, sandbox, recovery and tool records. Only the installer and version declaration changed."
+}

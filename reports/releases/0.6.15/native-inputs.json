@@ -1,0 +1,55 @@
+{
+  "version": "0.6.15",
+  "scope": "Install byte-identical existing qualified native components with the updated adapter installer.",
+  "native_artifacts_rebuilt": false,
+  "platforms": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "source_tag": "v0.6.14",
+      "source_commit": "b1bda63015f594bcd88d78240217b21ff2d4f152",
+      "original_manifest_sha256": "d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+      "native_recipe_sha256": "03a66332e89736c56894aae267cc5cb0541636251792b81d517ce4593ef0b81a",
+      "patch_sha256": "8fda95b9a367bffa400ee1115ae1b06a780b238137b73d4bf7921f3ab4ffb5f5",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz",
+        "sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328"
+      },
+      "verified_file_inventory_count": 3018,
+      "identical_native_file_map": true,
+      "candidate_manifest_sha256": "2ed16fe657d3b0763f162c058dfd8b93b2c66a86ffe26c063926006b4193fb86"
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "source_tag": "v0.6.13",
+      "source_commit": "92a7a4fca045afdd863734ea501971473d787d1f",
+      "original_manifest_sha256": "77842e11e7c1335b18294a086b88eadb545ba7776ea33985eb83d1c493f89255",
+      "native_recipe_sha256": "08efc55024717f591c1b032e14c0401bad718bbb0d3828087459085536d6e95b",
+      "patch_sha256": "6fa4c8cd5dfcb4c88575170d1dc98b90af49ea6b8a026b7914a49b4d14cebb5c",
+      "archive": {
+        "filename": "codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1"
+      },
+      "verified_file_inventory_count": 3074,
+      "identical_native_file_map": true,
+      "candidate_manifest_sha256": "1d1c5c761311e590fc2e17cce8ad6709b96244d87305fd6864a2b3fb69e74c3f"
+    },
+    {
+      "target": "aarch64-apple-darwin",
+      "source_tag": "v0.6.13",
+      "source_commit": "92a7a4fca045afdd863734ea501971473d787d1f",
+      "original_manifest_sha256": "a58ee543f313ad195cef2004f85905d18466715a66ac61753520dfea7923e6b1",
+      "native_recipe_sha256": "fbb213a8d3a7648191d9ab19bbaf4428fa6d95850a6559ee9f50d356d06c3675",
+      "patch_sha256": "6fa4c8cd5dfcb4c88575170d1dc98b90af49ea6b8a026b7914a49b4d14cebb5c",
+      "archive": {
+        "filename": "codex-native-aarch64-apple-darwin-p35.tar.gz",
+        "url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/native-macos-p35/codex-native-aarch64-apple-darwin-p35.tar.gz",
+        "sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b"
+      },
+      "verified_file_inventory_count": 2973,
+      "identical_native_file_map": true,
+      "candidate_manifest_sha256": "eb6d6cd4d7f2023ba8a8fd482b73003a5ff7bd1f8ee38c45292bd470878ba520"
+    }
+  ]
+}
