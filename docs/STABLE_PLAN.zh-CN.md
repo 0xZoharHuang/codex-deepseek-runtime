@@ -25,6 +25,8 @@ CDS 独立入口与 home
 
 使用独立 Python 3.11+。Linux 实测为 Ubuntu 24.04 GNU/WSL，保留 glibc、OpenSSL 3、libcap 与捆绑 bwrap 条件。正常安装不编译 Rust，也不用 Codex App 内置 Python。
 
+Windows x64 的 v0.6.14 已从公开 tag 和默认归档 URL 在独立 Windows runner 上完成无代理安装、文件核验和原生启动。目标 Windows 10 机器的首次直连下载在 900 秒内仅收到部分字节，同机改用独立出口后完成。连接较慢时，也可先下载同一发行页的归档，再用该 tag 的 `python install.py --native-archive "<归档路径>"` 省去重复下载。安装器仍核验完整 SHA-256。已有任务继续使用原入口，新 root 可配合 `--no-activate` 独立安装。[公开下载回执](../reports/releases/0.6.14/publication-receipt.json)
+
 从本平台 tag、平台 manifest、原生归档和 SHA-256 组成匹配集合。Linux v0.6.10 已有独立的公开下载和安装回执；Windows v0.6.13 的公开 URL、asset ID 与下载后安装结果由其发布回执确认，本地已有归档并不等于 URL 已验证。v0.6.13 提供三平台正常默认 manifest，明确引用既有不可变归档。
 
 ```sh

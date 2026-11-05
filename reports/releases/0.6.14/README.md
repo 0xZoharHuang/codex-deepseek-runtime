@@ -44,4 +44,8 @@ DeepSeek 在这个已知的 Jinja 回归工程中修改了三个源文件，控�
 
 原生子智能体完成了代码审阅，父线程收到了结果。运行中实际完成了网页打开、页内查找和跟随文档链接。OpenRouter 的三笔独立 generation 回读匹配同一固定模型：主任务样本由 DeepSeek 提供，冷恢复和审阅子任务样本由已选择的 Morph 路由提供。原离线测试的阻塞、两次 HTTP 200 后的未终止流，以及随后同一提供方的恢复都保留在记录中。[工程与提供方回执](model-workflow-qualification.json) · [Windows asyncio 实测说明](../../../docs/windows-python-loopback.zh-CN.md)
 
-GitHub 默认下载的安装验证以单独的公开交付回执记录。
+## 从 GitHub 全新安装
+
+独立的 Windows Server 2025 runner 匿名检出公开 tag，直接访问默认 GitHub 地址，37.198 秒完成安装。它重新计算 204,359,096 字节归档的 SHA-256，逐一核对 3,018 个原生文件和 32 个 Python 模块的来源，并通过已安装入口启动原生 app-server。收到 EOF 后，进程和后台 provider 都自然退出。[Windows 直连 CI](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42008671976) · [公开回执](publication-receipt.json)
+
+目标 Windows 10 机器首次直连在 900 秒测试时限内收到 110,100,480 字节。与完整公开归档比较，这些字节逐字节匹配。在同一机器上，仅给单次安装使用独立 SSH 出口，Windows 自己与 GitHub 验证 TLS，139.936 秒完成相同默认 URL 的全新安装，通过原生入口和退出检查。安装测试没有发起模型请求。上面的 Jinja 工程单独验证了实际 DeepSeek 调用。

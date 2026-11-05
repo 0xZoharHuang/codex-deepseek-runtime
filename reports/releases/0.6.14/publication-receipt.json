@@ -1,0 +1,113 @@
+{
+  "schema": 2,
+  "release": "v0.6.14",
+  "platform": "Windows x86_64",
+  "tag_commit": "b1bda63015f594bcd88d78240217b21ff2d4f152",
+  "source_id": "b78fbc4332161ca41d7f",
+  "installation_assets": {
+    "codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz": {
+      "id": 712803105,
+      "size": 204359096,
+      "digest": "sha256:5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz"
+    },
+    "model-workflow-qualification.json": {
+      "id": 712803097,
+      "size": 11240,
+      "digest": "sha256:a16219d0a7b6d4c22f9b33febab409b3cb55fb5527410d19052b0035e06764f9",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/model-workflow-qualification.json"
+    },
+    "runtime-x86_64-pc-windows-msvc.json": {
+      "id": 712803099,
+      "size": 416543,
+      "digest": "sha256:d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/runtime-x86_64-pc-windows-msvc.json"
+    },
+    "windows-runtime-qualification.json": {
+      "id": 712803098,
+      "size": 3693,
+      "digest": "sha256:9bf61b17410cd36f4641a94c243a9ee830549c85ad96bf47a1f0747b058d4cfc",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/windows-runtime-qualification.json"
+    }
+  },
+  "release_id": 434989881,
+  "asset_metadata_as_of": "public prerelease, before stable promotion",
+  "anonymous_json_assets_verified": true,
+  "anonymous_json_assets_receipt_sha256": "23446be04466161d735f0da15ee15988f96596d96e75e94aac39d1c8889aaedc",
+  "public_source_archive_sha256": "954cb0a7b732b5ab0318103f75c0662ab5c89ea3fcdb124c8e93a36f47e3afe9",
+  "public_git_clone_receipt_sha256": "f04475f022027837b4d6553f2ad809c4a3045c173b08c9438422be5af953e8cd",
+  "independent_windows_direct": {
+    "workflow": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42008671976",
+    "job_id": 127181816333,
+    "qualification_sha256": "36be418c6ab63ee7987ea4fce7c373f0260b25db7e77c8768a8f2c2ef21e6393",
+    "ipc_sha256": "73c4b7122a47eb53cce2ea1c9f077e23443612d4f2ff4109be300ae16e41d802",
+    "origins_sha256": "a6e5f8588926145204beda9efd98b28bc4d5e8ee87745ec8d4541178512fcd1c",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "default_url": "https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.14/codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz",
+    "archive_override": false,
+    "http_proxy": false,
+    "archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+    "native_files": 3018,
+    "native_cli_sha256": "5359e8d42b787d3e21f7ca77193094f6cf112f0c6a15ffc81cd023efcb05c63e",
+    "module_origins": 32,
+    "wall_seconds": {
+      "install": 37.198,
+      "version": 1.266,
+      "normal-ipc": 123.771
+    },
+    "install_budget_seconds": 900,
+    "native_initialize": "public_release_install/0.164.0-alpha.7 (Windows 10.0.26100; x86_64) unknown (public_release_install; 1)",
+    "natural_eof_exit": 0,
+    "remaining_processes": 0,
+    "model_requests_in_installation_smoke": 0
+  },
+  "target_windows_10": {
+    "schema": 1,
+    "platform": "Windows 10 x64 (19045)",
+    "tag": "v0.6.14",
+    "tag_commit": "b1bda63015f594bcd88d78240217b21ff2d4f152",
+    "source_id": "b78fbc4332161ca41d7f",
+    "public_manifest_sha256": "d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e",
+    "archive_size": 204359096,
+    "archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+    "original_direct_attempt": {
+      "result": "consumer timed out",
+      "budget_seconds": 900,
+      "prefix_bytes": 110100480,
+      "matches_complete_public_asset_prefix_sha256": "867f2de718881b6a39386cce0bc817ef2803bf09b39117ad4f3dd796cae04775",
+      "receipt_sha256": "7073622a456aafb393e5cb98873a7c5f054dfce9cabfac1149a28ea9ca01cb81"
+    },
+    "windows_https_through_scoped_ssh_egress": {
+      "stock_default_url": true,
+      "fresh_public_git_checkout": true,
+      "native_archive_override": false,
+      "windows_tls_checked_by_stock_urllib": true,
+      "endpoints": [
+        "github.com",
+        "release-assets.githubusercontent.com"
+      ],
+      "install_seconds": 139.936,
+      "whole_smoke_seconds": 267.626,
+      "installed_source_id": "b78fbc4332161ca41d7f",
+      "installed_module_origins": 32,
+      "native_initialize_platform": "windows",
+      "native_eof_exit": 0,
+      "provider_retired": true,
+      "model_requests_in_installation_smoke": 0,
+      "receipt_sha256": "95272a927a7ea6476771771fc28d728f57531e40d388a4d775efd4e833fecc4a",
+      "transport_evidence_sha256": "a40006aaf139e68886b4b58c1647417686416ff98699acf620d7f3eb5b368355"
+    }
+  },
+  "separate_target_windows_10_unproxied_repeat": {
+    "observed_at": 1793873862.1242235,
+    "status": "NORMAL_CLI_RUNNING",
+    "latest_progress_sample": 44040192,
+    "scope": "Direct transfer monitored independently. No local direct deadline pass is inferred from either successful installation."
+  },
+  "runtime_evidence": "reports/releases/0.6.14/model-workflow-qualification.json",
+  "linux_and_macos_stable_tag": "v0.6.13"
+}
