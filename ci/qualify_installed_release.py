@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -121,19 +122,71 @@ def ipc_worker(binding_path):
         write(output/"ipc.json", record)
     return 0 if record["status"] == "passed_normal_wrapper_ipc" else 1
 
-def windows_public_pin(source, env):
+WINDOWS_PUBLIC_REPO = "https://github.com/0xZoharHuang/codex-deepseek-runtime"
+
+
+def windows_public_refs():
+    tag = os.environ["RELEASE_TAG"]
+    archive_tag = os.environ.get("RELEASE_ARCHIVE_TAG") or tag
+    version = r"v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?"
+    if not all(re.fullmatch(version, v) for v in (tag, archive_tag)):
+        raise ValueError("Explicit version tags are required")
+    for name, length in (("RELEASE_COMMIT", 40), ("RELEASE_MANIFEST_SHA256", 64),
+                         ("RELEASE_ARCHIVE_SHA256", 64), ("RELEASE_SOURCE_ID", 20)):
+        if not re.fullmatch(fr"[0-9a-f]{{{length}}}", os.environ[name]):
+            raise ValueError(f"Invalid exact pin for {name}")
+    branch = os.environ.get("RELEASE_CANDIDATE_BRANCH", "")
+    if branch:
+        ref = "refs/heads/" + branch
+        if not re.fullmatch(r"codex/[a-zA-Z0-9._/-]+", branch):
+            raise ValueError("Candidate requires an explicit codex/ branch")
+        subprocess.run(["git", "check-ref-format", ref], check=True, timeout=10)
+        return ref, "refs/remotes/origin/reviewed-candidate", archive_tag
+    ref = "refs/tags/" + tag
+    return ref, ref, archive_tag
+
+
+def check_direct_windows_runner():
     import urllib.request
 
-    # urllib also reads Windows' Internet Settings if the environment is empty.
+    if (os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted" or sys.platform != "win32"
+            or os.environ.get("GITHUB_REPOSITORY") != "0xZoharHuang/codex-deepseek-runtime"
+            or os.environ.get("GITHUB_REF") != "refs/heads/main"):
+        raise ValueError("Use the trusted main workflow on a disposable hosted Windows runner")
     if {"http", "https", "all"} & urllib.request.getproxies().keys():
         raise ValueError("Direct consumer gate requires a runner without a proxy")
+
+
+def prepare_windows_public_source(source):
+    check_direct_windows_runner()
+    remote_ref, local_ref, _ = windows_public_refs()
+    env = isolated_environment(source)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    if source.parent != Path(os.environ["RUNNER_TEMP"]).resolve() or source.exists():
+        raise ValueError("Fetch requires a fresh dedicated checkout in RUNNER_TEMP")
+    def git(*args):
+        return subprocess.check_output(["git", "-c", "credential.helper=", "-C", str(source),
+                                        *args], env=env, text=True, timeout=180).strip()
+    source.mkdir()
+    git("init", "--quiet")
+    git("config", "core.autocrlf", "false")
+    git("remote", "add", "origin", WINDOWS_PUBLIC_REPO + ".git")
+    git("fetch", "--depth=1", "--no-tags", "origin", f"{remote_ref}:{local_ref}")
+    if git("rev-parse", local_ref + "^{commit}") != os.environ["RELEASE_COMMIT"]:
+        raise ValueError("Fetched reference differs from the reviewed commit")
+    git("checkout", "--detach", os.environ["RELEASE_COMMIT"])
+    # Verify before the workflow can consume this checkout's dependency lock.
+    windows_public_pin(source, env)
+
+def windows_public_pin(source, env):
     tag, commit = os.environ["RELEASE_TAG"], os.environ["RELEASE_COMMIT"]
-    repo = "https://github.com/0xZoharHuang/codex-deepseek-runtime"
+    source_ref, local_ref, archive_tag = windows_public_refs()
+    repo = WINDOWS_PUBLIC_REPO
     def git(*args):
         return subprocess.check_output(["git", "-C", str(source), *args], env=env,
                                        text=True, timeout=30).strip()
     if (git("remote", "get-url", "origin") != repo + ".git" or git("rev-parse", "HEAD") != commit
-            or git("rev-parse", "refs/tags/" + tag + "^{commit}") != commit or git("status", "--porcelain")):
+            or git("rev-parse", local_ref + "^{commit}") != commit or git("status", "--porcelain")):
         raise ValueError("Public checkout differs from the pinned release")
     manifest_path = source / "native/runtime-x86_64-pc-windows-msvc.json"
     if sha(manifest_path) != os.environ["RELEASE_MANIFEST_SHA256"]:
@@ -143,9 +196,14 @@ def windows_public_pin(source, env):
     if (manifest["status"] != "ready" or manifest["target"] != "x86_64-pc-windows-msvc"
             or tag != "v" + manifest["distribution_version"]
             or archive["sha256"] != os.environ["RELEASE_ARCHIVE_SHA256"]
-            or archive["url"] != f"{repo}/releases/download/{tag}/{archive['filename']}"):
+            or archive["url"] != f"{repo}/releases/download/{archive_tag}/{archive['filename']}"):
         raise ValueError("Default manifest must identify the pinned public asset")
-    return manifest, {"public_tag": tag, "public_commit": commit, "archive_url": archive["url"],
+    candidate = source_ref.startswith("refs/heads/")
+    return manifest, {"source_kind": "candidate_branch" if candidate else "published_tag",
+                      "source_ref": source_ref, "release_tag": tag,
+                      "public_tag": None if candidate else tag, "public_commit": commit,
+                      "archive_tag": archive_tag, "archive_url": archive["url"],
+                      "verifier_commit": os.environ.get("GITHUB_SHA"),
                       "manifest_sha256": sha(manifest_path), "direct_transport": True}
 
 
@@ -174,9 +232,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--prepare-windows-public-source", type=Path)
     parser.add_argument("--public-windows-source", type=Path)
     parser.add_argument("--ipc-worker", type=Path)
     args = parser.parse_args()
+    if args.prepare_windows_public_source:
+        prepare_windows_public_source(args.prepare_windows_public_source.resolve())
+        return 0
     if args.ipc_worker:
         return ipc_worker(args.ipc_worker)
     windows = args.public_windows_source is not None
@@ -206,6 +268,7 @@ def main():
     try:
         env = isolated_environment(root/"codex-home")
         if windows:
+            check_direct_windows_runner()
             manifest, pin = windows_public_pin(source, env)
             record.update(pin)
         run("install", [sys.executable, "-I", "-B", str(source/"install.py"),
@@ -254,7 +317,9 @@ def main():
                         or manifest["upstream_version"] not in ipc["initialize"]["userAgent"]
                         or manifest["upstream_version"] not in (evidence/"version.log").read_text(encoding="utf-8")):
             raise RuntimeError("Installed CLI/native app-server version or platform mismatch")
-        record.update(status="passed_normal_public_install", package=identity,
+        status = ("passed_reviewed_candidate_install" if record.get("source_kind") == "candidate_branch"
+                  else "passed_normal_public_install")
+        record.update(status=status, package=identity,
                       native_package=str(package), installation_sha256=sha(release/"installation.json"),
                       source_id=installation["source_id"],
                       native_archive_sha256=installation["native_archive_sha256"],

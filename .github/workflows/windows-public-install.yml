@@ -1,6 +1,40 @@
 name: Windows public release installation
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Reviewed release version tag
+        default: v0.6.14
+        required: true
+        type: string
+      commit:
+        description: Exact source commit
+        default: b1bda63015f594bcd88d78240217b21ff2d4f152
+        required: true
+        type: string
+      manifest_sha256:
+        description: SHA-256 of the reviewed Windows manifest
+        default: d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e
+        required: true
+        type: string
+      archive_sha256:
+        description: SHA-256 of the published native archive
+        default: 5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328
+        required: true
+        type: string
+      source_id:
+        description: Source ID produced by the reviewed tag bytes
+        default: b78fbc4332161ca41d7f
+        required: true
+        type: string
+      archive_tag:
+        description: Existing public archive tag when reusing a prior native package
+        required: false
+        type: string
+      candidate_branch:
+        description: Optional reviewed codex/ branch before the tag exists
+        required: false
+        type: string
 permissions:
   contents: read
 jobs:
@@ -8,11 +42,13 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 30
     env:
-      RELEASE_TAG: v0.6.14
-      RELEASE_COMMIT: b1bda63015f594bcd88d78240217b21ff2d4f152
-      RELEASE_MANIFEST_SHA256: d06e1700816818e61c53f2004b63574f961e1d2db65a00ed7c00173f99c5296e
-      RELEASE_ARCHIVE_SHA256: 5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328
-      RELEASE_SOURCE_ID: b78fbc4332161ca41d7f
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      RELEASE_COMMIT: ${{ inputs.commit }}
+      RELEASE_MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+      RELEASE_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
+      RELEASE_SOURCE_ID: ${{ inputs.source_id }}
+      RELEASE_ARCHIVE_TAG: ${{ inputs.archive_tag }}
+      RELEASE_CANDIDATE_BRANCH: ${{ inputs.candidate_branch }}
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
       PYTHONDONTWRITEBYTECODE: "1"
@@ -31,12 +67,12 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable hosted Windows required' }
           $source = Join-Path $env:RUNNER_TEMP 'cds-public-tag'
-          git -c credential.helper= -c core.autocrlf=false clone --depth 1 --branch $env:RELEASE_TAG https://github.com/0xZoharHuang/codex-deepseek-runtime.git $source
+          python -I -B ci/qualify_installed_release.py --prepare-windows-public-source $source
           python -m venv "$env:RUNNER_TEMP/cds-verifier"
           $python = "$env:RUNNER_TEMP/cds-verifier/Scripts/python.exe"
           & $python -I -m pip install --only-binary=:all: --require-hashes -r "$source/requirements.lock"
           & $python -I -m pip install --no-deps --no-build-isolation .
-      - name: Install from public tag and run native wrapper
+      - name: Install from reviewed source and run native wrapper
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
