@@ -1,0 +1,80 @@
+[
+  {
+    "platform": "linux",
+    "run_id": 41936624774,
+    "artifact_id": 13374352138,
+    "zip_sha256": "c1aae82474a5e026ea03d1dd1b08a23dc5696c7ae3e1182f5abd625629e36b4d",
+    "source_commit": "187bdafb058624e8b17d9c44f71eee3a8927ef3d",
+    "source_id": "1ee9c5b1d86d13180fe4",
+    "normal_install_no_overrides": true,
+    "installed_modules": 32,
+    "model_receipts": 0,
+    "junit": {
+      "native/native.xml": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "22",
+          "time": "25.949",
+          "timestamp": "2026-11-04T23:51:39.550415+00:00",
+          "hostname": "runnervm48cm3"
+        }
+      ],
+      "offline/adapter.xml": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "55",
+          "tests": "2884",
+          "time": "85.201",
+          "timestamp": "2026-11-04T23:52:11.063735+00:00",
+          "hostname": "runnervm48cm3"
+        }
+      ]
+    },
+    "all_collected_once": true,
+    "skips_not_counted_as_passes": true
+  },
+  {
+    "platform": "macos",
+    "run_id": 41936624774,
+    "artifact_id": 13374517701,
+    "zip_sha256": "cd755b627b67173cd01d0db78f69e8bb7fef38cd5ec6e9726cc7144a8f973505",
+    "source_commit": "187bdafb058624e8b17d9c44f71eee3a8927ef3d",
+    "source_id": "1ee9c5b1d86d13180fe4",
+    "normal_install_no_overrides": true,
+    "installed_modules": 32,
+    "model_receipts": 0,
+    "junit": {
+      "native/native.xml": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "22",
+          "time": "31.519",
+          "timestamp": "2026-11-04T23:52:18.367375+00:00",
+          "hostname": "sjc20-cw713-ff52a46f-bea4-4ccb-a928-c39e10b8b8f3-9216276D8E7C.local"
+        }
+      ],
+      "offline/adapter.xml": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "56",
+          "tests": "2884",
+          "time": "171.654",
+          "timestamp": "2026-11-04T23:53:03.743514+00:00",
+          "hostname": "sjc20-cw713-ff52a46f-bea4-4ccb-a928-c39e10b8b8f3-9216276D8E7C.local"
+        }
+      ]
+    },
+    "all_collected_once": true,
+    "skips_not_counted_as_passes": true
+  }
+]

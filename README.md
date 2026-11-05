@@ -2,12 +2,12 @@
 
 **用原生 Codex CLI 的工具、审批、沙箱、会话恢复和子智能体，连接 OpenRouter 上的固定 DeepSeek 模型。** CDS 独立安装与配置，不接管本机 Codex App 的订阅或会话。
 
-**Linux / macOS 使用 v0.6.12。** 已完成各自默认公开 URL 的正常安装、入口通信、原生恢复与完整离线检查，见[本版资格与原始回执](reports/releases/0.6.12/README.md)。Linux 的真实长任务仍绑定 v0.6.10 相同原生组件和共享行为代码；macOS 不冒称重跑该业务任务。
+**Windows / Linux / macOS 当前稳定版本为 v0.6.13。** 已完成各自默认公开 URL 的正常安装、入口通信、原生恢复与完整离线检查，见[本版资格与原始回执](reports/releases/0.6.13/README.md)。Linux 的真实长任务仍绑定 v0.6.10 相同原生组件和共享行为代码；macOS 不冒称重跑该业务任务。
 
 | 平台 | 当前选择 |
 | --- | --- |
-| Linux x86_64 GNU | v0.6.12，复用 v0.6.10 原生组件；Ubuntu 24.04 / WSL 条件保持。 |
-| macOS Apple Silicon | v0.6.12，固定 P35 组件；在隔离 macOS 26 托管主机完成正常安装与当前测试。 |
+| Linux x86_64 GNU | v0.6.13，复用 v0.6.10 原生组件；Ubuntu 24.04 / WSL 条件保持。 |
+| macOS Apple Silicon | v0.6.13，固定 P35 组件；在隔离 macOS 26 托管主机完成正常安装与当前测试。 |
 | Windows x86_64 | v0.6.13 / P37：修复私有祖先目录中的 Node `EPERM lstat`，正常安装、原目录升级和冷启动已实测；公开交付见 [版本索引](reports/releases/0.6.13/README.md)。 |
 
 真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
@@ -54,7 +54,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 
 0.6.9 及更早的工具/平台证据仍绑定原版本，见[0.6.9 索引](reports/releases/0.6.9/README.md)。0.6.10 承接的组件必须有对应文件、recipe 和来源证据，不靠改旧 CI/retained pins 获得新资格。
 
-0.6.12 提供三平台默认清单，当前独立交付 Linux/macOS；Windows 新缺陷单列，不随统一版本号标成通过。详见 [0.6.12 索引](reports/releases/0.6.12/README.md)。
+0.6.13 的 Windows 修复与三平台安装资格分别记录，见 [0.6.13 索引](reports/releases/0.6.13/README.md)。
 
 ## 安装并运行
 
@@ -69,7 +69,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 在终端执行：
 
 ```sh
-git clone --branch v0.6.12 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -87,7 +87,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.12 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.13 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -124,14 +124,14 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 
 ### 下载受限或并行验证版本
 
-可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。Linux/macOS 0.6.12 清单明确复用原有不可变组件；Windows 0.6.11 配套管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
+可预先取得与所选 tag、平台清单和 recipe 匹配的原生归档，再让正常安装器校验。0.6.13 清单分别固定 Linux/macOS 的既有原生组件及 Windows P37；每个平台按清单配套管理。不要混用旧版本的同名可执行文件、manifest 或 recipe：
 
 ```sh
 python3 install.py --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json \
   --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-Linux v0.6.10 使用其已公开验证的 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.11 配套文件名为 `codex-deepseek-native-0.6.11-x86_64-pc-windows-msvc.tar.gz`，实际 URL 和下载后安装验证以该版本发布回执为准。Windows/macOS v0.6.9 资产仍仅配各自旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
+Linux v0.6.10 使用其已公开验证的 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.13 配套文件名为 `codex-deepseek-native-0.6.13-x86_64-pc-windows-msvc.tar.gz`，实际 URL 和下载后安装验证以该版本发布回执为准。Windows/macOS v0.6.9 资产仍仅配各自旧 tag 使用。Windows 使用 `python install.py --native-archive "C:\path\to\archive.tar.gz"`。离线 Python 依赖可通过 `--wheelhouse <目录>` 提供；每份依赖仍必须符合随源码提供的 hash lock。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 
