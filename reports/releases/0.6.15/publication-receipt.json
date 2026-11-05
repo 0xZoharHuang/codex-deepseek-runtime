@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "version": "0.6.15",
+  "release_id": 435138038,
+  "tag": "v0.6.15",
+  "tag_commit": "17917162b707574ce86765149ab8b06acbdc3c96",
+  "qualified_product_source_candidate": "297641e224c9d10cd1b95ab67380d67560fc4c7a",
+  "installer_identity": "89d90737f607ae21d13b",
+  "primary_assets": [
+    {
+      "name": "candidate-platform-qualification.json",
+      "id": 713233741,
+      "http": 200,
+      "bytes": 4339,
+      "sha256": "377553584e1039dd7f6f305443af595b5d92b80f97d74a3dd38c469fb2a8e559"
+    },
+    {
+      "name": "native-inputs.json",
+      "id": 713233744,
+      "http": 200,
+      "bytes": 3131,
+      "sha256": "3ebb3a8f8464a71f1df848ff10ca39a03528d633a39749ff8ef09cbd7b26e71a"
+    },
+    {
+      "name": "runtime-x86_64-pc-windows-msvc.json",
+      "id": 713233717,
+      "http": 200,
+      "bytes": 416543,
+      "sha256": "2ed16fe657d3b0763f162c058dfd8b93b2c66a86ffe26c063926006b4193fb86"
+    },
+    {
+      "name": "runtime-x86_64-unknown-linux-gnu.json",
+      "id": 713233716,
+      "http": 200,
+      "bytes": 424058,
+      "sha256": "1d1c5c761311e590fc2e17cce8ad6709b96244d87305fd6864a2b3fb69e74c3f"
+    },
+    {
+      "name": "runtime.json",
+      "id": 713233742,
+      "http": 200,
+      "bytes": 410228,
+      "sha256": "eb6d6cd4d7f2023ba8a8fd482b73003a5ff7bd1f8ee38c45292bd470878ba520"
+    },
+    {
+      "name": "windows-installer-qualification.json",
+      "id": 713233805,
+      "http": 200,
+      "bytes": 1941,
+      "sha256": "23f895b0237650a8445a5ded84e8d0548db55fa6efa4fb327666dbda1375871e"
+    }
+  ],
+  "primary_asset_metadata_before_promotion": true,
+  "primary_asset_anonymous_readback_sha256": "2373ec91a86bf6e2284e395d0d66bf58870631966404a205319aa6dc59b30619",
+  "public_tag_normal_installations": {
+    "windows": {
+      "host": "Windows-2025Server-10.0.26100-SP0",
+      "workflow": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42022259358",
+      "artifact_id": 13412736495,
+      "artifact_sha256": "60e7c4f6cb9ff02f292e6b86f00f0cc0f9e3eb2ca88483658676049ce38a1609",
+      "qualification_sha256": "acf06160e6680348e5a59121be00012cf90df461963550fb003153a6a138bf32",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "native_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+      "installed_module_origins": 32,
+      "phase_seconds": {
+        "install": 26.055,
+        "version": 1.681,
+        "normal-ipc": 122.872
+      },
+      "natural_eof_exit": 0,
+      "remaining_processes": 0,
+      "model_calls_in_install_smoke": 0,
+      "public_tag": "v0.6.15",
+      "direct_transport": true,
+      "matched_native_files": 3018
+    },
+    "linux": {
+      "host": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "workflow": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42022259322",
+      "artifact_id": 13412886433,
+      "artifact_sha256": "26f69cd279a441fd16b892ca400fa4e38a5743f825e50ab6939d129c0ff95d6c",
+      "qualification_sha256": "a815a48fd5b27618eb24c648d39715c7bd28f1e982ba1e4740581c6c5ba0aab4",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "native_archive_sha256": "be4192cfb7632ed99f6106d7b429d20097bda58c2648373ec96d0bbe1bc5b6e1",
+      "installed_module_origins": 32,
+      "phase_seconds": {
+        "install": 20.51,
+        "version": 0.616,
+        "normal-ipc": 122.374
+      },
+      "natural_eof_exit": 0,
+      "remaining_processes": 0,
+      "model_calls_in_install_smoke": 0,
+      "native_tests": 22,
+      "all_cases": 2952,
+      "passed": 2897,
+      "conditional_skips": 55,
+      "failures": 0,
+      "deselected": 0,
+      "offline_receipt_sha256": "ca56cee69de0cbda29acbcd5767fde05719494bb2586b466c6199b5d07ebdb73"
+    },
+    "macos": {
+      "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "workflow": "https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42022259322",
+      "artifact_id": 13412327915,
+      "artifact_sha256": "8dd07d24866aa124e954cb35e9a446c357b905690a7ddb8d36f47c8747dbbac4",
+      "qualification_sha256": "d04133002a1ef98eb7415eb6a5d04c205d4fdab39cc68355add534d2613a1641",
+      "installed_source_id": "89d90737f607ae21d13b",
+      "native_archive_sha256": "bce6bc15400a6b0072dd1c7b13236095f5f80ef869c7f858f8c7420b8a10b00b",
+      "installed_module_origins": 32,
+      "phase_seconds": {
+        "install": 19.85,
+        "version": 0.709,
+        "normal-ipc": 122.08
+      },
+      "natural_eof_exit": 0,
+      "remaining_processes": 0,
+      "model_calls_in_install_smoke": 0,
+      "native_tests": 22,
+      "all_cases": 2952,
+      "passed": 2896,
+      "conditional_skips": 56,
+      "failures": 0,
+      "deselected": 0,
+      "offline_receipt_sha256": "035b2176b2172da2753758a7b01056534029f3ca43acd9abc69fe4fd87fda99d"
+    }
+  },
+  "target_Windows_10": "windows-installer-qualification.json",
+  "native_and_model_evidence": "Immutable runtime, tool and model evidence remains scoped by platform and version in native-inputs.json and the linked v0.6.14/v0.6.13 records.",
+  "verified_at": 1793879941.2835782
+}
