@@ -47,59 +47,6 @@ def isolated_environment(home):
     return env
 
 
-def windows_eof_handle_evidence(output, family):
-    """Read-only, PID/birth-bound diagnostics on a disposable hosted runner."""
-    if (sys.platform != "win32" or os.environ.get("GITHUB_ACTIONS") != "true"
-            or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
-            or os.environ.get("GITHUB_REPOSITORY") != "0xZoharHuang/codex-deepseek-runtime"):
-        return {"status": "not_disposable_windows_runner"}
-    import tempfile
-    import urllib.request
-    import zipfile
-    from codex_deepseek.processes import identity, matches
-
-    result = {"status": "collecting", "read_only": True, "processes": []}
-    destination = Path(output)/"eof-handles"
-    destination.mkdir()
-    with tempfile.TemporaryDirectory(prefix="cds-eof-handle-", dir=os.environ["RUNNER_TEMP"]) as temporary:
-        temporary = Path(temporary)
-        archive = temporary/"Handle.zip"
-        with urllib.request.urlopen("https://download.sysinternals.com/files/Handle.zip", timeout=15) as source:
-            archive.write_bytes(source.read(4*1024*1024))
-        with zipfile.ZipFile(archive) as source:
-            binary = temporary/"handle64.exe"
-            binary.write_bytes(source.read("handle64.exe"))
-        signature = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-            "& { param($p) $s=Get-AuthenticodeSignature -LiteralPath $p; "
-            "if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') "
-            "{ throw 'Microsoft signature verification failed' }; "
-            "[pscustomobject]@{Status=[string]$s.Status;Subject=$s.SignerCertificate.Subject;"
-            "Thumbprint=$s.SignerCertificate.Thumbprint}|ConvertTo-Json -Compress }",
-            str(binary)], check=True, capture_output=True, text=True, timeout=15)
-        result.update(tool_sha256=sha(binary), archive_sha256=sha(archive),
-                      signature=json.loads(signature.stdout))
-        targets = [{"pid": os.getpid(), "birth": identity(os.getpid())}, *family]
-        seen = set()
-        for row in targets:
-            pid, birth = row["pid"], row["birth"]
-            if pid in seen or not birth or not matches(pid, birth):
-                continue
-            seen.add(pid)
-            path = destination/(str(pid)+".txt")
-            try:
-                with path.open("wb") as stream:
-                    value = subprocess.run([str(binary), "-accepteula", "-nobanner", "-a", "-p", str(pid)],
-                                           stdout=stream, stderr=subprocess.STDOUT, timeout=3)
-                result["processes"].append({**row, "exit": value.returncode, "log": path.name,
-                                             "sha256": sha(path), "same_birth_after": matches(pid, birth)})
-            except subprocess.TimeoutExpired:
-                result["processes"].append({**row, "timeout": True, "log": path.name,
-                                             "same_birth_after": matches(pid, birth)})
-        result["status"] = "captured"
-    write(destination/"receipt.json", result)
-    return result
-
-
 def ipc_worker(binding_path):
     import psutil
     from codex_deepseek.processes import identity, matches
@@ -111,7 +58,12 @@ def ipc_worker(binding_path):
     peer = None
     try:
         with (output/"ipc.stderr").open("wb") as stderr:
-            peer = subprocess.Popen([binding["entry"], "app-server"], cwd=binding["cwd"],
+            factory = subprocess.Popen
+            if sys.platform == "win32":
+                sys.path.insert(0, str(SOURCE))
+                from ci.windows_stdio_probe import TracedPopen
+                factory = TracedPopen
+            peer = factory([binding["entry"], "app-server"], cwd=binding["cwd"],
                                     env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=stderr, text=True, encoding="utf-8", bufsize=1)
             record.update(pid=peer.pid, birth=identity(peer.pid))
@@ -151,7 +103,8 @@ def ipc_worker(binding_path):
             if record["eof_exit"] or reader.is_alive():
                 record["reader_alive_at_eof"] = reader.is_alive()
                 try:
-                    record["handle_diagnostics"] = windows_eof_handle_evidence(output, family)
+                    from ci.windows_stdio_probe import writer_holders
+                    record["handle_diagnostics"] = writer_holders(peer, family)
                 except BaseException as diagnostic_error:
                     record["handle_diagnostics"] = {"error": repr(diagnostic_error)}
                 raise RuntimeError("Normal native EOF did not finish")
