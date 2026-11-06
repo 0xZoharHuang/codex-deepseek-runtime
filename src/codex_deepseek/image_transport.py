@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from contextlib import asynccontextmanager, closing
+from contextlib import asynccontextmanager, closing, contextmanager
 from dataclasses import dataclass, field
 import errno
 import hashlib
@@ -649,6 +649,21 @@ def _private_directory(path: Path) -> None:
             kernel.LocalFree(descriptor)
 
 
+@contextmanager
+def _ledger_transaction(db):
+    """Commit one local state transition; never span a remote await."""
+    if db.in_transaction:
+        raise ImageTransportError("Image ledger transaction is already active")
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+        db.execute("COMMIT")
+    except BaseException:
+        if db.in_transaction:
+            db.execute("ROLLBACK")
+        raise
+
+
 @asynccontextmanager
 async def _file_lock(path: Path, timeout: float):
     handle = _open_private_file(path,os.O_CREAT|os.O_RDWR|os.O_APPEND,"a+b")
@@ -851,19 +866,24 @@ class ImageTransport:
             if row and (row['mime'] != blob.mime or row['nbytes'] != len(blob.data)):
                 raise ImageTransportError("Cached image metadata conflicts with original bytes")
             if row and row['state'] == 'ready':
+                verified = None
                 if self.clock() - row['verified'] >= self.policy.verify_after_seconds:
                     meta = await self.backend.get(key, row['file_id'])
                     if meta is None:
-                        db.execute("UPDATE assets SET state='deleted',file_id=NULL WHERE digest=?", (blob.digest,))
-                        self._record(db, blob.digest, 'externally_invalidated')
+                        with _ledger_transaction(db):
+                            db.execute("UPDATE assets SET state='deleted',file_id=NULL WHERE digest=?", (blob.digest,))
+                            self._record(db, blob.digest, 'externally_invalidated')
                         row = None
                     elif not self._matches(row, meta):
                         raise ImageTransportError("Uploaded image metadata changed; refusing to reuse the file")
                     else:
-                        db.execute("UPDATE assets SET verified=? WHERE digest=?", (self.clock(), blob.digest))
+                        verified = self.clock()
                 if row is not None:
-                    db.execute("UPDATE assets SET last_used=? WHERE digest=?", (self.clock(), blob.digest))
-                    db.execute("INSERT OR IGNORE INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
+                    with _ledger_transaction(db):
+                        if verified is not None:
+                            db.execute("UPDATE assets SET verified=? WHERE digest=?", (verified, blob.digest))
+                        db.execute("UPDATE assets SET last_used=? WHERE digest=?", (self.clock(), blob.digest))
+                        db.execute("INSERT OR IGNORE INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
                     return row['file_id'], False
             if row and row['state'] in {'upload_pending','upload_unknown'}:
                 raise UploadOutcomeUnknown("A previous image upload has unknown outcome; inspect its private receipt before retrying")
@@ -871,26 +891,31 @@ class ImageTransport:
                 raise CleanupPending("A previous image deletion needs reconciliation before reuse")
             filename = 'cds-image-' + secrets.token_hex(20) + '.' + blob.mime.split('/')[1]
             now = self.clock()
-            db.execute("INSERT OR REPLACE INTO assets VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                (blob.digest, blob.mime, len(blob.data), filename, 'upload_pending', None, now, now, 0, lease, None))
-            self._record(db, blob.digest, 'upload_started')
+            # The upload intent must be durable before any remote request.
+            with _ledger_transaction(db):
+                db.execute("INSERT OR REPLACE INTO assets VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    (blob.digest, blob.mime, len(blob.data), filename, 'upload_pending', None, now, now, 0, lease, None))
+                self._record(db, blob.digest, 'upload_started')
             try:
                 meta = await self.backend.upload(key, blob.data, blob.mime, filename)
             except BaseException as error:
                 known = isinstance(error, FileOperationError) and error.definitely_not_created
-                db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", ('upload_rejected' if known else 'upload_unknown', type(error).__name__, blob.digest))
-                self._record(db, blob.digest, 'upload_rejected' if known else 'upload_unknown', _safe_error_detail(error))
+                with _ledger_transaction(db):
+                    db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", ('upload_rejected' if known else 'upload_unknown', type(error).__name__, blob.digest))
+                    self._record(db, blob.digest, 'upload_rejected' if known else 'upload_unknown', _safe_error_detail(error))
                 raise
-            # Persist the returned ID even on a metadata mismatch so cleanup is
-            # possible; such a resource is never passed to the model.
-            row = db.execute("SELECT * FROM assets WHERE digest=?", (blob.digest,)).fetchone()
-            valid = self._matches(row, meta)
-            db.execute("UPDATE assets SET state=?,file_id=?,verified=? WHERE digest=?",
-                ('ready' if valid else 'delete_unknown', meta.file_id, self.clock(), blob.digest))
-            self._record(db, blob.digest, 'upload_confirmed' if valid else 'upload_metadata_mismatch')
+            # Commit the acknowledged ID even on mismatch. Raising inside the
+            # transaction would lose the cleanup handle when it rolls back.
+            with _ledger_transaction(db):
+                row = db.execute("SELECT * FROM assets WHERE digest=?", (blob.digest,)).fetchone()
+                valid = self._matches(row, meta)
+                db.execute("UPDATE assets SET state=?,file_id=?,verified=? WHERE digest=?",
+                    ('ready' if valid else 'delete_unknown', meta.file_id, self.clock(), blob.digest))
+                self._record(db, blob.digest, 'upload_confirmed' if valid else 'upload_metadata_mismatch')
+                if valid:
+                    db.execute("INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
             if not valid:
                 raise CleanupPending("Upload metadata did not match the original image; cleanup is required")
-            db.execute("INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
             return meta.file_id, True
 
     @asynccontextmanager
@@ -991,12 +1016,14 @@ class ImageTransport:
                         await self.backend.delete(key, row['file_id'])
                         if await self.backend.get(key, row['file_id']) is not None:
                             raise CleanupPending("Files API delete did not become absent")
-                    db.execute("UPDATE assets SET state='deleted' WHERE digest=?", (row['digest'],))
-                    self._record(db, row['digest'], 'deleted_confirmed')
+                    with _ledger_transaction(db):
+                        db.execute("UPDATE assets SET state='deleted' WHERE digest=?", (row['digest'],))
+                        self._record(db, row['digest'], 'deleted_confirmed')
                     result['deleted'] += 1
                 except BaseException as error:
-                    db.execute("UPDATE assets SET state='delete_unknown',reason=? WHERE digest=?", (type(error).__name__, row['digest']))
-                    self._record(db, row['digest'], 'delete_unknown', _safe_error_detail(error))
+                    with _ledger_transaction(db):
+                        db.execute("UPDATE assets SET state='delete_unknown',reason=? WHERE digest=?", (type(error).__name__, row['digest']))
+                        self._record(db, row['digest'], 'delete_unknown', _safe_error_detail(error))
                     result['pending'] += 1
                     if isinstance(error, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
                         raise
@@ -1110,9 +1137,10 @@ class ImageTransport:
                     # Persist the discovered ID before any destructive request. It
                     # is only eligible for cleanup, never inferred to be content-SHA verified.
                     state = 'deleted' if current_meta is None else 'delete_unknown'
-                    db.execute('UPDATE assets SET state=?,file_id=?,reason=? WHERE digest=?',
-                               (state, meta.file_id, 'metadata_reconciled_for_cleanup_only', digest))
-                    self._record(db, digest, 'unknown_upload_reconciled_for_cleanup', json.dumps({'file_id': meta.file_id, 'metadata_only': True, 'get_absent': current_meta is None}))
+                    with _ledger_transaction(db):
+                        db.execute('UPDATE assets SET state=?,file_id=?,reason=? WHERE digest=?',
+                                   (state, meta.file_id, 'metadata_reconciled_for_cleanup_only', digest))
+                        self._record(db, digest, 'unknown_upload_reconciled_for_cleanup', json.dumps({'file_id': meta.file_id, 'metadata_only': True, 'get_absent': current_meta is None}))
                 recognized.add(digest)
                 item['state'] = 'already_absent' if current_meta is None else 'owned_cleanup_candidate'
             except (ImageTransportError, OSError, sqlite3.Error, asyncio.TimeoutError) as error:
@@ -1145,12 +1173,13 @@ class ImageTransport:
         key = credential if credential is not None else self.credentials()
         _, directory = await self._scope(key)
         async with self._db(directory) as db:
-            rows = db.execute("SELECT DISTINCT lease,digest FROM pins WHERE request_ref=? AND phase='upstream_unknown'", (request_ref,)).fetchall()
-            if not rows:
-                raise ImageTransportError("No unknown upstream image lease matches this request")
-            for row in rows:
-                self._record(db, row['digest'], 'upstream_settled_recovery', json.dumps({'response_id': response_id, 'terminal': terminal, 'evidence_sha256': evidence_sha256}))
-            db.execute("DELETE FROM pins WHERE request_ref=? AND phase='upstream_unknown'", (request_ref,))
+            with _ledger_transaction(db):
+                rows = db.execute("SELECT DISTINCT lease,digest FROM pins WHERE request_ref=? AND phase='upstream_unknown'", (request_ref,)).fetchall()
+                if not rows:
+                    raise ImageTransportError("No unknown upstream image lease matches this request")
+                for row in rows:
+                    self._record(db, row['digest'], 'upstream_settled_recovery', json.dumps({'response_id': response_id, 'terminal': terminal, 'evidence_sha256': evidence_sha256}))
+                db.execute("DELETE FROM pins WHERE request_ref=? AND phase='upstream_unknown'", (request_ref,))
 
     def _foreign_pending_scopes(self, current_scope: str) -> list[str]:
         pending = []
@@ -1211,14 +1240,15 @@ class _CallLease:
     async def start(self, request_ref: str) -> None:
         _validate_reference(request_ref)
         async with self.transport._db(self.directory) as db:
-            rows = db.execute('SELECT * FROM pins WHERE lease=?', (self.lease,)).fetchall()
-            if not rows or any(row['phase'] != 'prepared' for row in rows):
-                raise ImageTransportError("Image upstream request was already started or released")
-            if db.execute('SELECT 1 FROM pins WHERE request_ref=?', (request_ref,)).fetchone():
-                raise ImageTransportError("Upstream receipt reference is already in use")
-            db.execute("UPDATE pins SET phase='upstream_unknown',request_ref=? WHERE lease=?", (request_ref, self.lease))
-            for row in rows:
-                self.transport._record(db, row['digest'], 'upstream_started', request_ref)
+            with _ledger_transaction(db):
+                rows = db.execute('SELECT * FROM pins WHERE lease=?', (self.lease,)).fetchall()
+                if not rows or any(row['phase'] != 'prepared' for row in rows):
+                    raise ImageTransportError("Image upstream request was already started or released")
+                if db.execute('SELECT 1 FROM pins WHERE request_ref=?', (request_ref,)).fetchone():
+                    raise ImageTransportError("Upstream receipt reference is already in use")
+                db.execute("UPDATE pins SET phase='upstream_unknown',request_ref=? WHERE lease=?", (request_ref, self.lease))
+                for row in rows:
+                    self.transport._record(db, row['digest'], 'upstream_started', request_ref)
 
     async def settle(self, response_id: str, terminal: str) -> None:
         _validate_terminal(response_id, terminal)
@@ -1231,9 +1261,10 @@ class _CallLease:
 
     async def _finish(self, evidence: str) -> None:
         async with self.transport._db(self.directory) as db:
-            rows = db.execute('SELECT * FROM pins WHERE lease=?', (self.lease,)).fetchall()
-            if not rows or any(row['phase'] != 'upstream_unknown' for row in rows):
-                raise ImageTransportError("Image lease has no unsettled upstream request")
-            db.execute("UPDATE pins SET phase='settled' WHERE lease=?", (self.lease,))
-            for row in rows:
-                self.transport._record(db, row['digest'], 'upstream_settled', evidence)
+            with _ledger_transaction(db):
+                rows = db.execute('SELECT * FROM pins WHERE lease=?', (self.lease,)).fetchall()
+                if not rows or any(row['phase'] != 'upstream_unknown' for row in rows):
+                    raise ImageTransportError("Image lease has no unsettled upstream request")
+                db.execute("UPDATE pins SET phase='settled' WHERE lease=?", (self.lease,))
+                for row in rows:
+                    self.transport._record(db, row['digest'], 'upstream_settled', evidence)
