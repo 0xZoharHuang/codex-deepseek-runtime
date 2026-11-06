@@ -21,6 +21,25 @@ Collect the smallest relevant non-sensitive evidence: actual executable/version,
 
 Do not infer a CDS defect solely from a tool failure, and do not dismiss a reproducible adapter error as “the model.” Preserve the original outcome. Correct the demonstrated layer, then retest that affected behavior.
 
+## Passive startup and state inspection
+
+When the task permits only read-only diagnosis, keep the diagnostic passive. The default `scripts/inspect_cds.py --entry <actual entry>` reads local installation metadata and launcher consistency; omit `--offline-native`. Help/version still execute a native process. `runtime status` enters Store/provider lifecycle, `runtime provider status` takes its configuration lock, and `runtime doctor` performs inference. With image transport enabled, `runtime image-status` also resolves the credential scope and opens its journal. None is a substitute for a passive state sample.
+
+Use the original owner's already authorized observation channel. Read only the selected installation/profile's bounded non-secret projections: entry/version and effective home, PID/birth ancestry, relevant file metadata, and the matching stderr/terminal or operation receipt. Do not dump full gateway descriptors (they can contain local authentication tokens), full environments, prompts or unrelated history. A different SID/logon context succeeding is a contrast, not recovery of the original owner.
+
+For a schema that exposes `runtime_owners`, an existing SQLite database opened in read-only mode can provide a bounded phase witness without constructing `Store` or invoking its reconciliation:
+
+~~~sql
+SELECT rowid,pid,birth,supervisor_pid,supervisor_birth,
+       native_pid,native_birth,closed
+FROM runtime_owners
+ORDER BY rowid DESC LIMIT 12;
+~~~
+
+Check the actual schema first; report missing data rather than create or repair it. Close the read transaction promptly. If the user forbids even SQLite sidecar activity, use an approved consistent snapshot supplied by the owner. File mtime, a stale descriptor or a numeric PID alone cannot identify the blocked startup call or prove retirement.
+
+Observe local launcher/import/verification, provider readiness, actual native creation and RPC initialize separately. Record when the initialize timer was armed, the SDK's effective deadline and actual EOF/exit alongside stderr; a host's total launch interval is not the configured RPC timeout. Windows venv redirectors can make `Popen.pid` differ from the Python IPC owner, so verify the stable parent edge and birth instead of guessing by process name. Preserve an early process exit as that outcome rather than relabeling it as a model failure or extending a timeout before locating the wait.
+
 ## Shell network errors do not prove a remote outage
 
 Record the failing child command's exact exit code, stderr, bytes received and current thread/turn. `curl` exit 6 means that this invocation could not resolve its destination. HTTP 000 is not an HTTP response, and zero bytes do not prove that a remote service is down or that content does not exist.

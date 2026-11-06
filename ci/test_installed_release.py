@@ -53,7 +53,7 @@ def test_public_windows_source_and_archive_pins(tmp_path, monkeypatch, candidate
     git("init", "--quiet")
     git("config", "core.autocrlf", "false")
     git("remote", "add", "origin", gate.WINDOWS_PUBLIC_REPO + ".git")
-    tag, archive_tag = ("v0.6.15", "v0.6.14") if candidate else ("v0.6.14", "v0.6.14")
+    tag, archive_tag = ("v0.7.0", "v0.6.14") if candidate else ("v0.6.14", "v0.6.14")
     branch = "codex/test-reviewed-source"
     archive = {"filename": "native.tar.gz", "sha256": "a" * 64,
                "url": f"{gate.WINDOWS_PUBLIC_REPO}/releases/download/{archive_tag}/native.tar.gz"}

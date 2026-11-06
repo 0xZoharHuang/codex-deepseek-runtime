@@ -2,6 +2,8 @@
 
 Use this reference before steering, queuing, stopping, resuming, forking or cleaning up a running task. Preserve thread, turn, item and process identities separately. “Accepted,” “consumed,” “applied” and “completed” are different observations.
 
+A controller's goal, task, operation handle or exit describes its own orchestration. It may finish while native work survives, or time out after the native child has already exited. Read the native terminal event, original process/connection and actual effects before declaring the user's work completed, failed or safely retired. Updating controller bookkeeping is not a native recovery operation.
+
 ## Choose the right control surface
 
 | Intent | Native mechanism | Required observation |
@@ -67,3 +69,5 @@ Wait for the matching `turn/completed` with `status="interrupted"`. A `{}` respo
 Before retrying, reconcile receipts, file effects, operation IDs and process state. Provider metadata delay does not justify replaying a completed model request. A failed wrapper after a successful provider operation must not erase the original result. Resume native state when it exists; do not synthesize replacement history or manually edit its database to force success.
 
 Fork when the task requires a separate branch of history; otherwise preserve the original thread. Archive/delete and queue-removal operations require their actual intended scope. Skills do not authorize discarding a user's history.
+
+When recovery also requires an adapter update or cache-format rollback, follow [image-cache format maintenance](installation-and-platforms.md#image-cache-format-maintenance) before selecting the new entry. Preserve the original UUID/home and unknown outcomes; format maintenance cannot replace native session recovery.

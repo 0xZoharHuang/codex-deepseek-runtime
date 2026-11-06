@@ -47,7 +47,7 @@ python3 install.py --root "$CDS_CHECK_ROOT" --no-activate   --native-manifest /v
 
 1. 保留原 home 根目录身份、UUID、rollout、图片账本和工程成果；备份不能改变正在使用的路径身份。不复制 Windows sandbox 秘密/账户资源到另一个 home。
 2. 先正常结束目标 home 的任务、子进程与 daemon，并确认 PID 加 birth 的实际所有者。未知 owner/lease 不能被当成已退出，单独停 daemon 不代表全部工作结束。
-3. 使用新 release 的绝对入口和原 `CODEX_DEEPSEEK_HOME` 执行 `runtime status`。正常 gateway 锁/启动逻辑可以迁移已终态旧 descriptor 的 environment、native_binary、code_id；保留迁移前后回读。它不发送模型推理，但会启动本地 provider。不要手删 descriptor、改 PID、手改 checkpoint/数据库或绕过 guard。
+3. 使用图片缓存的旧 home，先在所有 native/provider 退役后用新入口执行 `runtime image-cache-format --to 3`，确认返回码 0、`complete=true`；这是不读取 key、不启动 provider 的本地维护。然后使用新 release 的绝对入口和原 `CODEX_DEEPSEEK_HOME` 执行 `runtime status`。正常 gateway 锁/启动逻辑可以迁移已终态旧 descriptor 的 environment、native_binary、code_id；保留迁移前后回读。它不发送模型推理，但会启动本地 provider。不要手删 descriptor、改 PID、手改 checkpoint/数据库或绕过 guard。
 4. 如果需要更改 provider，等这次 status 客户端及 provider 正常 idle 退役后再 CAS；默认 idle 约 120 秒，不靠改 timeout 通过。不要反复调用 `runtime status` 来等它闲置。
 5. 使用同一新入口、同一 home 执行原生 `resume <UUID>`，由实际普通完成、工具效果和工程检查确认继续成功；状态输出和 doctor/probe 都不代替真实 reviewer。
 
@@ -101,3 +101,8 @@ Linux/WSL 超时保留原时间界限，先看实际导入/函数/等待位置�
 Linux 0.6.10 已正式发布。公开资产下载及默认 manifest 的正常隔离安装已通过；固定源码为 `6d6ccd32c92d06fc52ecd72712140f24496c30a2`，安装 CID 为 `2752f58dbefb9114c9a8`。参见[发布回执](../reports/releases/0.6.10/publication-receipt.json)及[发行页](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。Windows/macOS/CADSG 的后续验收保持独立。
 
 Windows 上的异步 Python 工程可能需要本机回环。受管配置、实测的允许与拒绝结果见 [Windows Python 回环说明](windows-python-loopback.zh-CN.md)。
+
+
+## 图片缓存格式的受控升级与回滚
+
+图片缓存格式 3 使用单图操作锁和短共享账本事务；不会把 Files API 的等待串在所有图片的共享锁内。旧 home 升级前先自然退役并用新入口显式 `runtime image-cache-format --to 3`。回滚到格式 2 旧程序前，先退役全部新 reader，再用新入口显式 `--to 2`；它保留升级后新增的数据，不覆盖旧 DB 快照。未知或活跃 owner 阻止迁移，已证退出但消费结果未知的 pin 原样保留。中断后的 transition 不能当 ready；恢复同一次维护并完成核对后再启动。[完整机制与步骤](image-cache-formats.zh-CN.md)。

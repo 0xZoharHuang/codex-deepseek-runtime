@@ -669,9 +669,11 @@ async def test_sqlite_failure_after_remote_delete_recovers_get_first_without_sec
     normal_db=tr._db;normal_delete=backend.delete;holder={}
     @asynccontextmanager
     async def capture(directory):
-        async with normal_db(directory) as db:holder['db']=db;yield db
+        async with normal_db(directory) as db:
+            if holder.get('after_delete'):db.execute('PRAGMA query_only=ON')
+            yield db
     async def delete_then_disk_failure(key,fid):
-        await normal_delete(key,fid);holder['db'].execute('PRAGMA query_only=ON')
+        await normal_delete(key,fid);holder['after_delete']=True
     monkeypatch.setattr(tr,'_db',capture);monkeypatch.setattr(backend,'delete',delete_then_disk_failure)
     result=await tr.reconcile_unknown_uploads()
     assert result['state']=='cleanup_state_failure' and len(backend.deleted)==1 and not backend.files
@@ -790,7 +792,7 @@ async def test_ledger_identity_rejects_corruption_before_state_or_network(tmp_pa
     with closing(sqlite3.connect(path)) as db, db:
         if corruption=='wrong-scope':db.execute("UPDATE cache_identity SET credential_scope=?",('a'*64,))
         elif corruption=='wrong-root':db.execute("UPDATE cache_identity SET cache_root_sha256=?",('b'*64,))
-        elif corruption=='wrong-schema':db.execute("UPDATE cache_identity SET schema_version=3")
+        elif corruption=='wrong-schema':db.execute("UPDATE cache_identity SET schema_version=4")
         elif corruption=='missing-row':db.execute('DELETE FROM cache_identity')
         else:
             db.execute('DROP TABLE cache_identity');db.execute('CREATE TABLE cache_identity(id INTEGER)')
@@ -858,13 +860,15 @@ async def test_private_lock_handle_rechecks_links_created_between_stat_and_open(
     target=tr.root/'initialize.lock';original_open=os.open;swapped=False
     def race(path,flags,*args,**kwargs):
         nonlocal swapped
-        if Path(path)==target and not swapped:
+        if module.comparison_path(Path(path))==module.comparison_path(target) and not swapped:
             swapped=True;os.link(outside,target)
         return original_open(path,flags,*args,**kwargs)
     monkeypatch.setattr(module.os,'open',race)
     with pytest.raises(ImageTransportError,match='owned regular|identity'):
         await tr.diagnostics()
     assert swapped and outside.read_bytes()==b''
+
+    assert swapped, 'The real private open race must have been injected'
 
 
 @pytest.mark.asyncio

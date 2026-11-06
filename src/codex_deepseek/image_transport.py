@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from contextlib import asynccontextmanager, closing, contextmanager
+from contextlib import asynccontextmanager, closing, contextmanager, AsyncExitStack, ExitStack
 from dataclasses import dataclass, field
 import errno
 import hashlib
@@ -25,12 +25,13 @@ from typing import Any, Callable, Protocol
 from urllib.parse import urlsplit
 
 import psutil
-from .platforms import comparison_path, sqlite_filename
+from .platforms import comparison_path, sqlite_filename, replace_file
 from .processes import identity as process_identity
 
 FILE_ID = re.compile(r"or_file_[A-Za-z0-9_-]{8,128}\Z")
 DATA_URL = re.compile(r"data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/]*={0,2})\Z")
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+V3_SALT_FENCE = b"CDS-IMAGE-CACHE-V3-LEGACY-READERS-FENCED\n"
 
 
 class ImageTransportError(RuntimeError):
@@ -560,7 +561,7 @@ def plan_image_budget(payload: dict, policy: TransportPolicy) -> ImageBudgetPlan
 
 
 def _linked_path(path: Path) -> bool:
-    try:metadata=path.lstat()
+    try:metadata=os.lstat(sqlite_filename(path))
     except FileNotFoundError:return False
     return stat.S_ISLNK(metadata.st_mode) or bool(
         getattr(metadata,'st_file_attributes',0)&getattr(stat,'FILE_ATTRIBUTE_REPARSE_POINT',0x400))
@@ -569,7 +570,7 @@ def _linked_path(path: Path) -> bool:
 def _private_file_stat(path: Path, *, missing: bool = False):
     if not path.is_absolute() or any(_linked_path(parent) for parent in path.parents):
         raise ImageTransportError('Image state cannot traverse a link or junction')
-    try:metadata=path.lstat()
+    try:metadata=os.lstat(sqlite_filename(path))
     except FileNotFoundError:
         if missing:return None
         raise
@@ -580,7 +581,7 @@ def _private_file_stat(path: Path, *, missing: bool = False):
 
 def _open_private_file(path: Path, flags: int, mode: str):
     before=_private_file_stat(path,missing=True)
-    descriptor=os.open(path,flags|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0),0o600)
+    descriptor=os.open(sqlite_filename(path),flags|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0),0o600)
     try:
         actual=os.fstat(descriptor)
         current=_private_file_stat(path)
@@ -600,7 +601,7 @@ def _private_directory(path: Path) -> None:
     for ancestor in (path, *path.parents):
         if _linked_path(ancestor):
             raise ImageTransportError("Image cache cannot traverse a link or junction")
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.makedirs(sqlite_filename(path), exist_ok=True, mode=0o700)
     if os.name != "nt":
         path.chmod(0o700)
         return
@@ -636,7 +637,7 @@ def _private_directory(path: Path) -> None:
         present, defaulted, dacl = w.BOOL(), w.BOOL(), ctypes.c_void_p()
         if not adv.GetSecurityDescriptorDacl(descriptor, ctypes.byref(present), ctypes.byref(dacl), ctypes.byref(defaulted)) or not present:
             raise OSError("DACL inspection failed")
-        if adv.SetNamedSecurityInfoW(str(path), 1, 0x80000004, None, None, dacl, None) != 0:
+        if adv.SetNamedSecurityInfoW(sqlite_filename(path), 1, 0x80000004, None, None, dacl, None) != 0:
             raise OSError("DACL installation failed")
     except OSError as error:
         raise ImageTransportError("Cannot protect the private image cache") from error
@@ -647,6 +648,34 @@ def _private_directory(path: Path) -> None:
             kernel.LocalFree(sid_text)
         if descriptor:
             kernel.LocalFree(descriptor)
+
+
+def _replace_private_state(source: Path, destination: Path) -> None:
+    if os.name != 'nt':
+        replace_file(source, destination)
+        return
+    # MoveFileExW WRITE_THROUGH preserves the durable-before-fence ordering on
+    # Windows as well as the file fsync + directory fsync used on POSIX.
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    move = kernel.MoveFileExW
+    move.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
+    move.restype = wintypes.BOOL
+    def extended(path):
+        value = os.fspath(path)
+        if value.startswith('\\\\?\\'):
+            return value
+        value = os.path.abspath(value)
+        return '\\\\?\\UNC\\' + value[2:] if value.startswith('\\\\') else '\\\\?\\' + value
+    deadline = time.monotonic() + 1
+    while True:
+        if move(extended(source), extended(destination), 0x1 | 0x8):
+            return
+        error = ctypes.WinError(ctypes.get_last_error())
+        if getattr(error, 'winerror', None) not in {5, 32, 33} or time.monotonic() >= deadline:
+            raise error
+        time.sleep(.01)
 
 
 @contextmanager
@@ -665,8 +694,9 @@ def _ledger_transaction(db):
 
 
 @asynccontextmanager
-async def _file_lock(path: Path, timeout: float):
-    handle = _open_private_file(path,os.O_CREAT|os.O_RDWR|os.O_APPEND,"a+b")
+async def _file_lock(path: Path, timeout: float, *, create: bool = True):
+    flags = os.O_RDWR | os.O_APPEND | (os.O_CREAT if create else 0)
+    handle = _open_private_file(path,flags,"a+b")
     locked = False
     start = time.monotonic()
     try:
@@ -736,14 +766,18 @@ class ImageTransport:
         if not isinstance(key, str) or not key:
             raise ImageTransportError("Missing credential for private image transport")
         async with _file_lock(self.root / "initialize.lock", self.policy.lock_timeout_seconds):
-            salt_path = self.root / "scope.salt"
-            if not salt_path.exists():
-                with _open_private_file(salt_path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,"wb") as output:
-                    output.write(secrets.token_bytes(32)); output.flush(); os.fsync(output.fileno())
-            with _open_private_file(salt_path,os.O_RDONLY,"rb") as source:
-                salt = source.read(33)
-            if len(salt) != 32:
-                raise ImageTransportError("Credential scope salt is invalid; existing uploads need reconciliation")
+            _private_file_stat(self.root / 'scope.salt', missing=True)
+            _private_file_stat(self.root / 'scope.salt.v3-original', missing=True)
+            if self._root_record() is None:
+                existing = any(re.fullmatch(r'[0-9a-f]{64}', entry.name) for entry in self.root.iterdir())
+                if existing or (self.root / 'scope.salt').exists() or (self.root / 'scope.salt.v3-original').exists():
+                    raise ImageTransportError('Image cache format requires explicit maintenance migration; drain all provider readers before changing formats')
+                salt = self._read_salt_material(create=True)
+                self._write_root_format(3, salt, state='transition')
+                self._fence_legacy_salt(salt)
+                self._write_root_format(3, salt)
+            self._require_root_format()
+            salt = self._read_salt_material()
             scope = hmac.new(salt, key.encode("utf-8"), hashlib.sha256).hexdigest()
             directory = self.root / scope
             _private_directory(directory)
@@ -754,69 +788,360 @@ class ImageTransport:
         if selected.parent!=root or not re.fullmatch(r'[0-9a-f]{64}',selected.name):
             raise ImageTransportError('Image ledger is outside its credential scope')
         root_hash=hashlib.sha256(os.path.normcase(str(root)).encode('utf-8')).hexdigest()
-        return (1,2,selected.name,root_hash)
+        return (1,3,selected.name,root_hash)
+
+    def _root_record(self):
+        path = self.root / 'cache-format.json'
+        if _private_file_stat(path, missing=True) is None:
+            return None
+        with _open_private_file(path, os.O_RDONLY, 'rb') as source:
+            raw = source.read(513)
+        try:
+            value = _strict_json(raw)
+        except (ValueError, TypeError):
+            raise ImageTransportError('Invalid image cache format marker') from None
+        if (len(raw) > 512 or not isinstance(value, dict)
+                or set(value) != {'schema_version', 'format_version', 'state', 'salt_sha256'}
+                or type(value['schema_version']) is not int or value['schema_version'] != 1
+                or type(value['format_version']) is not int or value['format_version'] not in {2, 3}
+                or not isinstance(value['state'], str) or value['state'] not in {'ready', 'transition'}
+                or not isinstance(value['salt_sha256'], str)
+                or re.fullmatch(r'[0-9a-f]{64}', value['salt_sha256']) is None):
+            raise ImageTransportError('Invalid image cache format marker')
+        return value
+
+    def _root_format(self):
+        value = self._root_record()
+        return None if value is None else value['format_version'] if value['state'] == 'ready' else 'transition'
+
+    def _write_private_state(self, path: Path, data: bytes) -> None:
+        before = _private_file_stat(path, missing=True)
+        temporary = self.root / ('.cache-format-' + secrets.token_hex(16))
+        try:
+            with _open_private_file(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 'wb') as output:
+                output.write(data); output.flush(); os.fsync(output.fileno())
+            current = _private_file_stat(path, missing=True)
+            if ((before is None) != (current is None)
+                    or (before is not None and not os.path.samestat(before, current))):
+                raise ImageTransportError('Image cache metadata changed before publication')
+            _replace_private_state(temporary, path)
+            if os.name != 'nt':
+                descriptor = os.open(self.root, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+                try: os.fsync(descriptor)
+                finally: os.close(descriptor)
+        finally:
+            if _private_file_stat(temporary, missing=True) is not None:
+                os.unlink(sqlite_filename(temporary))
+
+    def _write_root_format(self, version: int, salt: bytes, *, state: str = 'ready') -> None:
+        self._write_private_state(self.root / 'cache-format.json',
+            (json.dumps({'schema_version': 1, 'format_version': version, 'state': state,
+                         'salt_sha256': hashlib.sha256(salt).hexdigest()},
+                        separators=(',', ':')) + '\n').encode())
+
+    def _read_salt_material(self, *, create: bool = False) -> bytes:
+        path, backup = self.root / 'scope.salt', self.root / 'scope.salt.v3-original'
+        def read(selected, limit):
+            if _private_file_stat(selected, missing=True) is None:
+                return None
+            with _open_private_file(selected, os.O_RDONLY, 'rb') as source:
+                return source.read(limit)
+        primary, saved = read(path, len(V3_SALT_FENCE) + 1), read(backup, 33)
+        if saved is not None and len(saved) != 32:
+            raise ImageTransportError('Invalid original image cache salt backup')
+        if primary is None:
+            if not create or saved is not None:
+                raise ImageTransportError('Original image cache salt is unavailable; preserve existing ownership state')
+            primary = secrets.token_bytes(32)
+            self._write_private_state(path, primary)
+        if len(primary) == 32:
+            salt = primary
+            if saved is not None and saved != salt:
+                raise ImageTransportError('Image cache salt and its original backup disagree')
+        elif primary == V3_SALT_FENCE and saved is not None:
+            salt = saved
+        else:
+            raise ImageTransportError('Image cache salt is invalid; never regenerate it over existing ownership state')
+        record = self._root_record()
+        if record is not None and record['salt_sha256'] != hashlib.sha256(salt).hexdigest():
+            raise ImageTransportError('Image cache salt differs from its format identity')
+        return salt
+
+    def _fence_legacy_salt(self, salt: bytes) -> None:
+        backup = self.root / 'scope.salt.v3-original'
+        if _private_file_stat(backup, missing=True) is None:
+            self._write_private_state(backup, salt)
+        # Never move/unlink the old path: an old reader must not see a missing
+        # salt and generate a new credential scope. Its read(33)/len==32 guard
+        # rejects this deliberately long marker before any ledger operation.
+        self._write_private_state(self.root / 'scope.salt', V3_SALT_FENCE)
+
+    def _require_root_format(self) -> None:
+        if self._root_format() != 3:
+            raise ImageTransportError('Image cache format requires explicit maintenance migration; drain all provider readers before changing formats')
+        self._read_salt_material()
+        with _open_private_file(self.root / 'scope.salt', os.O_RDONLY, 'rb') as source:
+            if source.read(len(V3_SALT_FENCE) + 1) != V3_SALT_FENCE:
+                raise ImageTransportError('Image cache format 3 is missing its legacy-reader fence')
+
+    @staticmethod
+    def _validate_digest(digest: str) -> None:
+        if not isinstance(digest, str) or re.fullmatch(r'[0-9a-f]{64}', digest) is None:
+            raise ImageTransportError('Invalid image asset digest in private ledger')
+
+    @asynccontextmanager
+    async def _asset_lock(self, directory: Path, digest: str):
+        self._ledger_identity(directory)
+        self._validate_digest(digest)
+        self._require_root_format()
+        async with _file_lock(directory / ('asset-' + digest + '.lock'), self.policy.lock_timeout_seconds):
+            yield
+
+    @contextmanager
+    def _database(self, directory: Path, *, missing: bool = True):
+        self._ledger_identity(directory)
+        path = directory / 'files.sqlite'
+        before = _private_file_stat(path, missing=missing)
+        for suffix in ('-journal', '-wal', '-shm'):
+            _private_file_stat(path.with_name(path.name + suffix), missing=True)
+        db = sqlite3.connect(sqlite_filename(path), isolation_level=None)
+        db.row_factory = sqlite3.Row
+        try:
+            current = _private_file_stat(path)
+            if before is not None and not os.path.samestat(before, current):
+                raise ImageTransportError('Image ledger file identity changed before use')
+            yield db
+        finally:
+            db.close()
 
     def _verify_ledger_identity(self, db, directory: Path, *, initialize: bool = False) -> None:
-        expected=self._ledger_identity(directory)
-        tables={row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+        expected = self._ledger_identity(directory)
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
         if 'cache_identity' not in tables:
-            # This optional feature was not previously released. Nonempty legacy
-            # journals have no proof of their originating profile; preserve them
-            # for explicit ownership reconciliation, never silently adopt them.
-            if (not initialize or not tables<={'assets','pins','receipts'}
-                or any(db.execute('SELECT 1 FROM "'+name+'" LIMIT 1').fetchone() for name in tables)):
+            if (not initialize or not tables <= {'assets', 'pins', 'receipts'}
+                    or any(db.execute('SELECT 1 FROM "' + name + '" LIMIT 1').fetchone() for name in tables)):
                 raise ImageTransportError('Unbound legacy image ledger; preserve it for explicit ownership reconciliation')
-            db.execute('BEGIN IMMEDIATE')
-            try:
+            with _ledger_transaction(db):
                 db.execute('CREATE TABLE cache_identity(id INTEGER PRIMARY KEY CHECK(id=1),schema_version INTEGER NOT NULL,credential_scope TEXT NOT NULL,cache_root_sha256 TEXT NOT NULL)')
-                db.execute('INSERT INTO cache_identity VALUES(?,?,?,?)',expected)
-                db.execute('COMMIT')
-            except BaseException:
-                if db.in_transaction:db.execute('ROLLBACK')
-                raise
-        columns=[row[1] for row in db.execute('PRAGMA table_info(cache_identity)')]
-        if columns!=['id','schema_version','credential_scope','cache_root_sha256']:
+                db.execute('INSERT INTO cache_identity VALUES(?,?,?,?)', expected)
+        columns = [row[1] for row in db.execute('PRAGMA table_info(cache_identity)')]
+        if columns != ['id', 'schema_version', 'credential_scope', 'cache_root_sha256']:
             raise ImageTransportError('Invalid image ledger ownership metadata')
-        rows=[tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
-        legacy = (expected[0],1,*expected[2:])
-        if rows == [legacy]:
-            if not initialize:
-                # Foreign-scope diagnostics open mode=ro: a bound v1 ledger can
-                # be counted without rewriting it or adopting its owner records.
-                return
-            # Only a ledger already bound to this exact root/scope may upgrade.
-            # Keep legacy numeric owner rows unchanged. Version 2 prevents old
-            # readers from mistaking new kernel-identity strings for dead PIDs.
-            db.execute('BEGIN IMMEDIATE')
-            try:
-                changed = db.execute('UPDATE cache_identity SET schema_version=2 WHERE id=? AND schema_version=1 AND credential_scope=? AND cache_root_sha256=?',
-                                     (expected[0],expected[2],expected[3])).rowcount
-                if changed != 1:
-                    raise ImageTransportError('Image ledger ownership changed during upgrade')
-                db.execute('COMMIT')
-            except BaseException:
-                if db.in_transaction:db.execute('ROLLBACK')
-                raise
-            rows = [tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
-        if rows!=[expected]:
+        rows = [tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
+        legacy = [(expected[0], version, *expected[2:]) for version in (1, 2)]
+        if rows != [expected]:
+            if rows in [[value] for value in legacy]:
+                if not initialize:
+                    return  # Count an owned foreign credential scope without adopting it.
+                raise ImageTransportError('Image cache format requires explicit maintenance migration; drain all provider readers before changing formats')
             raise ImageTransportError('Image ledger ownership does not match this profile and credential scope')
+
+    @staticmethod
+    def _migration_schema(db):
+        expected = {
+            'cache_identity': [('id','INTEGER',0,1),('schema_version','INTEGER',1,0),
+                               ('credential_scope','TEXT',1,0),('cache_root_sha256','TEXT',1,0)],
+            'assets': [('digest','TEXT',0,1),('mime','TEXT',1,0),('nbytes','INTEGER',1,0),
+                       ('filename','TEXT',1,0),('state','TEXT',1,0),('file_id','TEXT',0,0),
+                       ('created','REAL',1,0),('last_used','REAL',1,0),('verified','REAL',1,0),
+                       ('operation_owner','TEXT',0,0),('reason','TEXT',0,0)],
+            'pins': [('lease','TEXT',1,1),('digest','TEXT',1,2),('pid','INTEGER',1,0),
+                     ('birth','REAL',1,0),('phase','TEXT',1,0),('request_ref','TEXT',0,0)],
+            'receipts': [('sequence','INTEGER',0,1),('at','REAL',1,0),
+                         ('digest','TEXT',1,0),('event','TEXT',1,0),('detail','TEXT',0,0)],
+        }
+        tables = set()
+        for kind, name, table, sql in db.execute('SELECT type,name,tbl_name,sql FROM sqlite_master'):
+            if kind == 'table' and name in expected:
+                tables.add(name)
+            elif (kind == 'index' and sql is None
+                  and (name, table) in {('sqlite_autoindex_assets_1','assets'),
+                                        ('sqlite_autoindex_pins_1','pins')}):
+                continue
+            else:
+                raise ImageTransportError('Unsupported image ledger schema object for format maintenance')
+        for table in tables:
+            columns = [(row[1], row[2].upper(), row[3], row[5])
+                       for row in db.execute('PRAGMA table_info("' + table + '")')]
+            if columns != expected[table] or db.execute('PRAGMA foreign_key_list("' + table + '")').fetchone():
+                raise ImageTransportError('Unsupported image ledger schema for format maintenance')
+            for row in db.execute('PRAGMA table_info("' + table + '")'):
+                default = "'prepared'" if table == 'pins' and row[1] == 'phase' else None
+                if row[4] != default:
+                    raise ImageTransportError('Unsupported image ledger column default')
+        return tables
+
+    @staticmethod
+    def _ledger_projection(db) -> dict:
+        result = {}
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in ('assets', 'pins', 'receipts'):
+            digest = hashlib.sha256(); count = 0
+            if table not in tables:
+                result[table] = {'rows': 0, 'sha256': digest.hexdigest()}
+                continue
+            for row in db.execute('SELECT * FROM "' + table + '" ORDER BY rowid'):
+                digest.update(json.dumps(list(row), ensure_ascii=False, allow_nan=False,
+                                         separators=(',', ':')).encode()); digest.update(b'\n'); count += 1
+            result[table] = {'rows': count, 'sha256': digest.hexdigest()}
+        return result
+
+    def _initialize_empty_ledger(self, db, directory: Path, version: int) -> None:
+        expected = self._ledger_identity(directory)
+        with _ledger_transaction(db):
+            db.execute('CREATE TABLE IF NOT EXISTS cache_identity(id INTEGER PRIMARY KEY CHECK(id=1),schema_version INTEGER NOT NULL,credential_scope TEXT NOT NULL,cache_root_sha256 TEXT NOT NULL)')
+            db.execute('INSERT INTO cache_identity VALUES(?,?,?,?)', (expected[0], version, *expected[2:]))
+            db.execute('CREATE TABLE IF NOT EXISTS assets(digest TEXT PRIMARY KEY,mime TEXT NOT NULL,nbytes INTEGER NOT NULL,filename TEXT NOT NULL,state TEXT NOT NULL,file_id TEXT,created REAL NOT NULL,last_used REAL NOT NULL,verified REAL NOT NULL,operation_owner TEXT,reason TEXT)')
+            db.execute("CREATE TABLE IF NOT EXISTS pins(lease TEXT NOT NULL,digest TEXT NOT NULL,pid INTEGER NOT NULL,birth REAL NOT NULL,phase TEXT NOT NULL DEFAULT 'prepared',request_ref TEXT,PRIMARY KEY(lease,digest))")
+            db.execute('CREATE TABLE IF NOT EXISTS receipts(sequence INTEGER PRIMARY KEY,at REAL NOT NULL,digest TEXT NOT NULL,event TEXT NOT NULL,detail TEXT)')
+            if any(value['rows'] for value in self._ledger_projection(db).values()):
+                raise ImageTransportError('Nonempty unbound image ledger cannot be enrolled')
+
+    async def migrate_cache_format(self, target_version: int) -> dict:
+        """Explicit offline format/rollback maintenance, with no keys or Files.
+
+        The managed CLI additionally proves provider/native retirement. Callers
+        of this low-level metadata API must provide that lifecycle boundary.
+        """
+        if type(target_version) is not int or target_version not in {2, 3}:
+            raise ValueError('Image cache format target must be 2 or 3')
+        empty_projection = {name: {'rows': 0, 'sha256': hashlib.sha256().hexdigest()}
+                            for name in ('assets', 'pins', 'receipts')}
+        result = {'status': 'preparing', 'complete': False, 'target_version': target_version,
+                  'credentials_read': False, 'inference_requests': 0, 'external_HTTP_requests': 0,
+                  'scope_results': [], 'managed_provider_retirement_verified_here': False}
+        async with _file_lock(self.root / 'initialize.lock', self.policy.lock_timeout_seconds):
+            root_before = self._root_format()
+            directories = []
+            for item in sorted(self.root.iterdir()):
+                if re.fullmatch(r'[0-9a-f]{64}', item.name) is None:
+                    continue
+                _private_directory(item)
+                directories.append(item)  # Include cached empty scopes, not just databases.
+            async with AsyncExitStack() as locks:
+                with ExitStack() as databases:
+                    prepared = []
+                    # Acquire every existing scope's global lock before asset
+                    # checks. initialize.lock prevents scope creation meanwhile.
+                    for directory in directories:
+                        await locks.enter_async_context(_file_lock(directory / 'cache.lock', self.policy.lock_timeout_seconds))
+                    for directory in directories:
+                        path = directory / 'files.sqlite'
+                        db = None
+                        if _private_file_stat(path, missing=True) is not None:
+                            db = databases.enter_context(self._database(directory, missing=False))
+                            tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+                        else:
+                            tables = set()
+                        if db is not None:
+                            tables = self._migration_schema(db)
+                        if 'cache_identity' in tables:
+                            if tables != {'cache_identity', 'assets', 'pins', 'receipts'}:
+                                raise ImageTransportError('Unsupported image ledger schema for format maintenance')
+                            columns = [row[1] for row in db.execute('PRAGMA table_info(cache_identity)')]
+                            if columns != ['id', 'schema_version', 'credential_scope', 'cache_root_sha256']:
+                                raise ImageTransportError('Invalid image ledger ownership metadata')
+                            rows = [tuple(row) for row in db.execute('SELECT id,schema_version,credential_scope,cache_root_sha256 FROM cache_identity')]
+                            expected = self._ledger_identity(directory)
+                            if (len(rows) != 1 or rows[0][0] != expected[0] or rows[0][2:] != expected[2:]
+                                    or type(rows[0][1]) is not int or rows[0][1] not in {1, 2, 3}):
+                                raise ImageTransportError('Image ledger ownership or format is not supported')
+                            for owner in db.execute('SELECT DISTINCT pid,birth FROM pins'):
+                                if self.owner_alive(owner['pid'], owner['birth']) is not False:
+                                    raise ImageTransportError('Image cache format maintenance requires all lease owners to be provably retired')
+                            for row in db.execute('SELECT digest FROM assets'):
+                                self._validate_digest(row['digest'])
+                            version, snapshot = rows[0][1], self._ledger_projection(db)
+                        else:
+                            if db is not None and any(db.execute('SELECT 1 FROM "' + table + '" LIMIT 1').fetchone() for table in tables):
+                                raise ImageTransportError('Unbound legacy image ledger contains ownership state')
+                            version, snapshot = None, empty_projection
+                        for lock in sorted(directory.iterdir()):
+                            if not lock.name.startswith('asset-'):
+                                continue
+                            if re.fullmatch(r'asset-[0-9a-f]{64}\.lock', lock.name) is None:
+                                raise ImageTransportError('Invalid image asset lock name')
+                            _private_file_stat(lock)
+                            await locks.enter_async_context(_file_lock(lock, 0, create=False))
+                        entry = {'scope': directory.name, 'before_version': version,
+                                 'after_version': version, 'before': snapshot}
+                        result['scope_results'].append(entry)
+                        prepared.append((db, directory, entry))
+                    result['root_format_before'] = root_before
+                    salt = self._read_salt_material(create=not directories and self._root_record() is None)
+                    primary = self.root / 'scope.salt'
+                    with _open_private_file(primary, os.O_RDONLY, 'rb') as source:
+                        primary_bytes = source.read(len(V3_SALT_FENCE) + 1)
+                    ready_salt = primary_bytes == (V3_SALT_FENCE if target_version == 3 else salt)
+                    if (root_before == target_version and ready_salt
+                            and all(item[2]['before_version'] == target_version for item in prepared)):
+                        result.update(status='complete', complete=True, root_format_after=target_version)
+                        return result
+                    try:
+                        self._write_root_format(target_version, salt, state='transition')
+                        if target_version == 3:
+                            self._fence_legacy_salt(salt)
+                        # No history table is rewritten. Empty scopes get one
+                        # atomic initial identity/schema to fence cached v2 users.
+                        for db, directory, entry in prepared:
+                            if db is None:
+                                db = databases.enter_context(self._database(directory))
+                            if entry['before_version'] is None:
+                                self._initialize_empty_ledger(db, directory, target_version)
+                            elif entry['before_version'] != target_version:
+                                with _ledger_transaction(db):
+                                    changed = db.execute('UPDATE cache_identity SET schema_version=? WHERE id=1 AND schema_version=? AND credential_scope=? AND cache_root_sha256=?',
+                                        (target_version, entry['before_version'], directory.name,
+                                         self._ledger_identity(directory)[3])).rowcount
+                                    if changed != 1:
+                                        raise ImageTransportError('Image cache format changed during maintenance')
+                                    if self._ledger_projection(db) != entry['before']:
+                                        raise ImageTransportError('Historical image ledger rows changed during format maintenance')
+                            entry['after_version'] = db.execute('SELECT schema_version FROM cache_identity').fetchone()[0]
+                            entry['after'] = self._ledger_projection(db)
+                            if entry['after'] != entry['before']:
+                                raise ImageTransportError('Historical image ledger rows changed during format maintenance')
+                        if target_version == 2:
+                            # Old readers can resume only after every ledger is
+                            # durable v2. Never restore an old database snapshot.
+                            self._write_private_state(primary, salt)
+                        self._write_root_format(target_version, salt)
+                    except BaseException as error:
+                        if isinstance(error, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
+                            raise
+                        result.update(status='format_migration_incomplete', error_type=type(error).__name__,
+                                      root_format_after=self._root_format())
+                        return result
+        result.update(status='complete', complete=True, root_format_after=target_version)
+        return result
+
+    def _recover_pending(self, db, digest: str):
+        # Only call while holding this digest's operation lock. Merely opening
+        # the shared ledger never proves another asset's network owner stopped.
+        self._validate_digest(digest)
+        row = db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone()
+        if row and row['state'] in {'upload_pending', 'delete_pending'}:
+            state, reason = (('upload_unknown', 'interrupted_upload') if row['state'] == 'upload_pending'
+                             else ('delete_unknown', 'interrupted_delete'))
+            with _ledger_transaction(db):
+                db.execute('UPDATE assets SET state=?,reason=? WHERE digest=?', (state, reason, digest))
+            row = db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone()
+        return row
+
+    @staticmethod
+    def _same_asset(db, digest: str, expected):
+        current = db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone()
+        if current is None or dict(current) != dict(expected):
+            raise ImageTransportError('Image asset journal changed during its remote operation')
+        return current
 
     @asynccontextmanager
     async def _db(self, directory: Path):
+        self._ledger_identity(directory)
         async with _file_lock(directory / "cache.lock", self.policy.lock_timeout_seconds):
-            path = directory / "files.sqlite"
-            before=_private_file_stat(path,missing=True)
-            for suffix in ('-journal','-wal','-shm'):
-                _private_file_stat(path.with_name(path.name+suffix),missing=True)
-            db = sqlite3.connect(sqlite_filename(path), isolation_level=None)
-            db.row_factory = sqlite3.Row
-            try:
-                current=_private_file_stat(path)
-                if before is not None and not os.path.samestat(before,current):
-                    raise ImageTransportError('Image ledger file identity changed before use')
-                self._verify_ledger_identity(db,directory,initialize=True)
-                # SQLite REAL affinity retains nonnumeric kernel identity strings
-                # as TEXT while preserving legacy numeric rows without a table rewrite.
+            self._require_root_format()
+            with self._database(directory) as db:
+                self._verify_ledger_identity(db, directory, initialize=True)
                 db.executescript("""
                     PRAGMA foreign_keys=ON;
                     PRAGMA synchronous=FULL;
@@ -838,20 +1163,14 @@ class ImageTransport:
                     db.execute("ALTER TABLE pins ADD COLUMN phase TEXT NOT NULL DEFAULT 'prepared'")
                 if 'request_ref' not in columns:
                     db.execute('ALTER TABLE pins ADD COLUMN request_ref TEXT')
-                # Pending operations cannot still own this OS lock. Never replay an
-                # upload whose response may have been lost, even if its PID still exists.
-                db.execute("UPDATE assets SET state='upload_unknown',reason='interrupted_upload' WHERE state='upload_pending'")
-                db.execute("UPDATE assets SET state='delete_unknown',reason='interrupted_delete' WHERE state='delete_pending'")
-                # A verified provider terminal/rejection has already ended image
-                # consumption. Recover a failed final local release even while its
-                # owner lives; prepared and upstream_unknown leases remain protected.
-                db.execute("DELETE FROM pins WHERE phase='settled'")
-                for pin in db.execute("SELECT DISTINCT pid,birth FROM pins WHERE phase!='upstream_unknown'").fetchall():
-                    if self.owner_alive(pin['pid'], pin['birth']) is False:
-                        db.execute("DELETE FROM pins WHERE pid=? AND birth=? AND phase!='upstream_unknown'", (pin['pid'], pin['birth']))
+                # These lease-only transitions never depend on asset operation
+                # locks. Cancellation is not held behind unrelated network I/O.
+                with _ledger_transaction(db):
+                    db.execute("DELETE FROM pins WHERE phase='settled'")
+                    for pin in db.execute("SELECT DISTINCT pid,birth FROM pins WHERE phase!='upstream_unknown'").fetchall():
+                        if self.owner_alive(pin['pid'], pin['birth']) is False:
+                            db.execute("DELETE FROM pins WHERE pid=? AND birth=? AND phase!='upstream_unknown'", (pin['pid'], pin['birth']))
                 yield db
-            finally:
-                db.close()
 
     def _record(self, db, digest: str, event: str, detail: str | None = None) -> None:
         db.execute("INSERT INTO receipts(at,digest,event,detail) VALUES(?,?,?,?)", (self.clock(), digest, event, detail))
@@ -861,59 +1180,69 @@ class ImageTransport:
         return meta.filename == row['filename'] and meta.mime == row['mime'] and meta.size_bytes == row['nbytes'] and (row['file_id'] is None or meta.file_id == row['file_id'])
 
     async def _acquire(self, directory: Path, key: str, blob: _Blob, lease: str) -> tuple[str, bool]:
-        async with self._db(directory) as db:
-            row = db.execute("SELECT * FROM assets WHERE digest=?", (blob.digest,)).fetchone()
-            if row and (row['mime'] != blob.mime or row['nbytes'] != len(blob.data)):
-                raise ImageTransportError("Cached image metadata conflicts with original bytes")
-            if row and row['state'] == 'ready':
-                verified = None
-                if self.clock() - row['verified'] >= self.policy.verify_after_seconds:
-                    meta = await self.backend.get(key, row['file_id'])
-                    if meta is None:
+        async with self._asset_lock(directory, blob.digest):
+            async with self._db(directory) as db:
+                row = self._recover_pending(db, blob.digest)
+                if row and (row['mime'] != blob.mime or row['nbytes'] != len(blob.data)):
+                    raise ImageTransportError("Cached image metadata conflicts with original bytes")
+                expected = dict(row) if row else None
+            if expected and expected['state'] == 'ready':
+                expired = self.clock() - expected['verified'] >= self.policy.verify_after_seconds
+                # Only this asset's lock spans Files I/O. The shared ledger is
+                # available to other images and native cancellation/settlement.
+                meta = await self.backend.get(key, expected['file_id']) if expired else None
+                async with self._db(directory) as db:
+                    row = self._same_asset(db, blob.digest, expected)
+                    if expired and meta is None:
                         with _ledger_transaction(db):
                             db.execute("UPDATE assets SET state='deleted',file_id=NULL WHERE digest=?", (blob.digest,))
                             self._record(db, blob.digest, 'externally_invalidated')
-                        row = None
-                    elif not self._matches(row, meta):
-                        raise ImageTransportError("Uploaded image metadata changed; refusing to reuse the file")
+                        expected = dict(db.execute('SELECT * FROM assets WHERE digest=?', (blob.digest,)).fetchone())
                     else:
-                        verified = self.clock()
-                if row is not None:
-                    with _ledger_transaction(db):
-                        if verified is not None:
-                            db.execute("UPDATE assets SET verified=? WHERE digest=?", (verified, blob.digest))
-                        db.execute("UPDATE assets SET last_used=? WHERE digest=?", (self.clock(), blob.digest))
-                        db.execute("INSERT OR IGNORE INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
-                    return row['file_id'], False
-            if row and row['state'] in {'upload_pending','upload_unknown'}:
+                        if expired and not self._matches(row, meta):
+                            raise ImageTransportError("Uploaded image metadata changed; refusing to reuse the file")
+                        with _ledger_transaction(db):
+                            if expired:
+                                db.execute("UPDATE assets SET verified=? WHERE digest=?", (self.clock(), blob.digest))
+                            db.execute("UPDATE assets SET last_used=? WHERE digest=?", (self.clock(), blob.digest))
+                            db.execute("INSERT OR IGNORE INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
+                        return row['file_id'], False
+            if expected and expected['state'] in {'upload_pending', 'upload_unknown'}:
                 raise UploadOutcomeUnknown("A previous image upload has unknown outcome; inspect its private receipt before retrying")
-            if row and row['state'] in {'delete_pending','delete_unknown'}:
+            if expected and expected['state'] in {'delete_pending', 'delete_unknown'}:
                 raise CleanupPending("A previous image deletion needs reconciliation before reuse")
+            if expected and expected['state'] not in {'deleted', 'upload_rejected'}:
+                raise ImageTransportError('Invalid image asset state in private ledger')
             filename = 'cds-image-' + secrets.token_hex(20) + '.' + blob.mime.split('/')[1]
             now = self.clock()
-            # The upload intent must be durable before any remote request.
-            with _ledger_transaction(db):
-                db.execute("INSERT OR REPLACE INTO assets VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                    (blob.digest, blob.mime, len(blob.data), filename, 'upload_pending', None, now, now, 0, lease, None))
-                self._record(db, blob.digest, 'upload_started')
+            async with self._db(directory) as db:
+                current = db.execute('SELECT * FROM assets WHERE digest=?', (blob.digest,)).fetchone()
+                if (current is None) != (expected is None) or (current is not None and dict(current) != expected):
+                    raise ImageTransportError('Image asset journal changed before upload intent')
+                with _ledger_transaction(db):
+                    db.execute("INSERT OR REPLACE INTO assets VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                        (blob.digest, blob.mime, len(blob.data), filename, 'upload_pending', None, now, now, 0, lease, None))
+                    self._record(db, blob.digest, 'upload_started')
+                pending = dict(db.execute('SELECT * FROM assets WHERE digest=?', (blob.digest,)).fetchone())
             try:
                 meta = await self.backend.upload(key, blob.data, blob.mime, filename)
             except BaseException as error:
                 known = isinstance(error, FileOperationError) and error.definitely_not_created
-                with _ledger_transaction(db):
-                    db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", ('upload_rejected' if known else 'upload_unknown', type(error).__name__, blob.digest))
-                    self._record(db, blob.digest, 'upload_rejected' if known else 'upload_unknown', _safe_error_detail(error))
+                async with self._db(directory) as db:
+                    self._same_asset(db, blob.digest, pending)
+                    with _ledger_transaction(db):
+                        db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", ('upload_rejected' if known else 'upload_unknown', type(error).__name__, blob.digest))
+                        self._record(db, blob.digest, 'upload_rejected' if known else 'upload_unknown', _safe_error_detail(error))
                 raise
-            # Commit the acknowledged ID even on mismatch. Raising inside the
-            # transaction would lose the cleanup handle when it rolls back.
-            with _ledger_transaction(db):
-                row = db.execute("SELECT * FROM assets WHERE digest=?", (blob.digest,)).fetchone()
-                valid = self._matches(row, meta)
-                db.execute("UPDATE assets SET state=?,file_id=?,verified=? WHERE digest=?",
-                    ('ready' if valid else 'delete_unknown', meta.file_id, self.clock(), blob.digest))
-                self._record(db, blob.digest, 'upload_confirmed' if valid else 'upload_metadata_mismatch')
-                if valid:
-                    db.execute("INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
+            async with self._db(directory) as db:
+                row = self._same_asset(db, blob.digest, pending)
+                with _ledger_transaction(db):
+                    valid = self._matches(row, meta)
+                    db.execute("UPDATE assets SET state=?,file_id=?,verified=? WHERE digest=?",
+                        ('ready' if valid else 'delete_unknown', meta.file_id, self.clock(), blob.digest))
+                    self._record(db, blob.digest, 'upload_confirmed' if valid else 'upload_metadata_mismatch')
+                    if valid:
+                        db.execute("INSERT INTO pins(lease,digest,pid,birth) VALUES(?,?,?,?)", (lease, blob.digest, self.pid, self.birth))
             if not valid:
                 raise CleanupPending("Upload metadata did not match the original image; cleanup is required")
             return meta.file_id, True
@@ -972,14 +1301,12 @@ class ImageTransport:
             key = ''
 
     async def cleanup(self, *, all_unpinned: bool = False, _only_digests: set[str] | None = None, _expected_scope: str | None = None, max_assets: int | None = None) -> dict:
-        """Delete only own acknowledged IDs. Caller schedules maintenance/shutdown.
-
-        Workspace files do not expire. TTL is enforced here, not by OpenRouter.
-        Other credential scopes cannot be cleaned with the current key; they are
-        reported explicitly so rotation cannot silently orphan remote files.
-        """
+        """Delete own acknowledged IDs, rechecking under each asset's lock."""
         if max_assets is not None and (type(max_assets) is not int or max_assets < 1):
             raise ValueError('max_assets must be positive')
+        if _only_digests is not None:
+            for digest in _only_digests:
+                self._validate_digest(digest)
         key = self.credentials()
         scope, directory = await self._scope(key)
         if _expected_scope is not None and scope != _expected_scope:
@@ -987,49 +1314,65 @@ class ImageTransport:
         result = {'scope': scope, 'deleted': 0, 'pinned': 0, 'pending': 0,
                   'foreign_scopes': self._foreign_pending_scopes(scope),
                   'unknown_uploads': 0, 'unknown_upstream_calls': 0, 'retained': 0, 'deferred_assets': 0}
-        attempted = 0
         async with self._db(directory) as db:
             result['unknown_upstream_calls'] = db.execute("SELECT COUNT(DISTINCT lease) FROM pins WHERE phase='upstream_unknown'").fetchone()[0]
-            for row in db.execute("SELECT * FROM assets WHERE state NOT IN ('deleted','upload_rejected')").fetchall():
-                if _only_digests is not None and row['digest'] not in _only_digests:
-                    continue
-                if db.execute("SELECT 1 FROM pins WHERE digest=?", (row['digest'],)).fetchone():
-                    result['pinned'] += 1
-                    continue
-                if row['state'] in {'upload_pending','upload_unknown'} or not row['file_id']:
-                    result['pending'] += 1; result['unknown_uploads'] += 1
-                    continue
-                if not all_unpinned and row['state'] == 'ready' and self.clock() - row['last_used'] < self.policy.idle_ttl_seconds:
-                    result['retained'] += 1
-                    continue
-                if max_assets is not None and attempted >= max_assets:
-                    result['deferred_assets'] += 1
-                    continue
-                attempted += 1
-                db.execute("UPDATE assets SET state='delete_pending' WHERE digest=?", (row['digest'],))
+            digests = [row[0] for row in db.execute("SELECT digest FROM assets WHERE state NOT IN ('deleted','upload_rejected')")]
+        for digest in digests:
+            self._validate_digest(digest)
+        attempted = 0
+        for digest in digests:
+            if _only_digests is not None and digest not in _only_digests:
+                continue
+            async with self._asset_lock(directory, digest):
+                async with self._db(directory) as db:
+                    row = self._recover_pending(db, digest)
+                    if row is None or row['state'] in {'deleted', 'upload_rejected'}:
+                        continue
+                    if db.execute('SELECT 1 FROM pins WHERE digest=?', (digest,)).fetchone():
+                        result['pinned'] += 1
+                        continue
+                    if row['state'] in {'upload_pending', 'upload_unknown'} or not row['file_id']:
+                        result['pending'] += 1; result['unknown_uploads'] += 1
+                        continue
+                    if not all_unpinned and row['state'] == 'ready' and self.clock() - row['last_used'] < self.policy.idle_ttl_seconds:
+                        result['retained'] += 1
+                        continue
+                    if max_assets is not None and attempted >= max_assets:
+                        result['deferred_assets'] += 1
+                        continue
+                    if row['state'] not in {'ready', 'delete_unknown'}:
+                        raise ImageTransportError('Invalid image asset state in private ledger')
+                    attempted += 1
+                    # This one statement is already an atomic durable intent.
+                    db.execute("UPDATE assets SET state='delete_pending' WHERE digest=?", (digest,))
+                    pending = dict(db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone())
                 try:
-                    # Resolve an ambiguous DELETE by GET first; do not blindly repeat.
-                    meta = await self.backend.get(key, row['file_id'])
+                    meta = await self.backend.get(key, pending['file_id'])
                     if meta is not None:
-                        if not self._matches(row, meta):
+                        if not self._matches(pending, meta):
                             raise ImageTransportError("Refusing to delete a file whose metadata differs from the owned upload")
-                        await self.backend.delete(key, row['file_id'])
-                        if await self.backend.get(key, row['file_id']) is not None:
+                        await self.backend.delete(key, pending['file_id'])
+                        if await self.backend.get(key, pending['file_id']) is not None:
                             raise CleanupPending("Files API delete did not become absent")
-                    with _ledger_transaction(db):
-                        db.execute("UPDATE assets SET state='deleted' WHERE digest=?", (row['digest'],))
-                        self._record(db, row['digest'], 'deleted_confirmed')
+                    async with self._db(directory) as db:
+                        self._same_asset(db, digest, pending)
+                        with _ledger_transaction(db):
+                            db.execute("UPDATE assets SET state='deleted' WHERE digest=?", (digest,))
+                            self._record(db, digest, 'deleted_confirmed')
                     result['deleted'] += 1
                 except BaseException as error:
-                    with _ledger_transaction(db):
-                        db.execute("UPDATE assets SET state='delete_unknown',reason=? WHERE digest=?", (type(error).__name__, row['digest']))
-                        self._record(db, row['digest'], 'delete_unknown', _safe_error_detail(error))
+                    async with self._db(directory) as db:
+                        self._same_asset(db, digest, pending)
+                        with _ledger_transaction(db):
+                            db.execute("UPDATE assets SET state='delete_unknown',reason=? WHERE digest=?", (type(error).__name__, digest))
+                            self._record(db, digest, 'delete_unknown', _safe_error_detail(error))
                     result['pending'] += 1
                     if isinstance(error, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
                         raise
                     if isinstance(error, FileOperationError):
                         result['halted_error'] = json.loads(_safe_error_detail(error))
-                        break  # Stop on rate/auth/server rejection; do not exhaust a shared key.
+                        break
+        async with self._db(directory) as db:
             result['remaining_assets'] = db.execute("SELECT COUNT(*) FROM assets WHERE state NOT IN ('deleted','upload_rejected')").fetchone()[0]
         result['complete'] = not result['pending'] and not result['foreign_scopes'] and not result['pinned'] and not result['deferred_assets']
         result['all_owned_files_deleted'] = result['complete'] and result['remaining_assets'] == 0
@@ -1049,8 +1392,17 @@ class ImageTransport:
             scope, directory = await self._scope(key)
             result['scope'] = scope
             async with self._db(directory) as db:
+                pending = [row[0] for row in db.execute("SELECT digest FROM assets WHERE state IN ('upload_pending','upload_unknown','delete_pending','delete_unknown')")]
+            for digest in pending:
+                self._validate_digest(digest)
+                async with self._asset_lock(directory, digest):
+                    async with self._db(directory) as db:
+                        self._recover_pending(db, digest)
+            async with self._db(directory) as db:
                 targets = [dict(row) for row in db.execute("SELECT * FROM assets WHERE state='upload_unknown' AND file_id IS NULL")]
                 recoverable = {row['digest'] for row in db.execute("SELECT digest FROM assets WHERE state='delete_unknown' AND file_id IS NOT NULL")}
+            for digest in [row['digest'] for row in targets] + list(recoverable):
+                self._validate_digest(digest)
         except (OSError, sqlite3.Error, ImageTransportError) as error:
             result.update({'state': 'local_state_unavailable', 'error_type': type(error).__name__})
             return result
@@ -1127,20 +1479,23 @@ class ImageTransport:
                 item['state'] = 'not_found' if not matches else 'ambiguous'; continue
             meta = matches[0]
             try:
-                current_meta = await self.backend.get(key, meta.file_id)
-                if current_meta is not None and current_meta != meta:
-                    item['state'] = 'get_metadata_conflict'; continue
-                async with self._db(directory) as db:
-                    current = db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone()
-                    if current is None or any(current[name] != row[name] for name in ('filename','mime','nbytes','operation_owner','created')) or current['state'] != 'upload_unknown' or current['file_id'] is not None:
-                        item['state'] = 'local_journal_changed'; continue
-                    # Persist the discovered ID before any destructive request. It
-                    # is only eligible for cleanup, never inferred to be content-SHA verified.
-                    state = 'deleted' if current_meta is None else 'delete_unknown'
-                    with _ledger_transaction(db):
-                        db.execute('UPDATE assets SET state=?,file_id=?,reason=? WHERE digest=?',
-                                   (state, meta.file_id, 'metadata_reconciled_for_cleanup_only', digest))
-                        self._record(db, digest, 'unknown_upload_reconciled_for_cleanup', json.dumps({'file_id': meta.file_id, 'metadata_only': True, 'get_absent': current_meta is None}))
+                async with self._asset_lock(directory, digest):
+                    async with self._db(directory) as db:
+                        current = db.execute('SELECT * FROM assets WHERE digest=?', (digest,)).fetchone()
+                        if (current is None or any(current[name] != row[name] for name in ('filename','mime','nbytes','operation_owner','created'))
+                                or current['state'] != 'upload_unknown' or current['file_id'] is not None):
+                            item['state'] = 'local_journal_changed'; continue
+                        expected = dict(current)
+                    current_meta = await self.backend.get(key, meta.file_id)
+                    if current_meta is not None and current_meta != meta:
+                        item['state'] = 'get_metadata_conflict'; continue
+                    async with self._db(directory) as db:
+                        self._same_asset(db, digest, expected)
+                        state = 'deleted' if current_meta is None else 'delete_unknown'
+                        with _ledger_transaction(db):
+                            db.execute('UPDATE assets SET state=?,file_id=?,reason=? WHERE digest=?',
+                                       (state, meta.file_id, 'metadata_reconciled_for_cleanup_only', digest))
+                            self._record(db, digest, 'unknown_upload_reconciled_for_cleanup', json.dumps({'file_id': meta.file_id, 'metadata_only': True, 'get_absent': current_meta is None}))
                 recognized.add(digest)
                 item['state'] = 'already_absent' if current_meta is None else 'owned_cleanup_candidate'
             except (ImageTransportError, OSError, sqlite3.Error, asyncio.TimeoutError) as error:

@@ -148,7 +148,103 @@ def maintenance_exit_code(result):
     return 0 if result.get('complete') is True else 1
 
 
-async def maintenance_command(state_root,native,credentials,operation,*,all_unpinned=False):
+def _daemon_identity(record):
+    """Decode existing native PID metadata without treating unknown as exit."""
+    import re
+    import sys
+    if not isinstance(record, dict) or type(record.get('pid')) is not int or not 0 < record['pid'] <= 0xffffffff:
+        raise ValueError('Invalid native daemon PID identity')
+    def integer(value):
+        if type(value) is int and 0 <= value <= 0xffffffffffffffff:
+            return str(value)
+        if isinstance(value, str) and re.fullmatch(r'[0-9]{1,32}', value) and int(value) <= 0xffffffffffffffff:
+            return str(int(value))
+        raise ValueError('Invalid native daemon start identity')
+    if os.name == 'nt':
+        birth = 'windows:' + integer(record['processStartTime'])
+    else:
+        detail = record['processIdentity']
+        if not isinstance(detail, dict):
+            raise ValueError('Invalid native daemon identity')
+        if sys.platform == 'linux':
+            boot = detail['bootId']
+            if not isinstance(boot, str) or re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', boot) is None:
+                raise ValueError('Invalid native daemon boot identity')
+            birth = 'linux:' + boot.lower() + ':' + integer(detail['startTicks'])
+        else:
+            micros = integer(detail['startMicroseconds'])
+            if int(micros) >= 1000000:
+                raise ValueError('Invalid native daemon start identity')
+            birth = integer(detail['startSeconds']) + ':' + micros
+    return record['pid'], birth
+
+
+async def maintenance_command(state_root,native,credentials,operation,*,all_unpinned=False,target_version=None):
+    if operation == 'migrate-format':
+        # Explicit offline maintenance reuses the provider's existing startup
+        # serialization and lifecycle evidence. It never launches native HTTP,
+        # reads a provider credential, or stops a process.
+        from .provider_config import locked, _service_lease_held
+        from .service import native_active, read_descriptor
+        from .image_transport import _owner_alive, _private_file_stat, _open_private_file
+        state_root = Path(state_root).absolute()
+        home = state_root.parent
+        with locked(home, create=True) as state:
+            if state != state_root:
+                raise ValueError('Format maintenance requires this profile provider-state directory')
+            # Validate leaves before existing lifecycle readers can open them.
+            for metadata in (state / 'adapter.sqlite', state / 'gateway.json',
+                             state / 'gateway.last-good.json',
+                             home / 'app-server-daemon/daemon.pid',
+                             home / 'app-server-daemon/app-server.pid'):
+                _private_file_stat(metadata, missing=True)
+            for name in ('daemon.pid', 'app-server.pid'):
+                path = home / 'app-server-daemon' / name
+                if _private_file_stat(path, missing=True) is None:
+                    continue
+                try:
+                    with _open_private_file(path, os.O_RDONLY, 'rb') as source:
+                        raw = source.read(16385)
+                    if len(raw) > 16384:
+                        raise ValueError('Native daemon identity exceeds its metadata bound')
+                    pid, birth = _daemon_identity(_strict_json(raw))
+                except (OSError, KeyError, TypeError, ValueError):
+                    raise RuntimeError('Native daemon ownership metadata is unreadable; retirement is not proven') from None
+                if _owner_alive(pid, birth) is not False:
+                    raise RuntimeError('Native daemon retirement is not proven; format maintenance refused')
+            if native_active(home) or _service_lease_held(state):
+                raise RuntimeError('Drain and stop this profile native/provider owners before image cache format maintenance')
+            descriptor = read_descriptor(home)
+            descriptor_files = [state / 'gateway.json', state / 'gateway.last-good.json']
+            if not descriptor and any(path.exists() for path in descriptor_files):
+                raise RuntimeError('Provider ownership metadata is unreadable; preserve it for lifecycle reconciliation')
+            if not descriptor:
+                raise RuntimeError('Provider retirement is unproven for this unregistered profile; use its owning controller lifecycle evidence')
+            for pid_key, birth_key in (('pid', 'birth'), ('worker_pid', 'worker_birth')):
+                pid, birth = descriptor.get(pid_key), descriptor.get(birth_key)
+                if pid is None and birth is None:
+                    continue
+                if (type(pid) is not int or pid <= 0 or not isinstance(birth, str)
+                        or not birth or _owner_alive(pid, birth) is not False):
+                    raise RuntimeError('Provider process retirement is not proven; format maintenance refused')
+            runtime_db = state / 'adapter.sqlite'
+            if _private_file_stat(runtime_db, missing=True) is not None:
+                with closing(sqlite3.connect(sqlite_filename(runtime_db, read_only=True), uri=True)) as db:
+                    for pid, birth, native_pid, native_birth in db.execute(
+                            'SELECT pid,birth,native_pid,native_birth FROM runtime_owners WHERE closed IS NULL'):
+                        for candidate, identity in ((pid, birth), (native_pid, native_birth)):
+                            if candidate is None and identity is None:
+                                continue
+                            if (type(candidate) is not int or candidate <= 0 or identity is None
+                                    or _owner_alive(candidate, identity) is not False):
+                                raise RuntimeError('Native/provider client retirement is not proven; format maintenance refused')
+            def forbidden():
+                raise AssertionError('Offline image format maintenance must not read a credential')
+            transport = ImageTransport(state / 'image-transport/files', forbidden, None,
+                                       TransportPolicy(activate_above_bytes=1))
+            result = await transport.migrate_cache_format(target_version)
+            result['managed_provider_retirement_verified_here'] = True
+            return result, maintenance_exit_code(result)
     config=load_image_config(state_root)
     if config is None:return {'status':'disabled','complete':False,'enabled':False},(0 if operation=='status' else 1)
     if operation!='status':await native.require_raw()

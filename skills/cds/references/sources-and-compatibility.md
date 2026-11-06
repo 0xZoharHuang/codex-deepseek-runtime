@@ -14,6 +14,8 @@
 
 新旧资料不一致时，先标明版本与执行入口。不要为了匹配较新的网页文档而编造旧二进制没有的参数，也不要因为旧版本没有某功能便宣称所有 Codex 版本都没有。
 
+区分适配器命令与原生命令：顶层 `--help` 由原生 CLI 提供，不一定列出 `runtime image-cache-format` 等适配器维护入口。此类签名以选定发布的 README／适配器 parser 为准；缓存格式升级／回滚的决策边界见[安装与平台](installation-and-platforms.md#image-cache-format-maintenance)。不能把新版本流程直接套给仍运行的旧入口。
+
 ## 维护时的已知基线
 
 本参考编写时（2026-10-22）核对的项目基线为 adapter **v0.5.0**，原生 **Codex `0.164.0-alpha.7`**，upstream commit **`fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`**；模型请求名固定为 **`deepseek/deepseek-v4.1-flash-1017`**。这些是可追踪的历史基线，不是“永远最新”。实际入口可能仍指向另一个已安装版本。
@@ -32,7 +34,7 @@
 
 ## 参考内置 skills 的结构，不照抄它们的任务限制
 
-固定 native 源码在 `codex-rs/skills/src/assets/samples/` 自带 `skill-creator`、`skill-installer`、`review-agent`、`openai-docs` 等技能。编写本 skill 时已核对内置 `skill-creator/SKILL.md` 与当前宿主提供的 creator 内容一致。
+固定 native 源码在 `codex-rs/skills/src/assets/samples/` 自带 `skill-creator`、`skill-installer`、`review-agent`、`openai-docs` 等技能。维护本 skill 时按当前宿主的 creator 规范核对格式与渐进披露，不假设固定 native 样例与宿主版本永远相同。
 
 沿用其格式与渐进披露方式：
 

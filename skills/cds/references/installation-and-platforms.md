@@ -6,7 +6,7 @@ Use this reference for setup, credentials, updates, platform failures or cleanup
 
 Locate a real executable, not only a shell alias. Read the distribution's installation metadata and check the version. `scripts/inspect_cds.py` can perform a bounded offline preflight; it does not call a model, inspect secret stores, run doctor, or establish end-to-end connectivity.
 
-The published project is `https://github.com/0xZoharHuang/codex-deepseek-runtime`. The documented v0.5.0 baseline uses native `0.164.0-alpha.7`; treat it as a qualified fixed prerelease, not an automatically current upstream version. If the user wants an update, inspect current release/source provenance and compatibility rather than silently selecting `latest`.
+The published project is `https://github.com/0xZoharHuang/codex-deepseek-runtime`. Release manifests identify the qualified native prerelease and platform artifacts. Historical version notes in this skill are not a current release selector. If the user wants an update, inspect the selected release/source provenance and compatibility rather than silently selecting `latest`.
 
 Install with an independent supported Python and the matching source/native archive. Use the release's installer, exact archive SHA and dependency lock. A source tree, Python wrapper and arbitrary native Codex binary are not interchangeable pieces. Do not use a Codex App-bundled Python as a durable runtime base.
 
@@ -16,7 +16,7 @@ The normal installer supports a separate root and `--no-activate` for testing a 
 
 Typical roots are `~/.local/share/codex-deepseek` on macOS/Linux and `%LOCALAPPDATA%\codex-deepseek` on Windows. Runtime state uses the distribution's `codex-home`; use `CODEX_DEEPSEEK_HOME` to choose another independent profile. Never point it at Codex App's `~/.codex` state.
 
-OS HOME, installation root, runtime profile, work directory and thread identity serve different purposes. Keep them explicit when moving between SSH, interactive terminals, users or machines. For recovery, retain the original profile; for a genuinely separate new worker, select new state deliberately.
+OS HOME, installation root, runtime profile, work directory and thread identity serve different purposes. Set `CODEX_DEEPSEEK_HOME` in the process environment of the selected CDS launcher before it starts; setting only `CODEX_HOME` or a later shell tool's environment does not select that wrapper's profile. Prefer invocation-local settings for separate workers. Changing a variable after an owner has started does not reconfigure its in-memory turn. For recovery, retain the original profile; for a genuinely separate new worker, select new state deliberately.
 
 The adapter removes provider credentials and inherited App IPC identity before native tool execution. Project instructions and shared user skills retain native discovery behavior; profile isolation is not a claim that every file on the machine is inaccessible.
 
@@ -41,6 +41,27 @@ Keep model-request completion separate from later provider billing metadata. If 
 The skill does not create administrator launchers, users, services, SSH access or global policy changes as an automatic fix. Those are separate actions only when the actual task requires and authorizes them.
 
 For the recorded Windows SSH network-logon environment, PowerShell initialization returned `0xC0000142` under the native unelevated workspace sandbox. A no-model comparison reproduced the same failure when bypassing CDS and calling the same native binary directly; CMD worked under the same policy, and direct unsandboxed SSH PowerShell also worked. Treat this as an observed native/environment interaction, not proof of a CDS protocol defect or a guarantee about other hosts. If encountered, retain the policy and use a working native shell/tool within the existing authorization; do not automatically widen to full access or alter sandbox accounts. A future claim that PowerShell itself is fixed needs an actual PowerShell retest.
+
+## Image-cache format maintenance
+
+Use this section only for an upgrade, rollback or diagnosed image-cache format mismatch in a release that supports format 3 (the 0.7.0 maintenance interface). It is local protocol-resource maintenance, not native thread recovery. A fresh independent home initializes its own current format when the optional image cache is first used.
+
+First let the selected home's work drain through its original controllers and quiesce that profile's launch/restart loop. Confirm the native clients, daemon and provider owners have actually retired using their PID/birth identities and lifecycle receipts. A controller reporting “stopped,” an old descriptor PID disappearing, or a free cache lock alone is insufficient. Do not stop another home's work or widen permissions to pass this check.
+
+With the **new compatible absolute entry** and the original `CODEX_DEEPSEEK_HOME`, the current maintenance forms are:
+
+~~~text
+[cds_executable, "runtime", "image-cache-format", "--to", "3"]
+[cds_executable, "runtime", "image-cache-format", "--to", "2"]
+~~~
+
+Use `--to 3` before starting the new provider against an existing supported old cache. For rollback, first drain the new owners, use the new entry's `--to 2`, verify completion, then select the retained old entry. Check the selected release's adapter documentation/source before using these forms; native top-level help does not list every adapter maintenance verb.
+
+This operation reads no provider key, sends no network request and does not start the native runtime. It still mutates format metadata. The CLI checks registered provider/native lifetimes and leases. For an unregistered external controller, independently verify and retain its full owner-family retirement before using the supported controlled metadata API. That API's cache-level `complete` is not a provider-retirement witness.
+
+Active or unknown owners, busy operations and unsupported/dirty ownership metadata must remain explicit refusals. Do not mix old and new readers of the same cache. Preserve assets, receipts and unknown pins, including those whose process has exited; elapsed time alone does not establish remote consumption. Never delete locks/salt/pins, hand-edit schema versions, or restore an older database snapshot over newer knowledge.
+
+An interrupted transition needs its original output and process outcome inspected first. Once the original maintenance process has retired, use the same compatible entry and target format for an explicit resume. It resumes metadata publication, not uploads, deletion or inference. Require both exit code 0 and `complete=true`; then verify the intended runtime/task separately. Format completion is not model connectivity or whole-task acceptance.
 
 ## Update, rollback and cleanup
 

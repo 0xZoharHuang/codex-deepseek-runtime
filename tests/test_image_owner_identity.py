@@ -93,7 +93,7 @@ def test_new_transport_requires_confirmed_kernel_identity(tmp_path, monkeypatch)
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("phase", ["prepared", "upstream_unknown"])
-async def test_bound_v1_upgrade_preserves_legacy_owner_and_receipts(tmp_path, phase):
+async def test_bound_v1_live_legacy_owner_requires_explicit_retirement_before_upgrade(tmp_path, phase):
     backend = FakeFiles()
     tr = transport(tmp_path, backend)
     async with tr.prepare(payload()):
@@ -109,16 +109,18 @@ async def test_bound_v1_upgrade_preserves_legacy_owner_and_receipts(tmp_path, ph
         identity_before = db.execute("SELECT id,credential_scope,cache_root_sha256 FROM cache_identity").fetchall()
     before = pin_rows(path)
     assert before[0][4] == "real"
-    status = await tr.diagnostics()
-    assert status["active_transport_pins"] == 1
+    with pytest.raises(module.ImageTransportError, match="explicit maintenance"):
+        await tr.diagnostics()
+    with pytest.raises(module.ImageTransportError, match="provably retired"):
+        await tr.migrate_cache_format(3)
     assert pin_rows(path) == before
     with closing(sqlite3.connect(path)) as db, db:
-        assert db.execute("SELECT schema_version FROM cache_identity").fetchone() == (2,)
+        assert db.execute("SELECT schema_version FROM cache_identity").fetchone() == (1,)
         assert db.execute("SELECT id,credential_scope,cache_root_sha256 FROM cache_identity").fetchall() == identity_before
         assert db.execute("SELECT * FROM receipts ORDER BY sequence").fetchall() == receipts
-    cleanup = await tr.cleanup(all_unpinned=True)
-    assert cleanup["pinned"] == 1 and not backend.deleted
-    assert pin_rows(path) == before
+    with pytest.raises(module.ImageTransportError, match="explicit maintenance"):
+        await tr.cleanup(all_unpinned=True)
+    assert not backend.deleted and pin_rows(path) == before
 
 
 @pytest.mark.asyncio
@@ -137,13 +139,13 @@ async def test_v1_foreign_ledger_is_not_adopted_or_rewritten(tmp_path, field):
 
 
 @pytest.mark.asyncio
-async def test_v2_stable_owner_format_rejects_v1_identity_contract(tmp_path, monkeypatch):
+async def test_v3_stable_owner_format_rejects_v1_identity_contract(tmp_path, monkeypatch):
     tr = transport(tmp_path)
     async with tr.prepare(payload()) as call:
         path = next((tmp_path / "cache").rglob("files.sqlite"))
         before = pin_rows(path)
         expected = tr._ledger_identity(path.parent)
-        assert expected[1] == 2 and before[0][4] == "text"
+        assert expected[1] == 3 and before[0][4] == "text"
         # A reader expecting the old exact identity tuple must fail before its
         # stale-owner housekeeping can compare an epoch with the new string.
         with monkeypatch.context() as patch:

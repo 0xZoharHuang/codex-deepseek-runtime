@@ -2,13 +2,13 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。v0.6.15 更新了大文件下载和校验，当前发布状态与逐平台验收见 [v0.6.15 报告](reports/releases/0.6.15/README.md)。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。0.7.0 候选加入图片缓存格式 3、按图并发与显式安全回滚；原生组件保持固定。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag | 适用环境与版本记录 |
 | --- | --- | --- |
-| Windows x86_64 | `v0.6.15` | P39。原生受管目录、安装和恢复见 [Windows 资格记录](reports/releases/0.6.14/README.md)。 |
-| Linux x86_64 GNU | `v0.6.15` | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
-| macOS Apple Silicon | `v0.6.15` | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
+| Windows x86_64 | `v0.7.0`（候选） | P39。原生受管目录、安装和恢复见 [Windows 资格记录](reports/releases/0.6.14/README.md)。 |
+| Linux x86_64 GNU | `v0.7.0`（候选） | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
+| macOS Apple Silicon | `v0.7.0`（候选） | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
 
 Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
@@ -71,7 +71,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 在终端执行：
 
 ```sh
-git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -89,7 +89,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -107,7 +107,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -236,6 +236,8 @@ enabled = false
 ```
 
 最多使用 16 个文件引用位置；重复图片的每个引用位置也计入限制。请求仍超过配置的字节预算时会显式失败，继续由原生机制处理压缩与重试。这个预算不是 token 上限，也不承诺任意大小的请求都能通过。图片传输沿用下表的模型路由，不增加 fallback。
+
+格式 3 将远端图片操作按原图独立加锁，账本状态按逻辑转换原子提交。已有 home 在全部 native/provider 退役后，用新入口执行 `runtime image-cache-format --to 3`，再启动 provider；回滚前用同一新入口显式 `--to 2`。命令只做本地元数据维护，不读 key、不发网络请求，历史图片资产和未知 pin 保留。[并发、格式迁移与完整回滚](docs/image-cache-formats.zh-CN.md)。
 
 使用前请阅读[配置与维护命令](docs/release-0.6.0-candidate.zh-CN.md)：缓存绑定所属 home 和 credential scope，不能靠复制账本接管另一 profile 的云端文件。取消、未知响应或删除未确认时会保留待处理状态。删除本地缓存、禁用功能都不等于完成远端清理。
 
