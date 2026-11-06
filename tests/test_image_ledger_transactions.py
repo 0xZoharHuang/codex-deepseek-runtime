@@ -1,12 +1,21 @@
 """Atomic image-ledger transitions; no network, credential or native runtime."""
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 import asyncio
+import gc
 import sqlite3
 import time
 
 import pytest
 
 from codex_deepseek import image_transport as image
+
+
+@pytest.fixture(autouse=True)
+def collect_released_connections_after_each_transition_test():
+    # Surface leaks in the allocating test, rather than when an unrelated
+    # later test happens to trigger cyclic GC. CI keeps warnings as errors.
+    yield
+    gc.collect()
 
 
 class TracedDatabase:
@@ -258,7 +267,7 @@ def test_process_death_preserves_whole_atomic_transition(ledger, tmp_path, commi
     ledger.seed()
     before = ledger.projection()
     path = tmp_path / "crash.sqlite"
-    with sqlite3.connect(path) as destination:
+    with closing(sqlite3.connect(path)) as destination:
         ledger.connection.backup(destination)
     program = (
         "import sys,os,sqlite3;"
@@ -280,7 +289,7 @@ def test_process_death_preserves_whole_atomic_transition(ledger, tmp_path, commi
         capture_output=True, timeout=15,
     )
     assert child.returncode == 73, child.stderr
-    with sqlite3.connect(path) as recovered:
+    with closing(sqlite3.connect(path)) as recovered:
         current = recovered.execute(
             "SELECT lease,digest,pid,birth,phase,request_ref FROM pins ORDER BY lease,digest"
         ).fetchall()

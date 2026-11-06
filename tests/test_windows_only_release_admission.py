@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -58,5 +59,6 @@ def test_installer_only_release_selects_entire_qualified_native_component(monkey
     previous = json.loads((ROOT / "native/rollback" / previous_version / filename).read_bytes())
     selected = installer.runtime_manifest()
     assert previous["status"] == "ready" and previous["distribution_version"] == previous_version
-    assert selected == dict(previous, distribution_version="0.6.15")
+    source_version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    assert selected == dict(previous, distribution_version=source_version)
     assert selected["native_recipe_id"] == installer.expected_native_recipe(selected["target"])
