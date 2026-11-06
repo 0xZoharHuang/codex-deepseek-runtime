@@ -1,6 +1,11 @@
 name: Installed release qualification
 on:
   workflow_dispatch:
+    inputs:
+      windows_eof_diagnostic:
+        type: boolean
+        default: false
+        description: "Strict isolated Windows EOF diagnostic only"
   workflow_call:
 permissions:
   contents: read
@@ -9,6 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualify:
+    if: ${{ !inputs.windows_eof_diagnostic }}
     strategy:
       fail-fast: false
       matrix:
@@ -92,3 +98,33 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 6
+
+  windows-eof-diagnostic:
+    if: inputs.windows_eof_diagnostic
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.13.3"
+          architecture: x64
+      - name: Install locked diagnostic dependencies
+        shell: pwsh
+        run: |
+          python -m venv "$env:RUNNER_TEMP\cds-eof-qa"
+          & "$env:RUNNER_TEMP\cds-eof-qa\Scripts\python.exe" -m pip install --only-binary=:all: --require-hashes -r ci/requirements-test.lock
+          & "$env:RUNNER_TEMP\cds-eof-qa\Scripts\python.exe" -m pip install --no-deps --no-build-isolation .
+      - name: Strict EOF gate with owned handle evidence
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP\cds-eof-qa\Scripts\python.exe" -I -B ci/diagnose_windows_eof.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: cds-windows-eof-${{ github.run_id }}
+          path: ${{ runner.temp }}/cds-eof-evidence/
+          if-no-files-found: error
+          retention-days: 14
