@@ -1,5 +1,5 @@
 """Strict diagnostic only; never full release admission."""
-import sys,pathlib,os,json,hashlib
+import sys,pathlib,os,json,hashlib,platform
 REPO=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(REPO))
 from ci.qualify_installed_release import isolated_environment,write
@@ -11,7 +11,7 @@ if(sys.platform!="win32"or os.environ.get("RUNNER_ENVIRONMENT")!="github-hosted"
 if ROOT.exists()or EVIDENCE.exists():raise RuntimeError("Fresh roots required")
 EVIDENCE.mkdir()
 env=isolated_environment(ROOT/"home")
-record={"scope":"strict EOF diagnostic only; not release admission","model_requests":0,"stages":[]}
+record={"scope":"strict EOF diagnostic only; not release admission","model_requests":0,"platform":platform.platform(),"python":sys.version,"runner_image":{k:os.environ.get(k)for k in["ImageOS","ImageVersion"]},"stages":[]}
 def run(name,argv,environment,timeout):
  with(EVIDENCE/(name+".log")).open("wb")as log:
   result=run_observed(argv,cwd=REPO,env=environment,log=log,timeout=timeout)
