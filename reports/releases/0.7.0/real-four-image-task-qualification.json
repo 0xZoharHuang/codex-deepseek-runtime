@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "status": "real_four_concurrent_business_tasks_passed",
+  "runtime_source_commit": "e83b4b3fa79714fa77b66ba4e96ae10abb9d6aad",
+  "adapter_source_id": "e7feb8266a5ce53fb832",
+  "tests_only_successor": "5f5b67e8257614f6cf2d50092f54669661638245",
+  "windows_native_archive_sha256": "5672435dbc8673ff18213cb61fd4e3e7d0f52208c2aa364ea7c0cfb67e529328",
+  "case": {
+    "independent_threads": 4,
+    "images_per_thread": 16,
+    "same_original_pngs_and_business_gold": true,
+    "only_fixture_path_relocated": true,
+    "original_forced_reference_case_failed_http413": true,
+    "original_forced_wire_bytes": 1048576,
+    "deployed_operator_policy_activation_and_wire_bytes": 31457280,
+    "configured_reference_byte_cap": 20971520,
+    "lock_timeout_seconds": 120,
+    "fixed_business_case_seconds": 1800,
+    "approved_model_route": "morph/fp8",
+    "fallbacks": false
+  },
+  "observed": {
+    "completed_business_tasks": 4,
+    "passed_immutable_public_tests_per_task": 12,
+    "reference_metadata_matches": 4,
+    "observed_provider": "Morph",
+    "observed_model": "deepseek/deepseek-v4.1-flash-20261017",
+    "successful_model_requests_in_phase": 77,
+    "http413_in_phase": 0,
+    "joined_full_original_image_requests": 29,
+    "each_join_referenced_images": 2,
+    "each_join_inline_images": 14,
+    "peak_reference_occurrence_bytes": 3186635,
+    "peak_wire_bytes": 29828385,
+    "cold_unique_uploads_in_joins": 8,
+    "native_exit": 0,
+    "stdout_reader_retired": true,
+    "original_images_unchanged": true
+  },
+  "proof_sha256": {
+    "installed-identity.json": "dca40217bfa845784fd929ecbb526c5336d3d47060936fe8c54011ea2083a671",
+    "model-result-ready.json": "ca6b562d5bbfda7fcb25f994fa116052aa7c573d05c6ada4398bb7b3a874d93d",
+    "independent-four-model-verdict.json": "0307beda9255b557142a42faaecef2db859985e6afad1d5934a958731232cbea",
+    "model-input-freeze-ready.json": "c3eca9706bf4912cb3874f2db06b54c04e3cd4b61fc6fbd0927cbfc0d04c677a",
+    "served-provider-result.json": "fd65b41f8acafa296db5c3c15d91604f4e4971c6112b5092328d362776c9cb2b",
+    "first-events.json": "2d4289dfbc88e1b9fac632b12695a25820d5b0eba19b66fdac90a2a765c24e5a"
+  },
+  "linux": {
+    "workflow_run": 42339266398,
+    "job": 128303096434,
+    "archive_sha256": "b87bc6e6d2eca9f1af2a215e82f7a40261269596994412e68e542e261002c2d0",
+    "commit": "5f5b67e8257614f6cf2d50092f54669661638245",
+    "source_id": "e7feb8266a5ce53fb832",
+    "native_test_count": 22,
+    "offline_collected": 2986,
+    "offline_platform_skipped": 55,
+    "failures": 0,
+    "normal_install": "passed",
+    "real_model_requests": 0
+  },
+  "cold_recovery": {
+    "status": "PASSED_REAL_NATIVE_COMPACTION_AND_COLD_RECOVERY",
+    "real_native_compaction": true,
+    "checkpoint_sha256": "7cf7fd1b018dd44df237e808769d17d85cc4d16db9a09799bfb17e8c3578b4ee",
+    "checkpoint_replacement_items": 7,
+    "original_thread_resumed_after_native_and_provider_retirement": true,
+    "protected_history_docket_and_business_answers_match": true,
+    "original_image_bytes_in_cold_request": true,
+    "original_tests_passed": true,
+    "business_outputs_unchanged": true,
+    "evidence_sha256": "33c8e904a1734475e4477573ee7016415c225ec60128950ab95bbce4e0047639"
+  },
+  "fault_recovery": {
+    "scope": "Windows installed native CLI and native HTTP via owned loopback TLS Responses service",
+    "real_tool_effect_before_fault": true,
+    "exactly_once_after_retry_and_cold": true,
+    "scenarios": {
+      "undeclared-tool": "4ccf009ebeb71c6fa126dda414fa89102f7a9903bb40c9122ec07373505f22ca",
+      "malformed-json": "f207e72e3bc5cb913aacd134dbd9301145cb7cb1693136e172bfee59da28a917",
+      "eof": "eab81f10973b97c8f6c678dd9524e299848a4181bc4c0095b5bbaaeb16017eaf"
+    },
+    "evidence_sha256": "c380f76100b084291f53e8a4818abec8890412f442341a4518762760c38493f0",
+    "paid_model_calls": 0
+  },
+  "macos": {
+    "workflow_run": 42339266398,
+    "job": 128303096638,
+    "archive_sha256": "3699f1a308cadcdd70f058b32c51ee6c9132213e016dd295536de85f9223ad30",
+    "commit": "5f5b67e8257614f6cf2d50092f54669661638245",
+    "source_id": "e7feb8266a5ce53fb832",
+    "native_test_count": 22,
+    "offline_collected": 2986,
+    "offline_platform_skipped": 56,
+    "failures": 0,
+    "normal_install": "passed",
+    "real_model_requests": 0
+  },
+  "release_platforms": [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-apple-darwin"
+  ],
+  "windows_pending": "Windows Server 2025 hosted reproducible app-server stdout writer leak in native curated plugin Git startup. Windows stable remains v0.6.15.",
+  "release_source_id": "31df39d4ce33e42ba8b3",
+  "qualification_carry": {
+    "release_identity_difference": {
+      "README.md": {
+        "qualified": "4c6f3440dcddfbbfc99d624f539cb73cf0beeb0c21b376787d3f0c71491c4672",
+        "release": "a3a6ae9912f3558225f771100c8e2dc8c5c4e80af183aa17b4e228d05d1df8f5"
+      }
+    },
+    "unchanged_install_source_files": 138,
+    "installed_runtime_modules_byte_equal": 33,
+    "readme_only_changes_wheel_description": true
+  }
+}

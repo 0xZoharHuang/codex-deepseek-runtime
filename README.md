@@ -2,13 +2,13 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。0.7.0 候选加入图片缓存格式 3、按图并发与显式安全回滚；原生组件保持固定。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。v0.7.0 在 Linux 和 macOS 加入图片缓存格式 3、按图并发与显式安全回滚；原生组件保持固定。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag | 适用环境与版本记录 |
 | --- | --- | --- |
-| Windows x86_64 | `v0.7.0`（候选） | P39。原生受管目录、安装和恢复见 [Windows 资格记录](reports/releases/0.6.14/README.md)。 |
-| Linux x86_64 GNU | `v0.7.0`（候选） | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
-| macOS Apple Silicon | `v0.7.0`（候选） | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
+| Windows x86_64 | `v0.6.15` | P39。原生受管目录、安装和恢复见 [Windows 资格记录](reports/releases/0.6.14/README.md)。 |
+| Linux x86_64 GNU | `v0.7.0` | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
+| macOS Apple Silicon | `v0.7.0` | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
 
 Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
@@ -71,7 +71,7 @@ Linux 当前实际宿主为 Ubuntu 24.04 GNU / WSL、普通 Linux UID。包保�
 在终端执行：
 
 ```sh
-git clone --branch v0.7.0 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.6.15 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py

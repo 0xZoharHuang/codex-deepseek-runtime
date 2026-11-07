@@ -1,5 +1,7 @@
 # CDS 按平台安装、升级与回滚方案
 
+Linux x86_64 GNU 和 macOS Apple Silicon 使用 v0.7.0，Windows 使用 v0.6.15。Linux 和 macOS 升级已有图片缓存前，需要先让该 home 的所有原生进程和网关自然退役，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。需要回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
+
 v0.6.15 的三份清单分别沿用 Windows v0.6.14 的 P39 和 Linux、macOS v0.6.13 的原生包。请核对 [v0.6.15 分平台验收记录](../reports/releases/0.6.15/README.md)。需要回滚时，Windows 固定 v0.6.14，Linux、macOS 固定 v0.6.13。Windows 的受管用户如果需要升级既有 home，先按[原生维护指南](windows-managed-maintenance.md)确认目标账号和目录，再用该版原生工具执行一次维护。保留原安装、会话与回滚入口。
 
 P39 的变化集中在 Windows 沙箱的目录元数据与权限维护。它复用原生工具、沙箱、会话及子智能体机制。Unix 原生组件、DeepSeek 模型路由和协议行为沿用各自已发布的固定组合。CADSG 的桌面 App 有独立安装和验收记录。
