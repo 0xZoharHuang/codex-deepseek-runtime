@@ -15,7 +15,9 @@ P40 = "windows-curated-plugin-git-atomic-spawn-0164.patch"
 def test_p40_is_one_windows_overlay_after_the_frozen_p39_recipe():
     assert build.sha(P39) == "567baa9d7506be39aa5a3363bbda02b897a0fd50185705e26df444ee11490c92"
     old = json.loads(P39.read_bytes())
-    new = build.runtime_recipe()
+    active = build.runtime_recipe()
+    index = next(i for i, row in enumerate(active["overlays"]) if row["file"] == P40)
+    new = {**active, "overlays": active["overlays"][:index + 1]}
     assert {**new, "overlays": new["overlays"][:-1]} == old
     leaf = new["overlays"][-1]
     assert leaf["file"] == P40 and leaf["sha256"] == build.sha(ROOT / "native" / P40)
@@ -44,12 +46,13 @@ def test_p40_is_one_windows_overlay_after_the_frozen_p39_recipe():
 @pytest.mark.parametrize("drift", ["omitted", "wrong_order", "unix"])
 def test_p40_contract_rejects_recipe_drift(tmp_path, monkeypatch, drift):
     recipe = copy.deepcopy(build.runtime_recipe())
+    index = next(i for i, row in enumerate(recipe["overlays"]) if row["file"] == P40)
     if drift == "omitted":
-        recipe["overlays"].pop()
+        recipe["overlays"].pop(index)
     elif drift == "wrong_order":
-        recipe["overlays"][-2:] = reversed(recipe["overlays"][-2:])
+        recipe["overlays"][index - 1:index + 1] = reversed(recipe["overlays"][index - 1:index + 1])
     else:
-        targets = recipe["overlays"][-1]["changes_by_target"]
+        targets = recipe["overlays"][index]["changes_by_target"]
         targets["x86_64-unknown-linux-gnu"] = targets[WIN]
     (tmp_path / "native").mkdir()
     (tmp_path / "native/runtime-overlays.json").write_text(json.dumps(recipe), encoding="utf-8")

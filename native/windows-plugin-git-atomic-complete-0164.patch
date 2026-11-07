@@ -1,0 +1,395 @@
+diff --git a/codex-rs/core-plugins/src/git_policy.rs b/codex-rs/core-plugins/src/git_policy.rs
+index 35feafd0bd29082f40d112726174a3b029e47a1b..ffc8418ef31c038339ff38337db768bd966b04dd 100644
+--- a/codex-rs/core-plugins/src/git_policy.rs
++++ b/codex-rs/core-plugins/src/git_policy.rs
+@@ -1,6 +1,8 @@
+ use codex_utils_absolute_path::AbsolutePathBuf;
++use std::io;
+ use std::path::Path;
+ use std::process::Command;
++use std::process::Output;
+ use tempfile::TempDir;
+ 
+ // These variables can redirect Git to an untrusted repository or inject command-scoped settings.
+@@ -83,3 +85,13 @@ pub(crate) fn configure_trusted_git_repository(
+     command.env("GIT_DIR", repository.path());
+     Ok(repository)
+ }
++
++/// Capture plugin Git output without adding a deadline to callers that had none.
++pub(crate) fn git_command_output(command: &mut Command) -> io::Result<Output> {
++    #[cfg(windows)]
++    {
++        codex_utils_pty::JobObject::create_without_breakaway()?.output_std_atomic(command, None)
++    }
++    #[cfg(not(windows))]
++    command.output()
++}
+diff --git a/codex-rs/core-plugins/src/loader.rs b/codex-rs/core-plugins/src/loader.rs
+index f43575d57ea65458275e16b152490520d0d45cff..99f3531f68e6b93ee29b23d58f2549acf52e0b79 100644
+--- a/codex-rs/core-plugins/src/loader.rs
++++ b/codex-rs/core-plugins/src/loader.rs
+@@ -1914,8 +1914,7 @@ fn run_git_output(
+         None
+     };
+ 
+-    let output = command
+-        .output()
++    let output = crate::git_policy::git_command_output(&mut command)
+         .map_err(|err| format!("failed to run git {}: {err}", args.join(" ")))?;
+     if output.status.success() {
+         return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+diff --git a/codex-rs/core-plugins/src/marketplace_add/install.rs b/codex-rs/core-plugins/src/marketplace_add/install.rs
+index 2a5532ca0cf64cd5cb1607bd71160720268c2b03..00753c3bbe8f48060883852ca9d5ec7ddd1a6a9d 100644
+--- a/codex-rs/core-plugins/src/marketplace_add/install.rs
++++ b/codex-rs/core-plugins/src/marketplace_add/install.rs
+@@ -119,7 +119,7 @@ fn run_git(args: &[&str], cwd: Option<&Path>) -> Result<(), MarketplaceAddError>
+         command.current_dir(cwd);
+     }
+ 
+-    let output = command.output().map_err(|err| {
++    let output = crate::git_policy::git_command_output(&mut command).map_err(|err| {
+         MarketplaceAddError::Internal(format!("failed to run git {}: {err}", args.join(" ")))
+     })?;
+     if output.status.success() {
+diff --git a/codex-rs/core-plugins/src/marketplace_upgrade/git.rs b/codex-rs/core-plugins/src/marketplace_upgrade/git.rs
+index ac12e10d70a0614abda515ef9d0140e1d220c7c3..91e2f01b7e9e4fc20c9a93c020095f1a89f608aa 100644
+--- a/codex-rs/core-plugins/src/marketplace_upgrade/git.rs
++++ b/codex-rs/core-plugins/src/marketplace_upgrade/git.rs
+@@ -3,6 +3,7 @@ use std::path::Path;
+ use std::path::PathBuf;
+ use std::process::Command;
+ use std::process::Output;
++#[cfg(not(windows))]
+ use std::process::Stdio;
+ use std::time::Duration;
+ 
+@@ -180,6 +181,25 @@ fn strip_windows_verbatim_path_prefix(path: &str) -> Option<String> {
+     Some(stripped)
+ }
+ 
++#[cfg(windows)]
++fn run_git_command_with_timeout(
++    command: &mut Command,
++    context: &str,
++    timeout: Duration,
++) -> Result<Output, String> {
++    let job = codex_utils_pty::JobObject::create_without_breakaway()
++        .map_err(|err| format!("failed to create {context} process job: {err}"))?;
++    job.output_std_atomic(command, Some(timeout))
++        .map_err(|err| {
++            if err.kind() == std::io::ErrorKind::TimedOut {
++                format!("{context} {err}")
++            } else {
++                format!("failed to run {context}: {err}")
++            }
++        })
++}
++
++#[cfg(not(windows))]
+ fn run_git_command_with_timeout(
+     command: &mut Command,
+     context: &str,
+@@ -189,14 +209,6 @@ fn run_git_command_with_timeout(
+         .stdin(Stdio::null())
+         .stdout(Stdio::piped())
+         .stderr(Stdio::piped());
+-    #[cfg(windows)]
+-    let job = codex_utils_pty::JobObject::create_without_breakaway()
+-        .map_err(|err| format!("failed to create {context} process job: {err}"))?;
+-    #[cfg(windows)]
+-    let mut child = job
+-        .spawn_std_contained(command)
+-        .map_err(|err| format!("failed to run {context}: {err}"))?;
+-    #[cfg(not(windows))]
+     let mut child = command
+         .spawn()
+         .map_err(|err| format!("failed to run {context}: {err}"))?;
+@@ -204,9 +216,6 @@ fn run_git_command_with_timeout(
+     loop {
+         match child.try_wait() {
+             Ok(Some(_)) => {
+-                #[cfg(windows)]
+-                job.terminate()
+-                    .map_err(|err| format!("failed to terminate {context} process tree: {err}"))?;
+                 return child
+                     .wait_with_output()
+                     .map_err(|err| format!("failed to wait for {context}: {err}"));
+@@ -216,9 +225,6 @@ fn run_git_command_with_timeout(
+         }
+ 
+         if start.elapsed() >= timeout {
+-            #[cfg(windows)]
+-            job.terminate()
+-                .map_err(|err| format!("failed to terminate {context} process tree: {err}"))?;
+             let _ = child.kill();
+             let output = child
+                 .wait_with_output()
+diff --git a/codex-rs/core-plugins/src/startup_sync.rs b/codex-rs/core-plugins/src/startup_sync.rs
+index 8d570c5b55344c6a21b7d14397b9d6a50d74b492..b7163cf86569971fc4814615df88c51eadbf066f 100644
+--- a/codex-rs/core-plugins/src/startup_sync.rs
++++ b/codex-rs/core-plugins/src/startup_sync.rs
+@@ -639,18 +639,18 @@ fn git_ls_remote_head_sha(codex_home: &Path, git_binary: &Path) -> Result<String
+ }
+ 
+ fn git_head_sha(repo_path: &Path, git_binary: &Path) -> Result<String, String> {
+-    let output = git_command(git_binary)?
++    let mut command = git_command(git_binary)?;
++    command
+         .arg("-C")
+         .arg(repo_path)
+         .arg("rev-parse")
+-        .arg("HEAD")
+-        .output()
+-        .map_err(|err| {
+-            format!(
+-                "failed to run git rev-parse HEAD in {}: {err}",
+-                repo_path.display()
+-            )
+-        })?;
++        .arg("HEAD");
++    let output = crate::git_policy::git_command_output(&mut command).map_err(|err| {
++        format!(
++            "failed to run git rev-parse HEAD in {}: {err}",
++            repo_path.display()
++        )
++    })?;
+     ensure_git_success(&output, "git rev-parse HEAD")?;
+ 
+     let sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
+@@ -689,13 +689,14 @@ fn run_git_command_with_timeout(
+ ) -> Result<Output, String> {
+     let job = codex_utils_pty::JobObject::create_without_breakaway()
+         .map_err(|err| format!("failed to create {context} process job: {err}"))?;
+-    job.output_std_atomic(command, timeout).map_err(|err| {
+-        if err.kind() == std::io::ErrorKind::TimedOut {
+-            format!("{context} {err}")
+-        } else {
+-            format!("failed to run {context}: {err}")
+-        }
+-    })
++    job.output_std_atomic(command, Some(timeout))
++        .map_err(|err| {
++            if err.kind() == std::io::ErrorKind::TimedOut {
++                format!("{context} {err}")
++            } else {
++                format!("failed to run {context}: {err}")
++            }
++        })
+ }
+ 
+ #[cfg(not(windows))]
+@@ -716,7 +717,6 @@ fn run_git_command_with_timeout(
+     loop {
+         match child.try_wait() {
+             Ok(Some(_)) => {
+-
+                 return child
+                     .wait_with_output()
+                     .map_err(|err| format!("failed to wait for {context}: {err}"));
+@@ -728,7 +728,6 @@ fn run_git_command_with_timeout(
+         if start.elapsed() >= timeout {
+             match child.try_wait() {
+                 Ok(Some(_)) => {
+-
+                     return child
+                         .wait_with_output()
+                         .map_err(|err| format!("failed to wait for {context}: {err}"));
+diff --git a/codex-rs/utils/pty/src/win/background_output.rs b/codex-rs/utils/pty/src/win/background_output.rs
+index 44c3d371221fe4a03f8f177a454398c1c404af49..74fc02e039c78f92374bf61ea3d4d902f391537c 100644
+--- a/codex-rs/utils/pty/src/win/background_output.rs
++++ b/codex-rs/utils/pty/src/win/background_output.rs
+@@ -1,20 +1,23 @@
+-//! Windows output capture for an already resolved, non-interactive executable.
++//! Windows output capture for a non-interactive native executable.
+ 
+ use super::JobObject;
+ use super::procthreadattr::ProcThreadAttributeList;
+ use super::psuedocon::append_quoted;
+ use std::cmp::Ordering;
+ use std::ffi::OsStr;
++use std::ffi::OsString;
+ use std::fs::OpenOptions;
+ use std::io;
+ use std::io::PipeReader;
+ use std::io::Read;
+ use std::os::windows::ffi::OsStrExt;
++use std::os::windows::ffi::OsStringExt;
+ use std::os::windows::io::AsRawHandle;
+ use std::os::windows::io::FromRawHandle;
+ use std::os::windows::io::OwnedHandle;
+ use std::os::windows::process::ExitStatusExt;
+ use std::path::Path;
++use std::path::PathBuf;
+ use std::process::Command;
+ use std::process::ExitStatus;
+ use std::process::Output;
+@@ -46,6 +49,9 @@ unsafe extern "system" {
+         b_len: i32,
+         ignore_case: i32,
+     ) -> i32;
++    fn GetSystemDirectoryW(buffer: *mut u16, size: u32) -> u32;
++    fn GetWindowsDirectoryW(buffer: *mut u16, size: u32) -> u32;
++    fn GetFileAttributesW(path: *const u16) -> u32;
+ }
+ 
+ fn wide(value: &OsStr) -> io::Result<Vec<u16>> {
+@@ -59,6 +65,96 @@ fn wide(value: &OsStr) -> io::Result<Vec<u16>> {
+     Ok(units)
+ }
+ 
++fn system_directory(get: unsafe extern "system" fn(*mut u16, u32) -> u32) -> Option<PathBuf> {
++    let mut units = vec![0; 260];
++    loop {
++        // SAFETY: The buffer is writable for the supplied capacity.
++        let size = unsafe { get(units.as_mut_ptr(), units.len() as u32) } as usize;
++        if size == 0 || size > 32768 {
++            return None;
++        }
++        if size < units.len() {
++            return Some(PathBuf::from(OsString::from_wide(&units[..size])));
++        }
++        units.resize(size.saturating_add(1), 0);
++    }
++}
++
++fn lookup_candidate(directory: &Path, image: &OsStr) -> Option<Vec<u16>> {
++    // Rust resolves explicit relative PATH entries against the parent's cwd.
++    let absolute = std::path::absolute(directory.join(image)).ok()?;
++    let mut units = wide(absolute.as_os_str()).ok()?;
++    let verbatim: Vec<u16> = r"\\?\".encode_utf16().collect();
++    let device: Vec<u16> = r"\\.\".encode_utf16().collect();
++    let unc: Vec<u16> = r"\\".encode_utf16().collect();
++    if units.len() >= 260 && !units.starts_with(&verbatim) && !units.starts_with(&device) {
++        if units.starts_with(&unc) {
++            units.splice(..unc.len(), r"\\?\UNC\".encode_utf16());
++        } else {
++            units.splice(..0, verbatim);
++        }
++    }
++    units.push(0);
++    // SAFETY: The absolute UTF-16 path is NUL terminated. Like Rust's std lookup,
++    // select the first attributes success without resolving reparse points or
++    // trying another image if the chosen one fails to launch.
++    (unsafe { GetFileAttributesW(units.as_ptr()) } != u32::MAX).then_some(units)
++}
++
++fn search_path(paths: &OsStr, image: &OsStr) -> Option<Vec<u16>> {
++    std::env::split_paths(paths)
++        .filter(|path| !path.as_os_str().is_empty())
++        .find_map(|directory| lookup_candidate(&directory, image))
++}
++
++fn executable(command: &Command) -> io::Result<Vec<u16>> {
++    let program = command.get_program();
++    let path = Path::new(program);
++    let is_exe = path
++        .extension()
++        .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"));
++    if path.is_absolute() && is_exe {
++        let mut units = wide(program)?;
++        units.push(0);
++        return Ok(units);
++    }
++    // These callers use only native images. In particular, never apply shell
++    // or PATHEXT lookup rules to the marketplace's bare `git` program name.
++    if path.file_name() != Some(program)
++        || path.components().count() != 1
++        || (!is_exe && program.as_encoded_bytes().contains(&b'.'))
++    {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidInput,
++            "expected a native Windows executable",
++        ));
++    }
++    wide(program)?;
++    let mut image = program.to_os_string();
++    if !is_exe {
++        image.push(".exe");
++    }
++    let child_path = command
++        .get_envs()
++        .find_map(|(key, value)| key.eq_ignore_ascii_case("PATH").then_some(value).flatten());
++    // Match Rust std Windows search order for a bare native executable.
++    child_path
++        .and_then(|paths| search_path(paths, &image))
++        .or_else(|| {
++            std::env::current_exe()
++                .ok()
++                .and_then(|path| lookup_candidate(path.parent()?, &image))
++        })
++        .or_else(|| {
++            system_directory(GetSystemDirectoryW).and_then(|path| lookup_candidate(&path, &image))
++        })
++        .or_else(|| {
++            system_directory(GetWindowsDirectoryW).and_then(|path| lookup_candidate(&path, &image))
++        })
++        .or_else(|| std::env::var_os("PATH").and_then(|paths| search_path(&paths, &image)))
++        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "program not found"))
++}
++
+ fn windows_key_cmp(a: &[u16], b: &[u16]) -> Ordering {
+     // SAFETY: Each valid slice remains allocated during the Windows comparison.
+     let result =
+@@ -168,23 +264,16 @@ fn drain(reader: &mut PipeReader, output: &mut Vec<u8>, limit: u32) -> io::Resul
+ }
+ 
+ impl JobObject {
+-    /// Run a trusted absolute Windows executable with null stdin and captured output.
++    /// Run a native Windows executable with null stdin and captured output.
+     /// The command inherits the ambient environment with `get_envs()` edits applied;
+     /// callers must not use `env_clear`, raw arguments, or custom stdio/creation flags.
+-    pub fn output_std_atomic(&self, command: &Command, timeout: Duration) -> io::Result<Output> {
++    pub fn output_std_atomic(
++        &self,
++        command: &Command,
++        timeout: Option<Duration>,
++    ) -> io::Result<Output> {
+         let program = command.get_program();
+-        if !Path::new(program).is_absolute()
+-            || !Path::new(program)
+-                .extension()
+-                .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
+-        {
+-            return Err(io::Error::new(
+-                io::ErrorKind::InvalidInput,
+-                "expected an absolute Windows executable path",
+-            ));
+-        }
+-        let mut application = wide(program)?;
+-        application.push(0);
++        let application = executable(command)?;
+         let mut line = Vec::new();
+         append_quoted(program, &mut line);
+         for arg in command.get_args() {
+@@ -203,7 +292,7 @@ impl JobObject {
+         let (mut stdout_reader, stdout_writer) = io::pipe()?;
+         let (mut stderr_reader, stderr_writer) = io::pipe()?;
+         let child = {
+-            let null = OpenOptions::new().read(true).open("NUL")?;
++            let null = OpenOptions::new().read(true).open(r"\\.\NUL")?;
+             let stdin = inheritable(&null)?;
+             let stdout = inheritable(&stdout_writer)?;
+             let stderr = inheritable(&stderr_writer)?;
+@@ -257,7 +346,9 @@ impl JobObject {
+         loop {
+             drain(&mut stdout_reader, &mut stdout, 64 * 1024)?;
+             drain(&mut stderr_reader, &mut stderr, 64 * 1024)?;
+-            let wait_ms = timeout.saturating_sub(start.elapsed()).as_millis().min(10) as u32;
++            let wait_ms = timeout.map_or(10, |limit| {
++                limit.saturating_sub(start.elapsed()).as_millis().min(10) as u32
++            });
+             // SAFETY: The child process handle remains owned for the whole wait.
+             let wait = unsafe { WaitForSingleObject(process, wait_ms) };
+             if wait == WAIT_OBJECT_0 {
+@@ -278,7 +369,9 @@ impl JobObject {
+             if wait != 0x102 {
+                 return Err(io::Error::last_os_error());
+             }
+-            if start.elapsed() >= timeout {
++            if let Some(timeout) = timeout
++                && start.elapsed() >= timeout
++            {
+                 self.terminate()?;
+                 drain(&mut stderr_reader, &mut stderr, u32::MAX)?;
+                 let message = String::from_utf8_lossy(&stderr);

@@ -2000,6 +2000,44 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-plugin-git-atomic-complete-0164.patch",
+      "sha256": "7c4100c2d6d257e183d8212b7f0ec6734693fb46f7e5e87049a7bd9502af11de",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/core-plugins/src/git_policy.rs",
+            "before_sha256": "94075f53dd84a88282e06add40f767b603e18d4103e5fd064ef557333855b289",
+            "after_sha256": "f3f7fcbc1fc7f5b1b8eb69adf2181894663ddc58915e2b3b721503b34bddbf2a"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/loader.rs",
+            "before_sha256": "527d03e06730ea3f75f043afac5b803b9d846849a6d8e78e1afcc5c7c4ee6f28",
+            "after_sha256": "49418b522457ed501d7e4c20e454a7a0fffbcaa3b8a3a31992e1b5455b1e61b2"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/marketplace_add/install.rs",
+            "before_sha256": "eb6042935c0f76621baba2e88e8eb6912f01516ca6332828939536d067e27d3e",
+            "after_sha256": "423741e3305a7280c21423eda078fdd96cc99f201ed73de202cb3b42ef0b3897"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/marketplace_upgrade/git.rs",
+            "before_sha256": "ba40bd2df249025aa6aa0a57014f30739a1d7845db2ef113fbae5845580a6889",
+            "after_sha256": "795c1ac2342dd04eeca73e6f2dded972af685ee1bc526902495b6fe6607af4e6"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/startup_sync.rs",
+            "before_sha256": "abb20eb074692f35c8df5ff88cf0781655756e2d9057d6acdab93044f7d6eaa4",
+            "after_sha256": "2c1d021126ce474be48085921a4eeef69ddab800da299860c1386e860ea5ca0b"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/background_output.rs",
+            "before_sha256": "0397fcbb81ffeb905e33e7af62c1c9d181164c4111eb544dff37a04425dcd817",
+            "after_sha256": "d4d31eba55dbc60e97748cf008a0eec429e8a8d1c35bec696552b2b60a5d917b"
+          }
+        ]
+      }
     }
   ]
 }
