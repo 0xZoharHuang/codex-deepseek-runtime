@@ -271,7 +271,7 @@ async def run(arguments: list[str]) -> int:
     if arguments[:2] == ['runtime', 'image-budget']:
         # Pure offline diagnostic: before home IPC, Store, native or provider startup.
         from .image_budget import image_budget_command
-        return image_budget_command(arguments[2:])
+        return await asyncio.to_thread(image_budget_command, arguments[2:])
     if arguments==['status']:arguments=['runtime','status']
     if arguments[:2]==['runtime','provider']:
         from .provider_config import command

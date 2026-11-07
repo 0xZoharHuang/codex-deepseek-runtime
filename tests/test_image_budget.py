@@ -105,7 +105,8 @@ async def test_native_typed_outputs_share_plan_and_actual_lossless_prepare(tmp_p
     plan = plan_image_budget(payload, TransportPolicy(1, max_file_references=1))
     assert len(plan.selected) == 1
     counters = {'plan': 0, 'select': 0}
-    actual_plan, actual_select = module.plan_image_budget, module.select_image_references
+    from codex_deepseek import image_selection
+    actual_plan, actual_select = module.plan_image_budget, image_selection.select_positions
     def tracked_plan(*a, **kw):
         counters['plan'] += 1
         return actual_plan(*a, **kw)
@@ -113,7 +114,7 @@ async def test_native_typed_outputs_share_plan_and_actual_lossless_prepare(tmp_p
         counters['select'] += 1
         return actual_select(*a, **kw)
     monkeypatch.setattr(module, 'plan_image_budget', tracked_plan)
-    monkeypatch.setattr(module, 'select_image_references', tracked_select)
+    monkeypatch.setattr(image_selection, 'select_positions', tracked_select)
     files = FakeFiles()
     transport = ImageTransport(tmp_path / 'cache', lambda: 'SYNTHETIC', files,
                                TransportPolicy(1, max_file_references=1))
@@ -153,23 +154,19 @@ async def test_known_infeasible_plan_fails_before_credentials_or_files_with_aggr
 
 
 @pytest.mark.parametrize('threshold', [1, 100_000])
-def test_existing_references_are_occurrences_and_bypass_keeps_existing_semantics(threshold):
+def test_existing_reference_occurrence_limit_applies_even_below_activation(threshold):
     value = normalized()
     value['input'][0]['content'] += [
         {'type': 'input_image', 'file_id': 'or_file_PRIVATE-ID-SENTINEL'}] * 17
     plan = plan_image_budget(value, TransportPolicy(threshold))
     assert count_file_references(value) == 17
-    if threshold == 1:
-        assert plan.diagnostics['existing_file_reference_occurrences'] == 17
-        assert plan.diagnostics['status'] == 'file_reference_limit_exceeded'
-        assert plan.diagnostics['estimated_min_bytes'] is None
-        with pytest.raises(FileReferenceLimitExceeded) as caught:
-            plan.require_feasible()
-        assert caught.value.diagnostics == plan.diagnostics
-    else:
-        assert plan.diagnostics['status'] == 'activation_bypass'
-        assert plan.diagnostics['existing_file_reference_occurrences'] is None
+    assert plan.diagnostics['existing_file_reference_occurrences'] == 17
+    assert plan.diagnostics['status'] == 'file_reference_limit_exceeded'
+    assert plan.diagnostics['estimated_min_bytes'] is None
+    with pytest.raises(FileReferenceLimitExceeded) as caught:
         plan.require_feasible()
+    assert caught.value.diagnostics == plan.diagnostics
+
 
 
 @pytest.mark.asyncio
@@ -214,7 +211,7 @@ async def test_offline_cli_early_dispatch_poisoned_startup_and_privacy(tmp_path,
     monkeypatch.setattr('codex_deepseek.image_transport.ImageTransport.__init__', forbidden)
     monkeypatch.setattr('codex_deepseek.image_transport.OpenRouterFilesBackend.__init__', forbidden)
     monkeypatch.setattr('codex_deepseek.native_http.NativeTransport.start', forbidden)
-    assert await cli.run(args(request, config)) == 0
+    assert await cli.run(args(request, config)) == 3
     captured = capsys.readouterr()
     result = json.loads(captured.out)
     assert captured.err == '' and called == []
@@ -222,6 +219,8 @@ async def test_offline_cli_early_dispatch_poisoned_startup_and_privacy(tmp_path,
     assert result['canonical_encoding_matches_input'] is False
     assert result['serialized_input_bytes'] == len(request.read_bytes())
     assert result['budget']['existing_file_reference_occurrences'] == 1
+    assert result['budget']['status'] == 'existing_file_metadata_required'
+    assert result['budget']['selection_feasibility_proven'] is False
     assert result['budget']['actual_wire_bytes'] is None
     for sentinel in ('PRIVATE-TEXT', 'PRIVATE-URL', 'PRIVATE-ID', 'PRIVATE-PATH', 'data:image', 'or_file_'):
         assert sentinel not in captured.out
@@ -441,3 +440,40 @@ def test_profile_config_actual_read_is_bounded_even_when_stat_reports_small(tmp_
     assert captured.out == ''
     assert json.loads(captured.err)['status'] == 'invalid_input'
     assert 'PRIVATE' not in captured.err and str(policy) not in captured.err
+
+def test_joint_selector_finds_feasible_pair_after_largest_first_misses():
+    from codex_deepseek.image_selection import select_positions
+
+    # The largest item can only be used alone. The two-item combination
+    # reaches the wire goal while staying within the file-byte budget.
+    items = [(13_000_000, 17_333_300), (12_000_000, 15_999_970),
+             (8_000_000, 10_666_640), (9_600_000, 12_799_970)]
+    result = select_positions(items, 2, 20_000_000, 26_000_000)
+    assert result.feasible
+    assert result.indices == (1, 2)
+    assert result.referenced_bytes == 20_000_000
+
+
+@pytest.mark.asyncio
+async def test_search_exhaustion_reports_unknown_without_capacity_admission(tmp_path, monkeypatch, capsys):
+    from codex_deepseek import image_selection
+    from codex_deepseek.image_transport import ImageSelectionUnresolved
+
+    value = normalized()
+    request, config = write_inputs(tmp_path, value)
+    def exhausted(*args, **kwargs):
+        raise image_selection.SelectionComplexityExceeded('bounded diagnostic')
+    monkeypatch.setattr(image_selection, 'select_positions', exhausted)
+    assert await cli.run(args(request, config)) == 3
+    budget = json.loads(capsys.readouterr().out)['budget']
+    assert budget['status'] == 'selection_work_limit_exceeded'
+    assert budget['selection_feasibility_proven'] is False
+    assert budget['estimated_plan_bytes'] is None
+    def forbidden():
+        raise AssertionError('An unresolved plan must not request credentials')
+    files = FakeFiles()
+    transport = ImageTransport(tmp_path / 'cache', forbidden, files, TransportPolicy(1))
+    with pytest.raises(ImageSelectionUnresolved, match='feasibility is unknown'):
+        async with transport.prepare(value):
+            pytest.fail('unresolved request yielded')
+    assert not files.uploaded and not files.gets

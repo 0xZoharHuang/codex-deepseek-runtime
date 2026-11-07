@@ -173,7 +173,12 @@ def image_budget_command(arguments: list[str]) -> int:
             'budget': plan.diagnostics,
         }
         print(json.dumps(result, ensure_ascii=True, separators=(',', ':'), allow_nan=False))
-        return 2 if plan.diagnostics['status'] in {'wire_budget_exceeded', 'file_reference_limit_exceeded'} else 0
+        status = plan.diagnostics['status']
+        if status in {'existing_file_metadata_required', 'selection_work_limit_exceeded'}:
+            return 3
+        if status in {'wire_budget_exceeded', 'file_reference_limit_exceeded', 'referenced_file_bytes_exceeded'}:
+            return 2
+        return 0
     except _InputTooLarge as exc:
         print(json.dumps({'status': 'invalid_input', 'error': 'serialized_input_too_large',
                           'observed_bytes_at_least': exc.observed, 'read_limit_bytes': exc.limit}),

@@ -19,21 +19,33 @@ provider-state/image-transport.json；它与 --policy-json 二选一。
 
 输出中的 serialized_input_bytes 是输入文件的字节数，budget.before_bytes 是现有
 encode_body 的 compact UTF-8 编码大小，二者可能因空白不同。
-estimated_min_bytes 是**当前 occurrence 策略及现有 selector 下**，使用 32 字符
-file ID 占位符得到的最小估算，不是实际上传后的 wire bytes。
-重复图的每次引用各占一个 slot；planned_unique_images 仅表示选中图中的唯一原始字节数量，
-不表示新上传数，实际缓存复用与新上传保持未知。明确的 low detail 不会转换为 Files 引用。
+estimated_plan_bytes 是该无损方案使用 32 字符 file ID 占位符得到的请求字节估算。
+只有证明它达到最小值时，才同时填入 estimated_min_bytes。可行方案一旦达到配置的
+wire budget 就停止追加转换。组合搜索同时检查 wire、引用位置和引用文件原始字节，
+搜索到达工作上限时返回 selection_work_limit_exceeded，容量可行性仍未知。
+
+重复图片的每次引用各占一个位置，也分别累计其原始字节。相同图片的上传仍按内容去重。
+planned_unique_images 仅表示选中图中的唯一原始字节数量，实际缓存复用与新上传保持未知。
+明确的 low detail 保持内联。已有引用需要可信 metadata。离线命令无法读取现有 file ID
+的大小，因此报告 existing_file_metadata_required。实际运行先取 metadata，再决定是否
+上传，属于本缓存的现有引用在 GET 与 pin 建立期间持有单图操作锁。
+
 当前本地策略默认 16 次引用，并限制配置为 0–16；依据是 2026-10-24 对固定模型、官方 DeepSeek 路由的受控 Responses 实测：同一文件 ID 重复 16 次被接受，17 次返回明确的 16-reference-limit 错误，并非只有上传不同文件才计数。这是当时服务端的观测结果，不是所有提供方、后续服务版本或请求形态的永久上限。
 [原始结果的脱敏摘要](../reports/payload-capacity/file-reference-boundary-20261025.json)同时记录固定 DeepSeek、官方 DeepSeek 路由及生成元数据回读。
 [官方 Files API 文档](https://openrouter.ai/docs/guides/features/files-api)仍将该 API 标为 beta，未把此请求引用数写成长期合同；升级或上游行为改变时需重新验证。 2026-11-03 的[官方 OpenAPI](https://openrouter.ai/openapi.json)中，`input_image.file_id` 及 Responses 输入数组没有全请求 16 次的 schema 上限；schema 合法不等于实际服务准入，应以隔离、低字节的多引用请求重新区分引用数量限制与服务端展开后的字节限制。
 
 引用转换只减少此次发送的 JSON 字节，不扩大模型上下文或上游展开图片后的容量。图片历史持续累积时，可能先于 token 自动压缩触及 wire budget；12 或 16 引用的一次通过不能证明长任务稳定。容量恢复必须走[原生已确认前缀压缩与冷恢复机制](request-capacity-recovery.zh-CN.md)，保留尚未确认的完整后缀，并分别验收压缩终态及后续普通 turn；不能靠删图、缩图或网关生成摘要通过。
 
-小于等于 activation threshold 时沿用原 prepare 的提前返回，不扫描图或校验引用数量；
-因此 image_scan_performed=false，对应计数为 null，不能把它当作“没有图片”。
-没有显式 wire budget 时状态为 no_wire_budget_configured，不承诺上游一定接收。
-所有状态均不代表上游接受、模型成功或原生任务完成。返回码 0 表示按显式策略完成可行性估算
-或沿用提前返回；返回码 2 表示估算不可行、已有引用超限或输入无效，具体看 JSON 状态。
+小于等于 activation threshold 时不解析或转换内联图片，仍会核算已有引用。
+image_scan_performed=false 指内联图片未扫描，已有引用位置的计数可以非空。
+没有显式 wire budget 时沿用按节省量排序的转换方案，并约束引用原始字节与位置数。
+返回码 0 表示得到估算结果。返回码 2 表示已确定不符合容量限制或输入无效。
+返回码 3 表示现有引用大小未获验证，或组合搜索达到工作上限，不能判定可行性。
+
+实际发送前还会复查序列化字节与引用原始字节。2026-11-06 的固定 DeepSeek / Morph
+Responses 探针使用同像素、合法 PNG，确认 20,971,520 字节被受理，增加 1 字节返回
+HTTP 413。重复引用按位置累加，与工作区上传单文件 100 MiB 上限分别适用。
+[OpenRouter Files API 文档](https://openrouter.ai/docs/guides/features/files-api#upload-limits)
 
 运行时与诊断命令共用一个纯规划函数，转换选择、字节、顺序、detail、模型与路由保持原样。
 新的本地预算失败在 adapter.sqlite 的 receipt detail 与图片 request-receipts.sqlite 中保存

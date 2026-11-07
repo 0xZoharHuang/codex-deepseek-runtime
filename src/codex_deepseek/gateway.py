@@ -361,7 +361,7 @@ class Gateway:
                 transport=self.images.transport(transport_policy)
                 prepared_images=await image_stack.enter_async_context(transport.prepare(payload,credential=captured_key))
                 preparation=prepared_images.receipt(private=False)
-                image_refs=preparation.get('converted_image_occurrences',0)>0
+                image_refs=bool(preparation.get('consumption_managed',preparation.get('converted_image_occurrences',0)>0))
                 self.images.record(receipt,requested_provider=payload['provider']['only'][0],preparation=preparation,
                     consumption_status='prepared' if image_refs else 'not_applicable',native_outbound_policy=transport_policy)
                 if image_refs:

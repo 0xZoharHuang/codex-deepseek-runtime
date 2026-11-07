@@ -111,11 +111,14 @@ async def test_lossless_order_detail_namespace_and_duplicate_identity(tmp_path):
 @pytest.mark.asyncio
 async def test_foreign_url_and_existing_file_id_not_owned_or_deleted(tmp_path):
     backend=FakeFiles();tr=transport(tmp_path,backend)
+    fid = 'or_file_external111'
+    backend.files[fid] = FileMetadata(fid, 'external.png', 'image/png', 128)
     original=payload([{'type':'input_image','detail':'high','image_url':'https://example.invalid/a.png'},
                       {'type':'input_image','detail':'original','file_id':'or_file_external111'}])
     async with tr.prepare(original) as value:assert value.payload==original and value.references==()
     result=await tr.cleanup(all_unpinned=True)
-    assert result['deleted']==0 and not backend.gets and not backend.deleted
+    assert result['deleted']==0 and backend.gets==[('test-key-a', fid)] and not backend.deleted
+    assert fid in backend.files
 
 
 @pytest.mark.parametrize('bad',[
@@ -488,12 +491,15 @@ async def test_mixed_selects_largest_net_savings_without_reordering(tmp_path):
 async def test_existing_caller_owned_references_reserve_slots(tmp_path):
     from codex_deepseek.image_transport import count_file_references
     backend=FakeFiles();tr=transport(tmp_path,backend)
+    fid = 'or_file_owned_elsewhere'
+    backend.files[fid] = FileMetadata(fid, 'external.txt', 'text/plain', 512)
     original=payload([{'type':'input_file','file_id':'or_file_owned_elsewhere'}]+[part() for _ in range(20)])
     async with tr.prepare(original) as result:
         assert result.converted_occurrences==15 and result.existing_file_references==1
         assert count_file_references(result.payload)==16
         assert result.payload['input'][0]['content'][1]==original['input'][0]['content'][1]
-    assert not backend.gets and not backend.deleted
+        assert result.referenced_file_bytes == 512 + 15 * len(png())
+    assert backend.gets==[('test-key-a', fid)] and not backend.deleted
 
 
 @pytest.mark.asyncio
@@ -1037,3 +1043,29 @@ def test_file_reference_counter_never_parses_arguments_or_text_outputs():
         {'type': 'custom_tool_call_output', 'call_id': 'second', 'output': text},
     ]
     assert count_file_references(value) == 0
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('extra_bytes', [0, 1])
+async def test_repeated_file_id_obeys_exact_aggregate_limit_before_upload(tmp_path, extra_bytes):
+    from codex_deepseek.image_transport import MAX_REFERENCED_FILE_BYTES, PayloadBudgetExceeded
+
+    backend = FakeFiles()
+    transport = ImageTransport(tmp_path / 'cache', lambda: 'key', backend, TransportPolicy(100_000))
+    fid = 'or_file_existing_budget_case'
+    backend.files[fid] = FileMetadata(fid, 'outside.png', 'image/png',
+                                      MAX_REFERENCED_FILE_BYTES // 16 + extra_bytes)
+    parts = [{'type': 'input_image', 'file_id': fid}] * 16
+    original = payload(parts)
+    if extra_bytes:
+        with pytest.raises(PayloadBudgetExceeded) as error:
+            async with transport.prepare(original):
+                pytest.fail('over-budget request yielded')
+        assert error.value.diagnostics['status'] == 'referenced_file_bytes_exceeded'
+        assert error.value.diagnostics['existing_referenced_file_bytes'] == MAX_REFERENCED_FILE_BYTES + 16
+    else:
+        async with transport.prepare(original) as prepared:
+            assert prepared.referenced_file_bytes == MAX_REFERENCED_FILE_BYTES
+            assert prepared.payload == original
+            assert not prepared.manages_consumption
+    assert backend.gets == [('key', fid)]
+    assert not backend.uploaded and not backend.deleted
