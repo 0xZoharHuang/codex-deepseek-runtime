@@ -192,15 +192,32 @@ print(json.dumps({'version':codex_deepseek.__version__,'modules':rows}))
         qa.write(evidence/"qualification.json",record)
 
 
+def check_hosted_runner(environment, platform_name, version, proxy_kinds):
+    required = {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted",
+                "RUNNER_OS": "Windows", "RUNNER_ARCH": "X64",
+                "GITHUB_REPOSITORY": REPO, "GITHUB_REF": REF}
+    require(platform_name == "win32" and all(environment.get(k) == v for k, v in required.items()),
+            "Use the dedicated disposable hosted Windows gate")
+    version_tuple = (version.major, version.minor, version.build)
+    require(version_tuple == (10, 0, 26100) and version.product_type == 3,
+            f"Windows Server 2025 build 26100 required; observed {version_tuple}, product type {version.product_type}")
+    require(not proxy_kinds, "Direct hosted gate cannot use configured HTTP/HTTPS/all proxies")
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("phase", choices=("prepare","download","qualify"))
     phase=parser.parse_args().phase
-    require(sys.platform == "win32" and os.environ.get("RUNNER_ENVIRONMENT")=="github-hosted"
-            and os.environ.get("GITHUB_REPOSITORY")==REPO and os.environ.get("GITHUB_REF")==REF,
-            "Use the dedicated disposable hosted Windows gate")
-    require(os.environ.get("ImageOS")=="win25" and not {"http","https","all"} & urllib.request.getproxies().keys(),
-            "Direct Windows 2025 runner required")
+    version = sys.getwindowsversion() if sys.platform == "win32" else None
+    proxy_kinds = sorted({"http", "https", "all"} & urllib.request.getproxies().keys())
+    if version is not None:
+        # ImageOS changes with the tool image. Record it without using it to
+        # admit the runner. Proxy names are safe; proxy URLs are not logged.
+        print(json.dumps({"windows_build": version.build, "product_type": version.product_type,
+                          "runner_environment": os.environ.get("RUNNER_ENVIRONMENT"),
+                          "image_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion"),
+                          "proxy_kinds": proxy_kinds}), flush=True)
+    check_hosted_runner(os.environ, sys.platform, version, proxy_kinds)
     temp=Path(os.environ["RUNNER_TEMP"]).resolve(strict=True)
     source=temp/"cds-p40-reviewed";archive=temp/"cds-p40-verified.tar.gz"
     values=pins()
