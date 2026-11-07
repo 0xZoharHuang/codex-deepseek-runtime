@@ -1,4 +1,4 @@
-name: Windows 2025 P40 reviewed installed IPC
+name: Windows 2025 P41 reviewed installed IPC
 on:
   push:
     branches: ['codex/windows-p40-installed-gate-r605']
@@ -9,22 +9,26 @@ on:
         description: Exact reviewed v0.7.1 production commit
         required: true
         type: string
+        default: 'df22a98cd8fb26afdda438fd086767aa2c11fb8d'
       manifest_sha256:
         description: Exact reviewed default Windows manifest SHA-256
         required: true
         type: string
+        default: '204b11b48e207ef6bcdd8ddd8e5f391e817d0e335f5f43795ad68ea26f45533e'
       source_id:
         description: Exact reviewed installer source ID
         required: true
         type: string
+        default: '48d2520ecab718959a0a'
       archive_asset_id:
-        description: GitHub release asset ID of the verified P40 archive
+        description: GitHub release asset ID of the verified P41 archive
         required: true
         type: string
+        default: '720398760'
 permissions:
   contents: read
 concurrency:
-  group: cds-p40-installed-${{ github.ref }}
+  group: cds-p41-installed-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   register:
@@ -35,7 +39,7 @@ jobs:
       - shell: pwsh
         run: Write-Output "Dispatch this test-only workflow with the reviewed source and asset pins."
   draft-asset:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == '0xZoharHuang/codex-deepseek-runtime' && github.ref == 'refs/heads/codex/windows-p40-installed-gate-r605' && inputs.archive_asset_id == '719954798' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == '0xZoharHuang/codex-deepseek-runtime' && github.ref == 'refs/heads/codex/windows-p40-installed-gate-r605' && inputs.archive_asset_id == '720398760' }}
     runs-on: windows-2025
     timeout-minutes: 5
     permissions:
@@ -52,10 +56,10 @@ jobs:
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $PSVersionTable.PSVersion -lt [version]'7.4') {
             throw 'A disposable hosted Windows runner with byte-preserving PowerShell redirection is required.'
           }
-          $part = Join-Path $env:RUNNER_TEMP 'cds-p40-verified.part'
-          $archive = Join-Path $env:RUNNER_TEMP 'cds-p40-verified.tar.gz'
-          $stderr = Join-Path $env:RUNNER_TEMP 'cds-p40-draft-get.stderr'
-          & gh api --hostname github.com --method GET -H 'Accept: application/octet-stream' '/repos/0xZoharHuang/codex-deepseek-runtime/releases/assets/719954798' > $part 2> $stderr
+          $part = Join-Path $env:RUNNER_TEMP 'cds-p41-verified.part'
+          $archive = Join-Path $env:RUNNER_TEMP 'cds-p41-verified.tar.gz'
+          $stderr = Join-Path $env:RUNNER_TEMP 'cds-p41-draft-get.stderr'
+          & gh api --hostname github.com --method GET -H 'Accept: application/octet-stream' '/repos/0xZoharHuang/codex-deepseek-runtime/releases/assets/720398760' > $part 2> $stderr
           $exit = $LASTEXITCODE
           if ($exit -ne 0) {
             $match = [regex]::Match([string](Get-Content -Raw -LiteralPath $stderr), '\bHTTP\s+(\d{3})\b')
@@ -64,16 +68,16 @@ jobs:
           }
           $bytes = (Get-Item -LiteralPath $part).Length
           $sha = (Get-FileHash -LiteralPath $part -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($bytes -ne 204367729 -or $sha -ne 'd9b8d73184bfac47842505c8e540d132ebb564d443b0ad55722d7583a8bde418') {
-            throw 'Draft GET body differs from the verified P40 archive.'
+          if ($bytes -ne 204375387 -or $sha -ne 'b0f70d4c4f05be8dc6400146540fb46e9601286a74bb93f71e3aaf559e47186b') {
+            throw 'Draft GET body differs from the verified P41 archive.'
           }
           Move-Item -LiteralPath $part -Destination $archive
-          Write-Output "Verified draft asset 719954798: $bytes bytes, SHA256 $sha."
+          Write-Output "Verified draft asset 720398760: $bytes bytes, SHA256 $sha."
       - name: Hand off one verified file to the same run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: cds-p40-verified-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cds-p40-verified.tar.gz
+          name: cds-p41-verified-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p41-verified.tar.gz
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
@@ -102,24 +106,24 @@ jobs:
       - name: Checkout reviewed source anonymously at exact commit
         shell: pwsh
         run: python -I -B ci/windows_p40_installed_gate.py prepare
-      - name: Fetch the same-run verified P40 file
+      - name: Fetch the same-run verified P41 file
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: cds-p40-verified-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cds-p40-input
+          name: cds-p41-verified-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p41-input
       - name: Normal install and original strict no-model IPC and EOF
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
-          python -m venv "$env:RUNNER_TEMP/cds-p40-verifier"
-          $python = "$env:RUNNER_TEMP/cds-p40-verifier/Scripts/python.exe"
-          & $python -I -m pip install --only-binary=:all: --require-hashes -r "$env:RUNNER_TEMP/cds-p40-reviewed/requirements.lock"
+          python -m venv "$env:RUNNER_TEMP/cds-p41-verifier"
+          $python = "$env:RUNNER_TEMP/cds-p41-verifier/Scripts/python.exe"
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r "$env:RUNNER_TEMP/cds-p41-reviewed/requirements.lock"
           & $python -I -B ci/windows_p40_installed_gate.py qualify
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: cds-windows2025-p40-installed-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cds-p40-evidence/
+          name: cds-windows2025-p41-installed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p41-evidence/
           if-no-files-found: warn
           retention-days: 14

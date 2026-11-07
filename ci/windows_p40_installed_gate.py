@@ -1,4 +1,4 @@
-"""Test-only hosted Windows 2025 gate for an exact reviewed P40 release candidate."""
+"""Test-only hosted Windows 2025 gate for an exact reviewed P41 release candidate."""
 import argparse
 import importlib.util
 import json
@@ -14,9 +14,9 @@ import urllib.request
 
 REPO = "0xZoharHuang/codex-deepseek-runtime"
 REF = "refs/heads/codex/windows-p40-installed-gate-r605"
-ARCHIVE_SHA = "d9b8d73184bfac47842505c8e540d132ebb564d443b0ad55722d7583a8bde418"
-ARCHIVE_SIZE = 204367729
-NATIVE_SHA = "8c84247eef4fbd757acbedae4c8a0c331b45643a3403a416887f59bc2c19fd0c"
+ARCHIVE_SHA = "b0f70d4c4f05be8dc6400146540fb46e9601286a74bb93f71e3aaf559e47186b"
+ARCHIVE_SIZE = 204375387
+NATIVE_SHA = "d53f1d62e6ecfabfb0b5f64f8b23c24a8281c5e48d694096523fa4356fe1bb3b"
 IPC_SHA = "40bc7b97f9c114b1ffc40c6134c337e7b0bf5f8470177d7d07b8497fe47713dd"
 OBSERVER_SHA = "13a771b041aaadcdd7d37ba129bf9e82f2dff73b57abfbbc5f0812ac17c62deb"
 
@@ -88,7 +88,7 @@ def verify_source(source, values):
     require(value["status"] == "ready" and value["target"] == "x86_64-pc-windows-msvc"
             and value["distribution_version"] == "0.7.1" and value["archive"]["sha256"] == ARCHIVE_SHA
             and value["files"]["bin/codex.exe"] == NATIVE_SHA,
-            "Reviewed default Windows manifest does not identify P40")
+            "Reviewed default Windows manifest does not identify P41")
     version = tomllib.loads((source/"pyproject.toml").read_text(encoding="utf8"))["project"]["version"]
     require(version == "0.7.1", "Reviewed source version differs")
     return value
@@ -110,7 +110,7 @@ def qualify(source, archive, root, evidence, values):
     home = root/"codex-home"
     env.update(CODEX_DEEPSEEK_HOME=str(home), PYTHONDONTWRITEBYTECODE="1", GIT_CONFIG_GLOBAL=os.devnull,
                GIT_CONFIG_NOSYSTEM="1", OTEL_SDK_DISABLED="true", PIP_CONFIG_FILE=os.devnull)
-    record = {"status":"running","scope":"Windows 2025 P40 no-model native IPC gate",
+    record = {"status":"running","scope":"Windows 2025 P41 no-model native IPC gate",
               "source_commit":values["RELEASE_COMMIT"],"source_id":source_id,
               "manifest_sha256":values["RELEASE_MANIFEST_SHA256"],"archive_sha256":ARCHIVE_SHA,
               "archive_bytes":ARCHIVE_SIZE,"native_archive_local_override":True,
@@ -163,7 +163,7 @@ print(json.dumps({'version':codex_deepseek.__version__,'modules':rows}))
         backends = [row for row in ipc_run["observed"] if row.get("exe")
                     and Path(row["exe"]).resolve() == actual.resolve() and "app-server" in row.get("argv", [])]
         require(backends, "No admitted native app-server executable was observed")
-        record.update(status="passed_reviewed_windows2025_p40_installed_ipc",
+        record.update(status="passed_reviewed_windows2025_p41_installed_ipc",
                       installation_sha256=sha(receipt),identity=identity,installed_modules=33,
                       native_backends=[{"pid":row["pid"],"birth":row["birth"]}for row in backends],
                       model_receipts=0,normal_eof_exit=0,strict_ipc_worker_sha256=IPC_SHA,
@@ -203,10 +203,10 @@ def main():
                           "proxy_kinds": proxy_kinds}), flush=True)
     check_hosted_runner(os.environ, sys.platform, version, proxy_kinds)
     temp=Path(os.environ["RUNNER_TEMP"]).resolve(strict=True)
-    source=temp/"cds-p40-reviewed";archive=temp/"cds-p40-input/cds-p40-verified.tar.gz"
+    source=temp/"cds-p41-reviewed";archive=temp/"cds-p41-input/cds-p41-verified.tar.gz"
     values=pins()
     if phase=="prepare":prepare(source,values)
-    else:qualify(source,archive,temp/"cds-p40-install",temp/"cds-p40-evidence",values)
+    else:qualify(source,archive,temp/"cds-p41-install",temp/"cds-p41-evidence",values)
 
 
 if __name__=="__main__":
