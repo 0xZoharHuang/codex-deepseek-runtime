@@ -1,0 +1,80 @@
+name: Windows 2025 P40 reviewed installed IPC
+on:
+  push:
+    branches: ['codex/windows-p40-installed-gate-r605']
+    paths: ['.github/workflows/windows-p40-installed-gate.yml', 'ci/windows_p40_installed_gate.py']
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact reviewed v0.7.1 production commit
+        required: true
+        type: string
+      manifest_sha256:
+        description: Exact reviewed default Windows manifest SHA-256
+        required: true
+        type: string
+      source_id:
+        description: Exact reviewed installer source ID
+        required: true
+        type: string
+      archive_asset_id:
+        description: GitHub release asset ID of the verified P40 archive
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: cds-p40-installed-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  register:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: windows-2025
+    timeout-minutes: 2
+    steps:
+      - shell: pwsh
+        run: Write-Output "Dispatch this test-only workflow with the reviewed source and asset pins."
+  qualify:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/windows-p40-installed-gate-r605' }}
+    runs-on: windows-2025
+    timeout-minutes: 35
+    env:
+      RELEASE_COMMIT: ${{ inputs.commit }}
+      RELEASE_MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+      RELEASE_SOURCE_ID: ${{ inputs.source_id }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.13.3"
+          architecture: x64
+      - name: Checkout reviewed source anonymously at exact commit
+        shell: pwsh
+        run: python -I -B ci/windows_p40_installed_gate.py prepare
+      - name: Download and verify exact P40 asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          P40_ASSET_ID: ${{ inputs.archive_asset_id }}
+        run: python -I -B ci/windows_p40_installed_gate.py download
+      - name: Normal install and original strict no-model IPC and EOF
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m venv "$env:RUNNER_TEMP/cds-p40-verifier"
+          $python = "$env:RUNNER_TEMP/cds-p40-verifier/Scripts/python.exe"
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r "$env:RUNNER_TEMP/cds-p40-reviewed/requirements.lock"
+          & $python -I -B ci/windows_p40_installed_gate.py qualify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: cds-windows2025-p40-installed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p40-evidence/
+          if-no-files-found: warn
+          retention-days: 14
