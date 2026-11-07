@@ -94,22 +94,6 @@ def verify_source(source, values):
     return value
 
 
-def download(archive):
-    asset = os.environ["P40_ASSET_ID"]
-    require(re.fullmatch(r"[1-9][0-9]+", asset) and bool(os.environ.get("GH_TOKEN")),
-            "Explicit release asset and read-only token required")
-    partial = archive.with_suffix(".part")
-    require(not archive.exists(), "Use a fresh native archive path")
-    with partial.open("xb") as out:
-        result = subprocess.run(["gh", "api", "-H", "Accept: application/octet-stream",
-                                 f"/repos/{REPO}/releases/assets/{asset}"],
-                                stdout=out, stderr=subprocess.PIPE, timeout=120)
-    require(result.returncode == 0, "Draft asset download failed; inspect action status")
-    require(partial.stat().st_size == ARCHIVE_SIZE and sha(partial) == ARCHIVE_SHA,
-            "Asset body is not the exact verified P40 archive")
-    partial.rename(archive)
-
-
 def qualify(source, archive, root, evidence, values):
     require(not root.exists() and not evidence.exists(), "Fresh install and evidence roots required")
     manifest = verify_source(source, values)
@@ -206,7 +190,7 @@ def check_hosted_runner(environment, platform_name, version, proxy_kinds):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("prepare","download","qualify"))
+    parser.add_argument("phase", choices=("prepare","qualify"))
     phase=parser.parse_args().phase
     version = sys.getwindowsversion() if sys.platform == "win32" else None
     proxy_kinds = sorted({"http", "https", "all"} & urllib.request.getproxies().keys())
@@ -219,10 +203,9 @@ def main():
                           "proxy_kinds": proxy_kinds}), flush=True)
     check_hosted_runner(os.environ, sys.platform, version, proxy_kinds)
     temp=Path(os.environ["RUNNER_TEMP"]).resolve(strict=True)
-    source=temp/"cds-p40-reviewed";archive=temp/"cds-p40-verified.tar.gz"
+    source=temp/"cds-p40-reviewed";archive=temp/"cds-p40-input/cds-p40-verified.tar.gz"
     values=pins()
     if phase=="prepare":prepare(source,values)
-    elif phase=="download":download(archive)
     else:qualify(source,archive,temp/"cds-p40-install",temp/"cds-p40-evidence",values)
 
 

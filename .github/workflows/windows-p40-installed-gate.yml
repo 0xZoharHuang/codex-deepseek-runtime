@@ -34,7 +34,53 @@ jobs:
     steps:
       - shell: pwsh
         run: Write-Output "Dispatch this test-only workflow with the reviewed source and asset pins."
+  draft-asset:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == '0xZoharHuang/codex-deepseek-runtime' && github.ref == 'refs/heads/codex/windows-p40-installed-gate-r605' && inputs.archive_asset_id == '719954798' }}
+    runs-on: windows-2025
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: GET fixed draft asset and verify exact bytes
+        shell: pwsh
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $PSVersionTable.PSVersion -lt [version]'7.4') {
+            throw 'A disposable hosted Windows runner with byte-preserving PowerShell redirection is required.'
+          }
+          $part = Join-Path $env:RUNNER_TEMP 'cds-p40-verified.part'
+          $archive = Join-Path $env:RUNNER_TEMP 'cds-p40-verified.tar.gz'
+          $stderr = Join-Path $env:RUNNER_TEMP 'cds-p40-draft-get.stderr'
+          & gh api --hostname github.com --method GET -H 'Accept: application/octet-stream' '/repos/0xZoharHuang/codex-deepseek-runtime/releases/assets/719954798' > $part 2> $stderr
+          $exit = $LASTEXITCODE
+          if ($exit -ne 0) {
+            $match = [regex]::Match([string](Get-Content -Raw -LiteralPath $stderr), '\bHTTP\s+(\d{3})\b')
+            $http = if ($match.Success) { $match.Groups[1].Value } else { 'unavailable' }
+            throw "Draft GET failed (gh exit $exit, HTTP $http)."
+          }
+          $bytes = (Get-Item -LiteralPath $part).Length
+          $sha = (Get-FileHash -LiteralPath $part -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($bytes -ne 204367729 -or $sha -ne 'd9b8d73184bfac47842505c8e540d132ebb564d443b0ad55722d7583a8bde418') {
+            throw 'Draft GET body differs from the verified P40 archive.'
+          }
+          Move-Item -LiteralPath $part -Destination $archive
+          Write-Output "Verified draft asset 719954798: $bytes bytes, SHA256 $sha."
+      - name: Hand off one verified file to the same run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: cds-p40-verified-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p40-verified.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
   qualify:
+    needs: draft-asset
+    permissions:
+      contents: read
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/windows-p40-installed-gate-r605' }}
     runs-on: windows-2025
     timeout-minutes: 35
@@ -56,12 +102,11 @@ jobs:
       - name: Checkout reviewed source anonymously at exact commit
         shell: pwsh
         run: python -I -B ci/windows_p40_installed_gate.py prepare
-      - name: Download and verify exact P40 asset
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          P40_ASSET_ID: ${{ inputs.archive_asset_id }}
-        run: python -I -B ci/windows_p40_installed_gate.py download
+      - name: Fetch the same-run verified P40 file
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cds-p40-verified-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cds-p40-input
       - name: Normal install and original strict no-model IPC and EOF
         shell: pwsh
         run: |
