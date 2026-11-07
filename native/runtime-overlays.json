@@ -1957,6 +1957,49 @@
           }
         ]
       }
+    },
+    {
+      "file": "windows-curated-plugin-git-atomic-spawn-0164.patch",
+      "sha256": "d171ac4dc5381eb7bfcaf880b1d8cac602115f68abc85dfadb6ff9764430aee3",
+      "changes_by_target": {
+        "x86_64-pc-windows-msvc": [
+          {
+            "path": "codex-rs/core-plugins/src/git_lifetime_windows_tests.rs",
+            "before_sha256": "6cb6f7cd18d011a0e3757acb79dcc75a105ef148f2a11f5f2061e3638f8cd197",
+            "after_sha256": "977d25969cfedcc1e2712500f14c999f2f982b944475dd011853f57427d6169c"
+          },
+          {
+            "path": "codex-rs/core-plugins/src/startup_sync.rs",
+            "before_sha256": "d947c43f6922ca49642ce96b724292cba5e2998e3bd3f1e2bc3a74c514013741",
+            "after_sha256": "abb20eb074692f35c8df5ff88cf0781655756e2d9057d6acdab93044f7d6eaa4"
+          },
+          {
+            "path": "codex-rs/utils/pty/Cargo.toml",
+            "before_sha256": "bacf71d7afedb321054493d7353ea3c2f04eb0ba609e567fef4b7fec9906a2c4",
+            "after_sha256": "77431659aba153df34e373b069a7a0d937b8db43a5d4c90c6d66fb81149ef281"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/background_output.rs",
+            "before_sha256": null,
+            "after_sha256": "0397fcbb81ffeb905e33e7af62c1c9d181164c4111eb544dff37a04425dcd817"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/mod.rs",
+            "before_sha256": "4f355ebc286683984158ff5b3cc3994c55e8b4eaea39775da905d91fd1fbbb14",
+            "after_sha256": "221275d4262fd035d023dcaec7ac12073bb201118def6312ac0e5d5869ebeb29"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/procthreadattr.rs",
+            "before_sha256": "f143dff9ff9ce080e617e6bae2e1864e7f59b6f83569eae18fd7f02e997a1956",
+            "after_sha256": "2fd5a5c045932ffa0fe76822847368f96b8fdbf5fb42246c2cf58ed8d6400f1f"
+          },
+          {
+            "path": "codex-rs/utils/pty/src/win/psuedocon.rs",
+            "before_sha256": "32c19b244e451a03c0da2e57a7911c69361d033c91d256ad22e61b2711487090",
+            "after_sha256": "849916810bcd1232c18317c293d4b64b65eb06e633369a49ed9084cbf47fc2a4"
+          }
+        ]
+      }
     }
   ]
 }

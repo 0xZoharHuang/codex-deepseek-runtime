@@ -162,8 +162,9 @@ def runtime_recipe(recipe_path=None):
     interactive_bootstrap='windows-interactive-runner-bootstrap-0164.patch'
     metadata_sync='windows-ancestor-metadata-synchronize-0164.patch'
     managed_metadata='windows-managed-metadata-provision-0164.patch'
+    atomic_plugin_git='windows-curated-plugin-git-atomic-spawn-0164.patch'
     selected=[item.get('file') for item in recipe['overlays']] if isinstance(recipe['overlays'],list) else None
-    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol,restored_capacity,cancel_owned,windows_host,typed_projection,windows_station,text_projection,irreducible_fixture,reset_old_gap,interactive_bootstrap,metadata_sync,managed_metadata,'windows-managed-admin-maintenance-0164.patch'])
+    expected_order=order+[guardian]+([] if path.resolve()==candidate.resolve() else [migration_eol,restored_capacity,cancel_owned,windows_host,typed_projection,windows_station,text_projection,irreducible_fixture,reset_old_gap,interactive_bootstrap,metadata_sync,managed_metadata,'windows-managed-admin-maintenance-0164.patch',atomic_plugin_git])
     if selected!=expected_order:raise ValueError('Native overlay order mismatch')
     digest=lambda value:isinstance(value,str) and re.fullmatch(r'[0-9a-f]{64}',value)
     for target,inputs in recipe['required_base_inputs'].items():

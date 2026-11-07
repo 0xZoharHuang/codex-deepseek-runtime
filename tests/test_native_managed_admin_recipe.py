@@ -19,7 +19,7 @@ def test_p39_is_the_only_change_after_exact_p38_recipe_and_preserves_unix_inputs
     historical = ROOT / "native/runtime-overlays-pre-managed-admin-p38.json"
     assert build.sha(historical) == "a929e63d2db90670c19f8b45998ca33a8ac53a6f24adec19ddad6cf748160eed"
     previous = json.loads(historical.read_bytes())
-    current = build.runtime_recipe()
+    current = json.loads((ROOT / "native/runtime-overlays-pre-atomic-plugin-git-p39.json").read_bytes())
     assert len(previous["overlays"]) == 38 and len(current["overlays"]) == 39
     assert previous["overlays"][-1]["file"] == P38
     assert {**current, "overlays": current["overlays"][:-1]} == previous
@@ -47,11 +47,12 @@ def test_p39_is_the_only_change_after_exact_p38_recipe_and_preserves_unix_inputs
 @pytest.mark.parametrize("problem", ["omit", "reorder", "duplicate", "retarget", "extra_unix_target"])
 def test_p39_wrong_order_or_platform_is_rejected_by_real_reader(tmp_path, monkeypatch, problem):
     recipe = copy.deepcopy(build.runtime_recipe())
-    leaf = recipe["overlays"][-1]
+    index = next(i for i, row in enumerate(recipe["overlays"]) if row["file"] == P39)
+    leaf = recipe["overlays"][index]
     if problem == "omit":
-        recipe["overlays"].pop()
+        recipe["overlays"].pop(index)
     elif problem == "reorder":
-        recipe["overlays"][-2:] = reversed(recipe["overlays"][-2:])
+        recipe["overlays"][index-1:index+1] = reversed(recipe["overlays"][index-1:index+1])
     elif problem == "duplicate":
         recipe["overlays"].append(copy.deepcopy(leaf))
     elif problem == "retarget":
