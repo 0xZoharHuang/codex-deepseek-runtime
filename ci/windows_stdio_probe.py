@@ -44,6 +44,7 @@ class TracedPopen(subprocess.Popen):
 
 def writer_holders(peer,family):
     import hashlib
+    import psutil
     from codex_deepseek.processes import identity,matches
     target=peer.stdout_writer_object
     if not target:return {"status":"no_writer_object_captured"}
@@ -52,10 +53,21 @@ def writer_holders(peer,family):
     for row in entries():
         if row.object!=target:continue
         birth=identity(row.pid)
-        rows.append({"pid":row.pid,"birth":birth,"handle":hex(row.handle),
-                     "granted_access":hex(row.access),"known_family":row.pid in known,
-                     "matches_observed_birth":row.pid in known and birth is not None
-                        and known[row.pid]==birth and matches(row.pid,birth)})
+        evidence = {"pid":row.pid,"birth":birth,"handle":hex(row.handle),
+                    "granted_access":hex(row.access),"known_family":row.pid in known,
+                    "matches_observed_birth":row.pid in known and birth is not None
+                       and known[row.pid]==birth and matches(row.pid,birth)}
+        try:
+            process = psutil.Process(row.pid)
+            with process.oneshot():
+                image = {"name":process.name(),"exe":process.exe(),
+                         "parent_pid":process.ppid(),"creation_time":process.create_time()}
+            if birth is not None and matches(row.pid,birth):
+                evidence.update(image, metadata_matches_birth=True,
+                                parent_birth_at_snapshot=identity(image["parent_pid"]))
+        except (psutil.NoSuchProcess, psutil.AccessDenied) as error:
+            evidence["metadata_error"] = type(error).__name__
+        rows.append(evidence)
     return {"status":"captured_exact_original_stdout_writer_object",
             "object_fingerprint":hashlib.sha256(str(target).encode()).hexdigest(),
             "holders":rows,"read_only":True,"handles_closed":0}
