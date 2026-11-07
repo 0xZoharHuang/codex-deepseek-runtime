@@ -29,10 +29,26 @@ def validate_installed_origins(origins, release, source=SOURCE):
     expected = tomllib.loads((Path(source)/"pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     if not isinstance(expected, str) or not expected.strip():
         raise ValueError("Source distribution version must be explicit")
-    root = (Path(release)/"venv").resolve()
-    if (origins["version"] != expected or len(origins["modules"]) != 32
-            or not all(Path(row["origin"]).resolve().is_relative_to(root)
-                       for row in origins["modules"])):
+    source_root = Path(source)/"src"
+    expected_modules = {}
+    for path in sorted((source_root/"codex_deepseek").rglob("*.py")):
+        parts = path.relative_to(source_root).with_suffix("").parts
+        name = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
+        if name in expected_modules:
+            raise ValueError("Duplicate source module name")
+        expected_modules[name] = sha(path)
+    installed_root = (Path(release)/"venv").resolve()
+    observed = {}
+    for row in origins["modules"]:
+        name = row["module"]
+        path = Path(row["origin"]).resolve()
+        if (name in observed or name not in expected_modules
+                or not path.is_relative_to(installed_root)
+                or not path.is_file() or sha(path) != row["sha256"]):
+            raise ValueError("Installed distribution version or module origins differ")
+        observed[name] = row["sha256"]
+    if (origins["version"] != expected or not expected_modules
+            or observed != expected_modules):
         raise ValueError("Installed distribution version or module origins differ")
     return expected
 
@@ -323,7 +339,7 @@ def main():
                       native_package=str(package), installation_sha256=sha(release/"installation.json"),
                       source_id=installation["source_id"],
                       native_archive_sha256=installation["native_archive_sha256"],
-                      installed_modules=32, distribution_version=distribution_version, no_activate=True,
+                      installed_modules=len(origins["modules"]), distribution_version=distribution_version, no_activate=True,
                       normal_eof_exit=ipc["eof_exit"], model_receipts=0)
     except BaseException as error:
         record.update(status="failed", error=repr(error), traceback=traceback.format_exc())
