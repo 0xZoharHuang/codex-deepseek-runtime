@@ -63,7 +63,7 @@ def test_installer_only_release_selects_entire_qualified_native_component(monkey
     assert selected == dict(previous, distribution_version=source_version)
     assert selected["native_recipe_id"] == installer.expected_native_recipe(selected["target"])
 
-def test_windows_release_selects_the_whole_qualified_p40_native_component(monkeypatch):
+def test_windows_release_selects_the_whole_qualified_p41_native_component(monkeypatch):
     spec = importlib.util.spec_from_file_location("p40_candidate_install", ROOT / "install.py")
     installer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(installer)
@@ -75,12 +75,12 @@ def test_windows_release_selects_the_whole_qualified_p40_native_component(monkey
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     assert selected["status"] == "ready" and selected["distribution_version"] == version
     assert selected["archive"]["url"].endswith("/" + selected["archive"]["filename"])
-    # Compare with the complete P40 producer manifest, excluding only release metadata
+    # Compare with the complete P41 producer manifest, excluding only release metadata
     # and the URL/name of the same SHA-256 archive.
     component = {key: value for key, value in selected.items() if key != "distribution_version"}
     component["archive"] = {"sha256": selected["archive"]["sha256"]}
     canonical = json.dumps(component, sort_keys=True, separators=(",", ":")).encode()
-    assert hashlib.sha256(canonical).hexdigest() == "ff5c9500fe3d0a91ed638d09f88576185316540b6384b4afb4490e8910f25a98"
+    assert hashlib.sha256(canonical).hexdigest() == "0a88744be33c2193af185856ceebc9938cb81e447b98b5a3a31e02a3691d890d"
     assert selected["native_recipe_id"] == installer.expected_native_recipe(selected["target"])
     rollback = json.loads((ROOT / "native/rollback/0.6.14/runtime-x86_64-pc-windows-msvc.json").read_bytes())
     assert rollback["status"] == "ready" and rollback["distribution_version"] == "0.6.14"

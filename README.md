@@ -2,11 +2,11 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P40 原生组件，Linux 和 macOS 沿用各自的 P35 组件。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P41 原生组件，Linux 和 macOS 沿用各自的 P35 组件。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag | 适用环境与版本记录 |
 | --- | --- | --- |
-| Windows x86_64 | `v0.7.1` | P40。原生插件 Git 子进程在创建时绑定进程组和独立标准句柄。 |
+| Windows x86_64 | `v0.7.1` | P41。原生 curated 和 marketplace Git 子进程在创建时绑定进程组和独立标准句柄，并保留原 Git 查找语义。 |
 | Linux x86_64 GNU | `v0.7.1` | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
 | macOS Apple Silicon | `v0.7.1` | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
 

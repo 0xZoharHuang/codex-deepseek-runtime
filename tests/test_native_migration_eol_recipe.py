@@ -45,6 +45,7 @@ def test_shared_eol_source_promotion_preserves_exact_068_recipe_and_assets():
         "windows-managed-metadata-provision-0164.patch",
         "windows-managed-admin-maintenance-0164.patch",
         "windows-curated-plugin-git-atomic-spawn-0164.patch",
+        "windows-plugin-git-atomic-complete-0164.patch",
     ]
     for target in build.PLATFORM_ASSETS:
         known = {row["path"]: row["after_sha256"]
@@ -54,7 +55,8 @@ def test_shared_eol_source_promotion_preserves_exact_068_recipe_and_assets():
             if item["file"] in {"windows-host-boundaries-0164.patch", "windows-service-station-bootstrap-0164.patch",
                                 "windows-interactive-runner-bootstrap-0164.patch", "windows-ancestor-metadata-synchronize-0164.patch",
                                 "windows-managed-metadata-provision-0164.patch", "windows-managed-admin-maintenance-0164.patch",
-                                "windows-curated-plugin-git-atomic-spawn-0164.patch"}:
+                                "windows-curated-plugin-git-atomic-spawn-0164.patch",
+                                "windows-plugin-git-atomic-complete-0164.patch"}:
                 assert set(item["changes_by_target"]) == {"x86_64-pc-windows-msvc"}
                 if target != "x86_64-pc-windows-msvc":
                     continue
