@@ -110,34 +110,82 @@ async def test_native_raw_large_multipart_files_delete_exact_wire_and_warm_reuse
     from synthetic_image_capacity import make_fixture
     payload,manifest=make_fixture();payload['provider']['only']=['deepseek'];payload['input'][-2]['content'][0]['text']+='x'
     original=encode_body(payload);assert len(original)==34009154
-    native=NativeTransport(UPSTREAM)
-    transport=ImageTransport(tmp_path/'image-cache',lambda:KEY,OpenRouterFilesBackend(NativeFilesSession(native,'default')),TransportPolicy(1,wire_budget_bytes=30*1024*1024,verify_after_seconds=60,idle_ttl_seconds=0))
+    wire_budget = 30 * 1024 * 1024
+    referenced_byte_limit = 20 * 1024 * 1024
+    # Independent lower bound for this fixture. Its synthetic origin issues
+    # fixed-width ASCII IDs. Even replacing the k most profitable positions
+    # cannot meet the wire budget before this count.
+    savings = []
+    for item in payload['input']:
+        for image in item['content']:
+            if image['type'] != 'input_image':
+                continue
+            reference = {key: value for key, value in image.items() if key != 'image_url'}
+            reference['file_id'] = 'or_file_000000000001'
+            savings.append(len(encode_body(image)) - len(encode_body(reference)))
+    assert len(savings) == manifest['image_count'] == manifest['unique_images'] == 101
+    largest_savings = sorted(savings, reverse=True)
+    expected_converted = next(
+        count for count in range(1, 17)
+        if len(original) - sum(largest_savings[:count]) <= wire_budget
+    )
+    assert expected_converted == 8
+    assert len(original) - sum(largest_savings[:expected_converted - 1]) > wire_budget
+
+    native = NativeTransport(UPSTREAM)
+    transport = ImageTransport(
+        tmp_path / 'image-cache', lambda: KEY,
+        OpenRouterFilesBackend(NativeFilesSession(native, 'default')),
+        TransportPolicy(1, wire_budget_bytes=wire_budget, verify_after_seconds=60,
+                        idle_ttl_seconds=0),
+    )
     try:
-        async with transport.prepare(payload,credential=KEY) as prepared:
-            assert native.raw_protocol_version==1 and prepared.uploads==16
-            wire=prepared.body;assert len(wire)<30*1024*1024
-            positions,blobs=image_plan(payload);converted=0
-            for (item,field,index),digest in positions:
-                value=prepared.payload['input'][item][field][index]
+        async with transport.prepare(payload, credential=KEY) as prepared:
+            assert native.raw_protocol_version == 1 and prepared.uploads == expected_converted
+            wire = prepared.body
+            assert wire == encode_body(prepared.payload)
+            assert len(wire) <= wire_budget
+            positions, blobs = image_plan(payload)
+            converted = 0
+            referenced_bytes = 0
+            file_ids = set()
+            for (item, field, index), digest in positions:
+                value = prepared.payload['input'][item][field][index]
+                original_part = payload['input'][item][field][index]
                 if 'file_id' in value:
-                    converted+=1;assert hashlib.sha256(origin.files[value['file_id']][1]).hexdigest()==digest
-                    assert origin.files[value['file_id']][1]==blobs[digest].data
-                else:assert value==payload['input'][item][field][index]
-            assert converted==16 and len(positions)==101
+                    converted += 1
+                    file_ids.add(value['file_id'])
+                    uploaded = origin.files[value['file_id']][1]
+                    assert hashlib.sha256(uploaded).hexdigest() == digest
+                    assert uploaded == blobs[digest].data
+                    referenced_bytes += len(uploaded)
+                    assert {k: v for k, v in value.items() if k != 'file_id'} == {
+                        k: v for k, v in original_part.items() if k != 'image_url'
+                    }
+                else:
+                    assert value == original_part
+            assert converted == len(file_ids) == len(origin.files) == expected_converted
+            assert len(positions) == 101
+            assert referenced_bytes == prepared.referenced_file_bytes <= referenced_byte_limit
             await prepared.mark_upstream_started('native-wire-attempt-one')
-            async with native.request_raw('POST',UPSTREAM,api_key=KEY,body=wire,content_type='application/json') as response:
-                assert response.status==200;result=await response.json()
-            await prepared.mark_upstream_settled(result['id'],result['status'])
-            assert origin.models==[wire] and encode_body(payload)==original
-        prior=len(origin.calls)
-        async with transport.prepare(payload,credential=KEY) as second:
-            assert second.uploads==0 and second.reused==16 and second.body==wire
-        assert len(origin.calls)==prior,'Warm cache must not add per-image native GETs'
-        result=await transport.cleanup(all_unpinned=True)
-        assert result['deleted']==16 and result['all_owned_files_deleted'] and not origin.files
-        assert len(origin.tunnels)==1,'One origin/policy must reuse its native HTTPS pool'
-        assert sum(method=='DELETE' for method,path,size in origin.calls)==16
-        assert len(origin.models)==1
+            async with native.request_raw(
+                'POST', UPSTREAM, api_key=KEY, body=wire, content_type='application/json'
+            ) as response:
+                assert response.status == 200
+                result = await response.json()
+            await prepared.mark_upstream_settled(result['id'], result['status'])
+            assert origin.models == [wire] and encode_body(payload) == original
+        prior = len(origin.calls)
+        async with transport.prepare(payload, credential=KEY) as second:
+            assert second.uploads == 0 and second.reused == expected_converted
+            assert second.body == wire and second.referenced_file_bytes == referenced_bytes
+        assert len(origin.calls) == prior, 'Warm cache must not add per-image native GETs'
+        result = await transport.cleanup(all_unpinned=True)
+        assert result['deleted'] == expected_converted
+        assert result['all_owned_files_deleted'] and not origin.files
+        assert len(origin.tunnels) == 1, 'One origin/policy must reuse its native HTTPS pool'
+        assert sum(method == 'DELETE' for method, path, size in origin.calls) == expected_converted
+        assert len(origin.models) == 1
     finally:await native.close()
 
 
