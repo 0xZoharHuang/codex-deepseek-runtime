@@ -16,4 +16,4 @@ v0.7.1 的发行页只有 Windows 原生归档作为本版上传的二进制资�
 - Linux 和 macOS 各自从 v0.7.1 提交正常安装，分别运行 22 项原生测试。适配层各收集 2994 项测试，Linux 跳过 55 项，macOS 跳过 56 项，两平台均无失败。 [精确提交的双平台工作流](https://github.com/0xZoharHuang/codex-deepseek-runtime/actions/runs/42365028202)
 - 四组并发真实图片任务显式使用 `morph/fp8`，关闭了回退。抽查的四个请求均回读到提供方 Morph 和模型 `deepseek/deepseek-v4.1-flash-20261017`。这份四组业务任务回执只覆盖 Morph 路由，并绑定到先前 Windows 原生测试组件与对应适配器源码。原生压缩、冷恢复和副作用验证也沿用原始回执。P41 的独立证据覆盖上述 Windows 安装和 Git/IPC 边界，四图组的完整业务任务仍使用原始资格回执。 [真实任务回执](../0.7.0/real-four-image-task-qualification.json)
 
-这些回执分别记录平台安装、进程退出、适配层测试和真实任务。使用时应按实际平台与任务配置读取对应证据。 [v0.7.0 历史发布与原始失败记录](../0.7.0/README.md)
+这些回执分别记录平台安装、进程退出、适配层测试和真实任务。使用时应按实际平台与任务配置读取对应证据。 [v0.7.0 历史发布与原始失败记录](../0.7.0/README.md) · [官方 DeepSeek 与兼容提供方的历史证据](provider-evidence.zh-CN.md)
