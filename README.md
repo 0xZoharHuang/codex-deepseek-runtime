@@ -2,13 +2,15 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P41 原生组件，Linux 和 macOS 沿用各自的 P35 组件。当前验收与逐平台发布状态见 [0.7.0 记录](reports/releases/0.7.0/README.md)，既有 [0.6.15 发布回执](reports/releases/0.6.15/README.md)保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P41 原生组件，Linux 和 macOS 沿用各自的 P35 组件。当前发布与验收范围见 [v0.7.1 记录](reports/releases/0.7.1/README.md)，[v0.7.0](reports/releases/0.7.0/README.md) 与 [v0.6.15](reports/releases/0.6.15/README.md) 作为历史发布记录保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag | 适用环境与版本记录 |
 | --- | --- | --- |
 | Windows x86_64 | `v0.7.1` | P41。原生 curated 和 marketplace Git 子进程在创建时绑定进程组和独立标准句柄，并保留原 Git 查找语义。 |
-| Linux x86_64 GNU | `v0.7.1` | Ubuntu 24.04 / WSL，复用 [v0.6.13 已验证的 Linux 组件](reports/releases/0.6.13/README.md)。 |
-| macOS Apple Silicon | `v0.7.1` | 复用 [v0.6.13 已验证的 P35 组件](reports/releases/0.6.13/README.md)。 |
+| Linux x86_64 GNU | `v0.7.1` | Ubuntu 24.04 / WSL，沿用 P35，原生归档来自 [v0.6.10 Linux 资产](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。 |
+| macOS Apple Silicon | `v0.7.1` | 沿用 [native-macos-p35 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/native-macos-p35)。 |
+
+v0.7.1 的 Release 页面托管 Windows 原生归档。三平台均使用 v0.7.1 源码，Linux 和 macOS 的安装器从此 tag 的清单读取各自既有原生归档地址。
 
 Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
@@ -126,14 +128,19 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 
 ### 下载受限或并行验证版本
 
-安装器可以使用预先下载的归档。Linux/macOS 在 `v0.6.13` 源码中读取各自的原生组件清单。Windows 在 `v0.6.14` 源码中读取 P39 清单。版本、平台、recipe 和归档散列均须一致。
+先检出 v0.7.1，再下载其本平台清单指定的原生归档。安装器默认读取 v0.7.1 源码内的清单。手工传入清单时，清单的目标平台和 recipe 仍须匹配当前源码，归档须匹配清单中的 SHA-256。
 
-```sh
-python3 install.py --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json \
-  --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
+| 平台 | v0.7.1 内的清单 | 本地应提供的归档 |
+| --- | --- | --- |
+| Windows x86_64 | [Windows 清单](native/runtime-x86_64-pc-windows-msvc.json) | [P41 Windows 归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.7.1/codex-deepseek-native-0.7.1-x86_64-pc-windows-msvc.tar.gz) |
+| Linux x86_64 GNU | [Linux 清单](native/runtime-x86_64-unknown-linux-gnu.json) | [v0.6.10 Linux 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz) |
+| macOS Apple Silicon | [macOS 清单](native/runtime.json) | [native-macos-p35 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/native-macos-p35/codex-native-aarch64-apple-darwin-p35.tar.gz) |
+
+```powershell
+python install.py --native-archive "C:\verified\codex-deepseek-native-0.7.1-x86_64-pc-windows-msvc.tar.gz"
 ```
 
-Linux 的清单使用 `codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz`。Windows v0.6.14 对应 `codex-deepseek-native-0.6.14-x86_64-pc-windows-msvc.tar.gz`，可以通过 `python install.py --native-archive "C:\path\to\archive.tar.gz"` 安装。使用 `--wheelhouse <目录>` 时，安装器仍会检查 Python 依赖的固定散列。归档地址和版本验证结果均在[平台报告](reports/releases/0.6.14/README.md)中。
+Linux 和 macOS 同样从 v0.7.1 源码运行 `python3 install.py --native-archive <本平台归档>`。Linux 归档名中的 v0.6.10 是原生资产的发布时间点，安装后的 CDS 版本由 v0.7.1 源码决定。使用 `--wheelhouse <目录>` 时，安装器仍会检查 Python 依赖的固定散列。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 

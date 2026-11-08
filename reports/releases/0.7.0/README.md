@@ -1,6 +1,8 @@
 # 0.7.0 图片缓存并发与容量修复
 
-v0.7.0 发布范围是 Linux x86_64 GNU 和 macOS Apple Silicon。Windows 当前的稳定安装版本为 v0.6.15。Windows Server 2025 上的原生插件 Git 子进程仍须通过独立 stdout 退出验收。
+本文保留 v0.7.0 当时的发布与验收记录。当前发行版见 [v0.7.1 发布与验收](../0.7.1/README.md)。
+
+v0.7.0 发布范围是 Linux x86_64 GNU 和 macOS Apple Silicon。该版本发布时，Windows 稳定安装版本为 v0.6.15，Windows Server 2025 的原生插件 Git 子进程尚待独立 stdout 退出验收。
 
 本版修复共享 home 下的大图并发请求可能被全局缓存锁串行、逐图 FULL 提交放大同步等待的问题。原图片字节、调用历史、原生 agent loop、线程、工具、审批和沙箱均不变。Windows 继续使用 P39，Linux/macOS 继续使用已经固定的 P35 原生组件，无需为本次协议修改重编 Rust。
 
