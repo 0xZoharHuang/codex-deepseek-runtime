@@ -281,9 +281,11 @@ def test_interrupted_reasoning_before_peer_delivery_is_not_an_empty_assistant_tu
             "content": [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nDone."}]}
     payload, registry = prepare(request(tools, input=[prior, output, reasoning, peer]))
     items = payload["input"]
-    assert items[:2] == [prior, output]
-    assert [item["role"] for item in items[2:]] == ["developer", "developer"]
-    assert json.loads(items[2]["content"][0]["text"].split("\n", 1)[1]) == [reasoning]
+    assert items[1:3] == [prior, output]
+    assert items[0]["role"] == "assistant" and items[3]["role"] == "developer"
+    assert json.loads(items[0]["content"][0]["text"].split("\n", 1)[1]) == [
+        {"input_index": 2, "reasoning_index": 0, "item": reasoning}
+    ]
     assert json.loads(items[3]["content"][0]["text"].split("\n", 1)[1])["content"] == peer["content"]
     assert registry.continuation_context
 
@@ -299,9 +301,11 @@ def test_retained_context_does_not_change_complete_assistant_history_or_invent_a
     assert not registry.continuation_context
 
     trailing, registry = prepare(request([], input=[user, reasoning, answer]))
-    assert trailing["input"][0] == user
-    assert [item["type"] for item in trailing["input"]] == ["message", "message"]
-    context = trailing["input"][1]
-    assert context["role"] == "developer"
-    assert json.loads(context["content"][0]["text"].split("\n", 1)[1]) == [reasoning, answer]
+    assert trailing["input"][1:] == [user]
+    context = trailing["input"][0]
+    assert context["role"] == "assistant"
+    assert json.loads(context["content"][0]["text"].split("\n", 1)[1]) == [
+        {"input_index": 1, "reasoning_index": 0, "item": reasoning},
+        {"input_index": 2, "item": answer},
+    ]
     assert registry.continuation_context
