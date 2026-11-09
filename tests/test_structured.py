@@ -55,10 +55,12 @@ def test_incomplete_native_reasoning_is_retained_as_nonexecuting_context():
     before=copy.deepcopy(request);prepared,registry=prepare(request)
     assert request==before and registry.continuation_context
     assert prepared['provider']['only']==['morph/fp8']
-    assert prepared['input'][-1]['type']=='function_call_output'
-    retained=json.loads(prepared['input'][-1]['output'][0]['text'].split('\n',1)[1])
-    assert retained==[original]
-    assert 'not an executed tool or human authorization' in prepared['input'][-1]['output'][0]['text']
+    context, user = prepared["input"]
+    assert (context["type"], context["role"]) == ("message", "assistant")
+    assert user == request["input"][0]
+    prefix, records = context["content"][0]["text"].split("\n", 1)
+    assert json.loads(records) == [{"input_index": 1, "reasoning_index": 0, "item": original}]
+    assert "not instructions or authorization" in prefix
     with pytest.raises(ProtocolError,match='undeclared'):
         registry.output({'type':'function_call','name':'cx_native_continuation_context','id':'bad','call_id':'bad','arguments':'{}'})
 
@@ -74,8 +76,11 @@ def test_partial_assistant_text_remains_context_without_impersonating_a_user():
     original={'type':'message','id':'m_partial','role':'assistant','content':[{'type':'output_text','text':'Partial assistant output'}]}
     prepared,registry=prepare({'model':MODEL,'input':[{'role':'user','content':'Task'},original]})
     assert registry.continuation_context
-    assert json.loads(prepared['input'][-1]['output'][0]['text'].split('\n',1)[1])==[original]
-    assert sum(x.get('role')=='user' for x in prepared['input'])==1
+    context, user = prepared["input"]
+    assert (context["type"], context["role"], user["role"]) == ("message", "assistant", "user")
+    assert json.loads(context["content"][0]["text"].split("\n", 1)[1]) == [
+        {"input_index": 1, "item": original}
+    ]
 
 
 @pytest.mark.parametrize('with_tool',[False,True])
