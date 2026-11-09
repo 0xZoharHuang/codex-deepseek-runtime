@@ -268,3 +268,40 @@ def test_parallel_tool_history_uses_completed_response_evidence_after_restart(tm
             assert registry.regrouped_tool_history == 0
     finally:
         store.close()
+
+
+def test_interrupted_reasoning_before_peer_delivery_is_not_an_empty_assistant_turn():
+    tools = [{"type": "function", "name": "sample", "parameters": {"type": "object"}}]
+    reasoning = {"type": "reasoning", "id": "rs_interrupted",
+                 "content": [{"type": "reasoning_text", "text": "Waiting for the peer."}]}
+    prior = {"type": "function_call", "id": "fc_prior", "call_id": "call_prior",
+             "name": "sample", "arguments": "{}"}
+    output = {"type": "function_call_output", "call_id": "call_prior", "output": "ready"}
+    peer = {"type": "agent_message", "author": "/root/reviewer", "recipient": "/root",
+            "content": [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nDone."}]}
+    payload, registry = prepare(request(tools, input=[prior, output, reasoning, peer]))
+    items = payload["input"]
+    assert items[:2] == [prior, output]
+    assert [item["role"] for item in items[2:]] == ["developer", "developer"]
+    assert json.loads(items[2]["content"][0]["text"].split("\n", 1)[1]) == [reasoning]
+    assert json.loads(items[3]["content"][0]["text"].split("\n", 1)[1])["content"] == peer["content"]
+    assert registry.continuation_context
+
+
+def test_retained_context_does_not_change_complete_assistant_history_or_invent_a_tool():
+    reasoning = {"type": "reasoning", "id": "rs_previous",
+                 "content": [{"type": "reasoning_text", "text": "A complete prior turn."}]}
+    answer = {"type": "message", "id": "msg_previous", "role": "assistant",
+              "content": [{"type": "output_text", "text": "Earlier answer."}]}
+    user = {"type": "message", "role": "user", "content": "Continue."}
+    complete, registry = prepare(request([], input=[reasoning, answer, user]))
+    assert complete["input"] == [reasoning, answer, user]
+    assert not registry.continuation_context
+
+    trailing, registry = prepare(request([], input=[user, reasoning, answer]))
+    assert trailing["input"][0] == user
+    assert [item["type"] for item in trailing["input"]] == ["message", "message"]
+    context = trailing["input"][1]
+    assert context["role"] == "developer"
+    assert json.loads(context["content"][0]["text"].split("\n", 1)[1]) == [reasoning, answer]
+    assert registry.continuation_context
