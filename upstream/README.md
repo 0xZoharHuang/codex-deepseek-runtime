@@ -33,12 +33,14 @@ Three provider differences were reproduced with explicit `provider.only`,
 - Tool serialization with `parallel_tool_calls=false` uses Prime Intellect.
 - Thinking plus hosted web search plus tool-result context for native peer
   messages is rejected on the official endpoint. The same model request works
-  on Morph and Prime Intellect; the adapter explicitly selects Morph for that
-  combination, preserving thinking and peer provenance.
+  on Morph and Prime Intellect in the qualifying requests. The adapter defaults
+  this combination to Morph and supports an explicit per-home Prime Intellect
+  peer selection. The evidence limits for images and continuations apply.
 
-Ordinary requests continue to use the official DeepSeek provider. These are
-preselected routes with visible receipts, rather than retries that replay an
-agent action. A proper upstream fix would make the official provider's declared
+Ordinary requests default to official DeepSeek. An explicit per-home setting
+can select Morph. Serial-tool and strict-schema requirements retain their
+higher routing priority. Each request preselects one provider and records the
+route in its receipt. A proper upstream fix would make the official provider's declared
 parameter support and its Responses translation agree on these requests. No
 OpenRouter proprietary server patch is claimed here. The runtime tests preserve
 failed attempts and successful provider/generation evidence privately; published
