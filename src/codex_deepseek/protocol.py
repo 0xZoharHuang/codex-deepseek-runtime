@@ -25,6 +25,10 @@ STRUCTURED_FORMAT_INSTRUCTION = (
 )
 
 
+NATIVE_TOOL_CALL_TYPES = {"function_call", "custom_tool_call", "tool_search_call"}
+NATIVE_TOOL_OUTPUT_TYPES = {"function_call_output", "custom_tool_call_output", "tool_search_output"}
+
+
 def native_history_fingerprint(item):
     """Hash model-owned replay semantics, retaining call identity and real reasoning."""
     kind=item.get('type')
@@ -34,7 +38,7 @@ def native_history_fingerprint(item):
         text=''.join(part['text'] for part in parts)
         if not text:return None
         value={'type':'reasoning','text':text}
-    elif kind in {'custom_tool_call','function_call'}:
+    elif kind in NATIVE_TOOL_CALL_TYPES:
         arguments=item.get('input') if kind=='custom_tool_call' else item.get('arguments')
         if kind=='function_call':
             try:arguments=json.loads(arguments) if isinstance(arguments,str) else arguments
@@ -91,6 +95,7 @@ class Registry:
         self.by_wire: dict[str, Tool] = {}
         self.by_identity: dict[tuple[str | None, str], Tool] = {}
         self.search_store = search_store
+        self.regrouped_tool_history = 0
         self.discovered: list[dict] = []
         self.active: set[str] = set()
         self.published: set[str] = set()
@@ -181,9 +186,55 @@ class Registry:
                 raise ProtocolError(f"Provider cannot implement hosted tool type {kind!r}")
         return result
 
+    def regroup_tool_history(self, items: list[dict]) -> list[dict]:
+        """Undo native call/result interleaving for a proven provider response."""
+        origin = getattr(self.search_store, "completed_native_response", None)
+        if origin is None:
+            return items
+        result = []
+        index = 0
+        while index < len(items):
+            start = index
+            first = items[index]
+            index += 1
+            first_id = first.get("call_id")
+            if first.get("type") not in NATIVE_TOOL_CALL_TYPES or not isinstance(first_id, str) or not first_id:
+                result.append(first)
+                continue
+            response = origin(first)
+            if response is None:
+                result.append(first)
+                continue
+
+            calls, outputs = [first], []
+            call_ids, output_ids = {first_id}, set()
+            interleaved = False
+            while index < len(items):
+                item = items[index]
+                kind, call_id = item.get("type"), item.get("call_id")
+                if not isinstance(call_id, str) or not call_id:
+                    break
+                if kind in NATIVE_TOOL_CALL_TYPES and call_id not in call_ids and origin(item) == response:
+                    interleaved |= bool(outputs)
+                    calls.append(item)
+                    call_ids.add(call_id)
+                elif kind in NATIVE_TOOL_OUTPUT_TYPES and call_id in call_ids and call_id not in output_ids:
+                    outputs.append(item)
+                    output_ids.add(call_id)
+                else:
+                    break
+                index += 1
+            if interleaved and call_ids == output_ids:
+                result.extend(calls)
+                result.extend(outputs)
+                self.regrouped_tool_history += 1
+            else:
+                result.extend(items[start:index])
+        return result
+
     def history(self, items: list[dict]) -> list[dict]:
         result = []
-        for original in items:
+        for original in self.regroup_tool_history(items):
             item = copy.deepcopy(original)
             kind = item.get("type", "message")
             if kind in {'reasoning','function_call','custom_tool_call'}:

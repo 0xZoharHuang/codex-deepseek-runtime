@@ -219,3 +219,51 @@ def test_native_discovery_unhides_provider_function_without_replacing_current_sc
     output,_=prepare(request([search,{'type':'namespace','name':'audit','tools':[current]}],input=history))
     found=next(t for t in output['tools'] if 'audit.read_nonce' in t.get('description',''))
     assert 'defer_loading' not in found and found['parameters']==current['parameters']
+
+
+def test_parallel_tool_history_uses_completed_response_evidence_after_restart(tmp_path):
+    path = tmp_path / "adapter.sqlite"
+    tools = [{"type": "function", "name": "sample", "parameters": {"type": "object"}}]
+    body = request(tools)
+    reasoning = {"type": "reasoning", "id": "rs_parallel",
+                 "content": [{"type": "reasoning_text", "text": "Use two independent tools."}]}
+    first = {"type": "function_call", "name": "sample", "id": "fc_first",
+             "call_id": "call_first", "arguments": "{}", "status": "completed"}
+    second = {**first, "id": "fc_second", "call_id": "call_second"}
+    third = {**first, "id": "fc_third", "call_id": "call_third"}
+    first_output = {"type": "function_call_output", "call_id": first["call_id"], "output": "first"}
+    second_output = {"type": "function_call_output", "call_id": second["call_id"], "output": "second"}
+    third_output = {"type": "function_call_output", "call_id": third["call_id"], "output": "third"}
+    policy = {"type": "message", "role": "system", "content": "Keep the current task."}
+    store = Store(path)
+    try:
+        for number, output in enumerate(([reasoning, first, second], [third])):
+            receipt = store.start()
+            _, registry = prepare(body, store)
+            events = Events(registry)
+            events.transform({"type": "response.completed", "response": {
+                "id": f"resp_{number}", "status": "completed", "output": output}})
+            store.finish(receipt, "completed", 200, events)
+    finally:
+        store.close()
+
+    store = Store(path)
+    try:
+        history = [reasoning, first, first_output, second, second_output, policy]
+        payload, registry = prepare({**body, "input": history}, store)
+        assert payload["input"] == [reasoning, first, second, first_output, second_output, policy]
+        assert registry.regrouped_tool_history == 1
+        assert history == [reasoning, first, first_output, second, second_output, policy]
+        for unchanged in (
+            [reasoning, first, second, first_output, second_output],
+            [reasoning, first, first_output, third, third_output],
+            [reasoning, first, first_output, {**second, "id": "different_id"}, second_output],
+            [reasoning, first, first_output, {**second, "arguments": '{"changed":true}'}, second_output],
+            [reasoning, first, first_output, policy, second, second_output],
+            [reasoning, first, first_output, second],
+        ):
+            payload, registry = prepare({**body, "input": unchanged}, store)
+            assert payload["input"] == unchanged
+            assert registry.regrouped_tool_history == 0
+    finally:
+        store.close()

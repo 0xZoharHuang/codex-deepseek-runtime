@@ -41,6 +41,9 @@ class Store:
               supervisor_pid INTEGER, supervisor_birth TEXT,
               native_pid INTEGER, native_birth TEXT, closed REAL);
             CREATE TABLE IF NOT EXISTS adapter_metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS completed_native_evidence(
+              item_id TEXT NOT NULL, fingerprint TEXT NOT NULL, receipt_id TEXT NOT NULL,
+              PRIMARY KEY(item_id, fingerprint, receipt_id));
         ''')
         self.db.execute('BEGIN IMMEDIATE')
         self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('database_id',str(uuid.uuid4())))
@@ -119,17 +122,34 @@ class Store:
     def has_completed_native_item(self,fingerprint):
         return self.db.execute('SELECT 1 FROM adapter_metadata WHERE key=?',('native-complete-v1:'+fingerprint,)).fetchone() is not None
 
+    def completed_native_response(self, item):
+        item_id = item.get('id')
+        fingerprint = native_history_fingerprint(item)
+        if not isinstance(item_id, str) or not item_id or not fingerprint:
+            return None
+        rows = self.db.execute(
+            'SELECT receipt_id FROM completed_native_evidence WHERE item_id=? AND fingerprint=? LIMIT 2',
+            (item_id, fingerprint),
+        ).fetchall()
+        return rows[0][0] if len(rows) == 1 else None
+
     def finish(self, key, status, upstream=None, events=None, detail=None):
-        self.db.execute('''UPDATE receipts SET finished=?,status=?,upstream_status=?,response_id=?,usage=?,detail=?
+        changed = self.db.execute('''UPDATE receipts SET finished=?,status=?,upstream_status=?,response_id=?,usage=?,detail=?
                            WHERE id=? AND owner_id=? AND status='running' ''',
                         (time.time(), status, upstream, events.response_id if events else None,
-                         json.dumps(events.usage if events else {}), detail, key, self.owner))
-        if status=='completed' and events and getattr(events,'terminal',False) and getattr(events,'status',None)=='completed':
+                         json.dumps(events.usage if events else {}), detail, key, self.owner)).rowcount
+        if changed and status=='completed' and events and getattr(events,'terminal',False) and getattr(events,'status',None)=='completed':
             for item in getattr(events,'done',{}).values():
                 if item.get('type') not in {'reasoning','function_call'}:continue
                 normalized=events.registry.output(item,final=True)
                 fingerprint=native_history_fingerprint(normalized)
-                if fingerprint:self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('native-complete-v1:'+fingerprint,'completed'))
+                if fingerprint:
+                    self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',
+                                    ('native-complete-v1:' + fingerprint, 'completed'))
+                    item_id = normalized.get('id')
+                    if isinstance(item_id, str) and item_id:
+                        self.db.execute('INSERT OR IGNORE INTO completed_native_evidence VALUES (?,?,?)',
+                                        (item_id, fingerprint, key))
         self.db.commit()
 
     @staticmethod
