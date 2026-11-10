@@ -303,6 +303,37 @@ def _process_snapshot(pid, parent_map=None):
     return row
 
 
+def _preexisting_unidentified_child(pid,parent,parent_creation_time):
+    """Public metadata can reject an old edge, never establish a kernel identity."""
+    import math
+    import psutil
+    from codex_deepseek.processes import identity,matches
+    def valid_time(value):
+        return type(value) in (int,float) and math.isfinite(value) and value>=0
+    if (pid==parent['pid'] or not valid_time(parent_creation_time)
+            or not matches(parent['pid'],parent['birth'])):
+        return None
+    samples=[]
+    try:
+        for _ in range(2):
+            if identity(pid) is not None:return None
+            # Process.create_time caches: use a fresh public instance each time.
+            process=psutil.Process(pid)
+            sample={'creation_time':process.create_time(),'ppid':process.ppid()}
+            if (not valid_time(sample['creation_time']) or type(sample['ppid']) is not int):return None
+            samples.append(sample)
+    except (psutil.Error,OSError,ValueError,TypeError):
+        return None
+    if (identity(pid) is not None or not matches(parent['pid'],parent['birth'])
+            or samples[0]!=samples[1] or samples[0]['ppid']!=parent['pid']
+            or samples[0]['creation_time']>=parent_creation_time):
+        return None
+    return {'pid':pid,'birth':None,'birth_after':None,'stable':False,**samples[0],
+            'rejection_evidence':{'source':'fresh_public_psutil_metadata','samples':samples,
+                                  'parent_creation_time':parent_creation_time,
+                                  'authority':'exclusion_only_no_kernel_identity'}}
+
+
 def _proven_process_diagnostics(row):
     """Read text only for an owned identity; discard it if that instance changes."""
     import psutil
@@ -449,6 +480,20 @@ def _observe_process_family(seen, uncertain, rejected, errors):
                          and last["creation_time"] == first["creation_time"])
         for child in candidates:
             if not child["stable"]:
+                preexisting=None
+                if (parent_stable and child.get('birth') is None and child.get('birth_after') is None
+                        and (batch is None or after_map.get(child['pid'])==parent['pid'])):
+                    preexisting=_preexisting_unidentified_child(child['pid'],parent,first['creation_time'])
+                if preexisting is not None:
+                    resolved=[]
+                    for uncertain_key,row in list(uncertain.items()):
+                        if (row.get('pid')==child['pid'] and row.get('birth') is None
+                                and row.get('birth_after') is None and row.get('diagnostic_birth_before') is None
+                                and row.get('parent_pid')==parent['pid'] and row.get('parent_birth')==parent['birth']):
+                            resolved.append(row);del uncertain[uncertain_key]
+                    if resolved:preexisting['resolved_uncertain_observations']=resolved
+                    remember(rejected,preexisting,'child_predates_parent_without_kernel_identity',parent)
+                    continue
                 remember(uncertain, child, "child_identity_or_metadata_changed", parent)
                 if (child.get("metadata_error") and child.get("birth")
                         and child.get("birth_after") == child["birth"]):
