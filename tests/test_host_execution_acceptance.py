@@ -1,6 +1,8 @@
 """QA evidence cannot promote echo text, argv aliases, or unrelated processes."""
 import copy
 import hashlib
+import ntpath
+import os
 from pathlib import Path
 import pytest
 from host_execution_acceptance import interpreter_command_declaration,interpreter_process_evidence
@@ -35,7 +37,17 @@ def test_native_unescaped_command_action_is_used_only_as_a_declaration():
     assert result['process_execution_verified'] is False
 
 
+def windows_fixture_root(tmp_path):
+    # These receipts simulate Win32 paths on every test host. POSIX // keeps
+    # the same real files while providing valid UNC syntax to ntpath.isabs.
+    # Do not resolve() the alias: that removes its two leading slashes.
+    root = tmp_path if os.name == 'nt' else Path('//' + tmp_path.as_posix().lstrip('/'))
+    assert ntpath.isabs(str(root))
+    return root
+
+
 def fixture(tmp_path):
+    tmp_path=windows_fixture_root(tmp_path)
     native=tmp_path/'codex.exe';native.write_bytes(b'PINNED_NATIVE_RUNTIME_FIXTURE')
     python=tmp_path/'python.exe';python.write_bytes(b'PINNED_INTERPRETER_FIXTURE')
     def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -66,9 +78,11 @@ def test_actual_selected_image_successfully_exits_under_native_branch(tmp_path):
     'boolean_exit','exit_other_birth','shell_exit_claim','duplicate_process','duplicate_exit','native_image_changed','python_image_changed'])
 def test_actual_interpreter_requires_bound_image_lineage_and_same_instance_os_exit(tmp_path,change):
     python,evidence,options=fixture(tmp_path);child=evidence['observed'][2]
+    tmp_path=python.parent
+    assert interpreter_process_evidence(evidence,python,**options)['status']=='verified'
     if change=='argv_only':child['exe']=str(tmp_path/'base-python.exe');child['argv'][0]=str(python)
     elif change=='unrelated_branch':
-        outsider={'pid':40,'birth':'windows:400','creation_time':90.0,'ownership':'created_Popen_handle','exe':'controller.exe'}
+        outsider={'pid':40,'birth':'windows:400','creation_time':90.0,'ownership':'created_Popen_handle','exe':str(tmp_path/'controller.exe')}
         evidence['observed'].append(outsider);child.update(ppid=40,parent_pid=40,parent_birth=outsider['birth'],parent_creation_time=90.0)
     elif change=='missing_parent':evidence['observed'].pop(1)
     elif change=='wrong_parent_birth':child['parent_birth']='windows:999'
@@ -104,6 +118,7 @@ def test_observed_interpreter_does_not_override_explicit_foreign_host_command(tm
 
 
 def venv_fixture(tmp_path):
+    tmp_path=windows_fixture_root(tmp_path)
     original,evidence,options=fixture(tmp_path)
     env=tmp_path/'venv';(env/'Scripts').mkdir(parents=True)
     launcher=env/'Scripts/python.exe';launcher.write_bytes(original.read_bytes())
@@ -137,6 +152,8 @@ def test_pinned_venv_base_image_with_actual_launcher_parent_is_strictly_supporte
     'base_changed','wrong_base_image','no_launcher_parent','launcher_parent_reused','unrelated_native_branch','no_base_exit'])
 def test_venv_support_does_not_turn_any_python_or_argv0_into_the_selected_environment(tmp_path,change):
     launcher,evidence,options=venv_fixture(tmp_path);binding=options['interpreter_binding'];child=evidence['observed'][3]
+    tmp_path=launcher.parent.parent.parent
+    assert interpreter_process_evidence(evidence,launcher,**options)['status']=='verified'
     if change=='no_binding':options.pop('interpreter_binding')
     elif change=='wrong_launcher_hash':binding['launcher']['sha256']='0'*64
     elif change=='cfg_changed':Path(binding['pyvenv_cfg']['path']).write_text('changed',encoding='utf8')
