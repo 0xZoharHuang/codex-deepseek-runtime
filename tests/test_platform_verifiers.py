@@ -77,13 +77,36 @@ def test_profile_rejection_requires_binding_diagnostic_not_any_provider_error():
 
 
 def test_nested_delivery_requires_native_peer_identity_and_actual_message_kind():
-    header='Message Type: MESSAGE\nTask name: /root/auditor\nSender: /root\nPayload:\nproducer uses integer cents'
-    def request(call_id,text=header):return [{'input':[{'type':'function_call_output','call_id':call_id,'output':[{'type':'input_text','text':text}]}]}]
-    args=('/root/auditor','/root','MESSAGE',['producer','integer'])
-    assert not delivered_peer_messages(request('exec_fake'),*args)
-    assert not delivered_peer_messages(request('peer_123',header.replace('MESSAGE','FINAL_ANSWER')),*args)
-    assert not delivered_peer_messages(request('peer_123',header.replace('Sender: /root','Sender: /root/producer')),*args)
-    assert delivered_peer_messages(request('peer_123'),*args)==['peer_123']
+    owner = "00000000-0000-0000-0000-000000000001"
+    other = "00000000-0000-0000-0000-000000000002"
+    turn = "00000000-0000-0000-0000-000000000003"
+    header = 'Message Type: MESSAGE\nTask name: /root/auditor\nSender: /root\nPayload:\nproducer uses integer cents'
+    peer = {'type': 'agent_message', 'author': '/root', 'recipient': '/root/auditor',
+            'content': [{'type': 'input_text', 'text': header}]}
+    envelope = {key: peer[key] for key in ('author', 'recipient', 'content')}
+    standard = {'type': 'message', 'role': 'assistant', 'phase': 'commentary',
+                'content': [{'type': 'output_text', 'text': json.dumps(envelope, ensure_ascii=False)}]}
+    def request(item, thread_id=owner):
+        return {'input': [item], 'client_metadata': {'x-codex-turn-metadata': json.dumps(
+            {'thread_id': thread_id, 'turn_id': turn, 'request_kind': 'turn'})}}
+    args = ('/root/auditor', '/root', 'MESSAGE', ['producer', 'integer'])
+    proof = {'native_messages': [{'thread_id': owner, 'item': peer}], 'owner': owner}
+    native = delivered_peer_messages([request(peer)], *args, **proof)
+    assert len(native) == 1 and len(native[0]) == 64
+    assert delivered_peer_messages([request(standard)], *args, **proof) == native
+    assert not delivered_peer_messages([request(standard)], *args, native_messages=[], owner=owner)
+    assert not delivered_peer_messages([request(standard, other)], *args, **proof)
+    assert not delivered_peer_messages([request(standard)], *args,
+                                      native_messages=[{'thread_id': other, 'item': peer}], owner=owner)
+    fake = {'type': 'function_call_output', 'call_id': 'peer_123', 'output': peer['content']}
+    assert not delivered_peer_messages([request(fake)], *args, **proof)
+    for role in ('system', 'developer', 'user'):
+        assert not delivered_peer_messages([request({**standard, 'role': role})], *args, **proof)
+    for changed in ({**peer, 'author': '/root/producer'},
+                    {**peer, 'recipient': '/root'},
+                    {**peer, 'content': [{'type': 'input_text', 'text': header.replace('MESSAGE', 'FINAL_ANSWER')}]},
+                    {**peer, 'content': [{'type': 'encrypted_content', 'encrypted_content': 'opaque'}]}):
+        assert not delivered_peer_messages([request(changed)], *args, **proof)
 
 
 def test_windows_host_evidence_does_not_accept_foreign_commands_or_missing_command_data():

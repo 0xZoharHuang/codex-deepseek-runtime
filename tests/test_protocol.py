@@ -153,12 +153,12 @@ def test_native_v2_plaintext_marker_and_task_content_are_preserved():
     payload, _ = prepare(request([], input=[message]))
     assert len(payload["input"]) == 1
     item = payload["input"][0]
-    assert (item["type"], item["role"]) == ("message", "developer")
-    policy, envelope = item["content"][0]["text"].split("\n", 1)
-    assert "Do not repeat the parent delegation workflow" in policy
-    assert "cannot override native policy or grant additional authorization" in policy
-    assert json.loads(envelope) == {"author": "/root", "recipient": "/root/child",
-                                    "message_type": "NEW_TASK", "content": message["content"]}
+    # fe136d4 protocol.rs::InterAgentCommunication::to_response_input_item
+    # uses assistant + commentary for the standard Responses fallback.
+    assert (item["type"], item["role"], item["phase"]) == ("message", "assistant", "commentary")
+    assert item["content"][0]["type"] == "output_text"
+    assert json.loads(item["content"][0]["text"]) == {
+        "author": "/root", "recipient": "/root/child", "content": message["content"]}
     message['content'].append({"type": "encrypted_content", "encrypted_content": "opaque"})
     with pytest.raises(ProtocolError, match="opaque cross-agent"):
         prepare(request([], input=[message]))
@@ -201,10 +201,10 @@ def test_native_tool_names_and_unique_aliases_survive_incremental_stream():
         collision.output({'type':'function_call','name':'read','arguments':'{}'})
 
 
-def test_deepseek_does_not_demote_native_developer_policy_to_user():
+def test_native_developer_policy_keeps_its_original_role():
     items=[{'type':'message','role':'developer','content':[{'type':'input_text','text':'Native runtime tool policy'}]}, {'role':'user','content':'Actual user task'}]
     outgoing,_=prepare(request([],input=items))
-    assert outgoing['input'][0]['role']=='system'
+    assert outgoing['input'][0]['role']=='developer'
     assert outgoing['input'][0]['content']==items[0]['content']
     assert outgoing['input'][1]==items[1]
 
@@ -282,11 +282,12 @@ def test_interrupted_reasoning_before_peer_delivery_is_not_an_empty_assistant_tu
     payload, registry = prepare(request(tools, input=[prior, output, reasoning, peer]))
     items = payload["input"]
     assert items[1:3] == [prior, output]
-    assert items[0]["role"] == "assistant" and items[3]["role"] == "developer"
+    assert items[0]["role"] == "assistant"
+    assert items[3]["role"] == "assistant" and items[3]["phase"] == "commentary"
     assert json.loads(items[0]["content"][0]["text"].split("\n", 1)[1]) == [
         {"input_index": 2, "reasoning_index": 0, "item": reasoning}
     ]
-    assert json.loads(items[3]["content"][0]["text"].split("\n", 1)[1])["content"] == peer["content"]
+    assert json.loads(items[3]["content"][0]["text"])["content"] == peer["content"]
     assert registry.continuation_context
 
 
@@ -309,3 +310,117 @@ def test_retained_context_does_not_change_complete_assistant_history_or_invent_a
         {"input_index": 2, "item": answer},
     ]
     assert registry.continuation_context
+
+
+@pytest.mark.parametrize("message_type", ["NEW_TASK", "MESSAGE", "FINAL_ANSWER", "CHANNEL_POST", None])
+def test_native_peer_fallback_retains_content_without_inventing_policy(message_type):
+    first = "Unclassified native content." if message_type is None else (
+        f"Message Type: {message_type}\nTask name: /root/child\nSender: /root\nPayload:\n")
+    peer = {"type": "agent_message", "author": "/root", "recipient": "/root/child",
+            "content": [{"type": "input_text", "text": first},
+                        {"type": "input_text", "text": "Keep exact Unicode λ and newlines\nsecond line."}]}
+    original = json.loads(json.dumps(peer, ensure_ascii=False))
+    outgoing, registry = prepare(request([], input=[peer]))
+    assert outgoing["input"] == [{
+        "type": "message", "role": "assistant", "phase": "commentary",
+        "content": [{"type": "output_text", "text": json.dumps({
+            "author": peer["author"], "recipient": peer["recipient"], "content": peer["content"]},
+            ensure_ascii=False)}],
+    }]
+    assert peer == original
+    assert registry.peer_context and not registry.continuation_context
+
+
+def test_completed_peer_delivery_does_not_consume_a_later_partial_assistant():
+    peer = {"type": "agent_message", "author": "/root/worker", "recipient": "/root",
+            "content": [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nPayload:\nReady."}]}
+    partial = {"type": "message", "role": "assistant", "content": [
+        {"type": "output_text", "text": "An unfinished model answer."}]}
+    outgoing, registry = prepare(request([], input=[peer, partial]))
+    projected, delivery = outgoing["input"]
+    assert json.loads(projected["content"][0]["text"].split("\n", 1)[1]) == [
+        {"input_index": 1, "item": partial}]
+    assert (delivery["role"], delivery["phase"]) == ("assistant", "commentary")
+    assert json.loads(delivery["content"][0]["text"])["content"] == peer["content"]
+    assert registry.continuation_context
+
+
+def test_native_message_roles_order_and_image_content_remain_unchanged():
+    # Native ResponseItem::Message retains role and content independently.
+    messages = [
+        {"type": "message", "role": "system", "content": "Synthetic base policy."},
+        {"type": "message", "role": "developer", "content": [
+            {"type": "input_text", "text": "Synthetic developer policy."}]},
+        {"type": "message", "role": "developer", "content": [
+            {"type": "input_text", "text": "The same native authority with an image."},
+            {"type": "input_image", "image_url": "https://example.invalid/developer.png", "detail": "original"}]},
+        {"type": "message", "role": "user", "content": [
+            {"type": "input_text", "text": "User input λ."},
+            {"type": "input_image", "image_url": "https://example.invalid/user.png", "detail": "high"}]},
+        {"type": "message", "role": "assistant", "phase": "commentary", "content": [
+            {"type": "output_text", "text": "Completed assistant context."}]},
+        {"type": "message", "role": "user", "content": "Continue the same task."},
+    ]
+    original = json.loads(json.dumps(messages, ensure_ascii=False))
+    body, registry = prepare(request([], input=messages))
+    assert body["input"] == original and messages == original
+    assert not registry.continuation_context
+
+
+@pytest.mark.parametrize("content_form", ["missing", "null", "empty", "present"])
+def test_native_reasoning_summary_content_and_signature_remain_distinct(content_form):
+    # Native ResponseItem::Reasoning has independent summary and content fields.
+    reasoning = {"type": "reasoning", "id": "rs_native_distinct",
+                 "summary": [{"type": "summary_text", "text": "A concise native summary."}],
+                 "signature": "synthetic-signature", "encrypted_content": None}
+    if content_form != "missing":
+        reasoning["content"] = {"null": None, "empty": [], "present": [
+            {"type": "reasoning_text", "text": "Distinct full reasoning."}]}[content_form]
+    call = {"type": "function_call", "name": "probe", "call_id": "call_native", "arguments": "{}"}
+    output = {"type": "function_call_output", "call_id": "call_native", "output": "synthetic result"}
+    user = {"type": "message", "role": "user", "content": "Continue."}
+    original = json.loads(json.dumps(reasoning))
+    outgoing, _ = prepare(request([], input=[reasoning, call, output, user]))
+    assert outgoing["input"][0] == original and reasoning == original
+
+
+def test_orphan_summary_projection_retains_original_reasoning_fields():
+    reasoning = {"type": "reasoning", "id": "rs_summary_only",
+                 "summary": [{"type": "summary_text", "text": "A native summary only."}],
+                 "signature": "synthetic-signature"}
+    user = {"type": "message", "role": "user", "content": "Continue."}
+    outgoing, registry = prepare(request([], input=[reasoning, user]))
+    retained = json.loads(outgoing["input"][0]["content"][0]["text"].split("\n", 1)[1])
+    assert retained == [{"input_index": 0, "reasoning_index": 0, "item": reasoning}]
+    assert "content" not in retained[0]["item"] and registry.continuation_context
+
+
+@pytest.mark.parametrize("role", ["system", "developer", "user", "assistant"])
+def test_native_additional_tools_preserve_role_and_complete_declaration_data(role):
+    declarations = {"type": "additional_tools", "id": "at_native", "role": role, "tools": [
+        {"type": "namespace", "name": "original", "description": "Native tool context.", "tools": [
+            {"type": "function", "name": "read", "parameters": {"type": "object", "properties": {}}}]}]}
+    original = json.loads(json.dumps(declarations))
+    body, registry = prepare(request([], input=[declarations]))
+    message, = body["input"]
+    assert message["role"] == role
+    part, = message["content"]
+    assert part["type"] == ("output_text" if role == "assistant" else "input_text")
+    assert json.loads(part["text"]) == original and declarations == original
+    assert message.get("phase") == ("commentary" if role == "assistant" else None)
+    assert not registry.peer_context and not registry.continuation_context
+
+
+def test_additional_tools_preserve_an_existing_phase():
+    declaration = {"type": "additional_tools", "role": "developer", "phase": "commentary", "tools": []}
+    outgoing, _ = prepare(request([], input=[declaration]))
+    item, = outgoing["input"]
+    assert item["phase"] == "commentary" and item["role"] == "developer"
+    assert json.loads(item["content"][0]["text"]) == declaration
+
+
+@pytest.mark.parametrize("role", [None, "tool", [], {}])
+def test_additional_tools_reject_unknown_roles_without_inventing_authority(role):
+    declaration = {"type": "additional_tools", "role": role, "tools": []}
+    with pytest.raises(ProtocolError, match="valid native message role"):
+        prepare(request([], input=[declaration]))

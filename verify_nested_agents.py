@@ -1,23 +1,65 @@
 """Native v2 sibling messaging and nested agent ownership with real file effects."""
 import argparse
 import json
+import hashlib
 from pathlib import Path
 import uuid
 from verify_live import Peer,text,qa_sandbox_mode
+from codex_deepseek.request_metadata import native_request_metadata
 
 
-def delivered_peer_messages(requests,recipient,sender,kind,markers):
-    header=f'Message Type: {kind}\nTask name: {recipient}\nSender: {sender}\nPayload:\n'
-    found=set()
+def delivered_peer_messages(requests, recipient, sender, kind, markers, *, native_messages, owner):
+    header = f'Message Type: {kind}\nTask name: {recipient}\nSender: {sender}\nPayload:\n'
+    def fingerprint(item):
+        if not isinstance(item, dict):
+            return None
+        if item.get('type') == 'agent_message':
+            envelope = {key: item.get(key) for key in ('author', 'recipient', 'content')}
+        elif (item.get('type') == 'message' and item.get('role') == 'assistant'
+              and item.get('phase') == 'commentary'):
+            parts = item.get('content')
+            if (not isinstance(parts, list) or len(parts) != 1
+                    or not isinstance(parts[0], dict) or parts[0].get('type') != 'output_text'):
+                return None
+            try:
+                envelope = json.loads(parts[0].get('text', ''))
+            except (TypeError, json.JSONDecodeError):
+                return None
+            if not isinstance(envelope, dict) or set(envelope) != {'author', 'recipient', 'content'}:
+                return None
+        else:
+            return None
+        if envelope['author'] != sender or envelope['recipient'] != recipient:
+            return None
+        parts = envelope['content']
+        if (not isinstance(parts, list) or not parts
+                or any(not isinstance(part, dict) or part.get('type') != 'input_text'
+                       or not isinstance(part.get('text'), str) for part in parts)):
+            return None
+        text = '\n'.join(part['text'] for part in parts)
+        if not text.startswith(header) or not all(marker in text[len(header):] for marker in markers):
+            return None
+        canonical = json.dumps(envelope, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+        return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+    observed = set()
     for request in requests:
-        for item in request.get('input',[]):
-            if item.get('type')!='function_call_output' or not str(item.get('call_id','')).startswith('peer_'):continue
-            output=item.get('output')
-            if not isinstance(output,list):continue
-            for part in output:
-                value=part.get('text','')
-                if part.get('type')=='input_text' and value.startswith(header) and all(marker in value[len(header):] for marker in markers):found.add(item['call_id'])
-    return sorted(found)
+        metadata = native_request_metadata(request, {})
+        if (metadata.get('status') != 'recognized' or metadata.get('request_kind') != 'turn'
+                or metadata.get('thread_id') != owner):
+            continue
+        for item in request.get('input', []):
+            value = fingerprint(item)
+            if value is not None:
+                observed.add(value)
+    recorded = set()
+    for record in native_messages:
+        item = record['item']
+        if record['thread_id'] == owner and item.get('type') == 'agent_message':
+            value = fingerprint(item)
+            if value is not None:
+                recorded.add(value)
+    return sorted(observed & recorded)
 
 
 def main():
@@ -65,20 +107,18 @@ do not search, access App IPC, or modify files outside it.'''
                 calls=[event['payload'] for event in events if event.get('type')=='response_item' and event.get('payload',{}).get('type') in {'function_call','custom_tool_call'}]
                 complete=[event for event in events if event.get('type')=='event_msg' and event.get('payload',{}).get('type')=='task_complete']
                 agents.append({'id':meta['id'],'parent':spawn.get('parent_thread_id'),'path':spawn.get('agent_path'),'tools_used':bool(calls),'completed':bool(complete),'completed_turn_ids':sorted({event['payload']['turn_id'] for event in complete if event['payload'].get('turn_id')})})
-            messages.extend(event['payload'] for event in events if event.get('type')=='response_item' and event.get('payload',{}).get('type')=='agent_message')
+            messages.extend({'thread_id':meta['id'],'item':event['payload']} for event in events if event.get('type')=='response_item' and event.get('payload',{}).get('type')=='agent_message')
         direct=[agent for agent in agents if agent['parent']==thread]
         nested=[agent for agent in agents if agent['parent'] in {a['id'] for a in direct}]
         by_path={agent['path']:agent for agent in agents}
         requests=[json.loads(path.read_text(encoding='utf-8')) for path in (root/'adapter-traces').glob('*-request.json')]
         # Native siblings share the root prompt-cache key. It is a cache hint,
         # not the actual request owner; use the native client thread metadata.
-        parent_requests=[request for request in requests if request.get('client_metadata',{}).get('thread_id')==thread]
         auditor=by_path.get('/root/auditor',{})
-        auditor_requests=[request for request in requests if request.get('client_metadata',{}).get('thread_id')==auditor.get('id')]
         deliveries={
-            'producer_progress':delivered_peer_messages(parent_requests,'/root','/root/producer','MESSAGE',['PRODUCER_READY',nonce]),
-            'parent_to_auditor':delivered_peer_messages(auditor_requests,'/root/auditor','/root','MESSAGE',['producer','integer']),
-            'auditor_followup':delivered_peer_messages(parent_requests,'/root','/root/auditor','FINAL_ANSWER',['FOLLOWUP_VERIFIED',nonce]),
+            'producer_progress':delivered_peer_messages(requests,'/root','/root/producer','MESSAGE',['PRODUCER_READY',nonce],native_messages=messages,owner=thread),
+            'parent_to_auditor':delivered_peer_messages(requests,'/root/auditor','/root','MESSAGE',['producer','integer'],native_messages=messages,owner=auditor.get('id')),
+            'auditor_followup':delivered_peer_messages(requests,'/root','/root/auditor','FINAL_ANSWER',['FOLLOWUP_VERIFIED',nonce],native_messages=messages,owner=thread),
         }
         answer=text(items)
         passed=len(direct)==2 and len(nested)==1 and len(agents)==3 and set(by_path)=={'/root/producer','/root/auditor','/root/producer/totals'} and all(a['completed'] and a['tools_used'] for a in agents) and len(auditor.get('completed_turn_ids',[]))>=2 and all(deliveries.values()) and totals.get('total_cents')==750 and totals.get('marker')==nonce and audit.get('passed') is True and audit.get('marker')==nonce and 'FOLLOWUP_VERIFIED' in answer and nonce in answer
