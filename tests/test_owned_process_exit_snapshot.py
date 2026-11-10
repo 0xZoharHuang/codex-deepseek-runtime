@@ -25,17 +25,18 @@ def test_real_windows_child_exit_is_snapshot_before_owner_finishes(tmp_path,exit
         except BaseException as error:errors.append(type(error).__name__)
     thread=threading.Thread(target=run);thread.start();live_exit_seen=False
     deadline=time.monotonic()+15
-    while thread.is_alive() and time.monotonic()<deadline:
-        if snapshot.exists():
-            value=json.loads(snapshot.read_bytes())
-            children={(r['pid'],r['birth']) for r in value['observed'] if marker in (r.get('argv') or [])}
-            if any((r['pid'],r['birth']) in children and r['exit_code']==exit_code for r in value['exits']):
-                live_exit_seen=True
-        time.sleep(.025)
-    thread.join(timeout=1)
+    try:
+        while thread.is_alive() and time.monotonic()<deadline:
+            if snapshot.exists():
+                value=json.loads(qualify.read_process_evidence_bytes(snapshot))
+                children={(r['pid'],r['birth']) for r in value['observed'] if marker in (r.get('argv') or [])}
+                if any((r['pid'],r['birth']) in children and r['exit_code']==exit_code for r in value['exits']):
+                    live_exit_seen=True
+            time.sleep(.025)
+    finally:thread.join(timeout=max(0,deadline-time.monotonic()))
     assert not thread.is_alive() and errors==[] and result['passed']
     assert result['returncode']==0 and result['process_evidence_errors']==[]
-    value=json.loads(snapshot.read_bytes());assert value['exit_evidence_source']=='retained_os_process_handles'
+    value=json.loads(qualify.read_process_evidence_bytes(snapshot));assert value['exit_evidence_source']=='retained_os_process_handles'
     children=[r for r in value['observed'] if marker in (r.get('argv') or [])]
     assert children and live_exit_seen
     exits={(r['pid'],r['birth']):r['exit_code'] for r in value['exits']}
@@ -95,3 +96,29 @@ def test_retained_exit_reconciles_uncertain_only_for_exact_pid_birth(monkeypatch
         process_evidence_path=tmp_path/'synthetic.json')
     assert signals==[] and result['unknown_live']==([] if same_instance else [200])
     assert result['passed'] is same_instance
+
+
+def test_snapshot_reader_retries_only_transient_windows_sharing_and_returns_exact_bytes(monkeypatch,tmp_path):
+    monkeypatch.setattr(qualify.sys,'platform','win32');attempts=[];sleeps=[]
+    class SharingError(OSError):
+        def __init__(self,message):super().__init__(message);self.winerror=32
+    def read(path):
+        attempts.append(path)
+        if len(attempts)==1:raise SharingError('transient sharing')
+        return b' {"exact":"bytes"}\r\n'
+    monkeypatch.setattr(qualify,'_read_process_evidence_windows_once',read)
+    monkeypatch.setattr(qualify.time,'sleep',sleeps.append)
+    assert qualify.read_process_evidence_bytes(tmp_path/'snapshot')==b' {"exact":"bytes"}\r\n'
+    assert len(attempts)==2 and sleeps==[.005]
+
+
+@pytest.mark.parametrize('code,attempts_expected',[(5,4),(2,1)])
+def test_snapshot_reader_permanent_or_general_failure_is_never_fabricated(monkeypatch,tmp_path,code,attempts_expected):
+    monkeypatch.setattr(qualify.sys,'platform','win32');attempts=[];sleeps=[]
+    class ReadError(OSError):
+        def __init__(self,message):super().__init__(message);self.winerror=code
+    def read(path):attempts.append(path);raise ReadError('persistent failure')
+    monkeypatch.setattr(qualify,'_read_process_evidence_windows_once',read)
+    monkeypatch.setattr(qualify.time,'sleep',sleeps.append)
+    with pytest.raises(ReadError):qualify.read_process_evidence_bytes(tmp_path/'snapshot')
+    assert len(attempts)==attempts_expected and len(sleeps)==attempts_expected-1

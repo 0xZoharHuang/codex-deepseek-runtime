@@ -497,6 +497,39 @@ def _observe_process_family(seen, uncertain, rejected, errors):
                          "identity_changed_during_owned_diagnostics", parent)
 
 
+def _read_process_evidence_windows_once(path):
+    """Read one immutable atomic-publish file object with delete sharing."""
+    import win32con,win32file
+    handle=win32file.CreateFile(str(path),win32con.GENERIC_READ,
+        win32con.FILE_SHARE_READ|win32con.FILE_SHARE_WRITE|win32con.FILE_SHARE_DELETE,
+        None,win32con.OPEN_EXISTING,win32con.FILE_ATTRIBUTE_NORMAL,None)
+    try:
+        size=win32file.GetFileSize(handle);parts=[];remaining=size
+        while remaining:
+            status,data=win32file.ReadFile(handle,min(remaining,1024*1024))
+            if status!=0 or not data:raise OSError('Process evidence read length changed')
+            parts.append(data);remaining-=len(data)
+        if win32file.GetFileSize(handle)!=size:raise OSError('Process evidence file changed in place')
+        return b''.join(parts)
+    finally:handle.Close()
+
+
+def read_process_evidence_bytes(path):
+    """Read exact bytes; retry only short Windows file-sharing conditions.
+
+    This does not parse/retry JSON or weaken any process identity assertion.
+    """
+    path=Path(path)
+    if sys.platform!='win32':return path.read_bytes()
+    for attempt in range(4):
+        try:return _read_process_evidence_windows_once(path)
+        except Exception as error:
+            code=getattr(error,'winerror',None)
+            if code is None and error.args and type(error.args[0]) is int:code=error.args[0]
+            if code not in {5,32,33} or attempt==3:raise
+            time.sleep(.005)
+
+
 class _WindowsProcessEvidence:
     """Optional QA snapshot from already-admitted process instances only."""
     def __init__(self,path):

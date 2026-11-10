@@ -47,6 +47,7 @@ def main():
     oracle=root/'oracle';oracle_guard=OracleGuard(oracle)
     def oracle_sources():return {str(p.relative_to(oracle)):sha(p) for p in oracle.rglob('*') if p.is_file() and not any(x in {'__pycache__','.pytest_cache','.git'} for x in p.parts)}
     before=oracle_sources();peer=None;error=None;status=None;turn=None;start=0;started=time.monotonic()
+    report={**previous,'error':None,'primary_error':None,'cleanup_errors':[]}
     try:
         oracle_guard.lock();peer=Peer(root,command=[str(entry)],environment={'PYTHONDONTWRITEBYTECODE':'1'})
         peer.call('thread/resume',{'threadId':parent,'cwd':str(workspace_path(root))})
@@ -57,11 +58,14 @@ def main():
         except TimeoutError:
             peer.call('turn/interrupt',{'threadId':parent,'turnId':turn});raise
         status=[e['params']['turn']['status'] for e in peer.events[start:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==parent][-1]
-    except Exception as exc:error=str(exc)
+    except Exception as exc:
+        error=str(exc);report['error']=error
+        report['primary_error']={'type':type(exc).__name__,'error':str(exc)}
     finally:
-        try:
-            if peer:peer.close()
-        finally:oracle_guard.restore()
+        cleanup_ok=real_work.cleanup_real_work(report,peer,oracle_guard,root)
+    if not cleanup_ok:
+        print(json.dumps(report,ensure_ascii=False),flush=True);print('EVIDENCE',attempt,flush=True)
+        raise SystemExit(1)
     unchanged=oracle_sources()==before
     work=root/'work';pythonpath=work/'src' if args.case=='jinja' else work
     validation=[run_test(root,'workspace',['-q','tests'],pythonpath),run_test(root,'upstream-heldout',['-q',str(oracle/'tests')],pythonpath)]
@@ -76,7 +80,7 @@ def main():
     if (root/'home/web-cache/pages.sqlite').exists():
         with closing(sqlite3.connect(root/'home/web-cache/pages.sqlite')) as db, db:pages=[{k:page.get(k) for k in ['url','retrieved_at','source_sha256']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
     diff=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True)
-    report={**previous,'turn_status':status,'error':error,'validation':validation,'diff_check':diff.returncode,'diff_stat':subprocess.check_output(['git','diff','--stat'],cwd=work,text=True),'reviewers':reviews,'fresh_review':fresh,'oracle_guard':{**oracle_guard.evidence,'source_unchanged':unchanged and previous['oracle_guard']['source_unchanged']},'web_research':{'required':True,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':actions},'followup':{'evidence':str(attempt.relative_to(root)),'previous_report_sha256':sha(attempt/'results.json'),'reason':'Native saved-task continuation after explicit independent acceptance feedback','seconds':round(time.monotonic()-started,2),'source_id':metadata['source_id']}}
+    report={**report,'turn_status':status,'error':error,'validation':validation,'diff_check':diff.returncode,'diff_stat':subprocess.check_output(['git','diff','--stat'],cwd=work,text=True),'reviewers':reviews,'fresh_review':fresh,'oracle_guard':{**oracle_guard.evidence,'source_unchanged':unchanged and previous['oracle_guard']['source_unchanged']},'web_research':{'required':True,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':actions},'followup':{'evidence':str(attempt.relative_to(root)),'previous_report_sha256':sha(attempt/'results.json'),'reason':'Native saved-task continuation after explicit independent acceptance feedback','seconds':round(time.monotonic()-started,2),'source_id':metadata['source_id']}}
     report['final_turn_id']=turn
     report['host_platform']=sys.platform
     report['native_host_execution']=real_work.observed_host_execution(events,root,controls,release)

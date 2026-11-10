@@ -117,7 +117,8 @@ def observed_host_execution(events,root,controls,release):
         return native_host_execution(events,tool_python(root),sys.platform)
     from codex_deepseek.processes import identity
     snapshot=os.environ.get('CODEX_DEEPSEEK_QA_PROCESS_EVIDENCE')
-    raw=Path(snapshot).read_bytes() if snapshot else None
+    from ci.qualify_native import read_process_evidence_bytes
+    raw=read_process_evidence_bytes(Path(snapshot)) if snapshot else None
     evidence=json.loads(raw) if raw is not None else None
     retained=root/('controller-process-evidence-'+str(time.time_ns())+'.json') if raw is not None else None
     if retained is not None:
@@ -290,6 +291,27 @@ def fresh_reviewer_completed(reviews,parent_turn,previous=None):
                for row in reviews for completion in row['verified_completions'])
 
 
+def cleanup_real_work(report,peer,oracle_guard,root):
+    """Retain the task failure, attempt both cleanups, and persist unsafe teardown."""
+    errors=[]
+    for phase,operation in [("peer.close",peer.close if peer is not None else None),
+                            ("oracle.restore",oracle_guard.restore)]:
+        if operation is None:continue
+        try:operation()
+        except Exception as error:
+            errors.append({"phase":phase,"type":type(error).__name__,"error":str(error)})
+    report['cleanup_errors']=errors
+    if not errors:return True
+    if not report.get('error'):report['error']='Real-work cleanup failed'
+    report['passed']=False
+    # evidence reads the protected probe. Never request it after failed cleanup.
+    report['oracle_guard']={'restore_succeeded':not any(e['phase']=='oracle.restore' for e in errors),
+                            'evidence_status':'not_verified_after_cleanup_failure',
+                            'source_unchanged':False}
+    (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    return False
+
+
 def scenario(name):
     root = BASE/name
     work=prepare_workspace(root)
@@ -386,10 +408,11 @@ multi_agent_v2 = true
         report['final_messages']=[e['params']['item'].get('text','') for e in peer.events if e.get('method')=='item/completed' and e.get('params',{}).get('threadId')==thread and e['params']['item'].get('type')=='agentMessage']
     except Exception as exc:
         report['error']=str(exc)
+        report['primary_error']={'type':type(exc).__name__,'error':str(exc)}
     finally:
-        try:
-            if peer:peer.close()
-        finally:oracle_guard.restore()
+        report['seconds']=round(time.monotonic()-started,2)
+        cleanup_ok=cleanup_real_work(report,peer,oracle_guard,root)
+    if not cleanup_ok:return report
     report['oracle_guard']={**oracle_guard.evidence,'source_unchanged':oracle_sources()==oracle_before,'source_files':len(oracle_before)}
     report['seconds']=round(time.monotonic()-started,2)
     work=Path(workspace_path(root));pp=work/'src' if name=='jinja' else work

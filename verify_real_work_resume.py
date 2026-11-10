@@ -38,6 +38,7 @@ def continue_case(root,entry):
     before=real_work.source_inventory(oracle)
     before_reviews={row['thread']:set(row['completed_turn_ids']) for row in real_work.reviewer_evidence(root,previous['thread'])}
     peer=None;started=time.monotonic();turn_status=None;error=None;turn=None;start=0
+    report={**previous,'error':None,'primary_error':None,'cleanup_errors':[]}
     try:
         oracle_guard.lock()
         peer=Peer(root,command=[str(entry)],environment={'PYTHONDONTWRITEBYTECODE':'1'})
@@ -52,11 +53,13 @@ def continue_case(root,entry):
             peer.call('turn/interrupt',{'threadId':thread,'turnId':turn});raise
         terminal=[event for event in peer.events[start:] if event.get('method')=='turn/completed' and event.get('params',{}).get('threadId')==thread][-1]
         turn_status=terminal['params']['turn']['status']
-    except Exception as exc:error=str(exc)
+    except Exception as exc:
+        error=str(exc);report['error']=error
+        report['primary_error']={'type':type(exc).__name__,'error':str(exc)}
     finally:
-        try:
-            if peer:peer.close()
-        finally:oracle_guard.restore()
+        report['seconds']=previous['seconds']+round(time.monotonic()-started,2)
+        cleanup_ok=real_work.cleanup_real_work(report,peer,oracle_guard,root)
+    if not cleanup_ok:return report
     unchanged=real_work.source_inventory(oracle)==before
     work=Path(real_work.workspace_path(root));pp=work/'src' if previous['case']=='jinja' else work
     validation=[run_test(root,'workspace',['-q','tests'],pp),run_test(root,'upstream-heldout',['-q',str(oracle/'tests')],pp)]
@@ -66,7 +69,7 @@ def continue_case(root,entry):
         validation.append(run_script(root,'tls-socket','tls_socket_regression.py'))
     reviewers=real_work.reviewer_evidence(root,previous['thread'])
     check=subprocess.run(['git','diff','--check'],cwd=work,capture_output=True,text=True)
-    report={**previous,'error':error,'turn_status':turn_status,'validation':validation,'diff_check':check.returncode,
+    report={**report,'error':error,'turn_status':turn_status,'validation':validation,'diff_check':check.returncode,
         'reviewers':reviewers,'fresh_review':real_work.fresh_reviewer_completed(reviewers,turn,before_reviews),
         'oracle_guard':{**oracle_guard.evidence,'source_unchanged':unchanged and previous['oracle_guard']['source_unchanged']},
         'seconds':previous['seconds']+round(time.monotonic()-started,2),'final_turn_id':turn,
