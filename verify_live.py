@@ -16,6 +16,8 @@ import time
 import tomllib
 import uuid
 
+from codex_deepseek.processes import identity
+
 
 QA_SANDBOX_ENV='CODEX_DEEPSEEK_TEST_SANDBOX_MODE'
 QA_SANDBOX_MODES=('workspace-write','danger-full-access')
@@ -107,6 +109,8 @@ class Peer:
                                         env=env, cwd=self.workspace if self.workspace.is_dir() else root,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
                                         text=True, encoding="utf-8", bufsize=1)
+        self.process_identity={"pid":self.process.pid,"birth":identity(self.process.pid),
+                               "ownership":"created_Popen_handle"}
         self.closed=False
         self.reader=threading.Thread(target=self.read, daemon=True);self.reader.start()
         try:
@@ -132,6 +136,7 @@ class Peer:
             if not self.sandbox_evidence['passed']:
                 raise AssertionError('Native fixture sandbox configuration differs from the selected QA mode')
         except BaseException as primary:
+            self.startup_failed=True
             before=self.process.poll();cleanup=None
             try:self.close()
             except BaseException as error:cleanup=error
@@ -294,26 +299,75 @@ class Peer:
         turn_id, start = self.start(thread, text, **options)
         return self.complete(thread, start, turn_id=turn_id)
 
-    def close(self):
+    def close(self, *, force=False, timeout=10):
+        """Give a healthy stdio server EOF before any owned-process fallback.
+
+        Protocol faults and an explicit force request retain crash cleanup semantics.
+        A normal close that needs a signal is recorded and fails acceptance, even if
+        the fallback successfully retires the process.
+        """
         if not self.closed:
             self.closed=True
             errors=[]
-            try:
-                if self.process.poll() is None:self.process.terminate()
-            except Exception as error:errors.append(("terminate",str(error)))
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                try:self.process.kill()
-                except Exception as error:errors.append(("kill",str(error)))
-                try:self.process.wait(timeout=10)
-                except Exception as error:errors.append(("wait_after_kill",str(error)))
-            except Exception as error:errors.append(("wait",str(error)))
+            forced=[]
+            phase="already_stopped"
+            stdin_status={"status":"not_attempted"}
+            protocol_fault=getattr(self,"protocol_error",None) is not None
+            startup_failed=getattr(self,"startup_failed",False)
+            force_reason="explicit_force" if force else "protocol_error" if protocol_fault else None
+
+            def close_stdin():
+                nonlocal stdin_status
+                if stdin_status["status"]!="not_attempted":return
+                try:
+                    self.process.stdin.close()
+                    stdin_status={"status":"closed"}
+                except Exception as error:
+                    stdin_status={"status":"error","type":type(error).__name__,"message":str(error)}
+                    errors.append(("stdin_close",str(error)))
+
+            def signal_process(action,reason):
+                nonlocal phase
+                # Popen owns the Windows process handle; never rediscover a PID to signal.
+                phase=action
+                forced.append({"phase":action,"reason":reason})
+                try:getattr(self.process,action)()
+                except Exception as error:errors.append((action,str(error)))
+
+            if self.process.poll() is None:
+                if force_reason is None:
+                    phase="eof"
+                    close_stdin()
+                    try:self.process.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        force_reason="stdin_close_failed" if stdin_status["status"]=="error" else "eof_timeout"
+                        errors.append(("forced_shutdown","Native app-server did not exit after stdin EOF within "+str(timeout)+" seconds"))
+                    except Exception as error:
+                        errors.append(("eof_wait",str(error)))
+                        force_reason="eof_wait_failed"
+                    else:
+                        if self.process.returncode!=0:
+                            # stdout EOF can precede the OS exit code by a few ms.
+                            # Keep an original startup failure distinct from a cleanup failure.
+                            if startup_failed:phase="already_stopped"
+                            else:errors.append(("eof_exit","Native app-server exited with returncode "+str(self.process.returncode)+" after stdin EOF"))
+                if force_reason is not None and self.process.poll() is None:
+                    signal_process("terminate",force_reason)
+                    try:self.process.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        signal_process("kill","terminate_timeout")
+                        try:self.process.wait(timeout=timeout)
+                        except Exception as error:errors.append(("wait_after_kill",str(error)))
+                    except Exception as error:errors.append(("wait_after_terminate",str(error)))
+            else:
+                try:self.process.wait(timeout=timeout)
+                except Exception as error:errors.append(("wait",str(error)))
             try:
                 self.reader.join(timeout=3)
                 if self.reader.is_alive():errors.append(("reader","Native stdout reader did not exit"))
             except Exception as error:errors.append(("reader_join",str(error)))
-            for name,stream in [("stdin",self.process.stdin),("stdout",self.process.stdout),("stderr",self.stderr)]:
+            close_stdin()
+            for name,stream in [("stdout",self.process.stdout),("stderr",self.stderr)]:
                 # Closing a buffered stream under an active reader can itself block.
                 if name=="stdout" and self.reader.is_alive():continue
                 try:stream.close()
@@ -321,6 +375,19 @@ class Peer:
             try:
                 (self.root / f"events-{time.time_ns()}.json").write_text(json.dumps(self.events, ensure_ascii=False, indent=2), encoding='utf-8')
             except Exception as error:errors.append(("events_save",str(error)))
+            self.shutdown_evidence={
+                "process":getattr(self,"process_identity",{"pid":getattr(self.process,"pid",None),"birth":None}),
+                "requested":"force" if force else "protocol_fault" if protocol_fault else "startup_failure" if startup_failed else "graceful",
+                "phase":phase,"stdin":stdin_status,"forced":forced,
+                "returncode":self.process.returncode,
+                "outcome":"already_stopped" if phase=="already_stopped" else "intentional" if force or protocol_fault else "failed" if errors else "graceful",
+                "natural_exit":phase=="eof" and not forced and not startup_failed and self.process.returncode==0 and not errors,
+                "clean_exit":phase=="eof" and not forced and not startup_failed and self.process.returncode==0 and not errors,
+                "errors":errors,
+                "scope":"Owned frontend stdio lifecycle only; provider idle retirement requires separate observation."}
+            try:
+                (self.root/f"shutdown-{time.time_ns()}.json").write_text(json.dumps(self.shutdown_evidence,indent=2),encoding='utf-8')
+            except Exception as error:errors.append(("shutdown_save",str(error)))
             self.close_errors=errors
         if getattr(self,"protocol_error",None) is not None:
             raise RuntimeError(f"Native app-server protocol error: {self.protocol_error}; cleanup: {getattr(self,'close_errors',[])}")

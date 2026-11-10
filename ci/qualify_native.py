@@ -497,10 +497,105 @@ def _observe_process_family(seen, uncertain, rejected, errors):
                          "identity_changed_during_owned_diagnostics", parent)
 
 
-def run_observed(command, *, cwd, env, log, timeout):
+class _WindowsProcessEvidence:
+    """Optional QA snapshot from already-admitted process instances only."""
+    def __init__(self,path):
+        if sys.platform!='win32':raise ValueError('Retained OS exit evidence requires Windows')
+        import ctypes
+        from ctypes import wintypes
+        self.path=Path(path);self.handles={};self.attempted=set();self.exits={}
+        self.unretained={};self.errors={};self.hashes={};self.last_write=0
+        self.ctypes=ctypes;self.wintypes=wintypes
+        self.kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+        self.kernel.OpenProcess.argtypes=[wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]
+        self.kernel.OpenProcess.restype=wintypes.HANDLE
+        self.kernel.CloseHandle.argtypes=[wintypes.HANDLE];self.kernel.CloseHandle.restype=wintypes.BOOL
+        self.kernel.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
+        self.kernel.WaitForSingleObject.restype=wintypes.DWORD
+        self.kernel.GetExitCodeProcess.argtypes=[wintypes.HANDLE,ctypes.POINTER(wintypes.DWORD)]
+        self.kernel.GetExitCodeProcess.restype=wintypes.BOOL
+        self.kernel.GetProcessTimes.argtypes=[wintypes.HANDLE,*([ctypes.POINTER(wintypes.FILETIME)]*4)]
+        self.kernel.GetProcessTimes.restype=wintypes.BOOL
+
+    def birth(self,handle):
+        times=[self.wintypes.FILETIME() for _ in range(4)]
+        if not self.kernel.GetProcessTimes(handle,*map(self.ctypes.byref,times)):return None
+        return 'windows:'+str((times[0].dwHighDateTime<<32)|times[0].dwLowDateTime)
+
+    def error(self,key,reason):
+        self.errors[(key,reason)]={'pid':key[0],'birth':key[1],'reason':reason,
+                                  'winerror':self.ctypes.get_last_error()}
+
+    def sample(self,seen,*,force=False):
+        for key,row in list(seen.items()):
+            if key not in self.attempted:
+                self.attempted.add(key)
+                handle=self.kernel.OpenProcess(0x1000|0x100000,False,row['pid'])
+                if not handle:
+                    self.unretained[key]={'pid':key[0],'birth':key[1],'reason':'owned_handle_unavailable',
+                        'winerror':self.ctypes.get_last_error()}
+                elif self.birth(handle)!=key[1]:
+                    self.kernel.CloseHandle(handle)
+                    self.unretained[key]={'pid':key[0],'birth':key[1],'reason':'opened_instance_birth_mismatch'}
+                else:self.handles[key]=handle
+            # This text was obtained only after the existing admission proof.
+            if isinstance(row.get('exe'),str) and row['exe'] and 'sha256' not in row:
+                try:
+                    image=Path(row['exe']);first=image.stat()
+                    signature=(str(image),first.st_dev,first.st_ino,first.st_size,first.st_mtime_ns)
+                    if signature not in self.hashes:
+                        digest=sha(image);last=image.stat()
+                        if (first.st_dev,first.st_ino,first.st_size,first.st_mtime_ns)!=(last.st_dev,last.st_ino,last.st_size,last.st_mtime_ns):
+                            raise OSError('image changed while hashing')
+                        self.hashes[signature]=digest
+                    row['sha256']=self.hashes[signature]
+                except (OSError,ValueError,TypeError) as error:
+                    self.unretained[(key,'image')]={'pid':key[0],'birth':key[1],
+                        'reason':'owned_image_hash_unavailable','error_type':type(error).__name__}
+        for key,handle in list(self.handles.items()):
+            if key in self.exits:continue
+            first=self.birth(handle)
+            if first!=key[1]:self.error(key,'retained_handle_birth_mismatch');continue
+            status=self.kernel.WaitForSingleObject(handle,0)
+            if status==0:
+                code=self.wintypes.DWORD()
+                if not self.kernel.GetExitCodeProcess(handle,self.ctypes.byref(code)):
+                    self.error(key,'get_retained_exit_failed');continue
+                if self.birth(handle)!=key[1]:self.error(key,'retained_exit_birth_mismatch');continue
+                self.exits[key]={'pid':key[0],'birth':key[1],'exit_code':int(code.value)}
+            elif status!=258:self.error(key,'retained_wait_failed')
+        if force or time.monotonic()-self.last_write>=.2:self.publish(seen)
+
+    def publish(self,seen):
+        value={'observed':list(seen.values()),'exits':list(self.exits.values()),
+               'exit_evidence_source':'retained_os_process_handles',
+               'unretained':list(self.unretained.values()),'errors':list(self.errors.values())}
+        temporary=self.path.with_name(self.path.name+'.tmp-'+str(os.getpid()))
+        try:
+            with temporary.open('w',encoding='utf-8',newline='\n') as stream:
+                json.dump(value,stream,ensure_ascii=False,indent=2);stream.write('\n');stream.flush();os.fsync(stream.fileno())
+            for attempt in range(4):
+                try:os.replace(temporary,self.path);break
+                except PermissionError:
+                    if attempt==3:raise
+                    time.sleep(.005)
+            self.last_write=time.monotonic()
+        except (OSError,ValueError,TypeError) as error:
+            self.errors[(None,'snapshot_write')]={'reason':'snapshot_write_failed','error_type':type(error).__name__}
+            try:temporary.unlink(missing_ok=True)
+            except OSError:pass
+
+    def close(self):
+        for key,handle in self.handles.items():
+            if not self.kernel.CloseHandle(handle):self.error(key,'retained_close_failed')
+        self.handles.clear()
+
+
+def run_observed(command, *, cwd, env, log, timeout, process_evidence_path=None):
     """Own only this test process and observed PID/kernel identities."""
     import psutil
     from codex_deepseek.processes import identity, matches, terminate
+    evidence=_WindowsProcessEvidence(process_evidence_path) if process_evidence_path is not None else None
     seen, unknown = {}, set()
     uncertain, rejected, observation_errors = {}, {}, {}
     report = {"timed_out": False, "forced_cleanup": [], "remaining_before_cleanup": [],
@@ -513,8 +608,10 @@ def run_observed(command, *, cwd, env, log, timeout):
             unknown.add(process.pid)
             raise RuntimeError("Created test process has no stable identity")
         seen[(process.pid, birth)] = {"pid": process.pid, "birth": birth, "ownership": "created_Popen_handle"}
+        if evidence is not None:evidence.sample(seen,force=True)
         while process.poll() is None:
             _observe_process_family(seen, uncertain, rejected, observation_errors)
+            if evidence is not None:evidence.sample(seen)
             if time.monotonic() - started > timeout:
                 report["timed_out"] = True
                 break
@@ -522,58 +619,72 @@ def run_observed(command, *, cwd, env, log, timeout):
     except BaseException as error:
         report.update(error_type=type(error).__name__, error=str(error))
     finally:
-        if process.poll() is None:
-            # This Popen still owns the original process handle; no PID-name kill.
-            try:
-                process.terminate()
+        try:
+            if process.poll() is None:
+                # This Popen still owns the original process handle; no PID-name kill.
                 try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
-            except Exception as error:
-                report.setdefault("cleanup_errors", []).append(type(error).__name__)
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
-            time.sleep(.05)
-        left = [row for (pid, stamp), row in seen.items() if matches(pid, stamp)]
-        report["remaining_before_cleanup"] = left
-        for row in left:
-            try:
-                terminate(row["pid"], row["birth"], timeout=3)
-                report["forced_cleanup"].append(row)
-            except Exception as error:
-                report.setdefault("cleanup_errors", []).append(type(error).__name__)
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
-            time.sleep(.05)
-        report["remaining_after_cleanup"] = [
-            row for (pid, stamp), row in seen.items() if matches(pid, stamp)
-        ]
-        # Uncertain association is never promoted to ownership or signalled.
-        uncertain_live = set()
-        # A missing identity is not exit evidence when the PID remains live.
-        # Never signal an unproven instance, including a previously owned PID.
-        for row in seen.values():
-            if identity(row["pid"]) is None and psutil.pid_exists(row["pid"]):
-                uncertain_live.add(row["pid"])
-        for row in uncertain.values():
-            stamp = row.get("birth_after") or row.get("birth")
-            current = identity(row["pid"])
-            if ((stamp and current == stamp)
-                    or ((not stamp or current is None) and psutil.pid_exists(row["pid"]))):
-                uncertain_live.add(row["pid"])
-        report["unknown_live"] = sorted(uncertain_live | {pid for pid in unknown if psutil.pid_exists(pid)})
-        report["uncertain_observations"] = list(uncertain.values())
-        report["rejected_processes"] = list(rejected.values())
-        report["observation_errors"] = list(observation_errors.values())
-        report["observed"] = list(seen.values())
-        report["returncode"] = process.returncode
-        report["seconds"] = time.monotonic() - started
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+                except Exception as error:
+                    report.setdefault("cleanup_errors", []).append(type(error).__name__)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
+                time.sleep(.05)
+            left = [row for (pid, stamp), row in seen.items() if matches(pid, stamp)]
+            report["remaining_before_cleanup"] = left
+            for row in left:
+                try:
+                    terminate(row["pid"], row["birth"], timeout=3)
+                    report["forced_cleanup"].append(row)
+                except Exception as error:
+                    report.setdefault("cleanup_errors", []).append(type(error).__name__)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and any(matches(pid, stamp) for pid, stamp in seen):
+                time.sleep(.05)
+            report["remaining_after_cleanup"] = [
+                row for (pid, stamp), row in seen.items() if matches(pid, stamp)
+            ]
+            # Uncertain association is never promoted to ownership or signalled.
+            uncertain_live = set()
+            # A missing identity is not exit evidence when the PID remains live.
+            # Never signal an unproven instance, including a previously owned PID.
+            if evidence is not None:evidence.sample(seen,force=True)
+            for row in seen.values():
+                if evidence is not None and (row["pid"],row["birth"]) in evidence.exits:continue
+                if identity(row["pid"]) is None and psutil.pid_exists(row["pid"]):
+                    uncertain_live.add(row["pid"])
+            for row in uncertain.values():
+                stamp = row.get("birth_after") or row.get("birth")
+                if evidence is not None and stamp and (row["pid"],stamp) in evidence.exits:continue
+                current = identity(row["pid"])
+                if ((stamp and current == stamp)
+                        or ((not stamp or current is None) and psutil.pid_exists(row["pid"]))):
+                    uncertain_live.add(row["pid"])
+            report["unknown_live"] = sorted(uncertain_live | {pid for pid in unknown if psutil.pid_exists(pid)})
+            report["uncertain_observations"] = list(uncertain.values())
+            report["rejected_processes"] = list(rejected.values())
+            report["observation_errors"] = list(observation_errors.values())
+            report["observed"] = list(seen.values())
+            report["returncode"] = process.returncode
+            report["seconds"] = time.monotonic() - started
+            if evidence is not None:
+                evidence.sample(seen,force=True)
+                report["process_evidence_path"]=str(evidence.path)
+                report["exits"]=list(evidence.exits.values())
+                report["exit_evidence_source"]="retained_os_process_handles"
+        finally:
+            if evidence is not None:
+                evidence.close()
+                report["process_evidence_errors"]=list(evidence.errors.values())
     report["passed"] = (report["returncode"] == 0 and not report["timed_out"]
                         and not report.get("error") and not report["remaining_before_cleanup"]
                         and not report["remaining_after_cleanup"] and not report["unknown_live"]
-                        and not report.get("cleanup_errors") and not report["observation_errors"])
+                        and not report.get("cleanup_errors") and not report["observation_errors"]
+                        and not report.get("process_evidence_errors"))
     return report
 
 def main() -> int:

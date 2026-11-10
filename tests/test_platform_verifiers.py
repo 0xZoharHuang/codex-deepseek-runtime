@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0,str(Path(__file__).parents[1]))
 from verify_profile_audit import binding_rejection,completed_reply
-from verify_nested_agents import delivered_peer_messages
+from verify_nested_agents import delivered_peer_messages,nested_fork_evidence
 from host_execution_acceptance import host_execution_evidence,command_mentions_path
 from verify_daemon_audit import is_daemon_package_file
 from codex_deepseek.platforms import comparison_path
@@ -115,3 +115,148 @@ def test_windows_host_evidence_does_not_accept_foreign_commands_or_missing_comma
     assert host_execution_evidence([{'type':'commandExecution','command':'bash -c true'}],platform='linux')['passed']
     assert command_mentions_path(r'& "D:\\own\\python.exe" test.py',r'D:\own\python.exe')
     assert not command_mentions_path(r'& "D:\other\python.exe" test.py',r'D:\own\python.exe')
+
+
+def _nested_fork_fixture():
+    agents = [
+        {"id": "producer-thread", "parent": "root-thread", "path": "/root/producer"},
+        {"id": "auditor-thread", "parent": "root-thread", "path": "/root/auditor"},
+        {"id": "totals-thread", "parent": "producer-thread", "path": "/root/producer/totals"},
+    ]
+    calls, outputs = [], []
+    for index, (owner, task, fork, path) in enumerate([
+        ("root-thread", "producer", "all", "/root/producer"),
+        ("root-thread", "auditor", "none", "/root/auditor"),
+        ("producer-thread", "totals", "none", "/root/producer/totals"),
+    ]):
+        metadata = {"turn_id": "turn-" + owner}
+        calls.append({"thread_id": owner, "item": {"type": "function_call",
+            "id": "native-spawn-" + str(index), "namespace": "collaboration", "name": "spawn_agent",
+            "call_id": "call-" + str(index), "internal_chat_message_metadata_passthrough": metadata,
+            "arguments": json.dumps({"task_name": task, "message": "synthetic", "fork_turns": fork})}})
+        outputs.append({"thread_id": owner, "item": {"type": "function_call_output",
+            "id": "native-ack-" + str(index), "call_id": "call-" + str(index),
+            "internal_chat_message_metadata_passthrough": metadata,
+            "output": json.dumps({"task_name": path})}})
+    return agents, calls + outputs
+
+
+def test_nested_forks_require_all_three_explicit_successful_native_choices():
+    agents, calls = _nested_fork_fixture()
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    assert evidence["passed"] and len(evidence["edges"]) == 3
+    assert [edge["effective_native_fork_turns"] for edge in evidence["edges"]] == ["all", "none", "none"]
+    replayed = nested_fork_evidence(calls + [calls[0], calls[3]], root_thread_id="root-thread", agents=agents)
+    assert replayed["passed"] and replayed["edges"][0]["observed_call_count"] == 2
+    assert replayed["edges"][0]["unique_native_call_count"] == 1
+
+
+def test_nested_fork_omission_reports_native_all_instead_of_inventing_none():
+    agents, calls = _nested_fork_fixture()
+    arguments = json.loads(calls[2]["item"]["arguments"]);del arguments["fork_turns"]
+    calls[2]["item"]["arguments"] = json.dumps(arguments)
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    leaf = evidence["edges"][2]
+    assert not evidence["passed"] and not leaf["requirement_satisfied"]
+    assert leaf["explicit_argument_present"] is False and leaf["model_explicitly_supplied"] is False
+    assert leaf["explicit_fork_turns"] is None and leaf["effective_native_fork_turns"] == "all"
+    assert leaf["reason"] == "model_omitted_fork_turns"
+    assert leaf["selected_successful_call"]["call_id"] == "call-2"
+
+
+def test_nested_fork_default_all_does_not_count_as_explicit_prompt_compliance():
+    agents, calls = _nested_fork_fixture()
+    arguments = json.loads(calls[0]["item"]["arguments"]);del arguments["fork_turns"]
+    calls[0]["item"]["arguments"] = json.dumps(arguments)
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    edge = evidence["edges"][0]
+    assert not evidence["passed"] and edge["effective_native_fork_turns"] == "all"
+    assert edge["effective_matches_expected"] is True and edge["requirement_satisfied"] is False
+
+
+def test_nested_fork_choices_require_native_namespace_and_item_type():
+    for mutation in ({"namespace": "other"}, {"type": "custom_tool_call"}, {"type": "message"}):
+        agents, calls = _nested_fork_fixture();calls[2]["item"].update(mutation)
+        evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+        assert not evidence["passed"] and evidence["edges"][2]["reason"] == "native_spawn_call_missing"
+
+
+def test_nested_fork_ambiguous_successes_and_invalid_json_do_not_pass():
+    agents, calls = _nested_fork_fixture()
+    duplicate, ack = json.loads(json.dumps(calls[2])), json.loads(json.dumps(calls[5]))
+    duplicate["item"].update(id="other-source", call_id="other-call")
+    ack["item"].update(id="other-ack", call_id="other-call")
+    evidence = nested_fork_evidence(calls + [duplicate, ack], root_thread_id="root-thread", agents=agents)
+    assert not evidence["passed"] and evidence["edges"][2]["reason"] == "ambiguous_successful_native_spawns"
+    calls[2]["item"]["arguments"] = '{"task_name":"totals","fork_turns":"all","fork_turns":"none"}'
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    assert not evidence["passed"] and evidence["malformed_native_spawn_calls"]
+
+
+def test_nested_fork_wrong_choice_and_foreign_owner_do_not_pass():
+    agents, calls = _nested_fork_fixture()
+    calls[2]["item"]["arguments"] = json.dumps({"task_name": "totals", "fork_turns": "all"})
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    assert not evidence["passed"] and evidence["edges"][2]["effective_native_fork_turns"] == "all"
+    agents, calls = _nested_fork_fixture();calls[2]["thread_id"] = "foreign-thread"
+    assert not nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)["passed"]
+    agents, calls = _nested_fork_fixture();agents[2]["parent"] = "root-thread"
+    evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+    assert not evidence["passed"] and evidence["edges"][2]["metadata_bound"] is False
+
+
+def test_nested_fork_failed_explicit_none_cannot_hide_successful_omission():
+    agents, calls = _nested_fork_fixture()
+    failed, error_ack = json.loads(json.dumps(calls[2])), json.loads(json.dumps(calls[5]))
+    failed["item"].update(id="failed-source", call_id="failed-call")
+    error_ack["item"].update(id="failed-ack", call_id="failed-call", output='{"error":"synthetic spawn refused"}')
+    arguments = json.loads(calls[2]["item"]["arguments"]);del arguments["fork_turns"]
+    calls[2]["item"]["arguments"] = json.dumps(arguments)
+    evidence = nested_fork_evidence([failed, error_ack] + calls, root_thread_id="root-thread", agents=agents)
+    leaf = evidence["edges"][2]
+    assert not evidence["passed"] and leaf["successful_native_spawn_count"] == 1
+    assert leaf["selected_successful_call"]["call_id"] == "call-2"
+    assert leaf["effective_native_fork_turns"] == "all" and leaf["reason"] == "model_omitted_fork_turns"
+    # A failed earlier attempt does not invalidate a later correctly explicit successful spawn.
+    repaired = json.loads(calls[2]["item"]["arguments"]);repaired["fork_turns"] = "none"
+    calls[2]["item"]["arguments"] = json.dumps(repaired)
+    assert nested_fork_evidence([failed, error_ack] + calls, root_thread_id="root-thread", agents=agents)["passed"]
+
+
+def test_nested_fork_requires_success_ack_with_matching_native_turn_and_canonical_child():
+    agents, calls = _nested_fork_fixture()
+    assert not nested_fork_evidence(calls[:5], root_thread_id="root-thread", agents=agents)["passed"]
+    for bad_ack in (
+        {"output": '{"task_name":"/root/totals"}'},
+        {"output": '{"task_name":"/root/producer/totals","error":"failed"}'},
+        {"internal_chat_message_metadata_passthrough": {"turn_id": "inherited-parent-turn"}},
+        {"id": None},
+    ):
+        agents, calls = _nested_fork_fixture();calls[5]["item"].update(bad_ack)
+        evidence = nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)
+        assert not evidence["passed"] and evidence["edges"][2]["reason"] in {"native_success_ack_missing", "native_success_identity_missing"}
+    # An inherited parent call/ack cannot create a child owned by producer.
+    agents, calls = _nested_fork_fixture()
+    calls[2]["item"]["internal_chat_message_metadata_passthrough"] = {"turn_id": "parent-old-turn"}
+    calls[5]["item"].update(output='{"task_name":"/root/totals"}',
+        internal_chat_message_metadata_passthrough={"turn_id": "parent-old-turn"})
+    assert not nested_fork_evidence(calls, root_thread_id="root-thread", agents=agents)["passed"]
+
+
+def test_nested_fork_ambiguous_or_unidentified_success_is_not_ignored_for_another_call():
+    for defect in ("two_acks", "missing_call_source_id", "missing_ack_id"):
+        agents, calls = _nested_fork_fixture()
+        earlier, ack = json.loads(json.dumps(calls[2])), json.loads(json.dumps(calls[5]))
+        earlier["item"].update(id="earlier-source", call_id="earlier-call")
+        ack["item"].update(id="earlier-ack", call_id="earlier-call")
+        extra = [earlier, ack]
+        if defect == "two_acks":
+            other_ack = json.loads(json.dumps(ack));other_ack["item"]["id"] = "other-ack-source"
+            extra.append(other_ack)
+        elif defect == "missing_call_source_id":
+            earlier["item"]["id"] = None
+        else:
+            ack["item"]["id"] = None
+        evidence = nested_fork_evidence(extra + calls, root_thread_id="root-thread", agents=agents)
+        assert not evidence["passed"]
+        assert evidence["edges"][2]["reason"] in {"ambiguous_native_success_acks", "native_success_identity_missing"}

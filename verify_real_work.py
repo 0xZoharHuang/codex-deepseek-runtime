@@ -26,6 +26,7 @@ REQUIRE_WEB_RESEARCH = False
 SANDBOX_MODE = 'workspace-write'
 RUNTIME_HOME = None
 TOOLS_ROOT = None
+CONTROLS = None
 
 
 def tool_environment(root):
@@ -34,6 +35,130 @@ def tool_environment(root):
 
 def tool_python(root):
     return python_entry(tool_environment(root)).resolve(strict=True)
+
+
+
+def file_sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def source_inventory(directory):
+    result={}
+    for path in sorted(Path(directory).rglob('*')):
+        if any(part in {'.git','__pycache__','.pytest_cache'} for part in path.relative_to(directory).parts):
+            continue
+        if path.is_file():
+            if path.is_symlink() or path.stat().st_nlink!=1:
+                raise ValueError('Linked real-work source control')
+            result[path.relative_to(directory).as_posix()]=file_sha(path)
+    return result
+
+
+def load_work_controls(root,name,tools,*,initial=True):
+    """Read controller-pinned originals before model access; never derive from final tests."""
+    from acceptance_assertions import pytest_execution_evidence,pytest_inventory_coverage
+    if CONTROLS is None:
+        raise ValueError('--controls is required; final results cannot supply their own test inventory')
+    path=(CONTROLS/name/'qualification-controls.json').resolve(strict=True)
+    forbidden=[root.resolve(),Path(workspace_path(root)).resolve(),
+               Path(RUNTIME_HOME).resolve() if RUNTIME_HOME is not None else (root/'home').resolve()]
+    if any(path.is_relative_to(directory) for directory in forbidden):
+        raise ValueError('Qualification controls must remain outside the task fixture, writable workspace and runtime home')
+    expected=os.environ.get('CODEX_DEEPSEEK_QA_CONTROLS_SHA256_'+name.upper())
+    if not expected or file_sha(path)!=expected:
+        raise ValueError('Qualification controls require an independent prelaunch SHA pin')
+    value=json.loads(path.read_text(encoding='utf-8'))
+    if value.get('case')!=name or value.get('schema_version')!=1:
+        raise ValueError('Qualification controls belong to a different task or schema')
+    if real_work_input_hashes(root,name)!=value['fixture_input_sha256']:
+        raise ValueError('Fixture drivers and dependency pins differ from the frozen originals')
+    baselines=value['pytest_baselines']
+    if set(baselines)!={'workspace','upstream-heldout'}:
+        raise ValueError('Both original pytest inventories are required')
+    for suite,baseline in baselines.items():
+        original=value['original_xml'][suite]
+        coverage=pytest_inventory_coverage(pytest_execution_evidence(Path(original['path'])),baseline)
+        if (file_sha(original['path'])!=original['sha256']
+            or baseline['source_junit_sha256']!=original['sha256']
+            or baseline['source_sha256']!=value['input_source_sha256'][suite]
+            or baseline['tools_sha256']!=value['tools_sha256']
+            or not coverage['passed'] or coverage['added_count']!=0):
+            raise ValueError('Original pytest inventory does not match its pinned provenance')
+        source_files=value['source_files_sha256'][suite]
+        if hashlib.sha256(json.dumps(source_files,sort_keys=True,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()!=value['input_source_sha256'][suite]:
+            raise ValueError('Original source manifest does not match the baseline')
+    oracle=source_inventory(root/'oracle')
+    if oracle!=value['oracle_files_sha256']:
+        raise ValueError('Independent oracle differs from the frozen original')
+    if initial:
+        original=source_inventory(root/'work')
+        combined={'work/'+key:sha for key,sha in original.items()}
+        combined.update({'oracle/'+key:sha for key,sha in oracle.items() if key.startswith('tests/')})
+        if (original!=value['source_files_sha256']['workspace']
+            or combined!=value['source_files_sha256']['upstream-heldout']):
+            raise ValueError('Initial task source differs from the frozen original')
+    selected=tools['paths']['selected']
+    if hashlib.sha256(json.dumps(value['tools_files_sha256'],sort_keys=True,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()!=value['tools_sha256']:
+        raise ValueError('Original tools manifest does not match the baseline')
+    if (not tools['same_bytes'] or selected['files_sha256']!=value['tools_files_sha256']
+        or value['interpreter_binding']['launcher']['path']!=str(tool_python(root))
+        or value['interpreter_binding']['launcher']['sha256']!=selected['python_sha256']):
+        raise ValueError('Selected interpreter differs from the original tools')
+    for binding in value['interpreter_binding'].values():
+        if file_sha(binding['path'])!=binding['sha256']:
+            raise ValueError('Pinned interpreter environment has changed')
+    return {**value,'control_path':str(path),'control_sha256':expected}
+
+
+def observed_host_execution(events,root,controls,release):
+    """Join native events with the external controller's retained OS handle evidence."""
+    if sys.platform!='win32':
+        return native_host_execution(events,tool_python(root),sys.platform)
+    from codex_deepseek.processes import identity
+    snapshot=os.environ.get('CODEX_DEEPSEEK_QA_PROCESS_EVIDENCE')
+    raw=Path(snapshot).read_bytes() if snapshot else None
+    evidence=json.loads(raw) if raw is not None else None
+    retained=root/('controller-process-evidence-'+str(time.time_ns())+'.json') if raw is not None else None
+    if retained is not None:
+        with retained.open('xb') as stream:stream.write(raw)
+    metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    manifest=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+    native=(Path(metadata['native_package'])/'bin/codex.exe').resolve(strict=True)
+    expected=manifest['files']['bin/codex.exe']
+    if not isinstance(expected,str):
+        expected=expected['sha256']
+    if file_sha(native)!=expected:
+        raise ValueError('Owned native image differs from its installed manifest')
+    roots=[]
+    if isinstance(evidence,dict):
+        rows=evidence.get('observed',[])
+        owner_key=(os.getpid(),identity(os.getpid()))
+        by_key={(row.get('pid'),row.get('birth')):row for row in rows}
+        if len(by_key)!=len(rows) or owner_key not in by_key:
+            raise ValueError('Process evidence does not belong to this verifier instance')
+        def own_branch(row):
+            visited=set()
+            while (key:=(row.get('pid'),row.get('birth')))!=owner_key:
+                if (key in visited or row.get('ownership')!='stable_direct_parent_edge'
+                    or row.get('stable') is not True or row.get('birth_after')!=row.get('birth')
+                    or row.get('ppid')!=row.get('parent_pid')):
+                    return False
+                visited.add(key)
+                row=by_key.get((row.get('parent_pid'),row.get('parent_birth')))
+                if row is None:return False
+            return True
+        roots=[{'pid':row['pid'],'birth':row['birth'],'exe':str(native),'sha256':expected}
+               for row in rows if isinstance(row.get('exe'),str)
+               and _support.comparison_path(row['exe'])==_support.comparison_path(native)
+               and own_branch(row)]
+    result=native_host_execution(events,tool_python(root),sys.platform,
+        process_evidence=evidence,native_roots=roots,
+        python_sha256=controls['interpreter_binding']['launcher']['sha256'],
+        interpreter_binding=controls['interpreter_binding'])
+    result['controller_evidence']={'live_snapshot_path':snapshot,'retained_path':str(retained) if retained is not None else None,
+        'sha256':hashlib.sha256(raw).hexdigest() if raw is not None else None}
+    return result
 
 
 def log(name, value):
@@ -170,6 +295,7 @@ def scenario(name):
     work=prepare_workspace(root)
     tools_before=real_work_tools_binding(root,tool_environment(root))
     if not tools_before['same_bytes']:raise ValueError('Selected real-work tools differ from the pinned original')
+    controls=load_work_controls(root,name,tools_before)
     home=Path(RUNTIME_HOME).resolve() if RUNTIME_HOME is not None else root/'home'
     controlled_inputs=real_work_input_hashes(root,name)
     if (root/'results.json').exists():
@@ -283,7 +409,7 @@ multi_agent_v2 = true
             pages=[{key:page.get(key) for key in ['url','source_sha256','retrieved_at']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
     persisted_events=[event for path in root.glob('events-*.json') for event in json.loads(path.read_text(encoding='utf-8'))]
     report['host_platform']=sys.platform
-    report['native_host_execution']=native_host_execution(persisted_events,py,sys.platform)
+    report['native_host_execution']=observed_host_execution(persisted_events,root,controls,release)
     browser_calls=[event['params']['item'] for event in persisted_events if event.get('method')=='item/completed' and event.get('params',{}).get('item',{}).get('type')=='mcpToolCall' and event['params']['item'].get('server')=='codex_web']
     completed_actions=sorted({call['tool'] for call in browser_calls if call.get('status')=='completed' and not call.get('error')})
     report['web_research']={'required':REQUIRE_WEB_RESEARCH,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':completed_actions}
@@ -292,7 +418,10 @@ multi_agent_v2 = true
     report['fixture_inputs']={'before':controlled_inputs,'after':current_inputs,'unchanged':controlled_inputs==current_inputs}
     tools_after=real_work_tools_binding(root,tool_environment(root))
     report['tool_environment']={'before':tools_before,'after':tools_after,'unchanged':tools_before==tools_after}
-    report['passed']=real_work_passed(report) and tools_before==tools_after
+    report['qualification_controls']={'path':controls['control_path'],'sha256':controls['control_sha256'],
+        'baseline_sha256':{suite:baseline['sha256'] for suite,baseline in controls['pytest_baselines'].items()}}
+    controls_after=load_work_controls(root,name,tools_after,initial=False)
+    report['passed']=real_work_passed(report,pytest_baselines=controls['pytest_baselines']) and tools_before==tools_after and controls==controls_after
     (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2), encoding='utf-8')
     log(name,report)
     return report
@@ -301,6 +430,7 @@ multi_agent_v2 = true
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--fixtures',type=Path,default=BASE)
+    parser.add_argument('--controls',type=Path,required=True,help='External original source/test inventories pinned by the controller before model launch')
     parser.add_argument('--tools-root',type=Path,help='Explicit read-only copies under ROOT/<case>/tools311; original fixtures remain pinned')
     parser.add_argument('--case',choices=['jinja','httpcore'],help='Run one real project; required for an existing pinned runtime profile')
     parser.add_argument('--runtime-home',type=Path,help='Reuse an explicitly owned, prequalified profile without rewriting its config')
@@ -311,6 +441,7 @@ if __name__=='__main__':
                         help='Full-access real-work acceptance must be paired with separate native sandbox enforcement evidence')
     options=parser.parse_args()
     BASE=options.fixtures.resolve()
+    CONTROLS=options.controls.resolve(strict=True)
     TOOLS_ROOT=options.tools_root.resolve(strict=True) if options.tools_root else None
     RUNTIME_HOME=options.runtime_home.resolve() if options.runtime_home else None
     if RUNTIME_HOME is not None and not options.case:parser.error('--runtime-home requires one --case')

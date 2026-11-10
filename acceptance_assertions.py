@@ -110,8 +110,12 @@ def pytest_execution_evidence(path):
     for case in root.iter('testcase'):
         markers=[child.tag for child in case if child.tag in {'failure','error','skipped'}]
         if len(markers)>1:raise ValueError('Ambiguous pytest testcase outcome')
-        cases.append({'classname':case.get('classname'),'name':case.get('name'),
-                      'outcome':markers[0] if markers else 'passed'})
+        row={'classname':case.get('classname'),'name':case.get('name'),
+             'outcome':markers[0] if markers else 'passed'}
+        skipped=case.find('skipped')
+        if skipped is not None:
+            row.update(skip_type=skipped.get('type'),skip_reason=skipped.get('message'))
+        cases.append(row)
     if any(not case['name'] or not case['classname'] for case in cases):
         raise ValueError('Missing pytest testcase identity')
     identities=[(case['classname'],case['name']) for case in cases]
@@ -121,31 +125,131 @@ def pytest_execution_evidence(path):
                       for kind in ('passed','failure','error','skipped')}}
 
 
-def real_work_pytest_executed(suite):
-    if suite.get('suite') not in {'workspace','upstream-heldout','independent-cancellation'}:
-        return True
-    proof=suite.get('pytest_execution',{});cases=proof.get('cases',[])
-    if not isinstance(cases,list) or not cases or any(not isinstance(case,dict) or case.get('outcome') not in {'passed','failure','error','skipped'} for case in cases):
-        return False
-    actual={kind:sum(case.get('outcome')==kind for case in cases) for kind in ('passed','failure','error','skipped')}
+def _pytest_execution_cases(proof):
+    if not isinstance(proof,dict):return None
+    cases=proof.get('cases',[])
+    if (not isinstance(cases,list) or not cases
+        or any(not isinstance(case,dict) or not isinstance(case.get('outcome'),str)
+               or case['outcome'] not in {'passed','failure','error','skipped'} for case in cases)):
+        return None
+    actual={kind:sum(case['outcome']==kind for case in cases) for kind in ('passed','failure','error','skipped')}
     counts=proof.get('counts',{})
     if (counts!=actual or any(type(value) is not int for value in counts.values())
-        or actual['passed']+actual['failure']==0):return False
+        or actual['passed']+actual['failure']==0):return None
     identities=[(case.get('classname'),case.get('name')) for case in cases]
-    if any(not name or not classname for classname,name in identities) or len(set(identities))!=len(identities):
-        return False
+    if (any(not isinstance(c,str) or not c or not isinstance(n,str) or not n for c,n in identities)
+        or len(set(identities))!=len(identities)):return None
+    return cases
+
+
+def _inventory_digest(value):
+    import hashlib
+    return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True,
+        separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()
+
+
+def _sha256_text(value):
+    return isinstance(value,str) and len(value)==64 and all(c in '0123456789abcdef' for c in value)
+
+
+def _skip_policy(entries,required):
+    if not isinstance(entries,(list,tuple)):raise ValueError('Invalid baseline skip policy')
+    result={}
+    for row in entries:
+        if (not isinstance(row,dict) or set(row)-{'classname','name','skip_type','skip_reason'}
+            or not {'classname','name','skip_type'}<=set(row)):
+            raise ValueError('Invalid baseline skip declaration')
+        if any(not isinstance(row[field],str) or not row[field] for field in ('classname','name')):
+            raise ValueError('Invalid baseline skip identity')
+        key=(row['classname'],row['name'])
+        if key not in required or key in result:raise ValueError('Unknown or duplicate allowed skip')
+        if row['skip_type'] is not None and not isinstance(row['skip_type'],str):
+            raise ValueError('Invalid baseline skip type')
+        if 'skip_reason' in row and row['skip_reason'] is not None and not isinstance(row['skip_reason'],str):
+            raise ValueError('Invalid baseline skip reason')
+        result[key]=dict(row)
+    return result
+
+
+def _declared_skip(case,policy):
+    rule=policy.get((case['classname'],case['name']))
+    return (rule is not None and case.get('skip_type')==rule['skip_type']
+            and ('skip_reason' not in rule or case.get('skip_reason')==rule['skip_reason']))
+
+
+def pytest_inventory_baseline(proof,*,suite,source_sha256,tools_sha256,allowed_skips=()):
+    """Freeze a controller-owned pre-model inventory, never a model report claim.
+
+    The caller obtains proof from pinned original source/Tools, qualifies its
+    baseline outcomes, and protects both the file and its external SHA before
+    starting the model. Only explicitly declared original skips may remain.
+    """
+    cases=_pytest_execution_cases(proof)
+    if (not isinstance(suite,str) or suite not in {'workspace','upstream-heldout'} or cases is None
+        or not all(_sha256_text(v) for v in (proof.get('sha256'),source_sha256,tools_sha256))):
+        raise ValueError('Invalid pinned pytest baseline')
+    required={(case['classname'],case['name']) for case in cases}
+    policy=_skip_policy(allowed_skips,required)
+    if any(case['outcome']=='skipped' and not _declared_skip(case,policy) for case in cases):
+        raise ValueError('Undeclared baseline skip')
+    value={'schema':1,'suite':suite,'source_junit_sha256':proof['sha256'],
+           'source_sha256':source_sha256,'tools_sha256':tools_sha256,
+           'required_cases':[list(key) for key in sorted(required)],
+           'allowed_skips':[policy[key] for key in sorted(policy)]}
+    return {**value,'sha256':_inventory_digest(value)}
+
+
+def pytest_inventory_coverage(proof,baseline):
+    """Check original identities and skip policy; behavior/failure gates stay separate."""
+    invalid={'passed':False,'reason':'invalid_protected_baseline'}
+    try:
+        if (not isinstance(baseline,dict) or set(baseline)!={'schema','suite','source_junit_sha256',
+            'source_sha256','tools_sha256','required_cases','allowed_skips','sha256'}
+            or type(baseline['schema']) is not int or baseline['schema']!=1
+            or baseline['suite'] not in {'workspace','upstream-heldout'}
+            or not all(_sha256_text(baseline[k]) for k in ('source_junit_sha256','source_sha256','tools_sha256','sha256'))
+            or baseline['sha256']!=_inventory_digest({k:v for k,v in baseline.items() if k!='sha256'})):
+            return invalid
+        rows=baseline['required_cases']
+        if (not isinstance(rows,list) or not rows or any(not isinstance(row,list) or len(row)!=2
+            or any(not isinstance(value,str) or not value for value in row) for row in rows)):
+            return invalid
+        required={tuple(row) for row in rows}
+        if len(required)!=len(rows):return invalid
+        policy=_skip_policy(baseline['allowed_skips'],required)
+    except (ValueError,TypeError,KeyError):return invalid
+    cases=_pytest_execution_cases(proof)
+    if cases is None:return {'passed':False,'reason':'invalid_pytest_execution'}
+    observed={(case['classname'],case['name']) for case in cases}
+    missing=sorted(required-observed)
+    unexpected=[case for case in cases if case['outcome']=='skipped' and not _declared_skip(case,policy)]
+    return {'passed':not missing and not unexpected,'baseline_sha256':baseline['sha256'],
+            'required_count':len(required),'observed_count':len(observed),
+            'added_count':len(observed-required),'missing_cases':[list(key) for key in missing],
+            'unexpected_skips':unexpected}
+
+
+def real_work_pytest_executed(suite,*,baseline=None):
+    if not isinstance(suite,dict) or not isinstance(suite.get('suite'),str):return False
+    if suite.get('suite') not in {'workspace','upstream-heldout','independent-cancellation'}:
+        return True
+    proof=suite.get('pytest_execution',{});cases=_pytest_execution_cases(proof)
+    if cases is None:return False
     if suite['suite']=='independent-cancellation':
         required={'test_cancel_during_expired_connection_close_releases_queue['+backend+']' for backend in ('asyncio','trio')}
         return (len(cases)==2 and {case['name'] for case in cases}==required
                 and all(case['classname'].split('.')[-1]=='cancellation_regression'
                         and case['outcome'] in {'passed','failure'} for case in cases))
-    return True
+    return (isinstance(baseline,dict) and baseline.get('suite')==suite['suite']
+            and pytest_inventory_coverage(proof,baseline)['passed'])
 
 
-def real_work_passed(report):
+def real_work_passed(report,*,pytest_baselines=None):
     """Missing recovery, independent suites or oracle isolation cannot pass a task."""
     guard=report.get('oracle_guard',{})
     suites=report.get('validation',[])
+    if (not isinstance(suites,list) or any(not isinstance(item,dict) for item in suites)
+        or not isinstance(pytest_baselines,dict)):return False
     required={'workspace','upstream-heldout'}
     if report.get('case')=='httpcore':
         required|={'independent-cancellation','real-tcp-0','real-tcp-1','real-tcp-2','tls-socket'}
@@ -160,21 +264,24 @@ def real_work_passed(report):
             and not report.get('error') and report.get('diff_check')==0
             and required<={item.get('suite') for item in suites}
             and all(item.get('exit')==0 and item.get('source_imports',{}).get('passed') is True
-                    and real_work_pytest_executed(item)
+                    and real_work_pytest_executed(item,baseline=pytest_baselines.get(item.get('suite')))
                     and item.get('pytest_execution',{}).get('counts',{}).get('failure',0)==0
                     and item.get('pytest_execution',{}).get('counts',{}).get('error',0)==0 for item in suites)
             and (not web.get('required') or web.get('current_turn',{}).get('passed') is True))
 
 
-def native_host_execution(events,python,platform):
-    """Do not count a Windows task that actually delegated execution to Linux."""
-    from host_execution_acceptance import host_execution_evidence,command_mentions_path
+def native_host_execution(events,python,platform,*,process_evidence=None,native_roots=(),python_sha256=None,interpreter_binding=None):
+    """Require actual selected-interpreter execution on Windows, not echo text."""
+    from host_execution_acceptance import host_execution_evidence,interpreter_command_declaration,interpreter_process_evidence
     items=[e['params']['item'] for e in events if e.get('method')=='item/completed'
            and e.get('params',{}).get('item',{}).get('type')=='commandExecution']
     proof=host_execution_evidence(items,platform=platform)
-    observed=any(isinstance(item.get('command'),str) and command_mentions_path(item['command'],python)
-                 and item.get('exitCode')==0 for item in items)
+    declarations=[{'id':item.get('id'),**interpreter_command_declaration(item,python)} for item in items]
+    actual=interpreter_process_evidence(process_evidence,python,python_sha256=python_sha256,native_roots=native_roots,interpreter_binding=interpreter_binding)
+    observed=actual['status']=='verified'
     return {**proof,'declared_python':str(python),'native_python_observed':observed,
+            'interpreter_command_declarations':declarations,'interpreter_process_evidence':actual,
+            'native_python_status':actual['status'],
             'passed':bool(items) and proof['passed'] and (platform!='win32' or observed)}
 
 

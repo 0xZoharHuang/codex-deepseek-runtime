@@ -27,14 +27,16 @@ def reviewers(root,parent):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--entry',type=Path,required=True);p.add_argument('--case',choices=['jinja','httpcore'],required=True);p.add_argument('--fixtures',type=Path,required=True);p.add_argument('--feedback',type=Path,required=True);p.add_argument('--timeout',type=int,default=1200);p.add_argument('--tools-root',type=Path);args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--entry',type=Path,required=True);p.add_argument('--case',choices=['jinja','httpcore'],required=True);p.add_argument('--fixtures',type=Path,required=True);p.add_argument('--feedback',type=Path,required=True);p.add_argument('--timeout',type=int,default=1200);p.add_argument('--tools-root',type=Path);p.add_argument('--controls',type=Path,required=True);args=p.parse_args()
     real_work.TOOLS_ROOT=args.tools_root.resolve(strict=True) if args.tools_root else None
+    real_work.CONTROLS=args.controls.resolve(strict=True)
     entry=args.entry.resolve();release=entry.parent.parent.parent;metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
     if not valid_release(release,metadata['adapter_source_sha256'],metadata['model_catalog_sha256'],json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))):raise SystemExit('Installed artifact does not verify')
     root=args.fixtures.resolve()/args.case;previous=json.loads((root/'results.json').read_text(encoding='utf-8'))
     controlled_inputs=real_work_input_hashes(root,args.case)
     tools_before=real_work_tools_binding(root,tool_environment(root))
     if not tools_before['same_bytes']:raise ValueError('Selected real-work tools differ from the pinned original')
+    controls=real_work.load_work_controls(root,args.case,tools_before,initial=False)
     attempt=root/'followup-attempts'/str(uuid.uuid4());attempt.mkdir(parents=True,mode=0o700)
     for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml')]:
         if path.is_file():shutil.copy2(path,attempt/path.name)
@@ -77,14 +79,17 @@ def main():
     report={**previous,'turn_status':status,'error':error,'validation':validation,'diff_check':diff.returncode,'diff_stat':subprocess.check_output(['git','diff','--stat'],cwd=work,text=True),'reviewers':reviews,'fresh_review':fresh,'oracle_guard':{**oracle_guard.evidence,'source_unchanged':unchanged and previous['oracle_guard']['source_unchanged']},'web_research':{'required':True,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':actions},'followup':{'evidence':str(attempt.relative_to(root)),'previous_report_sha256':sha(attempt/'results.json'),'reason':'Native saved-task continuation after explicit independent acceptance feedback','seconds':round(time.monotonic()-started,2),'source_id':metadata['source_id']}}
     report['final_turn_id']=turn
     report['host_platform']=sys.platform
-    report['native_host_execution']=native_host_execution(events,tool_python(root),sys.platform)
+    report['native_host_execution']=real_work.observed_host_execution(events,root,controls,release)
     current_inputs=real_work_input_hashes(root,args.case)
     report['fixture_inputs']={'before':controlled_inputs,'after':current_inputs,'unchanged':controlled_inputs==current_inputs}
     current=current_browser_evidence(peer.events,parent,start,turn=turn) if peer and status else {'passed':False}
     report['web_research']['current_turn']=current
     tools_after=real_work_tools_binding(root,tool_environment(root))
     report['tool_environment']={'before':tools_before,'after':tools_after,'unchanged':tools_before==tools_after}
-    report['passed']=real_work_passed(report) and tools_before==tools_after
+    controls_after=real_work.load_work_controls(root,args.case,tools_after,initial=False)
+    report['qualification_controls']={'path':controls['control_path'],'sha256':controls['control_sha256'],
+        'baseline_sha256':{suite:baseline['sha256'] for suite,baseline in controls['pytest_baselines'].items()}}
+    report['passed']=real_work_passed(report,pytest_baselines=controls['pytest_baselines']) and tools_before==tools_after and controls==controls_after
     (root/'agent.patch').write_bytes(complete_work_patch(work));(root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
     print(json.dumps({k:v for k,v in report.items() if k not in {'reviewers','final_messages','validation','web_research'}}),flush=True);print('EVIDENCE',attempt,flush=True)
     raise SystemExit(0 if report['passed'] else 1)
