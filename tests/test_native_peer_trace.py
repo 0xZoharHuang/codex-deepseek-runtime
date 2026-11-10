@@ -1,4 +1,4 @@
-"""Native-to-prepared trace proof, with source/receipt/echo adversaries; no paid model."""
+"""Current C codec/source binding; neither model comprehension nor task success."""
 import copy
 import json
 from pathlib import Path
@@ -77,20 +77,37 @@ def test_no_sidecar_no_source_and_wrong_owner_are_never_deliveries():
 
 def test_same_owner_historical_pretty_JSON_echo_is_not_a_source():
     peer,_,payload,_,_=fixture();echo=copy.deepcopy(payload['input'][0])
-    echo['id']='msg_synthetic_model_echo'
+    assert _peer_semantics(echo)==_peer_semantics(peer,native_source=True)
     peer,_,payload,registry,records=fixture(peer=peer,items=[echo,{'type':'message','role':'user','content':'continue'}])
     assert registry.peer_history_bindings==[] and records[RECEIPT]['evidence']['status']=='no_native_peers'
     assert delivered(peer,payload,records)==[]
 
 
-def test_typed_actual_input_requires_matching_native_item_ID():
+def test_C_source_still_requires_matching_native_item_ID():
     peer,_,payload,_,records=fixture()
-    records[RECEIPT]['prepared_request']['input'][0]=copy.deepcopy(peer)
-    refresh(records)
     assert delivered(peer,payload,records)
-    payload['input'][0]['id']='amsg_synthetic_unrecorded'
-    refresh(records)
-    assert delivered(peer,payload,records)==[]
+    unrecorded=copy.deepcopy(peer);unrecorded['id']='amsg_synthetic_unrecorded'
+    assert delivered(peer,payload,records,native=[{'thread_id':OWNER,'item':unrecorded}])==[]
+
+
+@pytest.mark.parametrize('representation',['assistant_three_fields','B_user_quoted','raw_AgentMessage','legacy_serializer'])
+def test_old_or_raw_prepared_carriers_are_not_current_transport_even_with_source(representation):
+    peer,_,payload,_,records=fixture()
+    three={k:peer[k] for k in ('author','recipient','content')}
+    if representation=='assistant_three_fields':
+        item={'type':'message','role':'assistant','phase':'commentary',
+              'content':[{'type':'output_text','text':json.dumps(three)}]}
+    elif representation=='B_user_quoted':
+        item={'type':'message','role':'user','content':[{'type':'input_text','text':json.dumps(three)}]}
+    elif representation=='raw_AgentMessage':item=copy.deepcopy(peer)
+    else:
+        # This serializer is not called by the production native model path.
+        legacy={'author':peer['author'],'recipient':peer['recipient'],'other_recipients':[],
+                'content':TEXT,'trigger_turn':False}
+        item={'type':'message','role':'assistant','phase':'commentary',
+              'content':[{'type':'output_text','text':json.dumps(legacy)}]}
+    payload['input'][0]=item;refresh(records)
+    assert _peer_semantics(item) is None and delivered(peer,payload,records)==[]
 
 
 @pytest.mark.parametrize('change', ['source_id','receipt','request_hash','input_hash','item_hash','wire_index','native_index','owner'])
@@ -118,30 +135,56 @@ def test_strict_JSON_blocks_conflicting_duplicate_keys_despite_source_and_hashes
     with pytest.raises(ValueError,match='nonfinite'):_strict_json_loads('{"a":1e999}')
 
 
-@pytest.mark.parametrize('role',['system','developer','user'])
+@pytest.mark.parametrize('role',['system','developer','assistant'])
 def test_higher_or_foreign_message_role_is_not_peer_evidence(role):
     peer,_,payload,_,records=fixture();payload['input'][0]['role']=role;refresh(records)
     assert delivered(peer,payload,records)==[]
 
 
-def test_literal_native_string_fallback_is_normalized_but_never_supplies_its_source():
-    peer,_,payload,_,records=fixture()
-    # Exact source constructor facts, not guessed from Message Type.
-    literal={'author':peer['author'],'recipient':peer['recipient'],'other_recipients':[],
-             'content':TEXT,'trigger_turn':False}
-    payload['input'][0]['content'][0]['text']=json.dumps(literal,indent=2)
-    refresh(records)
-    assert _peer_semantics(payload['input'][0])=={k:peer[k] for k in ('author','recipient','content')}
-    assert delivered(peer,payload,records)
+def test_C_metadata_and_native_parts_are_decoded_without_quoting_or_added_policy():
+    peer,body,payload,registry,records=fixture()
+    item=payload['input'][0]
+    metadata={'type':'agent_message','author':peer['author'],'recipient':peer['recipient']}
+    assert item=={'type':'message','role':'user','content':[
+        {'type':'input_text','text':json.dumps(metadata,ensure_ascii=False,separators=(',',':'))},
+        *peer['content']]}
+    assert _peer_semantics(item)==_peer_semantics(peer,native_source=True)
+    assert item['content'][1:]==peer['content'] and delivered(peer,payload,records)
+    assert all(x['text'].encode('utf8')==y['text'].encode('utf8')
+               for x,y in zip(item['content'][1:],peer['content']))
     assert delivered(peer,payload,{})==[]
-    assert delivered(peer,payload,records,native=[])==[]
+
+
+@pytest.mark.parametrize('extra', [{'phase':None},{'phase':'commentary'},{'id':'msg_not_current_codec'}])
+def test_C_transport_does_not_accept_phase_or_other_outer_fields(extra):
+    peer,_,payload,_,records=fixture();payload['input'][0].update(extra);refresh(records)
+    assert delivered(peer,payload,records)==[]
+
+
+@pytest.mark.parametrize('field', ['trigger_turn','other_recipients','content','unknown'])
+def test_C_metadata_frame_rejects_extra_or_guessed_fields(field):
+    peer,_,payload,_,records=fixture();frame=payload['input'][0]['content'][0]
+    metadata=json.loads(frame['text']);metadata[field]='synthetic unsupported field'
+    frame['text']=json.dumps(metadata);refresh(records)
+    assert delivered(peer,payload,records)==[]
 
 
 def test_content_parts_order_cannot_be_changed_by_a_sidecar():
     peer,_,_,_,_=fixture();peer['content'].append({'type':'input_text','text':'SYNTHETIC second part λ'})
     peer,_,payload,_,records=fixture(peer=peer);assert delivered(peer,payload,records)
-    inner=json.loads(payload['input'][0]['content'][0]['text']);inner['content'].reverse()
-    payload['input'][0]['content'][0]['text']=json.dumps(inner);refresh(records)
+    item=payload['input'][0];item['content'][1:]=list(reversed(item['content'][1:]));refresh(records)
+    assert delivered(peer,payload,records)==[]
+
+
+@pytest.mark.parametrize('change',['text','drop_part','append_part','merge_parts'])
+def test_C_native_parts_cannot_be_changed_or_repartitioned(change):
+    peer,_,_,_,_=fixture();peer['content'].append({'type':'input_text','text':'second λ\nline'})
+    peer,_,payload,_,records=fixture(peer=peer);parts=payload['input'][0]['content']
+    if change=='text':parts[1]['text']+=' changed'
+    elif change=='drop_part':parts.pop()
+    elif change=='append_part':parts.append({'type':'input_text','text':'new unprovided input'})
+    else:parts[1:] = [{'type':'input_text','text':'\n'.join(x['text'] for x in parts[1:])}]
+    refresh(records)
     assert delivered(peer,payload,records)==[]
 
 

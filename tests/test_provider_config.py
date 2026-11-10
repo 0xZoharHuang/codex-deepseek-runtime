@@ -380,6 +380,8 @@ def test_peer_capture_keeps_frozen_routing_registry_and_noninput_fields():
     assert digest(capture['registry']) == 'ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7'
     peer, = capture['request']['input']
     message, = capture['payload']['input']
-    assert (message['role'], message['phase']) == ('assistant', 'commentary')
-    assert json.loads(message['content'][0]['text']) == {
-        key: peer[key] for key in ('author', 'recipient', 'content')}
+    assert message['role'] == 'user' and 'phase' not in message
+    assert message['content'][0] == {'type': 'input_text', 'text': json.dumps({
+        'type': 'agent_message', 'author': peer['author'], 'recipient': peer['recipient']},
+        ensure_ascii=False, separators=(',', ':'))}
+    assert message['content'][1:] == peer['content']

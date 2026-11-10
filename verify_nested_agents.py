@@ -34,46 +34,47 @@ def _strict_json_loads(raw):
     return json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite, parse_float=finite_float)
 
 
-def _peer_semantics(item):
-    """Normalize data only; JSON formatting is never a source/provenance gate."""
+def _peer_semantics(item, *, native_source=False):
+    """Decode source data or the exact C transport; never prove comprehension.
+
+    Native model input is AgentMessage (record_inter_agent_communication uses
+    to_model_input_item). The unused legacy to_response_input_item serializer
+    does not establish a model fallback contract. Prepared qualification accepts
+    only a user message containing metadata first, then unchanged native parts.
+    """
     if not isinstance(item, dict):
         return None
-    if item.get("type") == "agent_message":
+    if native_source:
+        allowed = {"type", "id", "author", "recipient", "content",
+                   "internal_chat_message_metadata_passthrough"}
+        if item.get("type") != "agent_message" or not set(item) <= allowed:
+            return None
         peer = {key: item.get(key) for key in ("author", "recipient", "content")}
-    elif (item.get("type") == "message" and item.get("role") == "assistant"
-          and item.get("phase") == "commentary"):
+    else:
+        if (set(item) != {"type", "role", "content"} or item.get("type") != "message"
+                or item.get("role") != "user"):
+            return None  # No phase/id or alternate carrier in the current codec.
         parts = item.get("content")
-        if (not isinstance(parts, list) or len(parts) != 1 or not isinstance(parts[0], dict)
-                or parts[0].get("type") != "output_text" or not isinstance(parts[0].get("text"), str)):
+        if (not isinstance(parts, list) or len(parts) < 2 or not isinstance(parts[0], dict)
+                or set(parts[0]) != {"type", "text"} or parts[0].get("type") != "input_text"
+                or not isinstance(parts[0].get("text"), str)):
             return None
         try:
-            peer = _strict_json_loads(parts[0]["text"])
+            metadata = _strict_json_loads(parts[0]["text"])
         except (ValueError, TypeError, RecursionError):
             return None
-        if not isinstance(peer, dict):
+        if (not isinstance(metadata, dict) or set(metadata) != {"type", "author", "recipient"}
+                or metadata.get("type") != "agent_message"):
             return None
-        if set(peer) == {"author", "recipient", "content"}:
-            pass  # CDS's scoped typed-parts projection, not the literal native fallback.
-        elif (set(peer) <= {"author", "recipient", "other_recipients", "content", "trigger_turn", "encrypted_content"}
-              and {"author", "recipient", "other_recipients", "content", "trigger_turn"} <= set(peer)
-              and isinstance(peer.get("content"), str) and type(peer.get("trigger_turn")) is bool
-              and isinstance(peer.get("other_recipients"), list)
-              and all(isinstance(value, str) for value in peer["other_recipients"])
-              and peer.get("encrypted_content") is None):
-            # fe136 InterAgentCommunication::to_response_input_item. These flags
-            # are supplied source data, never reconstructed from Message Type.
-            peer = {"author": peer.get("author"), "recipient": peer.get("recipient"),
-                    "content": [{"type": "input_text", "text": peer["content"]}]}
-        else:
-            return None
-    else:
-        return None
+        peer = {"author": metadata["author"], "recipient": metadata["recipient"],
+                "content": parts[1:]}
     if any(not isinstance(peer.get(key), str) or not peer[key] for key in ("author", "recipient")):
         return None
     parts = peer.get("content")
     if (not isinstance(parts, list) or not parts
-            or any(not isinstance(part, dict) or part.get("type") != "input_text"
-                   or not isinstance(part.get("text"), str) for part in parts)):
+            or any(not isinstance(part, dict) or set(part) != {"type", "text"}
+                   or part.get("type") != "input_text" or not isinstance(part.get("text"), str)
+                   for part in parts)):
         return None
     return peer
 
@@ -110,7 +111,7 @@ def load_native_peer_evidence(trace_dir):
 
 def delivered_peer_messages(requests, recipient, sender, kind, markers, *, native_messages, owner,
                             native_peer_evidence=None):
-    """Require native observer mapping + same-owner rollout identity, not pretty JSON."""
+    """Prove the current C codec/source binding, not understanding or task success."""
     import uuid
     header = f"Message Type: {kind}\nTask name: {recipient}\nSender: {sender}\nPayload:\n"
     sources, ambiguous = {}, set()
@@ -120,7 +121,7 @@ def delivered_peer_messages(requests, recipient, sender, kind, markers, *, nativ
         item = record.get("item")
         if not isinstance(item, dict) or item.get("type") != "agent_message":
             continue
-        item_id, peer = item.get("id"), _peer_semantics(item)
+        item_id, peer = item.get("id"), _peer_semantics(item, native_source=True)
         if not isinstance(item_id, str) or not item_id or peer is None:
             continue
         try:
@@ -199,8 +200,6 @@ def delivered_peer_messages(requests, recipient, sender, kind, markers, *, nativ
                 prepared_peer = _peer_semantics(items[index])
                 if prepared_peer is None or _canonical_json_sha256(prepared_peer) != fingerprint:
                     continue
-                if items[index].get("type") == "agent_message" and items[index].get("id") != item_id:
-                    continue
                 text = "\n".join(part["text"] for part in peer["content"])
                 if not text.startswith(header) or not all(marker in text[len(header):] for marker in markers):
                     continue
@@ -276,7 +275,7 @@ do not search, access App IPC, or modify files outside it.'''
         }
         answer=text(items)
         passed=len(direct)==2 and len(nested)==1 and len(agents)==3 and set(by_path)=={'/root/producer','/root/auditor','/root/producer/totals'} and all(a['completed'] and a['tools_used'] for a in agents) and len(auditor.get('completed_turn_ids',[]))>=2 and all(deliveries.values()) and totals.get('total_cents')==750 and totals.get('marker')==nonce and audit.get('passed') is True and audit.get('marker')==nonce and 'FOLLOWUP_VERIFIED' in answer and nonce in answer
-        result={'passed':passed,'sandbox_mode':args.sandbox_mode,'agents':agents,'totals':totals,'audit':audit,'peer_message_count':len(messages),'verified_peer_deliveries':deliveries,'native_peer_evidence_diagnostics':{key:value.get('error') or value.get('evidence',{}).get('reason') or value.get('evidence',{}).get('status') for key,value in peer_evidence.items()},'legacy_prepared_receipts_without_peer_sidecar':sorted(path.name[:-len('-request.json')] for path in trace.glob('*-request.json') if path.name[:-len('-request.json')] not in peer_evidence),'peer_evidence_scope':'native_to_prepared_before_image_transport; not upstream consumption','answer':answer}
+        result={'passed':passed,'sandbox_mode':args.sandbox_mode,'agents':agents,'totals':totals,'audit':audit,'peer_message_count':len(messages),'verified_peer_deliveries':deliveries,'native_peer_evidence_diagnostics':{key:value.get('error') or value.get('evidence',{}).get('reason') or value.get('evidence',{}).get('status') for key,value in peer_evidence.items()},'legacy_prepared_receipts_without_peer_sidecar':sorted(path.name[:-len('-request.json')] for path in trace.glob('*-request.json') if path.name[:-len('-request.json')] not in peer_evidence),'peer_evidence_scope':'C codec/source binding native_to_prepared_before_image_transport; not model understanding, task success or upstream consumption','answer':answer}
         (root/'results.json').write_text(json.dumps(result,indent=2), encoding='utf-8');print(json.dumps(result),flush=True)
         if not passed:raise AssertionError('Nested agent lifecycle/effects did not satisfy the declared ownership tree')
     finally:peer.close();print('EVIDENCE',root,flush=True)

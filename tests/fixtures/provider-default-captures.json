@@ -3,17 +3,26 @@
     "source_commit": "a5853bf6c3468af3a93bc0094bf09d1df4158693",
     "protocol_sha256": "f878a1091a48ecd195c5616d481f68c846f67ba533d6b12b1cb68a452850094a",
     "producer": "verified normally installed a585; no model",
-    "peer_hosted_payload_revision": "Native wire contract candidate: neutral assistant/commentary peer data; live model acceptance is not qualified by this fixture.",
+    "peer_hosted_payload_revision": "C incoming-context codec: provider user message, metadata-only frame and verbatim native parts, no phase. Bounded diagnostic C passed; real full native lifecycle qualification remains pending.",
     "previous_peer_hosted_payload_revision": "Standard developer message for peer delivery; official Responses A/B archived as R825.",
-    "peer_hosted_native_contract": {
+    "peer_history_observation_extension": "Registry.peer_history_bindings is request-local trace-only native id/hash/final-index provenance. Frozen payload, routing and legacy Registry snapshot remain unchanged; tests assert exact old keys plus this fully specified field. Missing native ids remain unqualified.",
+    "previous_peer_hosted_projection_revision": "Native wire contract candidate: neutral assistant/commentary peer data; live model acceptance is not qualified by this fixture.",
+    "previous_peer_hosted_projection_reference": {
       "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
       "source": "protocol/src/protocol.rs::InterAgentCommunication::to_response_input_item",
       "role": "assistant",
       "phase": "commentary",
       "preserved_noninput_sha256": "fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88",
-      "preserved_registry_sha256": "ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7"
+      "preserved_registry_sha256": "ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7",
+      "scope": "Historical data-mapping reference only. to_response_input_item is an unused fallback, not the active production model contract."
     },
-    "peer_history_observation_extension": "Registry.peer_history_bindings is request-local trace-only native id/hash/final-index provenance. Frozen payload, routing and legacy Registry snapshot remain unchanged; tests assert exact old keys plus this fully specified field. Missing native ids remain unqualified."
+    "peer_hosted_source_contract": {
+      "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
+      "active_path": "InterAgentCommunication::to_model_input_item -> roleless AgentMessage incoming context",
+      "provider_codec": "message/user; metadata type/author/recipient frame; verbatim content parts; no phase",
+      "preserved_noninput_sha256": "fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88",
+      "preserved_registry_sha256": "ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7"
+    }
   },
   "cases": [
     {
@@ -893,12 +902,15 @@
         "input": [
           {
             "type": "message",
-            "role": "assistant",
-            "phase": "commentary",
+            "role": "user",
             "content": [
               {
-                "type": "output_text",
-                "text": "{\"author\": \"/root/child\", \"recipient\": \"/root\", \"content\": [{\"type\": \"input_text\", \"text\": \"Message Type: MESSAGE\\nOwned peer evidence.\"}]}"
+                "type": "input_text",
+                "text": "{\"type\":\"agent_message\",\"author\":\"/root/child\",\"recipient\":\"/root\"}"
+              },
+              {
+                "type": "input_text",
+                "text": "Message Type: MESSAGE\nOwned peer evidence."
               }
             ]
           }

@@ -21,15 +21,19 @@ Python 网关连接 OpenRouter `/api/v1/responses`。它转换工具声明、调
 
 ## 当前独立复核的范围
 
-`codex/native-contract-r1210` 是未晋升候选。它使用中性的 AgentMessage 投影，保留发送者、接收者、有序明文内容以及原生 message role 与 reasoning 字段。投影的 assistant/commentary 角色参考原生标准 fallback，但三字段 typed-content JSON 不等于完整 InterAgentCommunication 的 String-content JSON。原生标准 fallback 主动清除 id 和内部 metadata；模型输入 AgentMessage 本身已经不带 other_recipients/trigger_turn，适配器不会猜补。
+`codex/native-contract-r1210` 是未晋升候选。原生 `AgentMessage` 是收到的上下文，不是模型自己的 assistant 输出。固定源码的生产路径使用 `to_model_input_item`，历史处理把 AgentMessage 视为输入边界。之前曾按 `to_response_input_item` 的 assistant 序列化推断模型 fallback；实际调用点核查只找到定义与测试，这一判断已纠正。[固定原生输入边界](https://github.com/openai/codex/blob/fe136d4e70ef2b5bbed40a2d22b3aabf267796d3/codex-rs/core/src/context_manager/history.rs#L1372)
 
-Peer 验收须绑定转换发生处的源消息 ID、准备请求中的实际位置与摘要、同一接收线程的原生 rollout。普通 assistant 输出的相同 JSON、其他消息的 ID、重复 JSON 键或另一份请求的来源文件都不能作为投递证明。追踪只证明 native→准备请求的映射；它不证明上游已消费内容。真实 native 进程加确定性模型夹具用于检验机制，这不等于真实 DeepSeek 已理解相同内容或角色优先级。
+OpenRouter 明确将请求末尾的 assistant 项用于 prefill。候选因此把真实 AgentMessage 编码成 model API 的 user 输入：首个文本 part 仅保存原生 type/author/recipient 元数据，后续有序 content parts 逐字展开。它不把正文再次包进 JSON 字符串，不按 Message Type 选择工作流，不增加身份、授权或任务指令。这个 wire 角色不会向原生会话追加一个人类用户事件；消息来源、审批、线程和任务生命周期仍由 runtime 决定。[OpenRouter prefill 契约](https://openrouter.ai/docs/api_reference/overview#assistant-prefill)
+
+原生消息 ID 与内部记录仍保存在 runtime 和映射证据中，不被冒充为跨提供方的 response ID。模型输入 AgentMessage 本身不带 other_recipients/trigger_turn，适配器不会猜补。
+
+Peer 验收须绑定转换发生处的源消息 ID、准备请求中的实际位置与摘要、同一接收线程的原生 rollout。普通 user/assistant 的相同文本、其他消息的 ID、重复 JSON 键或另一份请求的来源文件都不能作为投递证明。追踪只证明 native→准备请求的映射；它不证明上游已消费内容。真实 native 进程加确定性模型夹具用于检验机制，这不等于真实 DeepSeek 已理解相同内容或角色优先级。
 
 一份固定 0.7.0 的长历史任务复核显示，当前导出的准备请求保留全部 80 组重复调用/输出，61 条 reasoning 与原生记录字段一致。历史成功请求的完整发送体未保存，不能仅凭后来的导出判定过去模型已经消费内容，也不能直接归咎于模型。0.7.0 与 0.7.2 的 peer/continuation 转换不同，诊断必须绑定实际版本。
 
 官方 stock 0.167.0 已在同一隔离 Windows 中做机制对照。它可执行直接工具与 Code Mode，但已复现字节 413 无同 turn 压缩恢复、插件 Git 辅助进程退场不完整。直接换成 stock 版本会丢掉这些已验证的修复。现有 fork 的其他改动仍需逐项说明其必要性，不能由这两个对照结果一并担保。
 
-DeepSeek 官方 Responses 文档写明其直接服务把 developer 当作 user；OpenRouter 的转换路径需要单独实测。因此，原样保留 native role 的候选目前只通过 wire 契约检查，不声明目标模型的指令优先级已经等价。严格结构化输出、未完成 assistant 历史与辅助请求也须分别验证。[DeepSeek Responses 契约](https://api-docs.deepseek.com/api/create-response/)
+DeepSeek 官方 Responses 文档写明其直接服务把 developer 当作 user；OpenRouter 的转换路径需要单独实测。两个路由的有限角色冲突对照中，保留原生 developer 与旧 system 映射均返回预期结果；它没有发现新映射退化，也不能证明任意提示下的优先级等价。严格结构化输出、未完成 assistant 历史与辅助请求仍须分别验证。[DeepSeek Responses 契约](https://api-docs.deepseek.com/api/create-response/)
 
 OpenRouter 以预算拒绝请求时，只能证明计费准入失败。它不证明请求格式兼容或模型能力失败，也不能计作真实模型验收通过。验收不得为通过而自动换 key、模型或 provider。
 

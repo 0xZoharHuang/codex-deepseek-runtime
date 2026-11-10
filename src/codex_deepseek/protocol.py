@@ -302,12 +302,15 @@ class Registry:
                     raise ProtocolError("Cannot decrypt an opaque cross-agent message for DeepSeek")
                 envelope = {"author": item.get("author"), "recipient": item.get("recipient"),
                             "content": parts}
-                # Neutral AgentMessage projection; role and phase follow the
-                # standard native fallback, not its full serialized envelope.
+                # AgentMessage is incoming context, not an assistant prefill.
+                # Keep its metadata frame separate from verbatim native parts.
                 context_positions.add(len(result))
-                mapped = {"type": "message", "role": "assistant", "phase": "commentary",
-                          "content": [{"type": "output_text",
-                                       "text": json.dumps(envelope, ensure_ascii=False)}]}
+                frame = {"type": "agent_message", "author": item.get("author"),
+                         "recipient": item.get("recipient")}
+                mapped = {"type": "message", "role": "user", "content": [{
+                    "type": "input_text",
+                    "text": json.dumps(frame, ensure_ascii=False, separators=(",", ":")),
+                }, *parts]}
                 result.append(mapped)
                 peer_history_items.append((item.get("id"), hashlib.sha256(json.dumps(
                     envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":"),

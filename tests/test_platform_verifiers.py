@@ -90,6 +90,9 @@ def test_nested_delivery_requires_native_peer_identity_and_actual_message_kind()
     body = {'model': MODEL, 'input': [peer], 'client_metadata': {'x-codex-turn-metadata': json.dumps(
         {'thread_id': owner, 'turn_id': turn, 'request_kind': 'turn'})}}
     prepared, registry = prepare(body)
+    assert prepared['input'][0] == {'type':'message','role':'user','content':[
+        {'type':'input_text','text':json.dumps({'type':'agent_message','author':peer['author'],'recipient':peer['recipient']},ensure_ascii=False,separators=(',',':'))},
+        *peer['content']]}
     sidecar = native_peer_trace_evidence(receipt, body, prepared, registry, native_request_metadata(body, {}))
     records = {receipt: {'evidence': sidecar, 'prepared_request': prepared}}
     args = ('/root/auditor', '/root', 'MESSAGE', ['producer', 'integer'])

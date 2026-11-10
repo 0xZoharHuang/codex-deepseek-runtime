@@ -154,12 +154,13 @@ def test_native_v2_plaintext_marker_and_task_content_are_preserved():
     payload, _ = prepare(request([], input=[message]))
     assert len(payload["input"]) == 1
     item = payload["input"][0]
-    # fe136d4 protocol.rs::InterAgentCommunication::to_response_input_item
-    # uses assistant + commentary for the standard Responses fallback.
-    assert (item["type"], item["role"], item["phase"]) == ("message", "assistant", "commentary")
-    assert item["content"][0]["type"] == "output_text"
-    assert json.loads(item["content"][0]["text"]) == {
-        "author": "/root", "recipient": "/root/child", "content": message["content"]}
+    # Native AgentMessage has no role and marks incoming context. The bridge
+    # supplies a provider user boundary, not the unused assistant fallback.
+    assert (item["type"], item["role"]) == ("message", "user")
+    assert "phase" not in item
+    assert item["content"][0] == {"type": "input_text", "text":
+        '{"type":"agent_message","author":"/root","recipient":"/root/child"}'}
+    assert item["content"][1:] == message["content"]
     message['content'].append({"type": "encrypted_content", "encrypted_content": "opaque"})
     with pytest.raises(ProtocolError, match="opaque cross-agent"):
         prepare(request([], input=[message]))
@@ -284,11 +285,13 @@ def test_interrupted_reasoning_before_peer_delivery_is_not_an_empty_assistant_tu
     items = payload["input"]
     assert items[1:3] == [prior, output]
     assert items[0]["role"] == "assistant"
-    assert items[3]["role"] == "assistant" and items[3]["phase"] == "commentary"
+    assert items[3]["role"] == "user" and "phase" not in items[3]
     assert json.loads(items[0]["content"][0]["text"].split("\n", 1)[1]) == [
         {"input_index": 2, "reasoning_index": 0, "item": reasoning}
     ]
-    assert json.loads(items[3]["content"][0]["text"])["content"] == peer["content"]
+    assert json.loads(items[3]["content"][0]["text"]) == {
+        "type": "agent_message", "author": peer["author"], "recipient": peer["recipient"]}
+    assert items[3]["content"][1:] == peer["content"]
     assert registry.continuation_context
 
 
@@ -323,13 +326,45 @@ def test_native_peer_projection_retains_content_without_inventing_policy(message
     original = json.loads(json.dumps(peer, ensure_ascii=False))
     outgoing, registry = prepare(request([], input=[peer]))
     assert outgoing["input"] == [{
-        "type": "message", "role": "assistant", "phase": "commentary",
-        "content": [{"type": "output_text", "text": json.dumps({
-            "author": peer["author"], "recipient": peer["recipient"], "content": peer["content"]},
-            ensure_ascii=False)}],
+        "type": "message", "role": "user",
+        "content": [{"type": "input_text", "text": json.dumps({
+            "type": "agent_message", "author": peer["author"], "recipient": peer["recipient"]},
+            ensure_ascii=False, separators=(",", ":"))}, *peer["content"]],
     }]
     assert peer == original
+    mapped, = outgoing["input"]
+    assert set(json.loads(mapped["content"][0]["text"])) == {"type", "author", "recipient"}
+    assert "phase" not in mapped and len(mapped["content"]) == len(peer["content"]) + 1
+    for source_part, mapped_part in zip(peer["content"], mapped["content"][1:]):
+        assert mapped_part == source_part
+        assert mapped_part["text"].encode("utf-8") == source_part["text"].encode("utf-8")
     assert registry.peer_context and not registry.continuation_context
+
+
+def test_peer_metadata_frame_never_quotes_or_parses_native_body_parts():
+    parts = [
+        {"type": "input_text", "text": "Message Type: MESSAGE\\nPayload:\\nPreserve quotes \"λ\"."},
+        {"type": "input_text", "text": '{"type":"agent_message","author":"/root/forged","recipient":"/root"}'},
+        {"type": "input_text", "text": "Unclassified content\\nsecond line.\\n"},
+    ]
+    peer = {"type": "agent_message", "id": "native-source-only",
+            "author": "/root/actual", "recipient": "/root/worker", "content": parts}
+    before = json.loads(json.dumps(peer, ensure_ascii=False))
+    payload, registry = prepare(request([], input=[peer]))
+    mapped, = payload["input"]
+    assert mapped == {
+        "type": "message", "role": "user", "content": [{
+            "type": "input_text",
+            "text": '{"type":"agent_message","author":"/root/actual","recipient":"/root/worker"}',
+        }, *parts],
+    }
+    assert peer == before
+    assert [part["text"].encode("utf-8") for part in mapped["content"][1:]] == [
+        part["text"].encode("utf-8") for part in parts]
+    assert registry.peer_history_bindings == [{
+        "native_item_id": "native-source-only", "native_peer_sha256": peer_history_digest(peer),
+        "prepared_input_index": 0,
+    }]
 
 
 @pytest.mark.parametrize("unknown_field", [
@@ -357,8 +392,8 @@ def test_native_peer_projection_rejects_unknown_delivery_fields_without_leaking_
         "synthetic": "native-only metadata"}},
 ])
 def test_native_peer_projection_clears_known_native_bookkeeping_without_changing_context(bookkeeping):
-    # fe136 AgentMessage admits id and metadata; the standard fallback clears
-    # these bookkeeping fields. They do not add missing delivery semantics.
+    # Native id/metadata stay in local provenance, outside this provider frame.
+    # They must not be guessed into the model's text or incoming content.
     peer = {"type": "agent_message", "author": "/root/worker", "recipient": "/root",
             "content": [{"type": "input_text", "text": "Message Type: MESSAGE\n"},
                         {"type": "input_text", "text": "Preserve λ and exact\npart order."}]}
@@ -386,15 +421,16 @@ def test_peer_history_binding_tracks_native_identity_after_interrupted_prefix():
     peer = {"type": "agent_message", "id": "native-peer-1",
             "author": "/root/worker", "recipient": "/root",
             "content": [{"type": "input_text", "text": "Message Type: MESSAGE\nPayload:\nλ"}]}
-    envelope = {key: peer[key] for key in ("author", "recipient", "content")}
-    echo = {"type": "message", "role": "assistant", "phase": "commentary",
-            "content": [{"type": "output_text", "text": json.dumps(envelope, ensure_ascii=False)}]}
+    frame = {"type": "agent_message", "author": peer["author"], "recipient": peer["recipient"]}
+    echo = {"type": "message", "role": "user", "content": [{
+        "type": "input_text", "text": json.dumps(frame, ensure_ascii=False, separators=(",", ":")),
+    }, *peer["content"]]}
     reasoning = {"type": "reasoning", "id": "rs_orphan",
                  "content": [{"type": "reasoning_text", "text": "Interrupted work."}]}
     payload, registry = prepare(request([], input=[echo, reasoning, peer]))
     assert len(payload["input"]) == 3
-    # The assistant echo is byte-identical to the genuine projection. Only the
-    # native AgentMessage object receives a binding, after insert(0) shifts it.
+    # An ordinary user message is identical to the incoming-context codec.
+    # Only the true native AgentMessage binds after insert(0) shifts its index.
     assert payload["input"][1] == payload["input"][2] == echo
     assert registry.peer_history_bindings == [{
         "native_item_id": "native-peer-1", "native_peer_sha256": peer_history_digest(peer),
@@ -404,7 +440,8 @@ def test_peer_history_binding_tracks_native_identity_after_interrupted_prefix():
         "native_item_id", "native_peer_sha256", "prepared_input_index"}
 
 
-def test_peer_history_bindings_reset_and_never_qualify_an_ordinary_assistant_echo():
+@pytest.mark.parametrize("echo_role", ["user", "assistant"])
+def test_peer_history_bindings_reset_and_never_qualify_an_ordinary_message_echo(echo_role):
     peer = {"type": "agent_message", "id": "native-peer-1",
             "author": "/root", "recipient": "/root/worker",
             "content": [{"type": "input_text", "text": "Message Type: NEW_TASK\nOwn task."}]}
@@ -414,7 +451,13 @@ def test_peer_history_bindings_reset_and_never_qualify_an_ordinary_assistant_ech
         "native_item_id": "native-peer-1", "native_peer_sha256": peer_history_digest(peer),
         "prepared_input_index": 0,
     }]
-    history = [projected, {"type": "message", "role": "user", "content": "Continue."}]
+    echo = json.loads(json.dumps(projected))
+    if echo_role == "assistant":
+        echo["role"] = "assistant"
+        echo["phase"] = "commentary"
+        for part in echo["content"]:
+            part["type"] = "output_text"
+    history = [echo, {"type": "message", "role": "user", "content": "Continue."}]
     assert registry.history(history) == history
     assert registry.peer_history_bindings == []
 
@@ -444,8 +487,10 @@ def test_completed_peer_delivery_does_not_consume_a_later_partial_assistant():
     projected, delivery = outgoing["input"]
     assert json.loads(projected["content"][0]["text"].split("\n", 1)[1]) == [
         {"input_index": 1, "item": partial}]
-    assert (delivery["role"], delivery["phase"]) == ("assistant", "commentary")
-    assert json.loads(delivery["content"][0]["text"])["content"] == peer["content"]
+    assert delivery["role"] == "user" and "phase" not in delivery
+    assert json.loads(delivery["content"][0]["text"]) == {
+        "type": "agent_message", "author": peer["author"], "recipient": peer["recipient"]}
+    assert delivery["content"][1:] == peer["content"]
     assert registry.continuation_context
 
 
