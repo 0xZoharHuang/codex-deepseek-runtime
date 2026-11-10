@@ -32,14 +32,16 @@ def continue_case(root,entry):
     controls=real_work.load_work_controls(root,previous['case'],tools_before,initial=False)
     controlled_inputs=real_work_input_hashes(root,previous['case'])
     history=root/'completion-attempts'/str(uuid.uuid4());history.mkdir(parents=True)
-    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml')]:
+    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml'),*root.glob('final-*.bin')]:
         if path.is_file():shutil.copy2(path,history/path.name)
     oracle=root/'oracle';oracle_guard=OracleGuard(oracle)
     before=real_work.source_inventory(oracle)
     before_reviews={row['thread']:set(row['completed_turn_ids']) for row in real_work.reviewer_evidence(root,previous['thread'])}
     peer=None;started=time.monotonic();turn_status=None;error=None;turn=None;start=0
     report={**previous,'error':None,'primary_error':None,'cleanup_errors':[]}
+    report['git_preflight']=real_work.job_git_preflight(root)
     try:
+        if not report['git_preflight']['passed']:raise RuntimeError('Job Git preflight failed before peer creation')
         oracle_guard.lock()
         peer=Peer(root,command=[str(entry)],environment={'PYTHONDONTWRITEBYTECODE':'1'})
         thread=previous['thread']
@@ -48,9 +50,13 @@ def continue_case(root,entry):
         if previous.get('web_research',{}).get('required'):
             prompt+=' Use the bundled codex_web browser for actual open/find/click to a different official documentation page in this turn and relate the documentation to the fix.'
         turn,start=peer.start(thread,prompt)
-        try:peer.complete(thread,start,timeout=600)
+        try:_,interrupted=real_work.complete_real_work_turn(peer,root,thread,start,turn,timeout=600)
         except TimeoutError:
             peer.call('turn/interrupt',{'threadId':thread,'turnId':turn});raise
+        if interrupted is not None:
+            report['operator_interrupt']=interrupted
+            turn_status='interrupted' if interrupted['native_confirmed'] else None
+            raise RuntimeError('Operator requested native turn interruption' if interrupted['native_confirmed'] else 'Operator native interruption failed')
         terminal=[event for event in peer.events[start:] if event.get('method')=='turn/completed' and event.get('params',{}).get('threadId')==thread][-1]
         turn_status=terminal['params']['turn']['status']
     except Exception as exc:
@@ -60,6 +66,12 @@ def continue_case(root,entry):
         report['seconds']=previous['seconds']+round(time.monotonic()-started,2)
         cleanup_ok=real_work.cleanup_real_work(report,peer,oracle_guard,root)
     if not cleanup_ok:return report
+    real_work.validation_checkpoint(root,report)
+    if not report['git_preflight']['passed'] or report.get('operator_interrupt'):
+        report['turn_status']=turn_status
+        report['validation_status']='not_started_after_preflight_or_operator_stop'
+        (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+        return report
     unchanged=real_work.source_inventory(oracle)==before
     work=Path(real_work.workspace_path(root));pp=work/'src' if previous['case']=='jinja' else work
     validation=[run_test(root,'workspace',['-q','tests'],pp),run_test(root,'upstream-heldout',['-q',str(oracle/'tests')],pp)]
@@ -87,6 +99,7 @@ def continue_case(root,entry):
     controls_after=real_work.load_work_controls(root,previous['case'],tools_after,initial=False)
     report['qualification_controls']={'path':controls['control_path'],'sha256':controls['control_sha256'],
         'baseline_sha256':{suite:baseline['sha256'] for suite,baseline in controls['pytest_baselines'].items()}}
+    report['validation_status']='completed'
     report['passed']=real_work_passed(report,pytest_baselines=controls['pytest_baselines']) and tools_before==tools_after and controls==controls_after
     (root/'agent.patch').write_bytes(complete_work_patch(work))
     (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')

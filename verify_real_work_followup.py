@@ -38,7 +38,7 @@ def main():
     if not tools_before['same_bytes']:raise ValueError('Selected real-work tools differ from the pinned original')
     controls=real_work.load_work_controls(root,args.case,tools_before,initial=False)
     attempt=root/'followup-attempts'/str(uuid.uuid4());attempt.mkdir(parents=True,mode=0o700)
-    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml')]:
+    for path in [root/'results.json',root/'agent.patch',*root.glob('final-*.txt'),*root.glob('final-*.json'),*root.glob('final-*.xml'),*root.glob('final-*.bin')]:
         if path.is_file():shutil.copy2(path,attempt/path.name)
     feedback=args.feedback.read_text(encoding='utf-8');(attempt/'feedback.txt').write_text(feedback, encoding='utf-8')
     verifiers=[Path(__file__),Path(__file__).with_name('verify_real_work.py'),Path(__file__).with_name('verify_live.py'),Path(__file__).with_name('acceptance_assertions.py'),Path(__file__).with_name('host_execution_acceptance.py'),Path(__file__).with_name('real_work_imports.py'),Path(__file__).with_name('windows_acceptance_setup.py'),Path(__file__).with_name('qa_workspace.py')]
@@ -48,15 +48,21 @@ def main():
     def oracle_sources():return {str(p.relative_to(oracle)):sha(p) for p in oracle.rglob('*') if p.is_file() and not any(x in {'__pycache__','.pytest_cache','.git'} for x in p.parts)}
     before=oracle_sources();peer=None;error=None;status=None;turn=None;start=0;started=time.monotonic()
     report={**previous,'error':None,'primary_error':None,'cleanup_errors':[]}
+    report['git_preflight']=real_work.job_git_preflight(root)
     try:
+        if not report['git_preflight']['passed']:raise RuntimeError('Job Git preflight failed before peer creation')
         oracle_guard.lock();peer=Peer(root,command=[str(entry)],environment={'PYTHONDONTWRITEBYTECODE':'1'})
         peer.call('thread/resume',{'threadId':parent,'cwd':str(workspace_path(root))})
         prompt='Continue this same saved native task and current working tree after independent acceptance feedback. All original restrictions and the original defect scope still apply. Do not access sibling directories or oracle tests, install dependencies, fetch upstream code/patches, change Git history or weaken tests. Use the provisioned tools311/bin/python from the original task. Finish the original fix, actual open/find/click documentation reading, and final verification. You are explicitly authorized to reuse the existing independent reviewer with followup_task, or to spawn one read-only reviewer if none is available; at most one active reviewer, with no descendants. Obtain a fresh review after addressing the feedback. Stop once the original task and checks pass, and report the mechanism and real results.\n\nIndependent feedback:\n'+feedback
         prompt=prompt.replace('tools311/bin/python',str(tool_python(root))+' -B')
         turn,start=peer.start(parent,prompt)
-        try:peer.complete(parent,start,timeout=args.timeout)
+        try:_,interrupted=real_work.complete_real_work_turn(peer,root,parent,start,turn,timeout=args.timeout)
         except TimeoutError:
             peer.call('turn/interrupt',{'threadId':parent,'turnId':turn});raise
+        if interrupted is not None:
+            report['operator_interrupt']=interrupted
+            status='interrupted' if interrupted['native_confirmed'] else None
+            raise RuntimeError('Operator requested native turn interruption' if interrupted['native_confirmed'] else 'Operator native interruption failed')
         status=[e['params']['turn']['status'] for e in peer.events[start:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==parent][-1]
     except Exception as exc:
         error=str(exc);report['error']=error
@@ -65,6 +71,13 @@ def main():
         cleanup_ok=real_work.cleanup_real_work(report,peer,oracle_guard,root)
     if not cleanup_ok:
         print(json.dumps(report,ensure_ascii=False),flush=True);print('EVIDENCE',attempt,flush=True)
+        raise SystemExit(1)
+    real_work.validation_checkpoint(root,report)
+    if not report['git_preflight']['passed'] or report.get('operator_interrupt'):
+        report['turn_status']=status
+        report['validation_status']='not_started_after_preflight_or_operator_stop'
+        (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+        print(json.dumps(report,ensure_ascii=False),flush=True)
         raise SystemExit(1)
     unchanged=oracle_sources()==before
     work=root/'work';pythonpath=work/'src' if args.case=='jinja' else work
@@ -93,6 +106,7 @@ def main():
     controls_after=real_work.load_work_controls(root,args.case,tools_after,initial=False)
     report['qualification_controls']={'path':controls['control_path'],'sha256':controls['control_sha256'],
         'baseline_sha256':{suite:baseline['sha256'] for suite,baseline in controls['pytest_baselines'].items()}}
+    report['validation_status']='completed'
     report['passed']=real_work_passed(report,pytest_baselines=controls['pytest_baselines']) and tools_before==tools_after and controls==controls_after
     (root/'agent.patch').write_bytes(complete_work_patch(work));(root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
     print(json.dumps({k:v for k,v in report.items() if k not in {'reviewers','final_messages','validation','web_research'}}),flush=True);print('EVIDENCE',attempt,flush=True)
