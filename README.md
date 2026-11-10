@@ -48,6 +48,8 @@ Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox s
 
 这里的“等价”指**固定版本 Codex CLI 的本地 runtime 机制**。DeepSeek 的代码质量、推理水平和模态能力由模型决定；OpenAI 的云服务及账户权益需要相应服务，换模型不会获得这些权益。
 
+原生包从固定上游加公开补丁构建，涉及 provider 集成、请求容量恢复及 Windows 隔离和辅助进程生命周期。它是带补丁的 native build。补丁范围与原生责任边界、当前候选尚未关闭的验收项见[原生 runtime 契约](docs/runtime-contract.zh-CN.md)。
+
 ## 支持范围与验收状态
 
 固定基线是 Codex CLI **`0.164.0-alpha.7`** / `fe136d4e70ef2b5bbed40a2d22b3aabf267796d3`，模型固定为 **`deepseek/deepseek-v4.1-flash-1017`**。这是上游预发布 runtime；不用会自行变化的 `latest` 模型别名。

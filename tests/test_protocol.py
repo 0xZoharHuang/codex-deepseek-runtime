@@ -1,11 +1,12 @@
 """Regression cases derived from observed native/provider incompatibilities."""
 
+import hashlib
 import json
 
 import pytest
 
 from codex_deepseek.gateway import Store
-from codex_deepseek.protocol import Events, MODEL, InputDecoder, ProtocolError, prepare
+from codex_deepseek.protocol import Events, MODEL, InputDecoder, ProtocolError, Registry, prepare
 
 
 def request(tools, **more):
@@ -313,7 +314,7 @@ def test_retained_context_does_not_change_complete_assistant_history_or_invent_a
 
 
 @pytest.mark.parametrize("message_type", ["NEW_TASK", "MESSAGE", "FINAL_ANSWER", "CHANNEL_POST", None])
-def test_native_peer_fallback_retains_content_without_inventing_policy(message_type):
+def test_native_peer_projection_retains_content_without_inventing_policy(message_type):
     first = "Unclassified native content." if message_type is None else (
         f"Message Type: {message_type}\nTask name: /root/child\nSender: /root\nPayload:\n")
     peer = {"type": "agent_message", "author": "/root", "recipient": "/root/child",
@@ -329,6 +330,109 @@ def test_native_peer_fallback_retains_content_without_inventing_policy(message_t
     }]
     assert peer == original
     assert registry.peer_context and not registry.continuation_context
+
+
+@pytest.mark.parametrize("unknown_field", [
+    "future_delivery_semantics", "other_recipients", "trigger_turn",
+])
+def test_native_peer_projection_rejects_unknown_delivery_fields_without_leaking_values(unknown_field):
+    peer = {"type": "agent_message", "author": "/root", "recipient": "/root/child",
+            "content": [{"type": "input_text", "text": "Known plaintext."}],
+            unknown_field: {"private": "SYNTHETIC_DO_NOT_LOG_DELIVERY_VALUE"}}
+    original = json.loads(json.dumps(peer))
+    with pytest.raises(ProtocolError) as error:
+        prepare(request([], input=[peer]))
+    assert str(error.value) == (
+        "Unsupported native agent message fields; refusing to discard delivery semantics")
+    assert unknown_field not in str(error.value)
+    assert "SYNTHETIC_DO_NOT_LOG_DELIVERY_VALUE" not in str(error.value)
+    assert peer == original
+
+
+@pytest.mark.parametrize("bookkeeping", [
+    {"id": "native-internal-id"},
+    {"internal_chat_message_metadata_passthrough": {"synthetic": "native-only metadata"}},
+    {"id": None, "internal_chat_message_metadata_passthrough": None},
+    {"id": "native-internal-id", "internal_chat_message_metadata_passthrough": {
+        "synthetic": "native-only metadata"}},
+])
+def test_native_peer_projection_clears_known_native_bookkeeping_without_changing_context(bookkeeping):
+    # fe136 AgentMessage admits id and metadata; the standard fallback clears
+    # these bookkeeping fields. They do not add missing delivery semantics.
+    peer = {"type": "agent_message", "author": "/root/worker", "recipient": "/root",
+            "content": [{"type": "input_text", "text": "Message Type: MESSAGE\n"},
+                        {"type": "input_text", "text": "Preserve λ and exact\npart order."}]}
+    expected, baseline_registry = prepare(request([], input=[peer]))
+    original = json.loads(json.dumps({**peer, **bookkeeping}, ensure_ascii=False))
+    outgoing, registry = prepare(request([], input=[original]))
+    assert outgoing == expected
+    assert original == {**peer, **bookkeeping}
+    expected_registry = {**vars(baseline_registry), "peer_history_bindings": [{
+        "native_item_id": bookkeeping.get("id"),
+        "native_peer_sha256": peer_history_digest(peer),
+        "prepared_input_index": 0,
+    }]}
+    assert vars(registry) == expected_registry
+
+
+def peer_history_digest(peer):
+    envelope = {key: peer[key] for key in ("author", "recipient", "content")}
+    return hashlib.sha256(json.dumps(
+        envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        allow_nan=False).encode("utf-8")).hexdigest()
+
+
+def test_peer_history_binding_tracks_native_identity_after_interrupted_prefix():
+    peer = {"type": "agent_message", "id": "native-peer-1",
+            "author": "/root/worker", "recipient": "/root",
+            "content": [{"type": "input_text", "text": "Message Type: MESSAGE\nPayload:\nλ"}]}
+    envelope = {key: peer[key] for key in ("author", "recipient", "content")}
+    echo = {"type": "message", "role": "assistant", "phase": "commentary",
+            "content": [{"type": "output_text", "text": json.dumps(envelope, ensure_ascii=False)}]}
+    reasoning = {"type": "reasoning", "id": "rs_orphan",
+                 "content": [{"type": "reasoning_text", "text": "Interrupted work."}]}
+    payload, registry = prepare(request([], input=[echo, reasoning, peer]))
+    assert len(payload["input"]) == 3
+    # The assistant echo is byte-identical to the genuine projection. Only the
+    # native AgentMessage object receives a binding, after insert(0) shifts it.
+    assert payload["input"][1] == payload["input"][2] == echo
+    assert registry.peer_history_bindings == [{
+        "native_item_id": "native-peer-1", "native_peer_sha256": peer_history_digest(peer),
+        "prepared_input_index": 2,
+    }]
+    assert set(registry.peer_history_bindings[0]) == {
+        "native_item_id", "native_peer_sha256", "prepared_input_index"}
+
+
+def test_peer_history_bindings_reset_and_never_qualify_an_ordinary_assistant_echo():
+    peer = {"type": "agent_message", "id": "native-peer-1",
+            "author": "/root", "recipient": "/root/worker",
+            "content": [{"type": "input_text", "text": "Message Type: NEW_TASK\nOwn task."}]}
+    registry = Registry()
+    projected, = registry.history([peer])
+    assert registry.peer_history_bindings == [{
+        "native_item_id": "native-peer-1", "native_peer_sha256": peer_history_digest(peer),
+        "prepared_input_index": 0,
+    }]
+    history = [projected, {"type": "message", "role": "user", "content": "Continue."}]
+    assert registry.history(history) == history
+    assert registry.peer_history_bindings == []
+
+
+@pytest.mark.parametrize("native_ids", [(None, None), ("duplicate", "duplicate"),
+                                         ("native-first", "native-second")])
+def test_peer_history_bindings_keep_missing_or_duplicate_ids_without_guessing(native_ids):
+    peer = {"type": "agent_message", "author": "/root", "recipient": "/root/worker",
+            "content": [{"type": "input_text", "text": "Message Type: MESSAGE\nSame data."}]}
+    peers = [{**peer, **({"id": native_id} if native_id is not None else {})}
+             for native_id in native_ids]
+    payload, registry = prepare(request([], input=peers))
+    assert len(payload["input"]) == 2 and payload["input"][0] == payload["input"][1]
+    assert registry.peer_history_bindings == [
+        {"native_item_id": native_id, "native_peer_sha256": peer_history_digest(peer),
+         "prepared_input_index": index}
+        for index, native_id in enumerate(native_ids)
+    ]
 
 
 def test_completed_peer_delivery_does_not_consume_a_later_partial_assistant():

@@ -6,6 +6,7 @@ import asyncio
 from contextlib import AsyncExitStack
 import codecs
 import hmac
+import hashlib
 import json
 import logging
 import os
@@ -56,6 +57,114 @@ def validate_observed_identity(value, requested_provider, *, failed=False):
         accepted = _OBSERVED_MODELS if name == "model" else _OBSERVED_PROVIDERS[requested_provider]
         if not failed and item not in accepted:
             raise ProtocolError("Upstream returned an incompatible " + name + ": " + item)
+
+
+
+def _peer_trace_sha256(value):
+    digest = hashlib.sha256()
+    encoder = json.JSONEncoder(ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    for part in encoder.iterencode(value):
+        digest.update(part.encode("utf-8"))
+    return digest.hexdigest()
+
+
+def native_peer_trace_evidence(receipt, body, payload, registry, native_request):
+    """Hash-only observation of native -> prepared peers, before image transport.
+
+    This is neither an upstream consumption receipt nor runtime authorization.
+    Unqualified observations never change the forwarded payload.
+    """
+    record = {
+        "schema_version": 1,
+        "scope": "native_to_prepared_before_image_transport",
+        "receipt_id": receipt,
+        "status": "unqualified",
+        "native_request": {key: native_request[key] for key in
+                           ("status", "source", "header_consistency", "request_kind", "thread_id", "turn_id", "reason")
+                           if key in native_request},
+        "bindings": [],
+    }
+    def finish(reason=None):
+        if reason is not None:
+            record["status"] = "unqualified"
+            record["reason"] = reason
+            record["bindings"] = []
+        record["record_sha256"] = _peer_trace_sha256(record)
+        if len(json.dumps(record, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")) > 65536:
+            record.pop("record_sha256")
+            record["status"], record["reason"], record["bindings"] = "unqualified", "peer_evidence_limit_exceeded", []
+            record["record_sha256"] = _peer_trace_sha256(record)
+        return record
+    try:
+        record["prepared_request_sha256"] = _peer_trace_sha256(payload)
+        record["prepared_input_sha256"] = _peer_trace_sha256(payload.get("input", []))
+        original = body.get("input", [])
+        record["native_input_count"] = len(original) if isinstance(original, list) else 0
+        peers = [(index, item) for index, item in enumerate(original) if isinstance(item, dict)
+                 and item.get("type") == "agent_message"] if isinstance(original, list) else []
+        if not peers:
+            record["status"] = "no_native_peers"
+            return finish()
+        if len(peers) > 128:
+            return finish("peer_evidence_limit_exceeded")
+        if (native_request.get("status") != "recognized" or native_request.get("request_kind") != "turn"
+                or not native_request.get("thread_id") or not native_request.get("turn_id")):
+            return finish("native_request_identity_unqualified")
+        ids = [item.get("id") for _, item in peers]
+        if any(not isinstance(item_id, str) or not item_id or len(item_id) > 256 for item_id in ids):
+            return finish("native_peer_id_missing_or_invalid")
+        if len(set(ids)) != len(ids):
+            return finish("native_peer_id_ambiguous")
+        observed = getattr(registry, "peer_history_bindings", None)
+        if not isinstance(observed, list) or len(observed) != len(peers):
+            return finish("native_peer_projection_hook_unavailable")
+        bindings = {}
+        prepared_indices = set()
+        prepared = payload.get("input")
+        if not isinstance(prepared, list):
+            return finish("prepared_input_unqualified")
+        for binding in observed:
+            if not isinstance(binding, dict):
+                return finish("native_peer_projection_hook_invalid")
+            item_id, index = binding.get("native_item_id"), binding.get("prepared_input_index")
+            if (item_id not in ids or item_id in bindings or type(index) is not int
+                    or index < 0 or index >= len(prepared) or index in prepared_indices):
+                return finish("native_peer_projection_hook_invalid")
+            bindings[item_id] = binding
+            prepared_indices.add(index)
+        for source_index, item in peers:
+            binding = bindings[item["id"]]
+            peer = {key: item.get(key) for key in ("author", "recipient", "content")}
+            if any(not isinstance(peer[key], str) or not peer[key] or len(peer[key]) > 2048
+                   for key in ("author", "recipient")):
+                return finish("native_peer_identity_unqualified")
+            fingerprint = _peer_trace_sha256(peer)
+            if fingerprint != binding.get("native_peer_sha256"):
+                return finish("native_peer_projection_hook_invalid")
+            index = binding["prepared_input_index"]
+            record["bindings"].append({
+                "native_input_index": source_index,
+                "native_item_id": item["id"],
+                "native_peer_sha256": fingerprint,
+                "author": peer["author"], "recipient": peer["recipient"],
+                "prepared_input_index": index,
+                "prepared_item_sha256": _peer_trace_sha256(prepared[index]),
+            })
+        record["status"] = "qualified"
+        return finish()
+    except (ValueError, TypeError, KeyError, RecursionError, UnicodeError):
+        return finish("peer_evidence_unrepresentable")
+
+
+def write_native_peer_trace_evidence(trace, receipt, body, payload, registry, native_request):
+    """Best-effort diagnostics only; a missing sidecar cannot qualify acceptance."""
+    try:
+        evidence = native_peer_trace_evidence(receipt, body, payload, registry, native_request)
+        private_write(trace / (receipt + "-native-peer-evidence.json"),
+                      json.dumps(evidence, ensure_ascii=False, allow_nan=False, indent=2))
+    except Exception as error:
+        logging.getLogger(__name__).warning("Native peer trace incomplete (%s); source evidence is unavailable",
+                                            type(error).__name__)
 
 
 def private_write(path, data):
@@ -358,6 +467,7 @@ class Gateway:
             if trace:
                 private_directory(trace)
                 private_write(trace / (receipt + "-request.json"),json.dumps(payload, ensure_ascii=False, indent=2))
+                write_native_peer_trace_evidence(trace, receipt, body, payload, registry, native_request)
             if self.images is not None:
                 await self.client.require_raw()
                 transport=self.images.transport(transport_policy)

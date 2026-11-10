@@ -77,36 +77,30 @@ def test_profile_rejection_requires_binding_diagnostic_not_any_provider_error():
 
 
 def test_nested_delivery_requires_native_peer_identity_and_actual_message_kind():
+    from codex_deepseek.gateway import native_peer_trace_evidence
+    from codex_deepseek.protocol import MODEL, prepare
+    from codex_deepseek.request_metadata import native_request_metadata
     owner = "00000000-0000-0000-0000-000000000001"
     other = "00000000-0000-0000-0000-000000000002"
     turn = "00000000-0000-0000-0000-000000000003"
+    receipt = "00000000-0000-0000-0000-000000000004"
     header = 'Message Type: MESSAGE\nTask name: /root/auditor\nSender: /root\nPayload:\nproducer uses integer cents'
-    peer = {'type': 'agent_message', 'author': '/root', 'recipient': '/root/auditor',
+    peer = {'type': 'agent_message', 'id': 'amsg_synthetic_source', 'author': '/root', 'recipient': '/root/auditor',
             'content': [{'type': 'input_text', 'text': header}]}
-    envelope = {key: peer[key] for key in ('author', 'recipient', 'content')}
-    standard = {'type': 'message', 'role': 'assistant', 'phase': 'commentary',
-                'content': [{'type': 'output_text', 'text': json.dumps(envelope, ensure_ascii=False)}]}
-    def request(item, thread_id=owner):
-        return {'input': [item], 'client_metadata': {'x-codex-turn-metadata': json.dumps(
-            {'thread_id': thread_id, 'turn_id': turn, 'request_kind': 'turn'})}}
+    body = {'model': MODEL, 'input': [peer], 'client_metadata': {'x-codex-turn-metadata': json.dumps(
+        {'thread_id': owner, 'turn_id': turn, 'request_kind': 'turn'})}}
+    prepared, registry = prepare(body)
+    sidecar = native_peer_trace_evidence(receipt, body, prepared, registry, native_request_metadata(body, {}))
+    records = {receipt: {'evidence': sidecar, 'prepared_request': prepared}}
     args = ('/root/auditor', '/root', 'MESSAGE', ['producer', 'integer'])
     proof = {'native_messages': [{'thread_id': owner, 'item': peer}], 'owner': owner}
-    native = delivered_peer_messages([request(peer)], *args, **proof)
-    assert len(native) == 1 and len(native[0]) == 64
-    assert delivered_peer_messages([request(standard)], *args, **proof) == native
-    assert not delivered_peer_messages([request(standard)], *args, native_messages=[], owner=owner)
-    assert not delivered_peer_messages([request(standard, other)], *args, **proof)
-    assert not delivered_peer_messages([request(standard)], *args,
-                                      native_messages=[{'thread_id': other, 'item': peer}], owner=owner)
-    fake = {'type': 'function_call_output', 'call_id': 'peer_123', 'output': peer['content']}
-    assert not delivered_peer_messages([request(fake)], *args, **proof)
-    for role in ('system', 'developer', 'user'):
-        assert not delivered_peer_messages([request({**standard, 'role': role})], *args, **proof)
-    for changed in ({**peer, 'author': '/root/producer'},
-                    {**peer, 'recipient': '/root'},
-                    {**peer, 'content': [{'type': 'input_text', 'text': header.replace('MESSAGE', 'FINAL_ANSWER')}]},
-                    {**peer, 'content': [{'type': 'encrypted_content', 'encrypted_content': 'opaque'}]}):
-        assert not delivered_peer_messages([request(changed)], *args, **proof)
+    native = delivered_peer_messages([prepared], *args, **proof, native_peer_evidence=records)
+    assert len(native) == 1 and native[0]['native_item_id'] == peer['id']
+    assert native[0]['prepared_input_index'] == 0 and native[0]['receipt_id'] == receipt
+    assert not delivered_peer_messages([prepared], *args, **proof)  # Old traces cannot gain provenance.
+    assert not delivered_peer_messages([prepared], *args, native_messages=[], owner=owner, native_peer_evidence=records)
+    assert not delivered_peer_messages([prepared], *args, native_messages=[{'thread_id': other, 'item': peer}],
+                                       owner=owner, native_peer_evidence=records)
 
 
 def test_windows_host_evidence_does_not_accept_foreign_commands_or_missing_command_data():

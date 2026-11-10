@@ -8,58 +8,210 @@ from verify_live import Peer,text,qa_sandbox_mode
 from codex_deepseek.request_metadata import native_request_metadata
 
 
-def delivered_peer_messages(requests, recipient, sender, kind, markers, *, native_messages, owner):
-    header = f'Message Type: {kind}\nTask name: {recipient}\nSender: {sender}\nPayload:\n'
-    def fingerprint(item):
-        if not isinstance(item, dict):
+
+def _canonical_json_sha256(value):
+    digest = hashlib.sha256()
+    for part in json.JSONEncoder(ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).iterencode(value):
+        digest.update(part.encode("utf-8"))
+    return digest.hexdigest()
+
+
+def _strict_json_loads(raw):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+    def nonfinite(_):
+        raise ValueError("nonfinite JSON number")
+    def finite_float(text):
+        value = float(text)
+        if abs(value) == float("inf"):
+            raise ValueError("nonfinite JSON number")
+        return value
+    return json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite, parse_float=finite_float)
+
+
+def _peer_semantics(item):
+    """Normalize data only; JSON formatting is never a source/provenance gate."""
+    if not isinstance(item, dict):
+        return None
+    if item.get("type") == "agent_message":
+        peer = {key: item.get(key) for key in ("author", "recipient", "content")}
+    elif (item.get("type") == "message" and item.get("role") == "assistant"
+          and item.get("phase") == "commentary"):
+        parts = item.get("content")
+        if (not isinstance(parts, list) or len(parts) != 1 or not isinstance(parts[0], dict)
+                or parts[0].get("type") != "output_text" or not isinstance(parts[0].get("text"), str)):
             return None
-        if item.get('type') == 'agent_message':
-            envelope = {key: item.get(key) for key in ('author', 'recipient', 'content')}
-        elif (item.get('type') == 'message' and item.get('role') == 'assistant'
-              and item.get('phase') == 'commentary'):
-            parts = item.get('content')
-            if (not isinstance(parts, list) or len(parts) != 1
-                    or not isinstance(parts[0], dict) or parts[0].get('type') != 'output_text'):
-                return None
-            try:
-                envelope = json.loads(parts[0].get('text', ''))
-            except (TypeError, json.JSONDecodeError):
-                return None
-            if not isinstance(envelope, dict) or set(envelope) != {'author', 'recipient', 'content'}:
-                return None
+        try:
+            peer = _strict_json_loads(parts[0]["text"])
+        except (ValueError, TypeError, RecursionError):
+            return None
+        if not isinstance(peer, dict):
+            return None
+        if set(peer) == {"author", "recipient", "content"}:
+            pass  # CDS's scoped typed-parts projection, not the literal native fallback.
+        elif (set(peer) <= {"author", "recipient", "other_recipients", "content", "trigger_turn", "encrypted_content"}
+              and {"author", "recipient", "other_recipients", "content", "trigger_turn"} <= set(peer)
+              and isinstance(peer.get("content"), str) and type(peer.get("trigger_turn")) is bool
+              and isinstance(peer.get("other_recipients"), list)
+              and all(isinstance(value, str) for value in peer["other_recipients"])
+              and peer.get("encrypted_content") is None):
+            # fe136 InterAgentCommunication::to_response_input_item. These flags
+            # are supplied source data, never reconstructed from Message Type.
+            peer = {"author": peer.get("author"), "recipient": peer.get("recipient"),
+                    "content": [{"type": "input_text", "text": peer["content"]}]}
         else:
             return None
-        if envelope['author'] != sender or envelope['recipient'] != recipient:
-            return None
-        parts = envelope['content']
-        if (not isinstance(parts, list) or not parts
-                or any(not isinstance(part, dict) or part.get('type') != 'input_text'
-                       or not isinstance(part.get('text'), str) for part in parts)):
-            return None
-        text = '\n'.join(part['text'] for part in parts)
-        if not text.startswith(header) or not all(marker in text[len(header):] for marker in markers):
-            return None
-        canonical = json.dumps(envelope, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
-        return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+    else:
+        return None
+    if any(not isinstance(peer.get(key), str) or not peer[key] for key in ("author", "recipient")):
+        return None
+    parts = peer.get("content")
+    if (not isinstance(parts, list) or not parts
+            or any(not isinstance(part, dict) or part.get("type") != "input_text"
+                   or not isinstance(part.get("text"), str) for part in parts)):
+        return None
+    return peer
 
-    observed = set()
-    for request in requests:
-        metadata = native_request_metadata(request, {})
-        if (metadata.get('status') != 'recognized' or metadata.get('request_kind') != 'turn'
-                or metadata.get('thread_id') != owner):
-            continue
-        for item in request.get('input', []):
-            value = fingerprint(item)
-            if value is not None:
-                observed.add(value)
-    recorded = set()
+
+def load_native_peer_evidence(trace_dir):
+    """Pair private observer sidecars with their exact prepared trace receipt.
+
+    The prepared boundary precedes image_transport.prepare. It does not prove
+    upstream consumption. Legacy request-only traces never gain source evidence.
+    """
+    import uuid
+    trace_dir = Path(trace_dir)
+    records = {}
+    suffix = "-native-peer-evidence.json"
+    for path in trace_dir.glob("*" + suffix):
+        receipt = path.name[:-len(suffix)]
+        try:
+            if str(uuid.UUID(receipt)) != receipt or path.is_symlink():
+                raise ValueError("invalid receipt or linked sidecar")
+            with path.open("rb") as stream:
+                raw = stream.read(65537)
+            if len(raw) > 65536:
+                raise ValueError("oversized peer sidecar")
+            evidence = _strict_json_loads(raw)
+            prepared = trace_dir / (receipt + "-request.json")
+            if prepared.is_symlink():
+                raise ValueError("linked prepared request")
+            records[receipt] = {"evidence": evidence,
+                                "prepared_request": _strict_json_loads(prepared.read_bytes())}
+        except (OSError, ValueError, TypeError, RecursionError):
+            records[receipt] = {"error": "invalid_or_missing_native_peer_evidence_pair"}
+    return records
+
+
+def delivered_peer_messages(requests, recipient, sender, kind, markers, *, native_messages, owner,
+                            native_peer_evidence=None):
+    """Require native observer mapping + same-owner rollout identity, not pretty JSON."""
+    import uuid
+    header = f"Message Type: {kind}\nTask name: {recipient}\nSender: {sender}\nPayload:\n"
+    sources, ambiguous = {}, set()
     for record in native_messages:
-        item = record['item']
-        if record['thread_id'] == owner and item.get('type') == 'agent_message':
-            value = fingerprint(item)
-            if value is not None:
-                recorded.add(value)
-    return sorted(observed & recorded)
+        if not isinstance(record, dict) or record.get("thread_id") != owner:
+            continue
+        item = record.get("item")
+        if not isinstance(item, dict) or item.get("type") != "agent_message":
+            continue
+        item_id, peer = item.get("id"), _peer_semantics(item)
+        if not isinstance(item_id, str) or not item_id or peer is None:
+            continue
+        try:
+            fingerprint = _canonical_json_sha256(peer)
+        except (ValueError, TypeError, RecursionError, UnicodeError):
+            continue
+        if item_id in sources and sources[item_id][0] != fingerprint:
+            ambiguous.add(item_id)
+        sources[item_id] = (fingerprint, peer)
+    request_hashes = set()
+    for request in requests.values() if isinstance(requests, dict) else requests:
+        if isinstance(request, dict):
+            body = request.get("body", request)
+            try:
+                request_hashes.add(_canonical_json_sha256(body))
+            except (ValueError, TypeError, RecursionError, UnicodeError):
+                pass
+    found = {}
+    for receipt, paired in (native_peer_evidence or {}).items():
+        try:
+            if str(uuid.UUID(receipt)) != receipt or not isinstance(paired, dict) or "error" in paired:
+                continue
+            evidence, request = paired["evidence"], paired["prepared_request"]
+            if not isinstance(evidence, dict) or not isinstance(request, dict):
+                continue
+            expected_keys = {"schema_version", "scope", "receipt_id", "status", "native_request", "bindings",
+                             "prepared_request_sha256", "prepared_input_sha256", "record_sha256", "native_input_count"}
+            if (set(evidence) != expected_keys or type(evidence["schema_version"]) is not int
+                    or evidence["schema_version"] != 1 or evidence["status"] != "qualified"
+                    or evidence["scope"] != "native_to_prepared_before_image_transport"
+                    or evidence["receipt_id"] != receipt):
+                continue
+            if evidence["record_sha256"] != _canonical_json_sha256({k:v for k,v in evidence.items() if k != "record_sha256"}):
+                continue
+            request_hash = _canonical_json_sha256(request)
+            items = request.get("input")
+            if (request_hash not in request_hashes or evidence["prepared_request_sha256"] != request_hash
+                    or not isinstance(items, list)
+                    or evidence["prepared_input_sha256"] != _canonical_json_sha256(items)):
+                continue
+            metadata = native_request_metadata(request, {})
+            original_metadata = evidence["native_request"]
+            if (metadata.get("status") != "recognized" or metadata.get("request_kind") != "turn"
+                    or metadata.get("thread_id") != owner or not isinstance(original_metadata, dict)
+                    or original_metadata.get("status") != "recognized"
+                    or any(original_metadata.get(k) != metadata.get(k) for k in ("thread_id", "turn_id", "request_kind"))):
+                continue
+            bindings = evidence["bindings"]
+            native_count = evidence["native_input_count"]
+            if (type(native_count) is not int or native_count < 0 or not isinstance(bindings, list)
+                    or not bindings or len(bindings) > min(128, native_count)):
+                continue
+            ids, indices, native_indices = set(), set(), set()
+            valid_rows = []
+            for binding in bindings:
+                if not isinstance(binding, dict) or set(binding) != {"native_input_index", "native_item_id", "native_peer_sha256",
+                        "author", "recipient", "prepared_input_index", "prepared_item_sha256"}:
+                    raise ValueError("invalid peer binding")
+                item_id, index, native_index = binding["native_item_id"], binding["prepared_input_index"], binding["native_input_index"]
+                if (not isinstance(item_id, str) or not item_id or len(item_id) > 256 or item_id in ids
+                        or type(index) is not int or index < 0 or index >= len(items) or index in indices
+                        or type(native_index) is not int or native_index < 0 or native_index >= native_count or native_index in native_indices
+                        or binding["prepared_item_sha256"] != _canonical_json_sha256(items[index])):
+                    raise ValueError("invalid peer binding identity/index/hash")
+                ids.add(item_id);indices.add(index);native_indices.add(native_index)
+                valid_rows.append(binding)
+            for binding in valid_rows:
+                item_id, index = binding["native_item_id"], binding["prepared_input_index"]
+                source = sources.get(item_id)
+                if source is None or item_id in ambiguous:
+                    continue
+                fingerprint, peer = source
+                if (fingerprint != binding["native_peer_sha256"] or peer["author"] != sender
+                        or peer["recipient"] != recipient or binding["author"] != sender or binding["recipient"] != recipient):
+                    continue
+                prepared_peer = _peer_semantics(items[index])
+                if prepared_peer is None or _canonical_json_sha256(prepared_peer) != fingerprint:
+                    continue
+                if items[index].get("type") == "agent_message" and items[index].get("id") != item_id:
+                    continue
+                text = "\n".join(part["text"] for part in peer["content"])
+                if not text.startswith(header) or not all(marker in text[len(header):] for marker in markers):
+                    continue
+                # Historical source turn IDs may legitimately appear in later
+                # requests; identity is owner+item ID+content, not equal turn IDs.
+                found[(receipt, index)] = {"receipt_id": receipt, "owner": owner, **binding,
+                    "prepared_request_sha256": request_hash,
+                    "prepared_input_sha256": evidence["prepared_input_sha256"]}
+        except (KeyError, OSError, ValueError, TypeError, RecursionError, UnicodeError):
+            continue
+    return [found[key] for key in sorted(found)]
 
 
 def main():
@@ -111,18 +263,20 @@ do not search, access App IPC, or modify files outside it.'''
         direct=[agent for agent in agents if agent['parent']==thread]
         nested=[agent for agent in agents if agent['parent'] in {a['id'] for a in direct}]
         by_path={agent['path']:agent for agent in agents}
-        requests=[json.loads(path.read_text(encoding='utf-8')) for path in (root/'adapter-traces').glob('*-request.json')]
+        trace = root/'adapter-traces'
+        requests=[_strict_json_loads(path.read_bytes()) for path in trace.glob('*-request.json')]
+        peer_evidence = load_native_peer_evidence(trace)
         # Native siblings share the root prompt-cache key. It is a cache hint,
         # not the actual request owner; use the native client thread metadata.
         auditor=by_path.get('/root/auditor',{})
         deliveries={
-            'producer_progress':delivered_peer_messages(requests,'/root','/root/producer','MESSAGE',['PRODUCER_READY',nonce],native_messages=messages,owner=thread),
-            'parent_to_auditor':delivered_peer_messages(requests,'/root/auditor','/root','MESSAGE',['producer','integer'],native_messages=messages,owner=auditor.get('id')),
-            'auditor_followup':delivered_peer_messages(requests,'/root','/root/auditor','FINAL_ANSWER',['FOLLOWUP_VERIFIED',nonce],native_messages=messages,owner=thread),
+            'producer_progress':delivered_peer_messages(requests,'/root','/root/producer','MESSAGE',['PRODUCER_READY',nonce],native_messages=messages,owner=thread,native_peer_evidence=peer_evidence),
+            'parent_to_auditor':delivered_peer_messages(requests,'/root/auditor','/root','MESSAGE',['producer','integer'],native_messages=messages,owner=auditor.get('id'),native_peer_evidence=peer_evidence),
+            'auditor_followup':delivered_peer_messages(requests,'/root','/root/auditor','FINAL_ANSWER',['FOLLOWUP_VERIFIED',nonce],native_messages=messages,owner=thread,native_peer_evidence=peer_evidence),
         }
         answer=text(items)
         passed=len(direct)==2 and len(nested)==1 and len(agents)==3 and set(by_path)=={'/root/producer','/root/auditor','/root/producer/totals'} and all(a['completed'] and a['tools_used'] for a in agents) and len(auditor.get('completed_turn_ids',[]))>=2 and all(deliveries.values()) and totals.get('total_cents')==750 and totals.get('marker')==nonce and audit.get('passed') is True and audit.get('marker')==nonce and 'FOLLOWUP_VERIFIED' in answer and nonce in answer
-        result={'passed':passed,'sandbox_mode':args.sandbox_mode,'agents':agents,'totals':totals,'audit':audit,'peer_message_count':len(messages),'verified_peer_deliveries':deliveries,'answer':answer}
+        result={'passed':passed,'sandbox_mode':args.sandbox_mode,'agents':agents,'totals':totals,'audit':audit,'peer_message_count':len(messages),'verified_peer_deliveries':deliveries,'native_peer_evidence_diagnostics':{key:value.get('error') or value.get('evidence',{}).get('reason') or value.get('evidence',{}).get('status') for key,value in peer_evidence.items()},'legacy_prepared_receipts_without_peer_sidecar':sorted(path.name[:-len('-request.json')] for path in trace.glob('*-request.json') if path.name[:-len('-request.json')] not in peer_evidence),'peer_evidence_scope':'native_to_prepared_before_image_transport; not upstream consumption','answer':answer}
         (root/'results.json').write_text(json.dumps(result,indent=2), encoding='utf-8');print(json.dumps(result),flush=True)
         if not passed:raise AssertionError('Nested agent lifecycle/effects did not satisfy the declared ownership tree')
     finally:peer.close();print('EVIDENCE',root,flush=True)

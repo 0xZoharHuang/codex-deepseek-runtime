@@ -1,6 +1,7 @@
 """Explicit home policy: frozen default captures, strict snapshots and idle-only CAS."""
 import copy
 import dataclasses
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,31 @@ def normalized(value):
     return value
 
 
+def frozen_registry_with_peer_observation(capture, registry):
+    # The legacy complete Registry snapshot remains frozen. This explicit
+    # observation-only schema extension changes neither model input nor routes.
+    expected = copy.deepcopy(capture['registry'])
+    assert set(vars(registry)) == set(expected) | {'peer_history_bindings'}
+    bindings = []
+    if capture['name'] == 'peer-hosted':
+        peer, = capture['request']['input']
+        assert peer['type'] == 'agent_message'
+        envelope = {key: peer[key] for key in ('author', 'recipient', 'content')}
+        digest = hashlib.sha256(json.dumps(
+            envelope, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+            allow_nan=False).encode('utf-8')).hexdigest()
+        # This frozen case has one native item at final prepared input index 0.
+        # A missing native id remains None and is not strong source provenance.
+        bindings = [{'native_item_id': peer.get('id'), 'native_peer_sha256': digest,
+                     'prepared_input_index': 0}]
+    else:
+        assert not any(item.get('type') == 'agent_message'
+                       for item in capture['request']['input'])
+    assert registry.peer_history_bindings == bindings
+    expected['peer_history_bindings'] = bindings
+    return expected
+
+
 @pytest.mark.parametrize('capture',CAPTURES,ids=lambda c:c['name'])
 def test_absent_and_explicit_official_keep_frozen_payload_and_entire_registry(capture):
     for options in [{},{'ordinary_default_provider':'deepseek'}]:
@@ -32,7 +58,7 @@ def test_absent_and_explicit_official_keep_frozen_payload_and_entire_registry(ca
         payload,registry=protocol.prepare(body,**options)
         assert body==before
         assert payload==capture['payload']
-        assert normalized(vars(registry))==capture['registry']
+        assert normalized(vars(registry))==frozen_registry_with_peer_observation(capture,registry)
 
 
 @pytest.mark.parametrize('capture',CAPTURES,ids=lambda c:c['name'])
@@ -51,7 +77,7 @@ def test_morph_only_replaces_ordinary_branch_and_keeps_native_contract(capture):
     assert payload['provider']['require_parameters'] is True
     if ordinary:assert 'operator_default/morph/fp8' in registry.route_reason
     else:assert registry.route_reason==capture['registry']['route_reason']
-    baseline=copy.deepcopy(capture['registry']);actual=normalized(vars(registry))
+    baseline=frozen_registry_with_peer_observation(capture,registry);actual=normalized(vars(registry))
     for key in ['route_reason','structured_output_mapping']:baseline.pop(key,None);actual.pop(key,None)
     assert actual==baseline
 
@@ -255,11 +281,11 @@ def test_explicit_peer_provider_changes_only_the_peer_hosted_branch(capture):
     if capture['registry']['route_reason']=='native_peer_or_continuation_with_hosted_tools':
         expected['provider']['only']=['primeintellect']
     assert body==before and payload==expected
-    assert normalized(vars(registry))==capture['registry']
+    assert normalized(vars(registry))==frozen_registry_with_peer_observation(capture,registry)
     # Explicit default remains exactly the historical request and Registry.
     baseline,baseline_registry=protocol.prepare(body,peer_hosted_provider='morph/fp8')
     assert baseline==capture['payload']
-    assert normalized(vars(baseline_registry))==capture['registry']
+    assert normalized(vars(baseline_registry))==frozen_registry_with_peer_observation(capture,baseline_registry)
 
 
 @pytest.mark.parametrize('value',['deepseek','cohere','morph','',None,{},True])
@@ -343,3 +369,17 @@ async def test_peer_provider_CLI_is_offline_and_can_remove_the_extension(tmp_pat
     restored=json.loads(capsys.readouterr().out)
     assert restored['configured_peer_hosted_provider']=='morph/fp8'
     assert policy.load(tmp_path/'install-root/codex-home')['policy']==policy.default()
+
+
+def test_peer_capture_keeps_frozen_routing_registry_and_noninput_fields():
+    capture = next(case for case in CAPTURES if case['name'] == 'peer-hosted')
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                         separators=(',', ':')).encode()).hexdigest()
+    assert digest({key: value for key, value in capture['payload'].items() if key != 'input'}) == 'fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88'
+    assert digest(capture['registry']) == 'ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7'
+    peer, = capture['request']['input']
+    message, = capture['payload']['input']
+    assert (message['role'], message['phase']) == ('assistant', 'commentary')
+    assert json.loads(message['content'][0]['text']) == {
+        key: peer[key] for key in ('author', 'recipient', 'content')}

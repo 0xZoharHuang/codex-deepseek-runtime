@@ -107,6 +107,7 @@ class Registry:
         self.published: set[str] = set()
         self.formats: dict[str,str] = {}
         self.peer_context = False
+        self.peer_history_bindings: list[dict] = []
         self.continuation_context = False
         self.unattested_history = False
         self.structured_output_mapping: dict[str, Any] | None = None
@@ -246,6 +247,8 @@ class Registry:
         }]}
 
     def history(self, items: list[dict]) -> list[dict]:
+        self.peer_history_bindings = []
+        peer_history_items = []
         result = []
         context_positions = set()
         for original in self.regroup_tool_history(items):
@@ -287,6 +290,9 @@ class Registry:
                     raise ProtocolError("Search history lacks provider evidence for replay")
                 item = stored
             elif kind == "agent_message":
+                if set(item) - {"type", "id", "author", "recipient", "content",
+                                "internal_chat_message_metadata_passthrough"}:
+                    raise ProtocolError("Unsupported native agent message fields; refusing to discard delivery semantics")
                 self.peer_context = True
                 parts = item.get("content", [])
                 if not isinstance(parts, list) or any(
@@ -296,12 +302,16 @@ class Registry:
                     raise ProtocolError("Cannot decrypt an opaque cross-agent message for DeepSeek")
                 envelope = {"author": item.get("author"), "recipient": item.get("recipient"),
                             "content": parts}
-                # Native InterAgentCommunication uses an assistant commentary
-                # message for its standard Responses fallback.
+                # Neutral AgentMessage projection; role and phase follow the
+                # standard native fallback, not its full serialized envelope.
                 context_positions.add(len(result))
-                result.append({"type": "message", "role": "assistant", "phase": "commentary",
-                               "content": [{"type": "output_text",
-                                            "text": json.dumps(envelope, ensure_ascii=False)}]})
+                mapped = {"type": "message", "role": "assistant", "phase": "commentary",
+                          "content": [{"type": "output_text",
+                                       "text": json.dumps(envelope, ensure_ascii=False)}]}
+                result.append(mapped)
+                peer_history_items.append((item.get("id"), hashlib.sha256(json.dumps(
+                    envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                    allow_nan=False).encode("utf-8")).hexdigest(), mapped))
                 continue
             elif kind == 'additional_tools':
                 role = item.get("role")
@@ -359,6 +369,18 @@ class Registry:
                 projected.append(item)
         if interrupted:
             projected.insert(0, self.interrupted_context(interrupted))
+        # Trace-only provenance follows object identity after all index shifts.
+        if peer_history_items:
+            by_identity = {id(mapped): (native_id, digest, mapped)
+                           for native_id, digest, mapped in peer_history_items}
+            for index, item in enumerate(projected):
+                binding = by_identity.get(id(item))
+                if binding is not None and item is binding[2]:
+                    self.peer_history_bindings.append({
+                        "native_item_id": binding[0],
+                        "native_peer_sha256": binding[1],
+                        "prepared_input_index": index,
+                    })
         return projected
 
     def output(self, original: dict, *, final=True) -> dict:
