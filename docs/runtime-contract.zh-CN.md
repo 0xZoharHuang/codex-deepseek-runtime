@@ -27,6 +27,12 @@ OpenRouter 明确将请求末尾的 assistant 项用于 prefill。候选因此�
 
 原生消息 ID 与内部记录仍保存在 runtime 和映射证据中，不被冒充为跨提供方的 response ID。模型输入 AgentMessage 本身不带 other_recipients/trigger_turn，适配器不会猜补。
 
+继承历史可能含多个收件人的旧任务，当前执行者不能从历史 recipient 推断。候选从 canonical native metadata 的 `agent_name` 和可用的 `history_initialization` 生成一次请求专用的 developer 事实帧，追加到模型输入末尾。它只描述原生身份与历史来源，不增加任务、授权、继承或协作规则；不写回 native history，不缓存角色，不创建新的用户事件。`/morpheus` 等原生合法身份保留，历史初始化值按固定原生枚举验证，不将 warm fork 改成 fresh/safe fork。
+
+canonical、flat 和兼容 HTTP header 的原生保留字段须一致；普通用户消息中的相同文本不能成为身份来源。普通 raw API 请求中无法确认的观测 metadata 不产生事实帧。使用真实 AgentMessage 执行 V2 任务则需要合法原生上下文，缺失或冲突不能靠猜身份继续；合法辅助模型请求只把历史当数据，不添加执行者人格。
+
+诊断预算与功能准入分开。旧 purpose 观察器的 1 MiB 预算不能限制原生未封顶的工具 inventory；功能解码只沿用既有 HTTP 请求边界，完整 inventory 保留。观察器可能无法识别大 metadata，这不应使有效模型请求失败。
+
 Peer 验收须绑定转换发生处的源消息 ID、准备请求中的实际位置与摘要、同一接收线程的原生 rollout。普通 user/assistant 的相同文本、其他消息的 ID、重复 JSON 键或另一份请求的来源文件都不能作为投递证明。追踪只证明 native→准备请求的映射；它不证明上游已消费内容。真实 native 进程加确定性模型夹具用于检验机制，这不等于真实 DeepSeek 已理解相同内容或角色优先级。
 
 一份固定 0.7.0 的长历史任务复核显示，当前导出的准备请求保留全部 80 组重复调用/输出，61 条 reasoning 与原生记录字段一致。历史成功请求的完整发送体未保存，不能仅凭后来的导出判定过去模型已经消费内容，也不能直接归咎于模型。0.7.0 与 0.7.2 的 peer/continuation 转换不同，诊断必须绑定实际版本。

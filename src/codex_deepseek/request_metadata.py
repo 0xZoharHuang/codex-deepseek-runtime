@@ -12,6 +12,27 @@ import uuid
 
 MAX_METADATA_BYTES = 1024 * 1024
 
+def decode_native_metadata_envelope(raw, *, max_bytes=MAX_METADATA_BYTES):
+    """Strict bounded native envelope decoding shared with wire-only codecs."""
+    if not isinstance(raw, str) or len(raw) > max_bytes or len(raw.encode('utf-8')) > max_bytes:
+        raise ValueError('invalid metadata envelope')
+    def pairs(items):
+        result = {}
+        for name, value in items:
+            if name in result: raise ValueError('duplicate metadata key')
+            result[name] = value
+        return result
+    def nonfinite(_): raise ValueError('nonfinite metadata')
+    def finite_float(text):
+        value = float(text)
+        if abs(value) == float('inf'): raise ValueError('nonfinite metadata')
+        return value
+    value = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite, parse_float=finite_float)
+    if not isinstance(value, dict): raise ValueError('invalid metadata object')
+    return value
+
+
+
 def native_request_metadata(body, headers):
     """Bounded purpose/identity evidence from native Core metadata, never prompts.
 
@@ -26,21 +47,7 @@ def native_request_metadata(body, headers):
     def invalid(reason, status='invalid', consistency='not_checked'):
         return {**base, 'status': status, 'header_consistency': consistency, 'reason': reason}
     def decode(raw):
-        if not isinstance(raw, str) or len(raw) > MAX_METADATA_BYTES or len(raw.encode('utf-8')) > MAX_METADATA_BYTES:
-            raise ValueError('invalid metadata envelope')
-        def pairs(items):
-            result = {}
-            for name, value in items:
-                if name in result: raise ValueError('duplicate metadata key')
-                result[name] = value
-            return result
-        def nonfinite(_): raise ValueError('nonfinite metadata')
-        def finite_float(text):
-            value = float(text)
-            if abs(value) == float('inf'): raise ValueError('nonfinite metadata')
-            return value
-        value = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite, parse_float=finite_float)
-        if not isinstance(value, dict): raise ValueError('invalid metadata object')
+        value = decode_native_metadata_envelope(raw)
         kind = value.get('request_kind')
         if kind not in {'turn', 'compaction', 'prewarm', 'memory'}:
             raise ValueError('unknown native request kind')

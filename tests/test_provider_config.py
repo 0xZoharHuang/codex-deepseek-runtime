@@ -376,10 +376,22 @@ def test_peer_capture_keeps_frozen_routing_registry_and_noninput_fields():
     def digest(value):
         return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
                                          separators=(',', ':')).encode()).hexdigest()
-    assert digest({key: value for key, value in capture['payload'].items() if key != 'input'}) == 'fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88'
+    # The only additive noninput field is the explicitly declared native
+    # metadata. Every historical routing/config field remains hash-frozen.
+    assert set(capture['payload']) == {'model', 'input', 'tools', 'store',
+                                      'reasoning', 'provider', 'client_metadata'}
+    assert digest({key: capture['payload'][key] for key in
+                   ('model', 'tools', 'store', 'reasoning', 'provider')}) == 'fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88'
+    expected_metadata = {'x-codex-turn-metadata': json.dumps({
+        'request_kind': 'turn', 'thread_id': '00000000-0000-0000-0000-000000000001',
+        'turn_id': '00000000-0000-0000-0000-000000000002', 'agent_name': '/root',
+        'history_initialization': 'new'}, ensure_ascii=False, separators=(',', ':'))}
+    assert capture['request']['client_metadata'] == capture['payload']['client_metadata'] == expected_metadata
     assert digest(capture['registry']) == 'ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7'
     peer, = capture['request']['input']
-    message, = capture['payload']['input']
+    message, context = capture['payload']['input']
+    assert context == {'type': 'message', 'role': 'developer', 'content': [{
+        'type': 'input_text', 'text': 'Native runtime context:\nCurrent agent name: "/root"\nHistory initialization: "new"\n'}]}
     assert message['role'] == 'user' and 'phase' not in message
     assert message['content'][0] == {'type': 'input_text', 'text': json.dumps({
         'type': 'agent_message', 'author': peer['author'], 'recipient': peer['recipient']},

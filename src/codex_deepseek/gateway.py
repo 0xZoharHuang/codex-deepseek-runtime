@@ -379,7 +379,7 @@ class Gateway:
         try:
             body = await request.json()
             native_request = native_request_metadata(body, request.headers)
-            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider)
+            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=request.headers)
             if registry.regrouped_tool_history:
                 native_request["regrouped_tool_history"] = registry.regrouped_tool_history
             structured = StructuredOutput(body)

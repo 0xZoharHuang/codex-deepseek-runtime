@@ -24,7 +24,8 @@ def fixture(*, peer=None, items=None, owner=OWNER):
     peer = peer if peer is not None else {'type':'agent_message','id':'amsg_synthetic_original',
         'author':'/root','recipient':'/root/auditor','content':[{'type':'input_text','text':TEXT}]}
     body = {'model':MODEL,'input':copy.deepcopy([peer] if items is None else items),
-            'client_metadata':{'x-codex-turn-metadata':json.dumps({'thread_id':owner,'turn_id':TURN,'request_kind':'turn'})}}
+            'client_metadata':{'x-codex-turn-metadata':json.dumps({'thread_id':owner,'turn_id':TURN,'request_kind':'turn',
+                'agent_name':'/root/auditor','history_initialization':'new'})}}
     payload, registry = prepare(body)
     evidence = gateway.native_peer_trace_evidence(RECEIPT, body, payload, registry, native_request_metadata(body, {}))
     return peer, body, payload, registry, {RECEIPT:{'evidence':evidence,'prepared_request':payload}}

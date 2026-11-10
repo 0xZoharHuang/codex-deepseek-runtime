@@ -22,7 +22,8 @@
       "provider_codec": "message/user; metadata type/author/recipient frame; verbatim content parts; no phase",
       "preserved_noninput_sha256": "fce0af854dfcd0094920294bed487a9b3337f4aa9060ddf2b0ea31dc6233ac88",
       "preserved_registry_sha256": "ee7deac8c5156bd61b9b0e2c24801947c3a5071db5fd5c4adaea876a3885f2c7"
-    }
+    },
+    "peer_native_turn_metadata_upgrade": "Peer route case now explicitly declares canonical native current actor/UUID/history and exact wire-only identity fact. Original model/tools/store/reasoning/provider fields, C data part, native SourceID and entire Registry semantics remain unchanged;8nonpeer captures unchanged."
   },
   "cases": [
     {
@@ -895,7 +896,10 @@
           {
             "type": "web_search"
           }
-        ]
+        ],
+        "client_metadata": {
+          "x-codex-turn-metadata": "{\"request_kind\":\"turn\",\"thread_id\":\"00000000-0000-0000-0000-000000000001\",\"turn_id\":\"00000000-0000-0000-0000-000000000002\",\"agent_name\":\"/root\",\"history_initialization\":\"new\"}"
+        }
       },
       "payload": {
         "model": "deepseek/deepseek-v4.1-flash-1017",
@@ -911,6 +915,16 @@
               {
                 "type": "input_text",
                 "text": "Message Type: MESSAGE\nOwned peer evidence."
+              }
+            ]
+          },
+          {
+            "type": "message",
+            "role": "developer",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "Native runtime context:\nCurrent agent name: \"/root\"\nHistory initialization: \"new\"\n"
               }
             ]
           }
@@ -933,6 +947,9 @@
           ],
           "allow_fallbacks": false,
           "require_parameters": true
+        },
+        "client_metadata": {
+          "x-codex-turn-metadata": "{\"request_kind\":\"turn\",\"thread_id\":\"00000000-0000-0000-0000-000000000001\",\"turn_id\":\"00000000-0000-0000-0000-000000000002\",\"agent_name\":\"/root\",\"history_initialization\":\"new\"}"
         }
       },
       "registry": {

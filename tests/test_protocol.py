@@ -13,6 +13,13 @@ def request(tools, **more):
     return {"model": MODEL, "input": [], "tools": tools, **more}
 
 
+def codec_history(items, tools=()):
+    """Unit-level codec only; executing a native turn is tested via prepare."""
+    registry = Registry()
+    registry.tools(list(tools))
+    return {"input": registry.history(items)}, registry
+
+
 def test_schema_format_requirement_preserves_native_tools_history_and_streaming():
     import copy
     from codex_deepseek.protocol import STRUCTURED_FORMAT_INSTRUCTION
@@ -151,7 +158,7 @@ def test_native_v2_plaintext_marker_and_task_content_are_preserved():
     assert call['encrypted_function_args'] == []
     message = {"type": "agent_message", "author": "/root", "recipient": "/root/child", "content": [
         {"type": "input_text", "text": "Message Type: NEW_TASK\nPayload:\nCompute 19*23"}]}
-    payload, _ = prepare(request([], input=[message]))
+    payload, _ = codec_history([message])
     assert len(payload["input"]) == 1
     item = payload["input"][0]
     # Native AgentMessage has no role and marks incoming context. The bridge
@@ -163,7 +170,7 @@ def test_native_v2_plaintext_marker_and_task_content_are_preserved():
     assert item["content"][1:] == message["content"]
     message['content'].append({"type": "encrypted_content", "encrypted_content": "opaque"})
     with pytest.raises(ProtocolError, match="opaque cross-agent"):
-        prepare(request([], input=[message]))
+        codec_history([message])
 
 
 def test_schema_routes_explicitly_without_downgrading_constraint():
@@ -281,7 +288,7 @@ def test_interrupted_reasoning_before_peer_delivery_is_not_an_empty_assistant_tu
     output = {"type": "function_call_output", "call_id": "call_prior", "output": "ready"}
     peer = {"type": "agent_message", "author": "/root/reviewer", "recipient": "/root",
             "content": [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nDone."}]}
-    payload, registry = prepare(request(tools, input=[prior, output, reasoning, peer]))
+    payload, registry = codec_history([prior, output, reasoning, peer], tools)
     items = payload["input"]
     assert items[1:3] == [prior, output]
     assert items[0]["role"] == "assistant"
@@ -324,7 +331,7 @@ def test_native_peer_projection_retains_content_without_inventing_policy(message
             "content": [{"type": "input_text", "text": first},
                         {"type": "input_text", "text": "Keep exact Unicode λ and newlines\nsecond line."}]}
     original = json.loads(json.dumps(peer, ensure_ascii=False))
-    outgoing, registry = prepare(request([], input=[peer]))
+    outgoing, registry = codec_history([peer])
     assert outgoing["input"] == [{
         "type": "message", "role": "user",
         "content": [{"type": "input_text", "text": json.dumps({
@@ -350,7 +357,7 @@ def test_peer_metadata_frame_never_quotes_or_parses_native_body_parts():
     peer = {"type": "agent_message", "id": "native-source-only",
             "author": "/root/actual", "recipient": "/root/worker", "content": parts}
     before = json.loads(json.dumps(peer, ensure_ascii=False))
-    payload, registry = prepare(request([], input=[peer]))
+    payload, registry = codec_history([peer])
     mapped, = payload["input"]
     assert mapped == {
         "type": "message", "role": "user", "content": [{
@@ -376,7 +383,7 @@ def test_native_peer_projection_rejects_unknown_delivery_fields_without_leaking_
             unknown_field: {"private": "SYNTHETIC_DO_NOT_LOG_DELIVERY_VALUE"}}
     original = json.loads(json.dumps(peer))
     with pytest.raises(ProtocolError) as error:
-        prepare(request([], input=[peer]))
+        codec_history([peer])
     assert str(error.value) == (
         "Unsupported native agent message fields; refusing to discard delivery semantics")
     assert unknown_field not in str(error.value)
@@ -397,9 +404,9 @@ def test_native_peer_projection_clears_known_native_bookkeeping_without_changing
     peer = {"type": "agent_message", "author": "/root/worker", "recipient": "/root",
             "content": [{"type": "input_text", "text": "Message Type: MESSAGE\n"},
                         {"type": "input_text", "text": "Preserve λ and exact\npart order."}]}
-    expected, baseline_registry = prepare(request([], input=[peer]))
+    expected, baseline_registry = codec_history([peer])
     original = json.loads(json.dumps({**peer, **bookkeeping}, ensure_ascii=False))
-    outgoing, registry = prepare(request([], input=[original]))
+    outgoing, registry = codec_history([original])
     assert outgoing == expected
     assert original == {**peer, **bookkeeping}
     expected_registry = {**vars(baseline_registry), "peer_history_bindings": [{
@@ -427,7 +434,7 @@ def test_peer_history_binding_tracks_native_identity_after_interrupted_prefix():
     }, *peer["content"]]}
     reasoning = {"type": "reasoning", "id": "rs_orphan",
                  "content": [{"type": "reasoning_text", "text": "Interrupted work."}]}
-    payload, registry = prepare(request([], input=[echo, reasoning, peer]))
+    payload, registry = codec_history([echo, reasoning, peer])
     assert len(payload["input"]) == 3
     # An ordinary user message is identical to the incoming-context codec.
     # Only the true native AgentMessage binds after insert(0) shifts its index.
@@ -469,7 +476,7 @@ def test_peer_history_bindings_keep_missing_or_duplicate_ids_without_guessing(na
             "content": [{"type": "input_text", "text": "Message Type: MESSAGE\nSame data."}]}
     peers = [{**peer, **({"id": native_id} if native_id is not None else {})}
              for native_id in native_ids]
-    payload, registry = prepare(request([], input=peers))
+    payload, registry = codec_history(peers)
     assert len(payload["input"]) == 2 and payload["input"][0] == payload["input"][1]
     assert registry.peer_history_bindings == [
         {"native_item_id": native_id, "native_peer_sha256": peer_history_digest(peer),
@@ -483,7 +490,7 @@ def test_completed_peer_delivery_does_not_consume_a_later_partial_assistant():
             "content": [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nPayload:\nReady."}]}
     partial = {"type": "message", "role": "assistant", "content": [
         {"type": "output_text", "text": "An unfinished model answer."}]}
-    outgoing, registry = prepare(request([], input=[peer, partial]))
+    outgoing, registry = codec_history([peer, partial])
     projected, delivery = outgoing["input"]
     assert json.loads(projected["content"][0]["text"].split("\n", 1)[1]) == [
         {"input_index": 1, "item": partial}]
@@ -573,3 +580,47 @@ def test_additional_tools_reject_unknown_roles_without_inventing_authority(role)
     declaration = {"type": "additional_tools", "role": role, "tools": []}
     with pytest.raises(ProtocolError, match="valid native message role"):
         prepare(request([], input=[declaration]))
+
+
+def test_native_identity_fact_appends_after_history_without_changing_peer_source_binding():
+    metadata = {"request_kind": "turn", "thread_id": "00000000-0000-0000-0000-000000000001",
+                "turn_id": "00000000-0000-0000-0000-000000000002",
+                "agent_name": "/root/producer/totals", "history_initialization": "warm_fork"}
+    peer = {"type": "agent_message", "id": "native-peer-current",
+            "author": "/root/producer", "recipient": "/root/producer/totals",
+            "content": [{"type": "input_text", "text": "Message Type: NEW_TASK\nRead the synthetic data."}]}
+    body = request([], input=[peer], client_metadata={
+        "x-codex-turn-metadata": json.dumps(metadata)})
+    original = json.loads(json.dumps(body))
+    payload, registry = prepare(body, native_headers={"x-codex-turn-metadata": json.dumps(metadata)})
+    assert body == original
+    assert len(payload["input"]) == 2
+    assert payload["input"][-1] == {
+        "type": "message", "role": "developer", "content": [{"type": "input_text", "text":
+            'Native runtime context:\nCurrent agent name: "/root/producer/totals"\n'
+            'History initialization: "warm_fork"\n'}],
+    }
+    assert registry.peer_history_bindings == [{
+        "native_item_id": peer["id"], "native_peer_sha256": peer_history_digest(peer),
+        "prepared_input_index": 0,
+    }]
+    assert payload["input"][0]["role"] == "user"
+    assert payload["input"][0]["content"][1:] == peer["content"]
+
+
+def test_shared_context_decoder_keeps_original_purpose_observation_contract():
+    from codex_deepseek.request_metadata import native_request_metadata
+    metadata = {"request_kind": "turn", "thread_id": "00000000-0000-0000-0000-000000000001",
+                "turn_id": "00000000-0000-0000-0000-000000000002",
+                "agent_name": "/root/actual", "history_initialization": "new"}
+    body = request([], client_metadata={"x-codex-turn-metadata": json.dumps(metadata)})
+    headers = {"x-codex-turn-metadata": json.dumps({**metadata, "agent_name": "/root/other"})}
+    # The old purpose observer still projects only kind/UUIDs. The new semantic
+    # wire guard independently checks actor facts and rejects this conflict.
+    assert native_request_metadata(body, headers) == {
+        "schema_version": 1, "status": "recognized",
+        "source": "client_metadata.x-codex-turn-metadata", "header_consistency": "match",
+        "request_kind": "turn", "thread_id": metadata["thread_id"], "turn_id": metadata["turn_id"],
+    }
+    with pytest.raises(ProtocolError, match="^Invalid native runtime context$"):
+        prepare(body, native_headers=headers)

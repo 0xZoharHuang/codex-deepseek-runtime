@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 from .protocol_errors import ProtocolError
+from .native_context import native_runtime_context
 from .formats import parser as format_parser, validate as validate_format
 from .search import tool as search_tool
 
@@ -510,7 +511,8 @@ def redact_provider_failure(value, credential):
 
 
 def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER,
-            peer_hosted_provider: str = PEER_HOSTED_PROVIDER) -> tuple[dict, Registry]:
+            peer_hosted_provider: str = PEER_HOSTED_PROVIDER,
+            native_headers: Any = None) -> tuple[dict, Registry]:
     """Pin the model/provider and convert tool schemas and retained tool history together."""
     if not isinstance(ordinary_default_provider, str) or ordinary_default_provider not in {PROVIDER, STRUCTURED_PROVIDER}:
         raise ProtocolError("Unsupported ordinary default provider")
@@ -536,6 +538,14 @@ def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: 
         if any(not isinstance(item, dict) for item in result['input']):
             raise ProtocolError("Responses input items must be objects")
         result["input"] = registry.history(result["input"])
+    context = native_runtime_context(body, headers=native_headers)
+    if context is not None:
+        if isinstance(result.get("input"), str):
+            result["input"] = [{"type": "message", "role": "user",
+                                "content": [{"type": "input_text", "text": result["input"]}]}]
+        if not isinstance(result.get("input"), list):
+            raise ProtocolError("Invalid native runtime context")
+        result["input"].append(context)
     by_name = {tool.get("name"):tool for tool in result["tools"] if tool.get("name")}
     for tool in registry.discovered:
         name=tool.get("name")

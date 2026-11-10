@@ -88,7 +88,8 @@ def test_nested_delivery_requires_native_peer_identity_and_actual_message_kind()
     peer = {'type': 'agent_message', 'id': 'amsg_synthetic_source', 'author': '/root', 'recipient': '/root/auditor',
             'content': [{'type': 'input_text', 'text': header}]}
     body = {'model': MODEL, 'input': [peer], 'client_metadata': {'x-codex-turn-metadata': json.dumps(
-        {'thread_id': owner, 'turn_id': turn, 'request_kind': 'turn'})}}
+        {'thread_id': owner, 'turn_id': turn, 'request_kind': 'turn',
+         'agent_name': '/root/auditor', 'history_initialization': 'new'})}}
     prepared, registry = prepare(body)
     assert prepared['input'][0] == {'type':'message','role':'user','content':[
         {'type':'input_text','text':json.dumps({'type':'agent_message','author':peer['author'],'recipient':peer['recipient']},ensure_ascii=False,separators=(',',':'))},
