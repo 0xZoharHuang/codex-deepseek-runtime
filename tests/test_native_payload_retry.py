@@ -345,8 +345,8 @@ def seeded_native_base(rollouts):
     text=meta[0]['base_instructions']['text']
     assert isinstance(text,str) and text
     namespace=uuid.uuid5(uuid.NAMESPACE_OID,meta[0]['session_id'])
-    # Fixed native client.rs985-1027 and protocol Registry.history developer->system mapping.
-    return {'type':'message','id':'msg_'+str(uuid.uuid5(namespace,text)),'role':'system',
+    # Fixed native client.rs985-1027 uses BaseInstructionsFragment's developer role.
+    return {'type':'message','id':'msg_'+str(uuid.uuid5(namespace,text)),'role':'developer',
             'content':[{'type':'input_text','text':text}]}
 
 

@@ -7,25 +7,44 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver import Context
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
-import aiohttp
-from pypdf.errors import PyPdfError
-from .browser import Browser
 from . import __version__
 
 
 def readable_errors(function):
     @functools.wraps(function)
     async def invoke(*args,**kwargs):
+        # Tool-only dependencies must not delay the native MCP startup handshake.
+        import aiohttp
+        from pypdf.errors import PyPdfError
         try:return await function(*args,**kwargs)
         except (ValueError,OSError,TimeoutError,aiohttp.ClientError,PyPdfError) as error:
             raise ToolError('Document operation failed: '+str(error)[:1000]) from error
     return invoke
 
 
+class _LazyBrowser:
+    """One browser per lifespan, created synchronously by the first actual tool."""
+    def __init__(self,home,allowed_private_hosts):
+        self.home=home
+        self.allowed_private_hosts=allowed_private_hosts
+        self.instance=None
+
+    def get(self):
+        if self.instance is None:
+            from .browser import Browser
+            # No await before assignment: concurrent tool tasks share this instance.
+            self.instance=Browser(self.home,allowed_private_hosts=self.allowed_private_hosts)
+        return self.instance
+
+    async def close(self):
+        if self.instance is not None:
+            await self.instance.close()
+
+
 def server(home,allowed_private_hosts=()):
     @asynccontextmanager
     async def lifespan(_):
-        browser=Browser(home,allowed_private_hosts=allowed_private_hosts)
+        browser=_LazyBrowser(home,allowed_private_hosts)
         try:yield browser
         finally:await browser.close()
     mcp=MCPServer('codex-web',version=__version__,lifespan=lifespan,instructions=
@@ -39,19 +58,19 @@ def server(home,allowed_private_hosts=()):
     @readable_errors
     async def open(url_or_ref: str,ctx: Context,start_line: int=0,num_lines: int=100) -> dict:
         """Retrieve an HTTP(S) URL or read a cached page_ reference with numbered lines and link IDs."""
-        return await ctx.request_context.lifespan_context.open(url_or_ref,start_line,num_lines)
+        return await ctx.request_context.lifespan_context.get().open(url_or_ref,start_line,num_lines)
 
     @mcp.tool(annotations=annotations)
     @readable_errors
     async def find(ref_id: str,pattern: str,ctx: Context,case_sensitive: bool=False,context_lines: int=2) -> dict:
         """Find a literal substring in an actually opened page; return exact matching lines and context."""
-        return ctx.request_context.lifespan_context.find(ref_id,pattern,case_sensitive,context_lines)
+        return ctx.request_context.lifespan_context.get().find(ref_id,pattern,case_sensitive,context_lines)
 
     @mcp.tool(annotations=annotations)
     @readable_errors
     async def click(ref_id: str,link_id: int,ctx: Context) -> dict:
         """Follow an actual numbered link from a saved page and retrieve the target document."""
-        return await ctx.request_context.lifespan_context.click(ref_id,link_id)
+        return await ctx.request_context.lifespan_context.get().click(ref_id,link_id)
 
     return mcp
 

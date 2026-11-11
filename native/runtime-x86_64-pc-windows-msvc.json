@@ -2,7 +2,7 @@
   "schema": 1,
   "status": "ready",
   "distribution": "codex-deepseek-runtime",
-  "distribution_version": "0.7.2",
+  "distribution_version": "0.7.3",
   "upstream_version": "0.164.0-alpha.7",
   "upstream_commit": "fe136d4e70ef2b5bbed40a2d22b3aabf267796d3",
   "patch_sha256": "60a3e687386d92f595fced4fdc84abbdcbca93b73138f7078f18c71386a95011",

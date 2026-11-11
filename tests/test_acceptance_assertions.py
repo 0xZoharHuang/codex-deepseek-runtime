@@ -89,17 +89,16 @@ def test_native_text_content_result_is_verified_and_not_confused_with_a_successf
     assert not valid(items)
 
 
-def test_windows_complex_task_requires_native_interpreter_and_no_os_bridge():
+def test_windows_interpreter_text_is_a_declaration_not_actual_execution():
     def event(command):return {'method':'item/completed','params':{'item':{'type':'commandExecution','command':command,'exitCode':0}}}
     python='D:/Fixture/tools/Scripts/python.exe'
-    good=event('& "D:\\Fixture\\tools\\Scripts\\python.exe" -m pytest')
-    assert checks.native_host_execution([good],python,'win32')['passed']
-    assert checks.native_host_execution([event(good['params']['item']['command'].replace('\\','\\\\'))],python,'win32')['passed']
-    failed=event(good['params']['item']['command']);failed['params']['item']['exitCode']=1
-    assert not checks.native_host_execution([failed],python,'win32')['passed']
+    for command in ['& "D:\\Fixture\\tools\\Scripts\\python.exe" -m pytest',
+                    "Write-Output 'D:/Fixture/tools/Scripts/python.exe'",
+                    "if ($false) { & 'D:/Fixture/tools/Scripts/python.exe' -m pytest }"]:
+        proof=checks.native_host_execution([event(command)],python,'win32')
+        assert proof['passed'] is False and proof['native_python_observed'] is False
+        assert proof['native_python_status']=='unverified'
     assert not checks.native_host_execution([],python,'win32')['passed']
-    assert not checks.native_host_execution([event('python -m pytest')],python,'win32')['passed']
-    assert not checks.native_host_execution([good,event('wsl.exe python3 -m pytest')],python,'win32')['passed']
 
 
 @pytest.mark.parametrize('line_ending',[b'\n',b'\r\n'])
@@ -152,7 +151,13 @@ def test_complex_task_cannot_pass_with_missing_runtime_evidence(missing):
             suite['pytest_execution']={'cases':cases,'counts':{'passed':len(cases),'failure':0,'error':0,'skipped':0}}
     controls=dict.fromkeys(checks.real_work_input_names('httpcore'),'0'*64)
     report['fixture_inputs']={'before':controls.copy(),'after':controls.copy(),'unchanged':True}
-    assert checks.real_work_passed(report)
+    baselines={}
+    for suite in report['validation']:
+        if suite['suite'] in {'workspace','upstream-heldout'}:
+            suite['pytest_execution']['sha256']='a'*64
+            baselines[suite['suite']]=checks.pytest_inventory_baseline(suite['pytest_execution'],suite=suite['suite'],
+                source_sha256='b'*64,tools_sha256='c'*64)
+    assert checks.real_work_passed(report,pytest_baselines=baselines)
     if missing=='recovery':report['restarted']=False
     elif missing=='oracle_denial':report['oracle_guard'].pop('read_probe_denied')
     elif missing=='oracle_restore':report['oracle_guard']['restored_probe_unchanged']=False
@@ -164,4 +169,4 @@ def test_complex_task_cannot_pass_with_missing_runtime_evidence(missing):
     elif missing=='driver_changed':report['fixture_inputs']['after']['network_stress.py']='1'*64
     elif missing=='driver_missing':
         report['fixture_inputs']['before'].pop('network_stress.py');report['fixture_inputs']['after'].pop('network_stress.py')
-    assert not checks.real_work_passed(report)
+    assert not checks.real_work_passed(report,pytest_baselines=baselines)

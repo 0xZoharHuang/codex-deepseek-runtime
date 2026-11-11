@@ -15,6 +15,7 @@ import sqlite3
 from contextlib import closing
 import threading
 import time
+import xml.etree.ElementTree as ET
 from verify_live import Peer,qa_sandbox_mode,prepare_workspace,workspace_path
 from acceptance_assertions import current_browser_evidence,complete_work_patch,OracleGuard,real_work_passed,real_work_input_hashes,native_host_execution,real_work_tools_binding
 from install import python_entry,_support,valid_release
@@ -26,6 +27,7 @@ REQUIRE_WEB_RESEARCH = False
 SANDBOX_MODE = 'workspace-write'
 RUNTIME_HOME = None
 TOOLS_ROOT = None
+CONTROLS = None
 
 
 def tool_environment(root):
@@ -36,38 +38,315 @@ def tool_python(root):
     return python_entry(tool_environment(root)).resolve(strict=True)
 
 
+
+def file_sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def source_inventory(directory):
+    result={}
+    for path in sorted(Path(directory).rglob('*')):
+        if any(part in {'.git','__pycache__','.pytest_cache'} for part in path.relative_to(directory).parts):
+            continue
+        if path.is_file():
+            if path.is_symlink() or path.stat().st_nlink!=1:
+                raise ValueError('Linked real-work source control')
+            result[path.relative_to(directory).as_posix()]=file_sha(path)
+    return result
+
+
+def load_work_controls(root,name,tools,*,initial=True):
+    """Read controller-pinned originals before model access; never derive from final tests."""
+    from acceptance_assertions import pytest_execution_evidence,pytest_inventory_coverage
+    if CONTROLS is None:
+        raise ValueError('--controls is required; final results cannot supply their own test inventory')
+    path=(CONTROLS/name/'qualification-controls.json').resolve(strict=True)
+    forbidden=[root.resolve(),Path(workspace_path(root)).resolve(),
+               Path(RUNTIME_HOME).resolve() if RUNTIME_HOME is not None else (root/'home').resolve()]
+    if any(path.is_relative_to(directory) for directory in forbidden):
+        raise ValueError('Qualification controls must remain outside the task fixture, writable workspace and runtime home')
+    expected=os.environ.get('CODEX_DEEPSEEK_QA_CONTROLS_SHA256_'+name.upper())
+    if not expected or file_sha(path)!=expected:
+        raise ValueError('Qualification controls require an independent prelaunch SHA pin')
+    value=json.loads(path.read_text(encoding='utf-8'))
+    if value.get('case')!=name or value.get('schema_version')!=1:
+        raise ValueError('Qualification controls belong to a different task or schema')
+    if real_work_input_hashes(root,name)!=value['fixture_input_sha256']:
+        raise ValueError('Fixture drivers and dependency pins differ from the frozen originals')
+    baselines=value['pytest_baselines']
+    if set(baselines)!={'workspace','upstream-heldout'}:
+        raise ValueError('Both original pytest inventories are required')
+    for suite,baseline in baselines.items():
+        original=value['original_xml'][suite]
+        coverage=pytest_inventory_coverage(pytest_execution_evidence(Path(original['path'])),baseline)
+        if (file_sha(original['path'])!=original['sha256']
+            or baseline['source_junit_sha256']!=original['sha256']
+            or baseline['source_sha256']!=value['input_source_sha256'][suite]
+            or baseline['tools_sha256']!=value['tools_sha256']
+            or not coverage['passed'] or coverage['added_count']!=0):
+            raise ValueError('Original pytest inventory does not match its pinned provenance')
+        source_files=value['source_files_sha256'][suite]
+        if hashlib.sha256(json.dumps(source_files,sort_keys=True,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()!=value['input_source_sha256'][suite]:
+            raise ValueError('Original source manifest does not match the baseline')
+    oracle=source_inventory(root/'oracle')
+    if oracle!=value['oracle_files_sha256']:
+        raise ValueError('Independent oracle differs from the frozen original')
+    if initial:
+        original=source_inventory(root/'work')
+        combined={'work/'+key:sha for key,sha in original.items()}
+        combined.update({'oracle/'+key:sha for key,sha in oracle.items() if key.startswith('tests/')})
+        if (original!=value['source_files_sha256']['workspace']
+            or combined!=value['source_files_sha256']['upstream-heldout']):
+            raise ValueError('Initial task source differs from the frozen original')
+    selected=tools['paths']['selected']
+    if hashlib.sha256(json.dumps(value['tools_files_sha256'],sort_keys=True,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()!=value['tools_sha256']:
+        raise ValueError('Original tools manifest does not match the baseline')
+    if (not tools['same_bytes'] or selected['files_sha256']!=value['tools_files_sha256']
+        or value['interpreter_binding']['launcher']['path']!=str(tool_python(root))
+        or value['interpreter_binding']['launcher']['sha256']!=selected['python_sha256']):
+        raise ValueError('Selected interpreter differs from the original tools')
+    for binding in value['interpreter_binding'].values():
+        if file_sha(binding['path'])!=binding['sha256']:
+            raise ValueError('Pinned interpreter environment has changed')
+    return {**value,'control_path':str(path),'control_sha256':expected}
+
+
+def observed_host_execution(events,root,controls,release):
+    """Join native events with the external controller's retained OS handle evidence."""
+    if sys.platform!='win32':
+        return native_host_execution(events,tool_python(root),sys.platform)
+    from codex_deepseek.processes import identity
+    snapshot=os.environ.get('CODEX_DEEPSEEK_QA_PROCESS_EVIDENCE')
+    from ci.qualify_native import read_process_evidence_bytes
+    raw=read_process_evidence_bytes(Path(snapshot)) if snapshot else None
+    evidence=json.loads(raw) if raw is not None else None
+    retained=root/('controller-process-evidence-'+str(time.time_ns())+'.json') if raw is not None else None
+    if retained is not None:
+        with retained.open('xb') as stream:stream.write(raw)
+    metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
+    manifest=json.loads((release/'native-runtime.json').read_text(encoding='utf-8'))
+    native=(Path(metadata['native_package'])/'bin/codex.exe').resolve(strict=True)
+    expected=manifest['files']['bin/codex.exe']
+    if not isinstance(expected,str):
+        expected=expected['sha256']
+    if file_sha(native)!=expected:
+        raise ValueError('Owned native image differs from its installed manifest')
+    roots=[]
+    if isinstance(evidence,dict):
+        rows=evidence.get('observed',[])
+        owner_key=(os.getpid(),identity(os.getpid()))
+        by_key={(row.get('pid'),row.get('birth')):row for row in rows}
+        if len(by_key)!=len(rows) or owner_key not in by_key:
+            raise ValueError('Process evidence does not belong to this verifier instance')
+        def own_branch(row):
+            visited=set()
+            while (key:=(row.get('pid'),row.get('birth')))!=owner_key:
+                if (key in visited or row.get('ownership')!='stable_direct_parent_edge'
+                    or row.get('stable') is not True or row.get('birth_after')!=row.get('birth')
+                    or row.get('ppid')!=row.get('parent_pid')):
+                    return False
+                visited.add(key)
+                row=by_key.get((row.get('parent_pid'),row.get('parent_birth')))
+                if row is None:return False
+            return True
+        roots=[{'pid':row['pid'],'birth':row['birth'],'exe':str(native),'sha256':expected}
+               for row in rows if isinstance(row.get('exe'),str)
+               and _support.comparison_path(row['exe'])==_support.comparison_path(native)
+               and own_branch(row)]
+    result=native_host_execution(events,tool_python(root),sys.platform,
+        process_evidence=evidence,native_roots=roots,
+        python_sha256=controls['interpreter_binding']['launcher']['sha256'],
+        interpreter_binding=controls['interpreter_binding'])
+    result['controller_evidence']={'live_snapshot_path':snapshot,'retained_path':str(retained) if retained is not None else None,
+        'sha256':hashlib.sha256(raw).hexdigest() if raw is not None else None}
+    return result
+
+
 def log(name, value):
     with PRINT_LOCK:
         print(json.dumps({'case': name, **value}, ensure_ascii=False), flush=True)
 
 
+def job_git_preflight(root):
+    """Check this job's existing Git before creating a native peer; never edit PATH."""
+    result={'passed':False,'checked_before_peer':True,'path_modified':False,
+            'path':None,'sha256':None,'os_exit_code':None}
+    try:
+        found=shutil.which('git')
+        if not found:raise FileNotFoundError('Git is unavailable in the job PATH')
+        selected=Path(found).resolve(strict=True)
+        result.update(path=str(selected),sha256=file_sha(selected))
+        expected=os.environ.get('CODEX_DEEPSEEK_QA_GIT_SHA256')
+        result['expected_sha256']=expected
+        if expected is not None and result['sha256']!=expected:
+            raise ValueError('Job Git differs from the controller pin')
+        version=subprocess.run([str(selected),'--version'],capture_output=True,timeout=10)
+        result.update(os_exit_code=version.returncode,stdout=_output_text(version.stdout),stderr=_output_text(version.stderr))
+        if version.returncode!=0:raise RuntimeError('Git --version failed')
+        result['passed']=True
+    except (OSError,ValueError,RuntimeError,subprocess.TimeoutExpired) as error:
+        result.update(error_type=type(error).__name__,error=str(error))
+    path=root/('job-git-preflight-'+str(time.time_ns())+'.json')
+    result['evidence_path']=str(path)
+    with path.open('x',encoding='utf-8') as stream:json.dump(result,stream,ensure_ascii=False,indent=2)
+    return result
+
+
+def _turn_terminal(peer,thread,start,turn):
+    return next((event for event in reversed(peer.events[start:])
+                 if event.get('method')=='turn/completed'
+                 and event.get('params',{}).get('threadId')==thread
+                 and event.get('params',{}).get('turn',{}).get('id')==turn),None)
+
+
+def operator_interrupt(peer,root,thread,start,turn,*,deadline):
+    """Use only the current native peer/turn for an external case-root request."""
+    request=root/'operator-interrupt.request'
+    if not request.exists():return None
+    if (not request.is_file() or request.is_symlink() or request.stat().st_nlink!=1
+        or request.resolve().is_relative_to(Path(workspace_path(root)).resolve())):
+        raise ValueError('Operator interrupt request must be a plain external case-root file')
+    result={'request_path':str(request),'request_sha256':file_sha(request),
+            'thread_id':thread,'turn_id':turn,'native_confirmed':False}
+    path=root/('operator-interrupt-'+str(time.time_ns())+'.json')
+    result['evidence_path']=str(path)
+    path.write_text(json.dumps(result,indent=2),encoding='utf-8')
+    try:
+        peer.call('turn/interrupt',{'threadId':thread,'turnId':turn})
+        result['rpc_acknowledged']=True
+        peer.complete(thread,start,timeout=max(0,deadline-time.monotonic()),
+                      expected_status='interrupted',turn_id=turn)
+        event=_turn_terminal(peer,thread,start,turn)
+        terminal=event.get('params',{}).get('turn',{}) if event else {}
+        if terminal.get('status')!='interrupted' or terminal.get('error') is not None:
+            raise RuntimeError('Requested native turn interruption is not confirmed')
+        result.update(native_confirmed=True,native_terminal={
+            key:terminal.get(key) for key in ('id','status','error','rootTurnId')})
+    except Exception as error:
+        result.update(error_type=type(error).__name__,error=str(error))
+    path.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+    return result
+
+
+def complete_real_work_turn(peer,root,thread,start,turn,*,timeout):
+    """Poll only operator control while retaining the original native terminal check."""
+    deadline=time.monotonic()+timeout
+    while time.monotonic()<deadline:
+        if getattr(peer,'protocol_error',None) is not None:
+            raise RuntimeError(f'Native app-server protocol error: {peer.protocol_error}')
+        if _turn_terminal(peer,thread,start,turn) is not None:
+            return peer.complete(thread,start,timeout=max(0,deadline-time.monotonic()),turn_id=turn),None
+        interrupted=operator_interrupt(peer,root,thread,start,turn,deadline=deadline)
+        if interrupted is not None:return [],interrupted
+        if getattr(peer,'exited',False) or peer.process.poll() is not None:raise RuntimeError('Native wrapper exited')
+        time.sleep(min(.25,max(0,deadline-time.monotonic())))
+    raise TimeoutError('Native acceptance event timed out')
+
+
+def validation_checkpoint(root,report):
+    """A later external validation fault cannot erase the original task failure."""
+    report.update(passed=False,validation_status='not_completed',validation=[])
+    (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+
+
+def _output_text(value):
+    return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
+
+
+def _validation_environment(root,label,pythonpath):
+    private=root/'validation-temp'/label
+    temp=private/'temp';temp.mkdir(parents=True,exist_ok=True)
+    return ({**os.environ,'PYTHONPATH':str(pythonpath),'PYTHONOPTIMIZE':'',
+             'PYTHONDONTWRITEBYTECODE':'1','TEMP':str(temp),'TMP':str(temp),'TMPDIR':str(temp)},
+            private/'pytest')
+
+
+def _validation_streams(root,label,stdout,stderr):
+    saved={}
+    for name,value in (('stdout',stdout),('stderr',stderr)):
+        raw=value if isinstance(value,bytes) else _output_text(value).encode('utf-8')
+        path=root/f'final-{label}.{name}.bin';path.write_bytes(raw)
+        saved[name]={'path':str(path),'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+    output=_output_text(stdout)+_output_text(stderr)
+    (root/f'final-{label}.txt').write_text(output,encoding='utf-8')
+    return output,saved
+
+
+def _validation_process_failure(root,label,error,start,timeout):
+    stdout=getattr(error,'stdout',None);stderr=getattr(error,'stderr',None)
+    output,streams=_validation_streams(root,label,stdout,stderr)
+    return {'suite':label,'exit':None,'os_exit_code':None,'seconds':round(time.monotonic()-start,2),
+            'status':'timeout' if isinstance(error,subprocess.TimeoutExpired) else 'process_error',
+            'timed_out':isinstance(error,subprocess.TimeoutExpired),'configured_timeout_seconds':timeout,
+            'timeout_seconds':getattr(error,'timeout',None),'error_type':type(error).__name__,'error':str(error),
+            'partial_stdout':_output_text(stdout),'partial_stderr':_output_text(stderr),'raw_streams':streams,
+            'source_imports':{'passed':False,'status':'validation_did_not_complete'},
+            'pytest_execution':{},'tail':output[-2200:]}
+
+
+def _validation_imports(path):
+    raw=None
+    try:
+        raw=path.read_bytes();value=json.loads(raw)
+        if not isinstance(value,dict):raise ValueError('Import receipt must be an object')
+        return value
+    except (OSError,ValueError,UnicodeError) as error:
+        return {'passed':False,'status':'invalid_or_missing','error_type':type(error).__name__,
+                'error':str(error),'receipt_path':str(path),
+                'receipt_sha256':hashlib.sha256(raw).hexdigest() if raw is not None else None}
+
+
 def run_test(root, label, args, pythonpath):
-    start = time.monotonic()
+    start=time.monotonic()
     imports=root/f'final-{label}-imports.json';package='jinja2' if root.name=='jinja' else 'httpcore'
-    if imports.exists():imports.unlink()
     junit=root/f'final-{label}.junit.xml'
-    if junit.exists():junit.unlink()
-    p = subprocess.run([str(tool_python(root)),'-B',str(Path(__file__).with_name('real_work_imports.py')),
-                        '--package',package,'--root',str(pythonpath),'--receipt',str(imports),'pytest','--junitxml='+str(junit),*args], cwd=workspace_path(root),
-                       env={**os.environ, 'PYTHONPATH': str(pythonpath),'PYTHONOPTIMIZE':'','PYTHONDONTWRITEBYTECODE':'1'}, capture_output=True, text=True, timeout=180)
-    (root/f'final-{label}.txt').write_text(p.stdout+p.stderr, encoding='utf-8')
-    proof=json.loads(imports.read_text(encoding='utf-8')) if imports.is_file() else {'passed':False}
+    test_root=Path(workspace_path(root)) if label=='workspace' else root/'oracle' if label=='upstream-heldout' else root
+    try:
+        if imports.exists():imports.unlink()
+        if junit.exists():junit.unlink()
+        environment,basetemp=_validation_environment(root,label,pythonpath)
+        p=subprocess.run([str(tool_python(root)),'-B',str(Path(__file__).with_name('real_work_imports.py')),
+            '--package',package,'--root',str(pythonpath),'--receipt',str(imports),'pytest',
+            '--rootdir='+str(test_root),'--basetemp='+str(basetemp),'--junitxml='+str(junit),*args],
+            cwd=workspace_path(root),env=environment,capture_output=True,timeout=180)
+    except (subprocess.TimeoutExpired,OSError) as error:
+        return _validation_process_failure(root,label,error,start,180)
+    output,streams=_validation_streams(root,label,p.stdout,p.stderr)
+    proof=_validation_imports(imports)
     from acceptance_assertions import pytest_execution_evidence
-    executed=pytest_execution_evidence(junit) if junit.is_file() else {}
-    return {'suite': label, 'exit': p.returncode if p.returncode else (0 if proof.get('passed') is True else 1), 'seconds': round(time.monotonic()-start, 2),
-            'source_imports':proof,'pytest_execution':executed,'tail': (p.stdout+p.stderr)[-2200:]}
+    try:
+        executed=pytest_execution_evidence(junit)
+        valid_xml=True
+    except (ValueError,ET.ParseError,OSError,UnicodeError) as error:
+        try:junit_sha256=file_sha(junit)
+        except OSError:junit_sha256=None
+        executed={'status':'invalid','error_type':type(error).__name__,'error':str(error),
+                  'junit_path':str(junit),'junit_sha256':junit_sha256}
+        valid_xml=False
+    valid=proof.get('passed') is True and valid_xml
+    return {'suite':label,'exit':p.returncode if p.returncode else (0 if valid else 1),
+            'os_exit_code':p.returncode,'seconds':round(time.monotonic()-start,2),
+            'status':'completed' if valid else 'invalid_validation_receipt','raw_streams':streams,
+            'source_imports':proof,'pytest_execution':executed,'tail':output[-2200:]}
 
 
 def run_script(root,label,filename):
-    imports=root/f'final-{label}-imports.json'
-    if imports.exists():imports.unlink()
-    p=subprocess.run([str(tool_python(root)),'-B',str(Path(__file__).with_name('real_work_imports.py')),
-                      '--package','httpcore','--root',str(root/'work'),'--receipt',str(imports),'script',str(root/filename)],cwd=workspace_path(root),
-                     env={**os.environ,'PYTHONPATH':str(root/'work'),'PYTHONOPTIMIZE':'','PYTHONDONTWRITEBYTECODE':'1'},capture_output=True,text=True,timeout=60)
-    (root/f'final-{label}.txt').write_text(p.stdout+p.stderr, encoding='utf-8')
-    proof=json.loads(imports.read_text(encoding='utf-8')) if imports.is_file() else {'passed':False}
+    start=time.monotonic();imports=root/f'final-{label}-imports.json'
+    try:
+        if imports.exists():imports.unlink()
+        environment,_=_validation_environment(root,label,root/'work')
+        p=subprocess.run([str(tool_python(root)),'-B',str(Path(__file__).with_name('real_work_imports.py')),
+            '--package','httpcore','--root',str(root/'work'),'--receipt',str(imports),'script',str(root/filename)],
+            cwd=workspace_path(root),env=environment,capture_output=True,timeout=60)
+    except (subprocess.TimeoutExpired,OSError) as error:
+        return _validation_process_failure(root,label,error,start,60)
+    output,streams=_validation_streams(root,label,p.stdout,p.stderr)
+    proof=_validation_imports(imports)
     return {'suite':label,'exit':p.returncode if p.returncode else (0 if proof.get('passed') is True else 1),
-            'source_imports':proof,'tail':(p.stdout+p.stderr)[-2200:]}
+            'os_exit_code':p.returncode,'seconds':round(time.monotonic()-start,2),'raw_streams':streams,
+            'status':'completed' if proof.get('passed') is True else 'invalid_validation_receipt',
+            'source_imports':proof,'tail':output[-2200:]}
 
 
 def qualified_entry_release(entry, runtime_home=None):
@@ -165,11 +444,33 @@ def fresh_reviewer_completed(reviews,parent_turn,previous=None):
                for row in reviews for completion in row['verified_completions'])
 
 
+def cleanup_real_work(report,peer,oracle_guard,root):
+    """Retain the task failure, attempt both cleanups, and persist unsafe teardown."""
+    errors=[]
+    for phase,operation in [("peer.close",peer.close if peer is not None else None),
+                            ("oracle.restore",oracle_guard.restore)]:
+        if operation is None:continue
+        try:operation()
+        except Exception as error:
+            errors.append({"phase":phase,"type":type(error).__name__,"error":str(error)})
+    report['cleanup_errors']=errors
+    if not errors:return True
+    if not report.get('error'):report['error']='Real-work cleanup failed'
+    report['passed']=False
+    # evidence reads the protected probe. Never request it after failed cleanup.
+    report['oracle_guard']={'restore_succeeded':not any(e['phase']=='oracle.restore' for e in errors),
+                            'evidence_status':'not_verified_after_cleanup_failure',
+                            'source_unchanged':False}
+    (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    return False
+
+
 def scenario(name):
     root = BASE/name
     work=prepare_workspace(root)
     tools_before=real_work_tools_binding(root,tool_environment(root))
     if not tools_before['same_bytes']:raise ValueError('Selected real-work tools differ from the pinned original')
+    controls=load_work_controls(root,name,tools_before)
     home=Path(RUNTIME_HOME).resolve() if RUNTIME_HOME is not None else root/'home'
     controlled_inputs=real_work_input_hashes(root,name)
     if (root/'results.json').exists():
@@ -218,8 +519,10 @@ multi_agent_v2 = true
     index = 0
     started = time.monotonic()
     report = {'case': name, 'scope': 'native-runtime', 'source_id':metadata['source_id'],'started': time.time(), 'restarted': False,'sandbox_mode':SANDBOX_MODE}
+    report['git_preflight']=job_git_preflight(root)
     (root/'task.txt').write_text(common+task, encoding='utf-8')
     try:
+        if not report['git_preflight']['passed']:raise RuntimeError('Job Git preflight failed before peer creation')
         oracle_guard.lock()
         peer=Peer(root,runtime_home=RUNTIME_HOME,environment={'PYTHONDONTWRITEBYTECODE':'1'})
         thread = peer.new(sandbox=SANDBOX_MODE)
@@ -229,10 +532,15 @@ multi_agent_v2 = true
         last_count = 0
         end = time.monotonic()+1800
         while time.monotonic() < end:
-            completed = [e for e in peer.events[index:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==thread]
+            completed = [e for e in peer.events[index:] if e.get('method')=='turn/completed' and e.get('params',{}).get('threadId')==thread and e.get('params',{}).get('turn',{}).get('id')==turn]
             if completed:
                 report['turn_status'] = completed[-1]['params']['turn']['status']
                 break
+            interrupted=operator_interrupt(peer,root,thread,index,turn,deadline=end)
+            if interrupted is not None:
+                report['operator_interrupt']=interrupted
+                report['turn_status']='interrupted' if interrupted['native_confirmed'] else None
+                raise RuntimeError('Operator requested native turn interruption' if interrupted['native_confirmed'] else 'Operator native interruption failed')
             if peer.process.poll() is not None:
                 raise RuntimeError('Native wrapper exited')
             if name=='httpcore' and not report['restarted']:
@@ -260,10 +568,16 @@ multi_agent_v2 = true
         report['final_messages']=[e['params']['item'].get('text','') for e in peer.events if e.get('method')=='item/completed' and e.get('params',{}).get('threadId')==thread and e['params']['item'].get('type')=='agentMessage']
     except Exception as exc:
         report['error']=str(exc)
+        report['primary_error']={'type':type(exc).__name__,'error':str(exc)}
     finally:
-        try:
-            if peer:peer.close()
-        finally:oracle_guard.restore()
+        report['seconds']=round(time.monotonic()-started,2)
+        cleanup_ok=cleanup_real_work(report,peer,oracle_guard,root)
+    if not cleanup_ok:return report
+    validation_checkpoint(root,report)
+    if not report['git_preflight']['passed'] or report.get('operator_interrupt'):
+        report['validation_status']='not_started_after_preflight_or_operator_stop'
+        (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+        return report
     report['oracle_guard']={**oracle_guard.evidence,'source_unchanged':oracle_sources()==oracle_before,'source_files':len(oracle_before)}
     report['seconds']=round(time.monotonic()-started,2)
     work=Path(workspace_path(root));pp=work/'src' if name=='jinja' else work
@@ -283,7 +597,7 @@ multi_agent_v2 = true
             pages=[{key:page.get(key) for key in ['url','source_sha256','retrieved_at']} for (raw,) in db.execute('SELECT payload FROM pages') for page in [json.loads(raw)]]
     persisted_events=[event for path in root.glob('events-*.json') for event in json.loads(path.read_text(encoding='utf-8'))]
     report['host_platform']=sys.platform
-    report['native_host_execution']=native_host_execution(persisted_events,py,sys.platform)
+    report['native_host_execution']=observed_host_execution(persisted_events,root,controls,release)
     browser_calls=[event['params']['item'] for event in persisted_events if event.get('method')=='item/completed' and event.get('params',{}).get('item',{}).get('type')=='mcpToolCall' and event['params']['item'].get('server')=='codex_web']
     completed_actions=sorted({call['tool'] for call in browser_calls if call.get('status')=='completed' and not call.get('error')})
     report['web_research']={'required':REQUIRE_WEB_RESEARCH,'pages':pages,'distinct_actual_urls':len({p['url'] for p in pages}),'native_completed_actions':completed_actions}
@@ -292,7 +606,11 @@ multi_agent_v2 = true
     report['fixture_inputs']={'before':controlled_inputs,'after':current_inputs,'unchanged':controlled_inputs==current_inputs}
     tools_after=real_work_tools_binding(root,tool_environment(root))
     report['tool_environment']={'before':tools_before,'after':tools_after,'unchanged':tools_before==tools_after}
-    report['passed']=real_work_passed(report) and tools_before==tools_after
+    report['qualification_controls']={'path':controls['control_path'],'sha256':controls['control_sha256'],
+        'baseline_sha256':{suite:baseline['sha256'] for suite,baseline in controls['pytest_baselines'].items()}}
+    controls_after=load_work_controls(root,name,tools_after,initial=False)
+    report['validation_status']='completed'
+    report['passed']=real_work_passed(report,pytest_baselines=controls['pytest_baselines']) and tools_before==tools_after and controls==controls_after
     (root/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2), encoding='utf-8')
     log(name,report)
     return report
@@ -301,6 +619,7 @@ multi_agent_v2 = true
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--fixtures',type=Path,default=BASE)
+    parser.add_argument('--controls',type=Path,required=True,help='External original source/test inventories pinned by the controller before model launch')
     parser.add_argument('--tools-root',type=Path,help='Explicit read-only copies under ROOT/<case>/tools311; original fixtures remain pinned')
     parser.add_argument('--case',choices=['jinja','httpcore'],help='Run one real project; required for an existing pinned runtime profile')
     parser.add_argument('--runtime-home',type=Path,help='Reuse an explicitly owned, prequalified profile without rewriting its config')
@@ -311,6 +630,7 @@ if __name__=='__main__':
                         help='Full-access real-work acceptance must be paired with separate native sandbox enforcement evidence')
     options=parser.parse_args()
     BASE=options.fixtures.resolve()
+    CONTROLS=options.controls.resolve(strict=True)
     TOOLS_ROOT=options.tools_root.resolve(strict=True) if options.tools_root else None
     RUNTIME_HOME=options.runtime_home.resolve() if options.runtime_home else None
     if RUNTIME_HOME is not None and not options.case:parser.error('--runtime-home requires one --case')

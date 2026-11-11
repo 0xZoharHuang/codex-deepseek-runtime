@@ -408,6 +408,13 @@ def expected_offline_skips(target):
         result['test_cds_skill_inspect::test_posix_actual_offline_timeout_is_bounded']='POSIX shell/shebang timeout fixture; not Windows process execution evidence'
         result['test_native_source_extraction::test_unix_extracts_real_symlink_target_and_bytes']='Requires native Unix symlink extraction'
     if target!='x86_64-pc-windows-msvc':
+        for name in [
+            'test_real_windows_child_exit_is_snapshot_before_owner_finishes[0]',
+            'test_real_windows_child_exit_is_snapshot_before_owner_finishes[7]',
+            'test_wrong_instance_birth_never_becomes_an_exit_or_retained_handle',
+            'test_snapshot_write_failure_is_explicit_and_cannot_be_success',
+        ]:
+            result['test_owned_process_exit_snapshot::'+name]='Windows retained OS process handles'
         result['test_runtime_home_owner::test_native_runtime_home_pins_parent_during_a_real_rename_attack']='Windows native parent-handle sharing contract'
         for name in ['test_windows_native_runtime_home_rejects_unproven_BA_owner[unprotected]',
                      'test_windows_native_runtime_home_rejects_unproven_BA_owner[foreign-ace]',

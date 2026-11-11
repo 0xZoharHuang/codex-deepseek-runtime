@@ -163,7 +163,7 @@ def import_offline_evidence(external,root):
 
 def main():
     if not __debug__:raise SystemExit('Acceptance must run with Python assertions enabled')
-    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');parser.add_argument('--offline-report',type=Path,help='Reuse a separately executed complete Windows offline suite with exact source and installation identity');parser.add_argument('--native-source-archive',type=Path,help='Exact cached upstream archive required by complete offline source-replay tests');parser.add_argument('--windows-prepare-manifest',type=Path,help='Explicit bounded native sandbox preparation admission for this QA run');parser.add_argument('--windows-prepare-sha256');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--entry',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fixtures',type=Path,required=True);parser.add_argument('--real-work-controls',type=Path,help='Controller-pinned original real-work source and pytest inventories');parser.add_argument('--native-probe',type=Path,required=True);parser.add_argument('--keyring-probe',type=Path);parser.add_argument('--jobs',type=int,default=2);parser.add_argument('--only',action='append');parser.add_argument('--require-web-research',action='store_true');parser.add_argument('--sandbox-mode',choices=['workspace-write','danger-full-access'],default='workspace-write');parser.add_argument('--offline-report',type=Path,help='Reuse a separately executed complete Windows offline suite with exact source and installation identity');parser.add_argument('--native-source-archive',type=Path,help='Exact cached upstream archive required by complete offline source-replay tests');parser.add_argument('--windows-prepare-manifest',type=Path,help='Explicit bounded native sandbox preparation admission for this QA run');parser.add_argument('--windows-prepare-sha256');args=parser.parse_args()
     entry=args.entry.expanduser().resolve()
     release=entry.parent.parent.parent
     metadata=json.loads((release/'installation.json').read_text(encoding='utf-8'))
@@ -205,7 +205,7 @@ def main():
     gates={
         'tui':[sys.executable,str(SOURCE/'verify_tui_audit.py'),'--entry',str(entry),'--output',output('tui'),'--sandbox-mode',args.sandbox_mode],
         'tui-interrupt':[sys.executable,str(SOURCE/'verify_tui_interrupt.py'),'--entry',str(entry),'--output',output('tui-interrupt'),'--sandbox-mode',args.sandbox_mode],
-        'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),'--sandbox-mode',args.sandbox_mode,*(['--require-web-research'] if args.require_web_research else [])],
+        'real-work':[sys.executable,str(SOURCE/'verify_real_work.py'),'--fixtures',str(args.fixtures.resolve()),'--sandbox-mode',args.sandbox_mode,*(['--controls',str(args.real_work_controls.resolve(strict=True))] if args.real_work_controls else []),*(['--require-web-research'] if args.require_web_research else [])],
         'native-revocation':[sys.executable,str(SOURCE/'verify_native_revocation.py'),'--probe',str(args.native_probe.resolve()),'--http-binary',environment['CODEX_DEEPSEEK_TEST_HTTP_BINARY'],'--output',output('native-revocation')],
         'offline':installed_offline_command(python_entry(release/'venv'),'-W','error','-p','pytest_asyncio.plugin','-o','asyncio_default_fixture_loop_scope=function','-q',str(SOURCE/'tests'),'--junitxml='+output('offline.xml')),
         'live':[sys.executable,str(SOURCE/'verify_live.py'),'--agents','--output',output('live')],
@@ -240,6 +240,8 @@ def main():
     # in the assembler. Keep them explicitly runnable without silently adding an
     # extra gate to the exact standard regression set.
     selected=args.only or sorted(GATES)
+    if 'real-work' in selected and args.real_work_controls is None:
+        parser.error('--real-work-controls is required for the real-work gate')
     offline_archive=None
     if 'offline' in selected and args.offline_report is None:
         if args.native_source_archive is None:

@@ -274,6 +274,26 @@
       "classname": "tests.test_windows_asyncio",
       "name": "test_actual_aiohttp_connection_reaches_clean_state[RST]",
       "message": "Actual Windows Proactor HTTP transport qualification"
+    },
+    {
+      "classname": "tests.test_owned_process_exit_snapshot",
+      "name": "test_real_windows_child_exit_is_snapshot_before_owner_finishes[0]",
+      "message": "Windows retained OS process handles"
+    },
+    {
+      "classname": "tests.test_owned_process_exit_snapshot",
+      "name": "test_real_windows_child_exit_is_snapshot_before_owner_finishes[7]",
+      "message": "Windows retained OS process handles"
+    },
+    {
+      "classname": "tests.test_owned_process_exit_snapshot",
+      "name": "test_wrong_instance_birth_never_becomes_an_exit_or_retained_handle",
+      "message": "Windows retained OS process handles"
+    },
+    {
+      "classname": "tests.test_owned_process_exit_snapshot",
+      "name": "test_snapshot_write_failure_is_explicit_and_cannot_be_success",
+      "message": "Windows retained OS process handles"
     }
   ],
   "linux": [],
