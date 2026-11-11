@@ -20,11 +20,13 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_log import AccessLogger
 
-from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response, provider_failure_diagnostic, redact_provider_failure
+from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response, provider_failure_diagnostic, redact_provider_failure, redact_provider_trace
 
 from .state import Store
 from .request_metadata import native_request_metadata
-from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers, safe_error_body, error_body_fallback, sensitive_http_value
+from .native_http import NativeTransport, NativeRawUnsupported, network_policy
+from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
+                            _http_error_diagnostic, safe_error_text, filter_error_headers)
 from .structured import StructuredOutput
 from .image_provider import ImageProvider,load_image_config
 from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOperationError
@@ -44,61 +46,6 @@ _OBSERVED_PROVIDERS = {
 }
 
 
-# Diagnostic labels are a finite policy, not arbitrary provider text. Native
-# failure labels and common protocol error classes are admitted verbatim; adding
-# labels requires review. Never search messages, metadata.raw or nested requests.
-_HTTP_ERROR_CODES = frozenset({400, 401, 402, 403, 404, 408, 409, 413, 415, 422,
-                              429, 500, 502, 503, 504})
-_HTTP_ERROR_LABELS = frozenset({
-    "context_length_exceeded", "insufficient_quota", "credit_balance_exhausted",
-    "organization_spend_limit_exceeded", "project_spend_limit_exceeded",
-    "usage_not_included", "cyber_policy", "bio_policy", "misalignment_policy_violation",
-    "invalid_prompt", "server_is_overloaded", "rate_limit_exceeded", "slow_down",
-    "image_file_too_large", "invalid_request_error", "authentication_error",
-    "permission_error", "not_found_error", "timeout_error", "server_error",
-    "api_error", "provider_error", "rate_limit_error",
-})
-_HTTP_DIAGNOSTIC_BODY_BYTES = 32 * 1024
-
-
-def _http_error_diagnostic(raw, content_type, credential):
-    """Bounded observation only; no body, message, request or header IDs survive."""
-    result = {"schema": 1, "event_type": "upstream.http_error"}
-    if not raw:
-        return {**result, "body_status": "empty"}
-    if len(raw) > _HTTP_DIAGNOSTIC_BODY_BYTES:
-        return {**result, "body_status": "oversize"}
-    mime = content_type.split(";", 1)[0].strip().lower()
-    if mime != "application/json" and not (mime.startswith("application/") and mime.endswith("+json")):
-        return {**result, "body_status": "non_json"}
-    def unique(pairs):
-        value = {}
-        for key, item in pairs:
-            if key in value:
-                raise ValueError("Duplicate diagnostic JSON key")
-            value[key] = item
-        return value
-    def invalid_constant(value):
-        raise ValueError("Non-JSON diagnostic number")
-    try:
-        body = json.loads(raw.decode("utf-8"), object_pairs_hook=unique,
-                          parse_constant=invalid_constant)
-    except (UnicodeError, ValueError, RecursionError):
-        return {**result, "body_status": "invalid_json"}
-    error = body.get("error") if isinstance(body, dict) else None
-    if not isinstance(error, dict):
-        return {**result, "body_status": "no_error_object"}
-    result["body_status"] = "json"
-    for field in ("code", "type"):
-        candidate = error.get(field)
-        if (field == "code" and type(candidate) is int and candidate in _HTTP_ERROR_CODES
-                and (not isinstance(credential, str) or str(candidate) != credential)):
-            result["error_code"] = candidate
-        elif (isinstance(candidate, str) and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", candidate)
-                and candidate in _HTTP_ERROR_LABELS
-                and (not isinstance(credential, str) or not credential or credential not in candidate)):
-            result["error_" + field] = candidate
-    return result
 
 
 def validate_observed_identity(value, requested_provider, *, failed=False):
@@ -459,7 +406,9 @@ class Gateway:
             if trace is None or trace_event_closed:
                 return
             try:
-                safe = redact_provider_failure(original, captured_key)
+                failure_event = isinstance(original, dict) and original.get('type') in {'response.failed', 'error'}
+                safe = (redact_provider_failure(original, captured_key) if failure_event
+                        else redact_provider_trace(original, captured_key))
                 encoded = (json.dumps(safe, ensure_ascii=False, allow_nan=False, sort_keys=True,
                                       separators=(",", ":")) + "\n").encode("utf-8")
                 limit = 1024 * 1024
@@ -489,7 +438,7 @@ class Gateway:
                                                    type(error).__name__)
         def reject_credential_response_id(value):
             identifier = value.get("id") if isinstance(value, dict) else None
-            if isinstance(identifier, str) and captured_key and captured_key in identifier:
+            if isinstance(identifier, str) and captured_key and sensitive_http_value(identifier, captured_key):
                 raise ProtocolError("Provider response identity is invalid")
         def observe_response(value):
             if not isinstance(value, dict):
@@ -651,7 +600,7 @@ class Gateway:
                 # for truthiness, repr, or replacement while closing the receipt.
                 detail = "No usable provider credential"
             else:
-                detail = str(exc).replace(captured_key, "[REDACTED]") if captured_key else str(exc)
+                detail = safe_error_text(str(exc), captured_key) if captured_key else str(exc)
             receipt_detail = detail
             if failure_detail is not None:
                 receipt_detail = json.dumps({"message": detail, "provider_failure": failure_detail})
@@ -662,6 +611,7 @@ class Gateway:
                 if self.images is not None:
                     self.images.record(receipt, status='adapter_error', consumption_status='not_sent',
                                        budget_failure=budget)
+            receipt_detail = safe_error_text(receipt_detail, captured_key)
             self.store.finish(receipt, "adapter_error", status, events, receipt_detail)
             if response is not None and response.prepared:
                 try:
@@ -678,7 +628,7 @@ class Gateway:
             if isinstance(exc,FileOperationError):
                 error_status=exc.status if exc.status in {400,401,403,404,409,413,415,422,429} else 502
                 result=error_response(detail,error_status)
-                for name,value in exc.safe_headers.items():
+                for name,value in filter_error_headers(exc.safe_headers, captured_key).items():
                     if name=='retry-after':result.headers['Retry-After']=value
                 return result
             return error_response(detail,error_status)

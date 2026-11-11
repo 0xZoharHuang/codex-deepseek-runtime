@@ -570,18 +570,24 @@ def provider_failure_diagnostic(event):
             "hash_basis": "canonical_json_utf8"}
 
 
-def redact_provider_failure(value, credential):
-    """Redact the known credential from failure data without changing success identities."""
+def redact_provider_trace(value, credential):
+    """Keep the legacy literal-only projection for ordinary success tracing."""
     if not isinstance(credential, str) or not credential:
         return copy.deepcopy(value)
     if isinstance(value, str):
         return value.replace(credential, "[REDACTED]")
     if isinstance(value, list):
-        return [redact_provider_failure(item, credential) for item in value]
+        return [redact_provider_trace(item, credential) for item in value]
     if isinstance(value, dict):
-        return {redact_provider_failure(key, credential): redact_provider_failure(item, credential)
+        return {redact_provider_trace(key, credential): redact_provider_trace(item, credential)
                 for key, item in value.items()}
     return value
+
+
+def redact_provider_failure(value, credential):
+    """Failure-only finite semantic privacy, shared with other gateway consumers."""
+    from .error_privacy import redact_error_value
+    return redact_error_value(value, credential)
 
 
 def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER,

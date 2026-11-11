@@ -412,3 +412,25 @@ async def test_known_credential_bytes_in_base64_binary_are_redacted(fake_upstrea
     assert result['error']['code'] == 400 and result['error']['message'] == 'Useful diagnostic'
     decoded = base64.b64decode(result['error']['metadata']['raw'])
     assert KEY.encode() not in decoded and b'prefix:' in decoded and b':suffix' in decoded
+
+
+def test_shared_error_privacy_is_stdlib_only_and_keeps_header_policy_external():
+    import ast
+    from pathlib import Path
+    from multidict import CIMultiDict
+    from codex_deepseek import error_privacy
+    from codex_deepseek.native_http import response_headers
+    tree = ast.parse(Path(error_privacy.__file__).read_text())
+    imports = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            assert node.level == 0
+            imports.add(node.module)
+    assert imports <= {'base64', 'copy', 'html', 'json', 're', 'urllib.parse'}
+    chosen = {'X-Bridge-Custom-Allowed': 'preserve', 'Retry-After': '7', 'X-Request-Id': ESCAPED_KEY}
+    assert error_privacy.filter_error_headers(chosen, KEY) == {'X-Bridge-Custom-Allowed': 'preserve', 'Retry-After': '7'}
+    duplicates = CIMultiDict([('X-Request-Id', KEY), ('X-Request-Id', 'safe'), ('Retry-After', '7')])
+    assert response_headers(duplicates, KEY) == {'Retry-After': '7'}
+    assert response_headers is error_privacy.response_headers
