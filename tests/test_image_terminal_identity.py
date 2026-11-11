@@ -53,7 +53,7 @@ async def run_case(fake_upstream, tmp_path, value, *, stream, damage=None, heade
 
 def envelope(status="completed", identity="model"):
     value = {"id": ID, "status": status, "model": MODEL, "output": [], "error": None}
-    if identity == "model": value["model"] = "unknown"
+    if identity == "model": value["model"] = "other/model"
     else: value["provider"] = "unrequested-provider"
     if status == "completed":
         value["output"] = [{"type": "function_call", "id": "fc-terminal-only", "call_id": "call-terminal-only",

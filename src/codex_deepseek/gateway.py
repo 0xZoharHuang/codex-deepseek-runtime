@@ -48,8 +48,16 @@ _OBSERVED_PROVIDERS = {
 
 
 
-def validate_observed_identity(value, requested_provider, *, failed=False):
-    """Reject explicit response identity contradictions before native dispatch."""
+def validate_observed_identity(value, requested_provider, *, failed=False, incomplete=False):
+    """Reject explicit contradictions; an error-only unknown is no attestation."""
+    error_incomplete = False
+    if incomplete:
+        validate_response(value, "incomplete")
+        details = value.get("incomplete_details")
+        reason = details.get("reason") if isinstance(details, dict) else None
+        # Fixed native treats every other reason (including missing/non-string)
+        # as an error. Literal interrupted instead continues as Completed.
+        error_incomplete = reason != "interrupted"
     if not isinstance(value, dict):
         return  # The existing response/event validator owns envelope validation.
     for name in ("model", "provider"):
@@ -60,6 +68,8 @@ def validate_observed_identity(value, requested_provider, *, failed=False):
             raise ProtocolError("Observed upstream " + name + " must be a nonempty string")
         accepted = _OBSERVED_MODELS if name == "model" else _OBSERVED_PROVIDERS[requested_provider]
         if not failed and item not in accepted:
+            if name == "model" and item == "unknown" and error_incomplete:
+                continue  # Preserve the original error, never claim model identity.
             raise ProtocolError("Upstream returned an incompatible " + name + ": " + item)
 
 
@@ -533,7 +543,8 @@ class Gateway:
                         result = redact_provider_failure(result, captured_key)
                     observe_response(result)
                     await image_terminal(result)
-                    validate_observed_identity(result, payload['provider']['only'][0], failed=failed)
+                    validate_observed_identity(result, payload['provider']['only'][0], failed=failed,
+                                               incomplete=result['status'] == 'incomplete')
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
@@ -559,7 +570,8 @@ class Gateway:
                         await image_terminal(observed, kind.removeprefix("response."))
                     if kind != "error":
                         validate_observed_identity(observed, payload['provider']['only'][0],
-                                                   failed=kind == "response.failed")
+                                                   failed=kind == "response.failed",
+                                                   incomplete=kind == "response.incomplete")
                     for event in structured.events(original):
                         normalized_events = events.transform(event)
                         if events.terminal:
