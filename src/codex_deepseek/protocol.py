@@ -133,6 +133,19 @@ def _validate_native_output_shape(item):
                 or part["type"] not in allowed or not isinstance(part.get("text"), str) for part in parts
             ):
                 raise ProtocolError("Native output reasoning " + field + " has an invalid shape")
+    elif kind == "web_search_call" and item.get("action") is not None:
+        action = item["action"]
+        if not isinstance(action, dict) or not isinstance(action.get("type"), str):
+            raise ProtocolError("Native web search action requires an object with a text type")
+        # Unknown action strings map to native Other. Validate only fields of
+        # the three known variants; preserve all extra fields unchanged.
+        fields = {"search": ("query",), "open_page": ("url",),
+                  "find_in_page": ("url", "pattern")}.get(action["type"], ())
+        if any(action.get(field) is not None and not isinstance(action[field], str) for field in fields):
+            raise ProtocolError("Known native web search action text has an invalid shape")
+        if action["type"] == "search" and action.get("queries") is not None:
+            if not isinstance(action["queries"], list) or any(not isinstance(value, str) for value in action["queries"]):
+                raise ProtocolError("Native web search queries must be a text array or null")
     elif kind == "function_call" and item.get("encrypted_function_args") is not None:
         if not isinstance(item["encrypted_function_args"], list) or any(
             not isinstance(value, str) for value in item["encrypted_function_args"]
@@ -445,6 +458,7 @@ class Registry:
         if not isinstance(original, dict):
             raise ProtocolError("Provider output items must be objects")
         item = copy.deepcopy(original)
+        search_record = None
         if item.get('type') not in {'message','reasoning','function_call','openrouter:web_search'}:
             raise ProtocolError(f'Unsupported provider output item type {item.get("type")!r}')
         if item.get('type') == 'message' and item.get('role') != 'assistant':
@@ -469,6 +483,8 @@ class Registry:
             if tool.namespace == "collaboration" and tool.name in {"spawn_agent", "send_message", "followup_task"}:
                 # Codex's explicit wire marker for known plaintext collaboration
                 # arguments; omission makes native V2 treat message text as ciphertext.
+                if final and item.get("encrypted_function_args") not in (None, []):
+                    raise ProtocolError("Opaque encrypted collaboration arguments cannot become a plaintext call")
                 item["encrypted_function_args"] = []
             if tool.kind == "custom":
                 arguments = item.pop("arguments", "")
@@ -495,12 +511,14 @@ class Registry:
                 item["arguments"] = json.loads(arguments) if arguments else {}
         elif item.get("type") == "openrouter:web_search":
             native_id = "ws_" + item["id"]
-            if self.search_store:
-                self.search_store.put(native_id, item)
-            item["type"] = "web_search_call"
-            item["id"] = native_id
+            search_record = (native_id, item)
+            item = {**item, "type": "web_search_call", "id": native_id}
         if final:
             _validate_native_output_shape(item)
+        if search_record is not None and self.search_store:
+            # A rejected final cannot commit or overwrite replay evidence.
+            # Previews retain their existing storage behavior.
+            self.search_store.put(*search_record)
         return item
 
 
