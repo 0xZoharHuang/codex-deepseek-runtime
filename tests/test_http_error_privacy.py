@@ -1,4 +1,5 @@
 """Synthetic HTTP-error privacy contracts; localhost only, no real credential/model."""
+from contextlib import closing
 import asyncio
 import base64
 import html
@@ -127,7 +128,7 @@ async def exchange(fake_upstream, tmp_path, raw, *, status=400, content_type='ap
             assert (await transport.cleanup(all_unpinned=True))['all_owned_files_deleted']
             if image_receipts is not None:
                 import sqlite3
-                with sqlite3.connect(image_provider.receipts) as db:
+                with closing(sqlite3.connect(image_provider.receipts)) as db:
                     image_receipts.extend(json.loads(row[0]) for row in db.execute('SELECT record FROM calls'))
         return answer, headers, traced
     finally:

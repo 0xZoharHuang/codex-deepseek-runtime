@@ -39,7 +39,8 @@ CASES = [
 ]
 
 
-@pytest.mark.parametrize('raw,mime,classification,code,error_type', CASES)
+@pytest.mark.parametrize('raw,mime,classification,code,error_type', CASES,
+                         ids=['numeric-code', 'context-window-code', 'private-code-type', 'non-scalar-fields', 'object-fields', 'unknown-code-type', 'duplicate-json-key', 'nonfinite-json', 'invalid-utf8', 'nested-depth-1200', 'nested-depth-10000', 'body-at-32k-boundary', 'body-over-32k-boundary', 'html-body', 'json-under-text-content-type', 'empty-body', 'json-without-error-object'])
 async def test_http_failure_detail_is_safe_bounded_and_response_is_unchanged(fake_upstream, tmp_path, raw, mime, classification, code, error_type):
     calls = []
     async def provider(request):
