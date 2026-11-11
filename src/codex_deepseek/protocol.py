@@ -1064,7 +1064,23 @@ class Events:
             self.usage = response.get("usage") or {}
             self.status = "failed"
             self.terminal = True
-        elif kind in {"response.completed", "response.incomplete"}:
+        elif kind == "response.incomplete":
+            response = event.get("response", {})
+            validate_response(response, "incomplete")
+            # Incomplete output is raw error/trace data, not a tool commit.
+            # P167 retains it as Vec<Value> for failed traces only; P35/P41
+            # consume the original reason, response ID and usage. Do not parse
+            # truncated arguments, rewrite opaque diagnostics or cache search
+            # results that never arrived through an authoritative done event.
+            for item in response["output"]:
+                if (isinstance(item, dict) and isinstance(item.get("id"), str)
+                        and item["id"] in self.done):
+                    self.check_item(item, final=True)
+            self.response_id = response["id"]
+            self.usage = response.get("usage") or {}
+            self.status = "incomplete"
+            self.terminal = True
+        elif kind == "response.completed":
             response = event.get("response", {})
             validate_response(response,kind.removeprefix('response.'))
             previously_done=set(self.done)
