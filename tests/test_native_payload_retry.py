@@ -403,7 +403,10 @@ class NoOwnerState:
     def __init__(self,path):self.path=path;self.rows={};self.items={};self.database_id='synthetic-no-owner'
     def start(self,*args,**kwargs):
         identity=uuid.uuid4().hex;self.rows[identity]={'status':'running'};return identity
-    def finish(self,identity,status,*args):self.rows[identity]['status']=status
+    def finish(self,key,status,upstream=None,events=None,detail=None):
+        self.rows[key].update(status=status,upstream_status=upstream,
+            response_id=events.response_id if events else None,
+            usage=events.usage if events else {},detail=detail)
     def progress(self,*args):pass
     def get(self,identity):return self.items.get(identity)
     def put(self,identity,value):self.items[identity]=value
