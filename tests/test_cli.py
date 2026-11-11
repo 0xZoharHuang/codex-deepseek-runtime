@@ -221,3 +221,46 @@ def test_unix_relays_reject_foreign_and_direct_sockets_but_allow_stale_native_al
             assert not owned_unix_path(direct,direct_home)
             with pytest.raises(ProtocolError):check_home_ipc(direct_home)
             with pytest.raises(ProtocolError):check_attachment(['app-server','proxy'],direct_home)
+
+
+def test_native_provider_loopback_bypass_preserves_egress_environment(tmp_path,monkeypatch):
+    import codex_deepseek.cli as cli
+    inherited={'PATH':'owned-path','HTTP_PROXY':'http://proxy.example:3128',
+               'HTTPS_PROXY':'http://proxy.example:3129','ALL_PROXY':'socks5://proxy.example:1080',
+               'NO_PROXY':' .upper.example, 127.0.0.1, [::1]:8080, https://named.example/path ',
+               'no_proxy':' .lower.example,127.0.0.1,*.internal,::1, '}
+    original=dict(inherited);monkeypatch.setattr(cli.os,'environ',inherited)
+    home=tmp_path/'profile'
+    result=cli.native_environment(home,'local-only',tmp_path/'bin/codex',install_shims=False,port=31234)
+    expected='.upper.example,127.0.0.1,[::1]:8080,https://named.example/path,.lower.example,*.internal,::1,localhost'
+    assert result['NO_PROXY']==result['no_proxy']==expected
+    assert result['CODEX_DEEPSEEK_BRIDGE_PORT']=='31234'
+    assert all(result[name]==inherited[name] for name in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY'))
+    assert inherited==original and not home.exists()
+
+
+def test_native_provider_loopback_bypass_handles_missing_empty_and_wildcard(tmp_path,monkeypatch):
+    import codex_deepseek.cli as cli
+    cases=[({},'127.0.0.1,localhost,::1'),
+           ({'NO_PROXY':'','no_proxy':' ,  '},'127.0.0.1,localhost,::1'),
+           ({'NO_PROXY':'*','no_proxy':'*.example,*'},'*,*.example,127.0.0.1,localhost,::1'),
+           ({'no_proxy':'[::1], ::1,localhost,localhost'},'[::1],::1,localhost,127.0.0.1')]
+    for values,expected in cases:
+        inherited={'PATH':'owned-path',**values};original=dict(inherited)
+        with monkeypatch.context() as selected:
+            selected.setattr(cli.os,'environ',inherited)
+            result=cli.native_environment(tmp_path/'profile','local-only',tmp_path/'bin/codex',install_shims=False,port=31234)
+        assert result['NO_PROXY']==result['no_proxy']==expected
+        assert inherited==original
+
+
+def test_native_offline_commands_leave_proxy_bypass_unchanged(tmp_path,monkeypatch):
+    import codex_deepseek.cli as cli
+    for values in ({},{'NO_PROXY':''},{'NO_PROXY':' .upper.example ','no_proxy':'.lower.example'}):
+        inherited={'PATH':'owned-path','HTTPS_PROXY':'http://proxy.example:3128',**values};original=dict(inherited)
+        with monkeypatch.context() as selected:
+            selected.setattr(cli.os,'environ',inherited)
+            result=cli.native_environment(tmp_path/'profile','',tmp_path/'bin/codex',install_shims=False)
+        assert {name:result[name] for name in ('NO_PROXY','no_proxy') if name in result}==values
+        assert result['HTTPS_PROXY']==inherited['HTTPS_PROXY']
+        assert 'CODEX_DEEPSEEK_BRIDGE_PORT' not in result and inherited==original

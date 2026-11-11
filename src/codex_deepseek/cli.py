@@ -59,7 +59,20 @@ def native_environment(home,token,binary, *, install_shims=True, port=None):
         if environment.get(name):environment[name]=str(isolated_path(Path(environment[name])))
     environment.update(CODEX_HOME=str(home),CODEX_DEEPSEEK_HOME=str(home),
                        CODEX_DEEPSEEK_POLICY_HOME=str(home),CODEX_DEEPSEEK_BRIDGE_TOKEN=token)
-    if port is not None:environment['CODEX_DEEPSEEK_BRIDGE_PORT']=str(port)
+    if port is not None:
+        environment['CODEX_DEEPSEEK_BRIDGE_PORT']=str(port)
+        # The authenticated loopback provider is local IPC. Some native HTTP
+        # client paths still discover proxies independently of its route factory.
+        # Limit the bypass to this child; the provider worker retains its egress
+        # environment. Preserve both spellings because clients differ in precedence.
+        bypass=[]
+        for name in ('NO_PROXY','no_proxy'):
+            for entry in environment.get(name,'').split(','):
+                entry=entry.strip()
+                if entry and entry not in bypass:bypass.append(entry)
+        for entry in ('127.0.0.1','localhost','::1'):
+            if entry not in bypass:bypass.append(entry)
+        environment['NO_PROXY']=environment['no_proxy']=','.join(bypass)
     cli_path=home/'provider-state/cli-path'
     if install_shims and WINDOWS:
         from .windows_launchers import profile_launchers
