@@ -2,17 +2,19 @@
 
 CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你可以直接在终端工作，也可以让另一个 agent 通过原生 `exec` 或 `app-server` 使用它。文件修改、工具执行、审批、沙箱、会话恢复和子智能体都由 Codex runtime 负责。每份 CDS 安装有独立的入口、凭据和会话目录。
 
-安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P41 原生组件，Linux 和 macOS 沿用各自的 P35 组件。维护版修复并行工具历史、子智能体消息和中断推理回放。0.7.4 修复模型输出在原生提交边界被静默忽略或改变语义的问题，范围见[维护说明](reports/releases/0.7.4/README.md)；上一维护版见[0.7.3](reports/releases/0.7.3/README.md)；既有发布与验收记录见 [v0.7.2](reports/releases/0.7.2/README.md)，[v0.7.1](reports/releases/0.7.1/README.md)、[v0.7.0](reports/releases/0.7.0/README.md) 与 [v0.6.15](reports/releases/0.6.15/README.md) 作为历史发布记录保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
+安装时按平台固定源码 tag，使用该 tag 的清单选择原生包。当前发行版包含图片缓存格式 3、按图并发与显式安全回滚。Windows 使用 P41 原生组件，Linux 和 macOS 沿用各自的 P35 组件。维护版修复并行工具历史、子智能体消息和中断推理回放。0.7.5 补充上游错误的有限安全诊断，并统一保护失败正文、header、generation 候选和异常信息中的已知凭据，范围见[维护说明](reports/releases/0.7.5/README.md)；0.7.4 的输出边界修复见[原始说明](reports/releases/0.7.4/README.md)；上一维护版见[0.7.3](reports/releases/0.7.3/README.md)；既有发布与验收记录见 [v0.7.2](reports/releases/0.7.2/README.md)，[v0.7.1](reports/releases/0.7.1/README.md)、[v0.7.0](reports/releases/0.7.0/README.md) 与 [v0.6.15](reports/releases/0.6.15/README.md) 作为历史发布记录保留。[各平台使用与升级方案](docs/STABLE_PLAN.zh-CN.md)
 
 | 平台 | 源码 tag（对应平台 Release 开放后使用） | 适用环境与版本记录 |
 | --- | --- | --- |
-| Windows x86_64 | `v0.7.4` | P41。原生 curated 和 marketplace Git 子进程在创建时绑定进程组和独立标准句柄，并保留原 Git 查找语义。 |
-| Linux x86_64 GNU | `v0.7.4` | Ubuntu 24.04 / WSL，沿用 P35，原生归档来自 [v0.6.10 Linux 资产](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。 |
-| macOS Apple Silicon | `v0.7.4` | 沿用 [native-macos-p35 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/native-macos-p35)。 |
+| Windows x86_64 | `v0.7.5` | P41。原生 curated 和 marketplace Git 子进程在创建时绑定进程组和独立标准句柄，并保留原 Git 查找语义。 |
+| Linux x86_64 GNU | `v0.7.5` | Ubuntu 24.04 / WSL，沿用 P35，原生归档来自 [v0.6.10 Linux 资产](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/v0.6.10)。 |
+| macOS Apple Silicon | `v0.7.5` | 沿用 [native-macos-p35 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/tag/native-macos-p35)。 |
 
-本版从 v0.7.4 源码安装适配器，并按此 tag 的平台清单读取既有原生归档。Windows 的 P41 归档仍托管在 v0.7.1 的 Release 页面。各平台的发布状态、最终提交 CI 与安装回读以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 中对应版本说明和证据附件为准；尚未开放 0.7.4 的平台继续使用对应平台已发布的 0.7.3 或 0.7.2。
+本版从 v0.7.5 源码安装适配器，并按此 tag 的平台清单读取既有原生归档。Windows 的 P41 归档仍托管在 v0.7.1 的 Release 页面。各平台的发布状态、最终提交 CI 与安装回读以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 中对应版本说明和证据附件为准；尚未开放 0.7.5 的平台继续使用对应平台已发布版本。
 
-**0.7.4 是协议输出边界的维护更新**：最终 message、reasoning 和搜索项须符合固定原生组件可解码的已知字段类型；未完成工具项和不可表达的加密协作参数不会变成可执行完成项。合法 preview、缺省/null 字段和 opaque 扩展内容继续保留；response.incomplete 原始诊断不会被改成工具完成或通用适配错误。修复经本地纯协议及实际 loopback HTTP 验证；最终提交的各平台安装、CI 与真实回归按 Release 附件分别记录，不借用旧身份或 Codex App 的结果。
+**0.7.5 是失败通道安全维护候选**：HTTP 错误的安全 machine code/type 可进入原 receipt.detail，敏感及无法安全检查的失败内容使用明确安全形式；原 HTTP status、正常无敏字节、重试和消费结论保持。仅覆盖有界、已测试的常见等价编码，不声称任意未知编码全覆盖。未开放的平台仍用各自已发布版本，实际资格见 Release 附件。[本次边界与证据](reports/releases/0.7.5/README.md)
+
+**0.7.4 的原输出边界修复**：最终 message、reasoning 和搜索项须符合固定原生组件可解码的已知字段类型；未完成工具项和不可表达的加密协作参数不会变成可执行完成项。合法 preview、缺省/null 字段和 opaque 扩展内容继续保留；response.incomplete 原始诊断不会被改成工具完成或通用适配错误。修复经本地纯协议及实际 loopback HTTP 验证；最终提交的各平台安装、CI 与真实回归按 Release 附件分别记录，不借用旧身份或 Codex App 的结果。
 
 **以下为 0.7.3 历史维护与原身份快照**，修复三条实际使用路径：原生子智能体当前身份的协议表达、网页 MCP 的启动握手，以及带代理环境中的本地认证连接。文件执行、审批、沙箱、压缩和线程调度继续由固定原生组件负责。[0.7.3 修复、平台状态与未关闭事项](reports/releases/0.7.3/README.md)
 
@@ -76,7 +78,7 @@ Linux 的既有实际宿主包括 Ubuntu 24.04 GNU / WSL、普通 Linux UID。�
 
 ## 安装并运行
 
-先在发行页确认本平台已开放 v0.7.4，再按上表获取固定 tag 的源码；尚未开放 0.7.4 的平台继续使用本平台已发布版本，由该版本的平台清单选择原生包。安装器会校验平台、构建配方、工具链、归档摘要和完整文件清单；正常使用不需要编译 Rust。
+先在发行页确认本平台已开放 v0.7.5，再按上表获取固定 tag 的源码；尚未开放 0.7.5 的平台继续使用本平台已发布版本，由该版本的平台清单选择原生包。安装器会校验平台、构建配方、工具链、归档摘要和完整文件清单；正常使用不需要编译 Rust。
 
 已有任务继续使用自己的不可变入口。并行验证或升级先用新目录及下文 --no-activate，当前任务完成后再切换，不覆盖正在使用的启动器、profile 或 sandbox 目录。
 
@@ -87,7 +89,7 @@ Linux 的既有实际宿主包括 Ubuntu 24.04 GNU / WSL、普通 Linux UID。�
 在终端执行：
 
 ```sh
-git clone --branch v0.7.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -105,7 +107,7 @@ codex-deepseek
 使用同样的源码和安装器。先确保 Python 能创建 venv，并已安装 OpenSSL 3 与 libcap 的运行库。桌面登录会话如需系统存储 key，还需要提供 `secret-tool` 的 `libsecret-tools` 和已解锁的 Secret Service。
 
 ```sh
-git clone --branch v0.7.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 cd codex-deepseek
 python3 --version
 python3 install.py
@@ -123,7 +125,7 @@ codex-deepseek
 以下 `python` 应指向自行安装的**原生 Windows Python**；它和 WSL 中的 Linux 安装是两套环境。优先在正常交互式 Windows 登录中设置凭据。
 
 ```powershell
-git clone --branch v0.7.4 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
+git clone --branch v0.7.5 --depth 1 https://github.com/0xZoharHuang/codex-deepseek-runtime.git codex-deepseek
 Set-Location codex-deepseek
 python --version
 python install.py
@@ -142,9 +144,9 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 
 ### 下载受限或并行验证版本
 
-确认本平台的 v0.7.4 已发布后先检出该 tag，再下载其本平台清单指定的原生归档。安装器默认读取 v0.7.4 源码内的清单。手工传入清单时，清单的目标平台和 recipe 仍须匹配当前源码，归档须匹配清单中的 SHA-256。
+确认本平台的 v0.7.5 已发布后先检出该 tag，再下载其本平台清单指定的原生归档。安装器默认读取 v0.7.5 源码内的清单。手工传入清单时，清单的目标平台和 recipe 仍须匹配当前源码，归档须匹配清单中的 SHA-256。
 
-| 平台 | v0.7.4 内的清单 | 本地应提供的归档 |
+| 平台 | v0.7.5 内的清单 | 本地应提供的归档 |
 | --- | --- | --- |
 | Windows x86_64 | [Windows 清单](native/runtime-x86_64-pc-windows-msvc.json) | [P41 Windows 归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.7.1/codex-deepseek-native-0.7.1-x86_64-pc-windows-msvc.tar.gz) |
 | Linux x86_64 GNU | [Linux 清单](native/runtime-x86_64-unknown-linux-gnu.json) | [v0.6.10 Linux 原生归档](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases/download/v0.6.10/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz) |
@@ -154,7 +156,7 @@ Windows 安装升级会同步更新已有且校验为本项目管理的 `cds.exe
 python install.py --native-archive "C:\verified\codex-deepseek-native-0.7.1-x86_64-pc-windows-msvc.tar.gz"
 ```
 
-Linux 和 macOS 同样从已发布的 v0.7.4 源码运行 `python3 install.py --native-archive <本平台归档>`。Linux 归档名中的 v0.6.10 是原生资产的发布时间点，安装后的 CDS 版本由 v0.7.4 源码决定。使用 `--wheelhouse <目录>` 时，安装器仍会检查 Python 依赖的固定散列。
+Linux 和 macOS 同样从已发布的 v0.7.5 源码运行 `python3 install.py --native-archive <本平台归档>`。Linux 归档名中的 v0.6.10 是原生资产的发布时间点，安装后的 CDS 版本由 v0.7.5 源码决定。使用 `--wheelhouse <目录>` 时，安装器仍会检查 Python 依赖的固定散列。
 
 `--root <新安装目录> --no-activate` 保留当前命令入口，但仍会初始化新目录中的 `codex-home`。并行验证应使用此前不存在的新 root 和独立 home。直接运行不可变入口时，要显式设置相应 `CODEX_DEEPSEEK_HOME`；Windows 也可使用交付时已绑定 home 的绝对入口。不要假定通用入口会覆盖继承的 home 设置。
 

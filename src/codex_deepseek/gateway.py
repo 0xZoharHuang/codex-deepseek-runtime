@@ -20,11 +20,13 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_log import AccessLogger
 
-from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response, provider_failure_diagnostic, redact_provider_failure
+from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVIDER, PEER_HOSTED_PROVIDER, ProtocolError, encode_sse, prepare, validate_response, provider_failure_diagnostic, redact_provider_failure, redact_provider_trace
 
 from .state import Store
 from .request_metadata import native_request_metadata
-from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers
+from .native_http import NativeTransport, NativeRawUnsupported, network_policy
+from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
+                            _http_error_diagnostic, safe_error_text, filter_error_headers)
 from .structured import StructuredOutput
 from .image_provider import ImageProvider,load_image_config
 from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOperationError
@@ -42,6 +44,8 @@ _OBSERVED_PROVIDERS = {
     STRUCTURED_PROVIDER: frozenset({STRUCTURED_PROVIDER, "Morph"}),
     SERIAL_PROVIDER: frozenset({SERIAL_PROVIDER, "PrimeIntellect"}),
 }
+
+
 
 
 def validate_observed_identity(value, requested_provider, *, failed=False):
@@ -402,7 +406,9 @@ class Gateway:
             if trace is None or trace_event_closed:
                 return
             try:
-                safe = redact_provider_failure(original, captured_key)
+                failure_event = isinstance(original, dict) and original.get('type') in {'response.failed', 'error'}
+                safe = (redact_provider_failure(original, captured_key) if failure_event
+                        else redact_provider_trace(original, captured_key))
                 encoded = (json.dumps(safe, ensure_ascii=False, allow_nan=False, sort_keys=True,
                                       separators=(",", ":")) + "\n").encode("utf-8")
                 limit = 1024 * 1024
@@ -432,7 +438,7 @@ class Gateway:
                                                    type(error).__name__)
         def reject_credential_response_id(value):
             identifier = value.get("id") if isinstance(value, dict) else None
-            if isinstance(identifier, str) and captured_key and captured_key in identifier:
+            if isinstance(identifier, str) and captured_key and sensitive_http_value(identifier, captured_key):
                 raise ProtocolError("Provider response identity is invalid")
         def observe_response(value):
             if not isinstance(value, dict):
@@ -487,20 +493,34 @@ class Gateway:
                 status = upstream.status
                 if image_refs:
                     candidate = upstream.headers.get('X-Generation-Id')
-                    if isinstance(candidate, str) and re.fullmatch(r'gen-[0-9A-Za-z-]{1,124}', candidate) and captured_key not in candidate:
+                    if isinstance(candidate, str) and re.fullmatch(r'gen-[0-9A-Za-z-]{1,124}', candidate) and not sensitive_http_value(candidate, captured_key):
                         self.images.record(receipt, generation_header_candidate={
                             'id': candidate, 'provenance': 'http_response_header:X-Generation-Id'})
-                transport_headers=response_headers(upstream.headers)
+                transport_headers=response_headers(upstream.headers, captured_key)
                 if trace:private_write(trace/(receipt+'-network.json'),json.dumps({'policy':transport_policy,'native_http':True}))
                 if status >= 300:
                     if image_refs and status in {400,401,403,404,413,415,422,429}:
                         await prepared_images.mark_upstream_rejected(status)
                         self.images.record(receipt,consumption_status='http_rejected',status='upstream_error')
                     raw = await upstream.read()
+                    # Diagnostic decoding is separately bounded. Checked ordinary
+                    # bytes stay unchanged; sensitive/unverifiable errors use the
+                    # same safe form for forwarding and explicit tracing.
+                    try:
+                        diagnostic_value = _http_error_diagnostic(raw, upstream.content_type, captured_key)
+                        diagnostic = json.dumps(diagnostic_value, allow_nan=False, separators=(",", ":"))
+                    except Exception:
+                        # Observation cannot mask the original HTTP failure.
+                        diagnostic_value = {"schema": 1, "event_type": "upstream.http_error", "body_status": "unavailable"}
+                        diagnostic = json.dumps(diagnostic_value, separators=(",", ":"))
+                    try:
+                        safe_raw = safe_error_body(raw, upstream.content_type, captured_key, status, diagnostic_value)
+                    except Exception:
+                        safe_raw = error_body_fallback(status, diagnostic_value)
                     if trace:
-                        private_write(trace / (receipt + "-error.json"),raw.replace(captured_key.encode(), b"[REDACTED]"))
-                    self.store.finish(receipt, "upstream_error", status)
-                    return web.Response(body=raw.replace(captured_key.encode(), b"[REDACTED]"), status=status,
+                        private_write(trace / (receipt + "-error.json"), safe_raw)
+                    self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
+                    return web.Response(body=safe_raw, status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):
                     result = await upstream.json()
@@ -580,7 +600,7 @@ class Gateway:
                 # for truthiness, repr, or replacement while closing the receipt.
                 detail = "No usable provider credential"
             else:
-                detail = str(exc).replace(captured_key, "[REDACTED]") if captured_key else str(exc)
+                detail = safe_error_text(str(exc), captured_key) if captured_key else str(exc)
             receipt_detail = detail
             if failure_detail is not None:
                 receipt_detail = json.dumps({"message": detail, "provider_failure": failure_detail})
@@ -591,6 +611,7 @@ class Gateway:
                 if self.images is not None:
                     self.images.record(receipt, status='adapter_error', consumption_status='not_sent',
                                        budget_failure=budget)
+            receipt_detail = safe_error_text(receipt_detail, captured_key)
             self.store.finish(receipt, "adapter_error", status, events, receipt_detail)
             if response is not None and response.prepared:
                 try:
@@ -607,7 +628,7 @@ class Gateway:
             if isinstance(exc,FileOperationError):
                 error_status=exc.status if exc.status in {400,401,403,404,409,413,415,422,429} else 502
                 result=error_response(detail,error_status)
-                for name,value in exc.safe_headers.items():
+                for name,value in filter_error_headers(exc.safe_headers, captured_key).items():
                     if name=='retry-after':result.headers['Retry-After']=value
                 return result
             return error_response(detail,error_status)

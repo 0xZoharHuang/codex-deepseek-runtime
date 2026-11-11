@@ -11,6 +11,7 @@ import time
 
 import aiohttp
 from .platforms import executable
+from .error_privacy import response_headers, safe_error_body, error_body_fallback, sensitive_http_value
 
 
 def native_helper():
@@ -125,10 +126,3 @@ class NativeTransport:
         authorization=headers.get('Authorization','')
         if not authorization.startswith('Bearer '):raise ValueError('Native provider credentials are missing')
         return self.request('POST',url,api_key=authorization[7:],payload=json,policy=policy)
-
-
-def response_headers(headers):
-    """Preserve transport advice and correlation across a transformed response."""
-    return {name:value for name,value in headers.items() if name.lower() in {
-        'retry-after','retry-after-ms','x-ms-retry-after-ms','x-request-id','x-openrouter-request-id'}
-        or name.lower().startswith('x-ratelimit-')}
