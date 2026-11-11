@@ -24,7 +24,7 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 
 from .state import Store
 from .request_metadata import native_request_metadata
-from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers
+from .native_http import NativeTransport, NativeRawUnsupported, network_policy, response_headers, safe_error_body, error_body_fallback, sensitive_http_value
 from .structured import StructuredOutput
 from .image_provider import ImageProvider,load_image_config
 from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOperationError
@@ -544,28 +544,34 @@ class Gateway:
                 status = upstream.status
                 if image_refs:
                     candidate = upstream.headers.get('X-Generation-Id')
-                    if isinstance(candidate, str) and re.fullmatch(r'gen-[0-9A-Za-z-]{1,124}', candidate) and captured_key not in candidate:
+                    if isinstance(candidate, str) and re.fullmatch(r'gen-[0-9A-Za-z-]{1,124}', candidate) and not sensitive_http_value(candidate, captured_key):
                         self.images.record(receipt, generation_header_candidate={
                             'id': candidate, 'provenance': 'http_response_header:X-Generation-Id'})
-                transport_headers=response_headers(upstream.headers)
+                transport_headers=response_headers(upstream.headers, captured_key)
                 if trace:private_write(trace/(receipt+'-network.json'),json.dumps({'policy':transport_policy,'native_http':True}))
                 if status >= 300:
                     if image_refs and status in {400,401,403,404,413,415,422,429}:
                         await prepared_images.mark_upstream_rejected(status)
                         self.images.record(receipt,consumption_status='http_rejected',status='upstream_error')
                     raw = await upstream.read()
-                    if trace:
-                        private_write(trace / (receipt + "-error.json"),raw.replace(captured_key.encode(), b"[REDACTED]"))
-                    # Limit only extra diagnostic decoding of the already-read
-                    # error. Forwarding and explicit raw tracing keep their bytes.
+                    # Diagnostic decoding is separately bounded. Checked ordinary
+                    # bytes stay unchanged; sensitive/unverifiable errors use the
+                    # same safe form for forwarding and explicit tracing.
                     try:
-                        diagnostic = json.dumps(_http_error_diagnostic(raw, upstream.content_type, captured_key),
-                                                allow_nan=False, separators=(",", ":"))
+                        diagnostic_value = _http_error_diagnostic(raw, upstream.content_type, captured_key)
+                        diagnostic = json.dumps(diagnostic_value, allow_nan=False, separators=(",", ":"))
                     except Exception:
                         # Observation cannot mask the original HTTP failure.
-                        diagnostic = '{"schema":1,"event_type":"upstream.http_error","body_status":"unavailable"}'
+                        diagnostic_value = {"schema": 1, "event_type": "upstream.http_error", "body_status": "unavailable"}
+                        diagnostic = json.dumps(diagnostic_value, separators=(",", ":"))
+                    try:
+                        safe_raw = safe_error_body(raw, upstream.content_type, captured_key, status, diagnostic_value)
+                    except Exception:
+                        safe_raw = error_body_fallback(status, diagnostic_value)
+                    if trace:
+                        private_write(trace / (receipt + "-error.json"), safe_raw)
                     self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
-                    return web.Response(body=raw.replace(captured_key.encode(), b"[REDACTED]"), status=status,
+                    return web.Response(body=safe_raw, status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):
                     result = await upstream.json()

@@ -499,3 +499,23 @@ def test_provider_adapter_network_error_without_upstream_status_still_needs_exac
     assert result['passed'] and result['errors'][0]['upstream_status'] is None
     evidence['native_events'][0]['emittedAtMs'] = 4500
     assert not provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)['passed']
+
+
+def test_real_http_diagnostic_without_source_bound_retry_id_stays_unrecovered():
+    import json
+    from codex_deepseek.gateway import _http_error_diagnostic
+    from verify_complex_runtime import provider_transport_evidence
+
+    model, requests, receipts, evidence = recovery_rows()
+    receipts[0] = ('failure', 'upstream_error', 429, 'deepseek', 'shared-cache', 'official_default')
+    raw = b'{"error":{"code":429,"type":"rate_limit_error","message":"synthetic rate limit"}}'
+    evidence['receipt_observations'][0]['detail'] = json.dumps(
+        _http_error_diagnostic(raw, 'application/json', 'synthetic-key'), separators=(',', ':'))
+    error = evidence['native_events'][0]['params']['error']
+    error['additionalDetails'] = 'unexpected status 429: synthetic rate limit'
+    error['codexErrorInfo'] = {'httpConnectionFailed': {'httpStatusCode': 429}}
+    result = provider_transport_evidence(requests, receipts, model, recovery_evidence=evidence)
+    assert result['passed'] is False
+    assert result['original_error_receipt_ids'] == ['failure']
+    assert result['recovered_error_receipt_ids'] == []
+    assert result['unresolved_or_failed_receipt_ids'] == ['failure']

@@ -52,7 +52,13 @@ async def test_http_failure_detail_is_safe_bounded_and_response_is_unchanged(fak
         async with Gateway(KEY, 'LOCAL', store, {}, trace_source=lambda: None) as gateway, aiohttp.ClientSession() as client:
             async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses', json={'model': MODEL}, headers={'Authorization': 'Bearer LOCAL'}) as response:
                 assert response.status == 400
-                assert await response.read() == raw.replace(KEY.encode(), b'[REDACTED]')
+                returned = await response.read()
+                if classification == 'invalid_json' or isinstance(classification, tuple):
+                    fallback = json.loads(returned)
+                    assert fallback['error']['code'] == 'upstream_error_body_unverified'
+                    assert 'could not be safely inspected' in fallback['error']['message']
+                else:
+                    assert returned == raw.replace(KEY.encode(), b'[REDACTED]')
                 assert response.headers['Retry-After'] == '7'
                 assert response.headers['X-Request-Id'] == PRIVATE
                 assert response.headers['X-OpenRouter-Request-Id'] == PRIVATE + '-2'
