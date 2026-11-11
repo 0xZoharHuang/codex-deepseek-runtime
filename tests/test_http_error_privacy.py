@@ -353,3 +353,42 @@ async def test_cancel_during_http_error_body_does_not_forward_or_trace_partial_s
             assert not inspected and not list(trace.glob('*-error.json'))
     finally:
         store.close()
+
+
+@pytest.mark.asyncio
+async def test_nested_json_base64_with_surrounding_text_does_not_escape(fake_upstream, tmp_path):
+    encoded = base64.b64encode(('prefix:' + KEY + ':suffix').encode()).decode()
+    inner = json.dumps({'blob': encoded})
+    raw = json.dumps({'error': {'code': 400, 'type': 'invalid_request_error',
+                                'message': 'Safe diagnostic', 'metadata': {'raw': inner}}}).encode()
+    body, _, trace = await exchange(fake_upstream, tmp_path, raw, explicit_trace=True)
+    result = assert_safe_error(body, 400)
+    assert result['error']['message'] == 'Safe diagnostic'
+    assert trace == body
+
+
+@pytest.mark.asyncio
+async def test_image_generation_header_with_embedded_base64_credential_does_not_persist(fake_upstream, tmp_path):
+    encoded = base64.urlsafe_b64encode(('prefix:' + KEY + ':suffix').encode()).rstrip(b'=').decode()
+    candidate = 'gen-' + encoded
+    assert all(c.isalnum() or c == '-' for c in candidate)
+    receipts = []
+    raw = b'{"error":{"code":400,"type":"invalid_request_error","message":"rejected"}}'
+    body, _, _ = await exchange(fake_upstream, tmp_path, raw, status=400, image=True,
+                                response_headers={'X-Generation-Id': candidate}, image_receipts=receipts)
+    assert body == raw
+    assert len(receipts) == 1
+    assert receipts[0]['adaptations']['image_transport'].get('generation_header_candidate') is None
+
+
+@pytest.mark.asyncio
+async def test_safe_nested_json_with_base64_preserves_original_bytes(fake_upstream, tmp_path):
+    encoded = base64.b64encode(b'ordinary-provider-context').decode()
+    inner = json.dumps({'blob': encoded})
+    raw = json.dumps({'error': {'code': 400, 'type': 'invalid_request_error',
+                                'message': 'Safe diagnostic', 'metadata': {'raw': inner}}}, indent=2).encode()
+    body, headers, trace = await exchange(fake_upstream, tmp_path, raw, explicit_trace=True,
+                                          response_headers={'Retry-After': '3'})
+    assert body == raw
+    assert trace == raw
+    assert headers['retry-after'] == '3'

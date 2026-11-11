@@ -185,10 +185,28 @@ def _redact_error_json(value, credential, depth=0, encoded_depth=0):
         raise ValueError("Error JSON inspection depth")
     if isinstance(value, str):
         safe, changed = _credential_text(value, credential)
+        # Parse nested JSON before any no-hit return; its leaves can contain
+        # bounded base64/URL encodings not visible as a direct token outside.
+        stripped = value.lstrip()
+        # A redaction marker or ordinary bracketed message is not a JSON
+        # container. Valid object/array/string containers are inspected first.
+        nested_json = (stripped.startswith('{')
+                       or re.match(r'\[\s*(?:["{\[\]0-9tfn-])', stripped)
+                       or (stripped.startswith('"') and stripped.rstrip().endswith('"')))
+        if nested_json:
+            if encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
+                raise ValueError("Nested error JSON inspection limit")
+            try:
+                nested = _strict_error_json(value)
+            except (ValueError, RecursionError):
+                if changed:
+                    return safe, True
+                raise ValueError("Uninspectable nested error JSON")
+            nested, hit = _redact_error_json(nested, credential, 0, encoded_depth + 1)
+            return (json.dumps(nested, ensure_ascii=True, allow_nan=False), True) if hit else (value, False)
         if not changed:
             encoded = value.strip()
-            # Probe only bounded canonical base64 text; do not guess arbitrary
-            # codecs or decode large opaque payloads. Plain strings stay exact.
+            # Probe bounded base64 text only, not arbitrary unknown codecs.
             if len(encoded) >= 16 and re.fullmatch(r"[A-Za-z0-9+/_-]+={0,2}", encoded):
                 if len(encoded) > 4096 or encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
                     raise ValueError("Encoded error inspection limit")
@@ -201,18 +219,8 @@ def _redact_error_json(value, credential, depth=0, encoded_depth=0):
                 if hit:
                     encode = base64.urlsafe_b64encode if '-' in encoded or '_' in encoded else base64.b64encode
                     cleaned = encode(nested.encode('utf-8')).decode('ascii')
-                    return cleaned if encoded.endswith('=') else cleaned.rstrip('='), True
+                    return (cleaned if encoded.endswith('=') else cleaned.rstrip('=')), True
             return value, False
-        if value.lstrip().startswith(('{', '[')):
-            if encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
-                raise ValueError("Nested error JSON inspection limit")
-            try:
-                nested = _strict_error_json(value)
-            except (ValueError, RecursionError):
-                return safe, True
-            nested, nested_changed = _redact_error_json(nested, credential, 0, encoded_depth + 1)
-            if nested_changed:
-                return json.dumps(nested, ensure_ascii=True, allow_nan=False), True
         return safe, True
     if isinstance(value, list):
         result, changed = [], False
@@ -269,7 +277,11 @@ def safe_error_body(raw, content_type, credential, status, diagnostic=None):
 
 def sensitive_http_value(value, credential):
     try:
-        return _redact_error_json(value, credential)[1]
+        if _redact_error_json(value, credential)[1]:
+            return True
+        # This known generation-header framing is not part of the encoded token.
+        return (isinstance(value, str) and value.startswith('gen-')
+                and _redact_error_json(value[4:], credential)[1])
     except Exception:
         return True
 
