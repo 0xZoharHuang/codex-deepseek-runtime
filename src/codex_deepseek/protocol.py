@@ -86,6 +86,60 @@ def _custom_input(arguments):
     return _unicode_text(value["input"])
 
 
+def _validate_native_output_shape(item):
+    """Reject known fields that the fixed native consumers would silently skip.
+
+    fe136 (CLI P35/P41) and c407 (App P167) deserialize output items into the
+    same typed message/reasoning fields. Their SSE parser ignores an item if
+    decoding fails, then can still accept response.completed. Validate only
+    those native shapes; opaque annotation/logprob values and extension fields
+    stay untouched, and no missing provider field is invented.
+    """
+    kind = item.get("type")
+    for field in ("id", "encrypted_content"):
+        if item.get(field) is not None and not isinstance(item[field], str):
+            raise ProtocolError("Native output " + field + " must be text or null")
+    if kind != "reasoning" and item.get("status") is not None and not isinstance(item["status"], str):
+        raise ProtocolError("Native output status must be text or null")
+    metadata = item.get("internal_chat_message_metadata_passthrough")
+    if metadata is not None:
+        if not isinstance(metadata, dict):
+            raise ProtocolError("Native output passthrough metadata must be an object or null")
+        if metadata.get("turn_id") is not None and not isinstance(metadata["turn_id"], str):
+            raise ProtocolError("Native output metadata turn_id must be text or null")
+        if metadata.get("create_time") is not None and type(metadata["create_time"]) not in (int, float):
+            raise ProtocolError("Native output metadata create_time must be a number or null")
+        # Native explicitly uses DefaultOnError or skip_deserializing for its
+        # remaining known metadata fields. Do not impose stricter semantics.
+    if kind == "message":
+        if item.get("phase") is not None and (
+            not isinstance(item["phase"], str)
+            or item["phase"] not in {"commentary", "partial_answer", "final_answer"}
+        ):
+            raise ProtocolError("Unsupported native output message phase")
+        for part in item["content"]:
+            if part.get("type") == "output_text":
+                for field in ("annotations", "logprobs"):
+                    if part.get(field) is not None and not isinstance(part[field], list):
+                        raise ProtocolError("Native output text " + field + " must be an array or null")
+    elif kind == "reasoning":
+        for field, allowed in (("summary", {"summary_text"}),
+                               ("content", {"reasoning_text", "text"})):
+            parts = item.get(field)
+            if field == "content" and parts is None:
+                continue
+            if not isinstance(parts, list) or any(
+                not isinstance(part, dict) or not isinstance(part.get("type"), str)
+                or part["type"] not in allowed or not isinstance(part.get("text"), str) for part in parts
+            ):
+                raise ProtocolError("Native output reasoning " + field + " has an invalid shape")
+    elif kind == "function_call" and item.get("encrypted_function_args") is not None:
+        if not isinstance(item["encrypted_function_args"], list) or any(
+            not isinstance(value, str) for value in item["encrypted_function_args"]
+        ):
+            raise ProtocolError("Native encrypted function arguments must be a text array or null")
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -445,6 +499,8 @@ class Registry:
                 self.search_store.put(native_id, item)
             item["type"] = "web_search_call"
             item["id"] = native_id
+        if final:
+            _validate_native_output_shape(item)
         return item
 
 
@@ -773,6 +829,11 @@ class Events:
         if not isinstance(item,dict):raise ProtocolError('Stream output item must be an object')
         item_id=item.get('id')
         if not isinstance(item_id,str) or not item_id:raise ProtocolError('Stream output item lacks an ID')
+        # Provider function calls map to native function, custom or client
+        # tool-search calls. Native dispatch consumes this authoritative item
+        # without checking status; previews must remain non-authoritative.
+        if final and item.get('type') == 'function_call' and item.get('status') not in (None, 'completed'):
+            raise ProtocolError('Provider announced an explicitly unfinished tool call as complete')
         if item.get('type')=='function_call' and item.get('call_id'):
             call_id=item['call_id']
             if not isinstance(call_id,str):raise ProtocolError('Tool call ID must be a string')
