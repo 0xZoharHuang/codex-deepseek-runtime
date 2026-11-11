@@ -44,6 +44,63 @@ _OBSERVED_PROVIDERS = {
 }
 
 
+# Diagnostic labels are a finite policy, not arbitrary provider text. Native
+# failure labels and common protocol error classes are admitted verbatim; adding
+# labels requires review. Never search messages, metadata.raw or nested requests.
+_HTTP_ERROR_CODES = frozenset({400, 401, 402, 403, 404, 408, 409, 413, 415, 422,
+                              429, 500, 502, 503, 504})
+_HTTP_ERROR_LABELS = frozenset({
+    "context_length_exceeded", "insufficient_quota", "credit_balance_exhausted",
+    "organization_spend_limit_exceeded", "project_spend_limit_exceeded",
+    "usage_not_included", "cyber_policy", "bio_policy", "misalignment_policy_violation",
+    "invalid_prompt", "server_is_overloaded", "rate_limit_exceeded", "slow_down",
+    "image_file_too_large", "invalid_request_error", "authentication_error",
+    "permission_error", "not_found_error", "timeout_error", "server_error",
+    "api_error", "provider_error", "rate_limit_error",
+})
+_HTTP_DIAGNOSTIC_BODY_BYTES = 32 * 1024
+
+
+def _http_error_diagnostic(raw, content_type, credential):
+    """Bounded observation only; no body, message, request or header IDs survive."""
+    result = {"schema": 1, "event_type": "upstream.http_error"}
+    if not raw:
+        return {**result, "body_status": "empty"}
+    if len(raw) > _HTTP_DIAGNOSTIC_BODY_BYTES:
+        return {**result, "body_status": "oversize"}
+    mime = content_type.split(";", 1)[0].strip().lower()
+    if mime != "application/json" and not (mime.startswith("application/") and mime.endswith("+json")):
+        return {**result, "body_status": "non_json"}
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError("Duplicate diagnostic JSON key")
+            value[key] = item
+        return value
+    def invalid_constant(value):
+        raise ValueError("Non-JSON diagnostic number")
+    try:
+        body = json.loads(raw.decode("utf-8"), object_pairs_hook=unique,
+                          parse_constant=invalid_constant)
+    except (UnicodeError, ValueError, RecursionError):
+        return {**result, "body_status": "invalid_json"}
+    error = body.get("error") if isinstance(body, dict) else None
+    if not isinstance(error, dict):
+        return {**result, "body_status": "no_error_object"}
+    result["body_status"] = "json"
+    for field in ("code", "type"):
+        candidate = error.get(field)
+        if (field == "code" and type(candidate) is int and candidate in _HTTP_ERROR_CODES
+                and (not isinstance(credential, str) or str(candidate) != credential)):
+            result["error_code"] = candidate
+        elif (isinstance(candidate, str) and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", candidate)
+                and candidate in _HTTP_ERROR_LABELS
+                and (not isinstance(credential, str) or not credential or credential not in candidate)):
+            result["error_" + field] = candidate
+    return result
+
+
 def validate_observed_identity(value, requested_provider, *, failed=False):
     """Reject explicit response identity contradictions before native dispatch."""
     if not isinstance(value, dict):
@@ -499,7 +556,15 @@ class Gateway:
                     raw = await upstream.read()
                     if trace:
                         private_write(trace / (receipt + "-error.json"),raw.replace(captured_key.encode(), b"[REDACTED]"))
-                    self.store.finish(receipt, "upstream_error", status)
+                    # Limit only extra diagnostic decoding of the already-read
+                    # error. Forwarding and explicit raw tracing keep their bytes.
+                    try:
+                        diagnostic = json.dumps(_http_error_diagnostic(raw, upstream.content_type, captured_key),
+                                                allow_nan=False, separators=(",", ":"))
+                    except Exception:
+                        # Observation cannot mask the original HTTP failure.
+                        diagnostic = '{"schema":1,"event_type":"upstream.http_error","body_status":"unavailable"}'
+                    self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
                     return web.Response(body=raw.replace(captured_key.encode(), b"[REDACTED]"), status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):
