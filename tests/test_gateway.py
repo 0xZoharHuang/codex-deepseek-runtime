@@ -222,3 +222,44 @@ async def test_valid_captured_string_still_redacts_failure_without_native(tmp_pa
         assert key not in detail and "[REDACTED]" in detail
     finally:
         store.close()
+
+
+@pytest.mark.parametrize('stream', [False, True])
+@pytest.mark.parametrize('fault', ['annotations', 'reasoning-summary'])
+async def test_malformed_output_shape_fails_after_partial_stream(fake_upstream, tmp_path, stream, fault):
+    import json
+    bad = ({'id': 'm', 'type': 'message', 'role': 'assistant', 'content': [
+        {'type': 'output_text', 'text': 'partial fixture', 'annotations': {}}]}
+        if fault == 'annotations' else {'id': 'rs', 'type': 'reasoning', 'content': [
+            {'type': 'reasoning_text', 'text': 'fixture thought'}]})
+    async def provider(request):
+        terminal = {'id': 'r', 'status': 'completed', 'output': [bad]}
+        if not stream:
+            return web.json_response(terminal)
+        events = [
+            {'type': 'response.created', 'response': {'id': 'r'}},
+            {'type': 'response.output_item.added', 'item': {
+                'id': 'm', 'type': 'message', 'role': 'assistant', 'content': []}},
+            {'type': 'response.output_text.delta', 'item_id': 'm', 'delta': 'partial fixture'},
+            {'type': 'response.output_item.done', 'item': bad},
+            {'type': 'response.completed', 'response': terminal},
+        ]
+        return web.Response(text=''.join('data: '+json.dumps(event)+'\n\n' for event in events),
+                            content_type='text/event-stream')
+    fake_upstream.append(provider)
+    store = Store(tmp_path / 'state.sqlite')
+    try:
+        async with Gateway('SECRET', 'LOCAL', store, {}) as gateway, aiohttp.ClientSession() as client:
+            async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',
+                    json={'model': MODEL, 'stream': stream}, headers={'Authorization': 'Bearer LOCAL'}) as response:
+                if stream:
+                    events = [json.loads(line[6:]) for line in (await response.text()).splitlines()
+                              if line.startswith('data: ')]
+                    assert any(e['type'] == 'response.output_text.delta' for e in events)
+                    assert events[-1]['type'] == 'response.failed'
+                    assert not any(e['type'] in {'response.completed', 'response.output_item.done'} for e in events)
+                else:
+                    assert response.status == 502
+        assert store.db.execute('SELECT status FROM receipts').fetchall() == [('adapter_error',)]
+    finally:
+        store.close()

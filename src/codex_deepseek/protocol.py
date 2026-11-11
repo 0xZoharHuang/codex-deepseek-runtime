@@ -86,6 +86,73 @@ def _custom_input(arguments):
     return _unicode_text(value["input"])
 
 
+def _validate_native_output_shape(item):
+    """Reject known fields that the fixed native consumers would silently skip.
+
+    fe136 (CLI P35/P41) and c407 (App P167) deserialize output items into the
+    same typed message/reasoning fields. Their SSE parser ignores an item if
+    decoding fails, then can still accept response.completed. Validate only
+    those native shapes; opaque annotation/logprob values and extension fields
+    stay untouched, and no missing provider field is invented.
+    """
+    kind = item.get("type")
+    for field in ("id", "encrypted_content"):
+        if item.get(field) is not None and not isinstance(item[field], str):
+            raise ProtocolError("Native output " + field + " must be text or null")
+    if kind != "reasoning" and item.get("status") is not None and not isinstance(item["status"], str):
+        raise ProtocolError("Native output status must be text or null")
+    metadata = item.get("internal_chat_message_metadata_passthrough")
+    if metadata is not None:
+        if not isinstance(metadata, dict):
+            raise ProtocolError("Native output passthrough metadata must be an object or null")
+        if metadata.get("turn_id") is not None and not isinstance(metadata["turn_id"], str):
+            raise ProtocolError("Native output metadata turn_id must be text or null")
+        if metadata.get("create_time") is not None and type(metadata["create_time"]) not in (int, float):
+            raise ProtocolError("Native output metadata create_time must be a number or null")
+        # Native explicitly uses DefaultOnError or skip_deserializing for its
+        # remaining known metadata fields. Do not impose stricter semantics.
+    if kind == "message":
+        if item.get("phase") is not None and (
+            not isinstance(item["phase"], str)
+            or item["phase"] not in {"commentary", "partial_answer", "final_answer"}
+        ):
+            raise ProtocolError("Unsupported native output message phase")
+        for part in item["content"]:
+            if part.get("type") == "output_text":
+                for field in ("annotations", "logprobs"):
+                    if part.get(field) is not None and not isinstance(part[field], list):
+                        raise ProtocolError("Native output text " + field + " must be an array or null")
+    elif kind == "reasoning":
+        for field, allowed in (("summary", {"summary_text"}),
+                               ("content", {"reasoning_text", "text"})):
+            parts = item.get(field)
+            if field == "content" and parts is None:
+                continue
+            if not isinstance(parts, list) or any(
+                not isinstance(part, dict) or not isinstance(part.get("type"), str)
+                or part["type"] not in allowed or not isinstance(part.get("text"), str) for part in parts
+            ):
+                raise ProtocolError("Native output reasoning " + field + " has an invalid shape")
+    elif kind == "web_search_call" and item.get("action") is not None:
+        action = item["action"]
+        if not isinstance(action, dict) or not isinstance(action.get("type"), str):
+            raise ProtocolError("Native web search action requires an object with a text type")
+        # Unknown action strings map to native Other. Validate only fields of
+        # the three known variants; preserve all extra fields unchanged.
+        fields = {"search": ("query",), "open_page": ("url",),
+                  "find_in_page": ("url", "pattern")}.get(action["type"], ())
+        if any(action.get(field) is not None and not isinstance(action[field], str) for field in fields):
+            raise ProtocolError("Known native web search action text has an invalid shape")
+        if action["type"] == "search" and action.get("queries") is not None:
+            if not isinstance(action["queries"], list) or any(not isinstance(value, str) for value in action["queries"]):
+                raise ProtocolError("Native web search queries must be a text array or null")
+    elif kind == "function_call" and item.get("encrypted_function_args") is not None:
+        if not isinstance(item["encrypted_function_args"], list) or any(
+            not isinstance(value, str) for value in item["encrypted_function_args"]
+        ):
+            raise ProtocolError("Native encrypted function arguments must be a text array or null")
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -391,6 +458,7 @@ class Registry:
         if not isinstance(original, dict):
             raise ProtocolError("Provider output items must be objects")
         item = copy.deepcopy(original)
+        search_record = None
         if item.get('type') not in {'message','reasoning','function_call','openrouter:web_search'}:
             raise ProtocolError(f'Unsupported provider output item type {item.get("type")!r}')
         if item.get('type') == 'message' and item.get('role') != 'assistant':
@@ -415,6 +483,8 @@ class Registry:
             if tool.namespace == "collaboration" and tool.name in {"spawn_agent", "send_message", "followup_task"}:
                 # Codex's explicit wire marker for known plaintext collaboration
                 # arguments; omission makes native V2 treat message text as ciphertext.
+                if final and item.get("encrypted_function_args") not in (None, []):
+                    raise ProtocolError("Opaque encrypted collaboration arguments cannot become a plaintext call")
                 item["encrypted_function_args"] = []
             if tool.kind == "custom":
                 arguments = item.pop("arguments", "")
@@ -441,10 +511,14 @@ class Registry:
                 item["arguments"] = json.loads(arguments) if arguments else {}
         elif item.get("type") == "openrouter:web_search":
             native_id = "ws_" + item["id"]
-            if self.search_store:
-                self.search_store.put(native_id, item)
-            item["type"] = "web_search_call"
-            item["id"] = native_id
+            search_record = (native_id, item)
+            item = {**item, "type": "web_search_call", "id": native_id}
+        if final:
+            _validate_native_output_shape(item)
+        if search_record is not None and self.search_store:
+            # A rejected final cannot commit or overwrite replay evidence.
+            # Previews retain their existing storage behavior.
+            self.search_store.put(*search_record)
         return item
 
 
@@ -773,6 +847,11 @@ class Events:
         if not isinstance(item,dict):raise ProtocolError('Stream output item must be an object')
         item_id=item.get('id')
         if not isinstance(item_id,str) or not item_id:raise ProtocolError('Stream output item lacks an ID')
+        # Provider function calls map to native function, custom or client
+        # tool-search calls. Native dispatch consumes this authoritative item
+        # without checking status; previews must remain non-authoritative.
+        if final and item.get('type') == 'function_call' and item.get('status') not in (None, 'completed'):
+            raise ProtocolError('Provider announced an explicitly unfinished tool call as complete')
         if item.get('type')=='function_call' and item.get('call_id'):
             call_id=item['call_id']
             if not isinstance(call_id,str):raise ProtocolError('Tool call ID must be a string')
@@ -985,7 +1064,23 @@ class Events:
             self.usage = response.get("usage") or {}
             self.status = "failed"
             self.terminal = True
-        elif kind in {"response.completed", "response.incomplete"}:
+        elif kind == "response.incomplete":
+            response = event.get("response", {})
+            validate_response(response, "incomplete")
+            # Incomplete output is raw error/trace data, not a tool commit.
+            # P167 retains it as Vec<Value> for failed traces only; P35/P41
+            # consume the original reason, response ID and usage. Do not parse
+            # truncated arguments, rewrite opaque diagnostics or cache search
+            # results that never arrived through an authoritative done event.
+            for item in response["output"]:
+                if (isinstance(item, dict) and isinstance(item.get("id"), str)
+                        and item["id"] in self.done):
+                    self.check_item(item, final=True)
+            self.response_id = response["id"]
+            self.usage = response.get("usage") or {}
+            self.status = "incomplete"
+            self.terminal = True
+        elif kind == "response.completed":
             response = event.get("response", {})
             validate_response(response,kind.removeprefix('response.'))
             previously_done=set(self.done)

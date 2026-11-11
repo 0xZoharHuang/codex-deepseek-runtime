@@ -235,7 +235,7 @@ def test_parallel_tool_history_uses_completed_response_evidence_after_restart(tm
     path = tmp_path / "adapter.sqlite"
     tools = [{"type": "function", "name": "sample", "parameters": {"type": "object"}}]
     body = request(tools)
-    reasoning = {"type": "reasoning", "id": "rs_parallel",
+    reasoning = {"type": "reasoning", "id": "rs_parallel", "summary": [],
                  "content": [{"type": "reasoning_text", "text": "Use two independent tools."}]}
     first = {"type": "function_call", "name": "sample", "id": "fc_first",
              "call_id": "call_first", "arguments": "{}", "status": "completed"}
