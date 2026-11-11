@@ -153,14 +153,14 @@ def _strict_error_json(text):
     return json.loads(text, object_pairs_hook=unique, parse_constant=invalid)
 
 
-def _credential_text(text, credential, *, fold=False):
-    """Known literal/JSON/URL/HTML and token-Base64 equivalences, not all codecs."""
+def _normalized_error_text(text):
+    """Bounded known text decodings; no arbitrary codec guessing."""
     text.encode('utf-8')
     current = text
     for _ in range(_ERROR_ENCODED_JSON_DEPTH):
         decoded = _UNICODE_ESCAPE.sub(lambda match: chr(int(match[1], 16)), current)
         decoded = decoded.replace(_ERROR_ESCAPE + '/', '/').replace(_ERROR_ESCAPE + '"', '"').replace(_ERROR_ESCAPE + _ERROR_ESCAPE, _ERROR_ESCAPE)
-        decoded = html.unescape(unquote(decoded, errors='strict'))
+        decoded = html.unescape(unquote(decoded, errors='replace'))
         if any(0xD800 <= ord(char) <= 0xDFFF for char in decoded):
             decoded = decoded.encode('utf-16', 'surrogatepass').decode('utf-16')
         if decoded == current:
@@ -168,6 +168,11 @@ def _credential_text(text, credential, *, fold=False):
         current = decoded
     else:
         raise ValueError("Error encoding inspection limit")
+    return current
+
+
+def _credential_text(text, credential, *, fold=False):
+    current = _normalized_error_text(text)
     if fold and credential.casefold() in current.casefold():
         return '[REDACTED]', True
     changed = credential in current
@@ -184,44 +189,50 @@ def _redact_error_json(value, credential, depth=0, encoded_depth=0):
     if depth > _ERROR_PRIVACY_DEPTH:
         raise ValueError("Error JSON inspection depth")
     if isinstance(value, str):
+        normalized = _normalized_error_text(value)
         safe, changed = _credential_text(value, credential)
-        # Parse nested JSON before any no-hit return; its leaves can contain
-        # bounded base64/URL encodings not visible as a direct token outside.
-        stripped = value.lstrip()
-        # A redaction marker or ordinary bracketed message is not a JSON
-        # container. Valid object/array/string containers are inspected first.
-        nested_json = (stripped.startswith('{')
-                       or re.match(r'\[\s*(?:["{\[\]0-9tfn-])', stripped)
-                       or (stripped.startswith('"') and stripped.rstrip().endswith('"')))
-        if nested_json:
+        # A string may be ordinary text beginning with braces. Only successfully
+        # parsed nested JSON gets structural handling; otherwise inspect bounded
+        # known text/base64 tokens without discarding its useful error reason.
+        for candidate in dict.fromkeys([value, normalized]):
+            if not candidate.lstrip().startswith(('{', '[', '"')):
+                continue
+            try:
+                nested = _strict_error_json(candidate)
+            except (ValueError, RecursionError):
+                continue
             if encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
                 raise ValueError("Nested error JSON inspection limit")
-            try:
-                nested = _strict_error_json(value)
-            except (ValueError, RecursionError):
-                if changed:
-                    return safe, True
-                raise ValueError("Uninspectable nested error JSON")
             nested, hit = _redact_error_json(nested, credential, 0, encoded_depth + 1)
             return (json.dumps(nested, ensure_ascii=True, allow_nan=False), True) if hit else (value, False)
-        if not changed:
-            encoded = value.strip()
-            # Probe bounded base64 text only, not arbitrary unknown codecs.
-            if len(encoded) >= 16 and re.fullmatch(r"[A-Za-z0-9+/_-]+={0,2}", encoded):
-                if len(encoded) > 4096 or encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
-                    raise ValueError("Encoded error inspection limit")
-                try:
-                    raw = base64.b64decode(encoded + '=' * (-len(encoded) % 4), altchars=b'-_', validate=True)
-                    decoded = raw.decode('utf-8')
-                except (ValueError, UnicodeError):
-                    return value, False
-                nested, hit = _redact_error_json(decoded, credential, 0, encoded_depth + 1)
-                if hit:
+        inspected = safe if changed else normalized
+        tokens = list(re.finditer(r'[A-Za-z0-9+/_-]{16,}={0,2}', inspected))
+        for match in reversed(tokens):
+            encoded = match[0]
+            if len(encoded) > 4096 or encoded_depth >= _ERROR_ENCODED_JSON_DEPTH:
+                raise ValueError("Encoded error inspection limit")
+            try:
+                raw = base64.b64decode(encoded + '=' * (-len(encoded) % 4), altchars=b'-_', validate=True)
+                if credential.encode('utf-8') in raw:
                     encode = base64.urlsafe_b64encode if '-' in encoded or '_' in encoded else base64.b64encode
-                    cleaned = encode(nested.encode('utf-8')).decode('ascii')
-                    return (cleaned if encoded.endswith('=') else cleaned.rstrip('=')), True
-            return value, False
-        return safe, True
+                    cleaned = encode(raw.replace(credential.encode('utf-8'), b'[REDACTED]')).decode('ascii')
+                    if not encoded.endswith('='):
+                        cleaned = cleaned.rstrip('=')
+                    inspected = inspected[:match.start()] + cleaned + inspected[match.end():]
+                    changed = True
+                    continue
+                decoded = raw.decode('utf-8')
+            except (ValueError, UnicodeError):
+                continue
+            nested, hit = _redact_error_json(decoded, credential, 0, encoded_depth + 1)
+            if hit:
+                encode = base64.urlsafe_b64encode if '-' in encoded or '_' in encoded else base64.b64encode
+                cleaned = encode(nested.encode('utf-8')).decode('ascii')
+                if not encoded.endswith('='):
+                    cleaned = cleaned.rstrip('=')
+                inspected = inspected[:match.start()] + cleaned + inspected[match.end():]
+                changed = True
+        return (inspected, True) if changed else (value, False)
     if isinstance(value, list):
         result, changed = [], False
         for item in value:

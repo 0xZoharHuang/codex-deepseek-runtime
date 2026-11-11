@@ -392,3 +392,23 @@ async def test_safe_nested_json_with_base64_preserves_original_bytes(fake_upstre
     assert body == raw
     assert trace == raw
     assert headers['retry-after'] == '3'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('message', ['{file}: invalid path', '[400] invalid input', 'invalid URL escape %FF is unsupported'])
+async def test_plain_diagnostic_braces_not_mistaken_for_nested_json(fake_upstream, tmp_path, message):
+    raw = json.dumps({'error': {'code': 400, 'type': 'invalid_request_error', 'message': message}}).encode()
+    body, _, trace = await exchange(fake_upstream, tmp_path, raw, explicit_trace=True)
+    assert body == raw
+    assert trace == raw
+
+
+@pytest.mark.asyncio
+async def test_known_credential_bytes_in_base64_binary_are_redacted(fake_upstream, tmp_path):
+    blob = base64.b64encode(b'\xffprefix:' + KEY.encode() + b':suffix\x80').decode()
+    raw = json.dumps({'error': {'code': 400, 'message': 'Useful diagnostic', 'metadata': {'raw': blob}}}).encode()
+    body, _, _ = await exchange(fake_upstream, tmp_path, raw)
+    result = json.loads(body)
+    assert result['error']['code'] == 400 and result['error']['message'] == 'Useful diagnostic'
+    decoded = base64.b64decode(result['error']['metadata']['raw'])
+    assert KEY.encode() not in decoded and b'prefix:' in decoded and b':suffix' in decoded
