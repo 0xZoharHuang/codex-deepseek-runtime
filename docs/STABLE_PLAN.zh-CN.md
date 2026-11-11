@@ -1,10 +1,20 @@
 # CDS 按平台安装、升级与回滚方案
 
-Linux x86_64 GNU、macOS Apple Silicon 和 Windows x86_64 使用 v0.7.2。Windows 使用 P41，Linux 和 macOS 沿用 P35。升级已有图片缓存前，需要先让该 home 的所有原生进程和网关自然退役，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。需要回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
+本页说明 v0.7.3 的分平台安装与升级规则。先在 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 确认本平台已发布本版及对应资格；尚未开放的平台继续使用 v0.7.2。Windows 使用 P41，Linux 和 macOS 沿用 P35。升级已有图片缓存前，需要先让该 home 的所有原生进程和网关自然退役，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。需要回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
 
 v0.6.15 的三份清单分别沿用 Windows v0.6.14 的 P39 和 Linux、macOS v0.6.13 的原生包。请核对 [v0.6.15 分平台验收记录](../reports/releases/0.6.15/README.md)。需要回滚时，Windows 固定 v0.6.14，Linux、macOS 固定 v0.6.13。Windows 的受管用户如果需要升级既有 home，先按[原生维护指南](windows-managed-maintenance.md)确认目标账号和目录，再用该版原生工具执行一次维护。保留原安装、会话与回滚入口。
 
 P39 的变化集中在 Windows 沙箱的目录元数据与权限维护。它复用原生工具、沙箱、会话及子智能体机制。Unix 原生组件、DeepSeek 模型路由和协议行为沿用各自已发布的固定组合。CADSG 的桌面 App 有独立安装和验收记录。
+
+## 0.7.3 维护更新与按平台交付
+
+按本平台已开放版本操作。0.7.3 保留 Windows P41、Linux/macOS P35 的归档地址、SHA-256 与构建配方；正常安装不重新编译 Rust。[本版修复与资格明细](../reports/releases/0.7.3/README.md)
+
+本次修复限定在协议与启动边界：从原生元数据表达当前 agent 身份并校验冲突，将网页读取器的重依赖推迟到实际工具调用，以及仅为认证 loopback 连接的原生子进程补齐 `NO_PROXY` / `no_proxy`。不修改全机代理，provider 的外网出口环境保持原规则。工具、审批、沙箱、会话、压缩和子智能体的关键处理仍由固定原生 runtime 执行。
+
+发布前先冻结最终源码和版本，再在新 root 正常安装并运行对应平台 CI。修改 `pyproject.toml`、包版本或 README 会改变安装身份；旧回执不能改名为 0.7.3 回执。Linux/macOS 可在各自资格关闭后分别交付；Windows 的长图任务因资源保护中断仍是未通过，不借用其他平台的成功。本维护版不宣称新身份完成严格全冻结聚合资格；各平台最终提交 CI、安装回读和发布状态由对应 Release 说明及附件记录。
+
+验证过程使用独立安装根与 home，保留正在工作的入口、原生会话和项目。等待新平台结果时不升级其他人的任务、不全局停止 `codex.exe`。本项目的 CLI 证据不覆盖独立 CADSG / Codex App。
 
 ## 安装大文件时断线
 
