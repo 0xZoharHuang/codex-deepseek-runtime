@@ -29,7 +29,7 @@ _support_spec=importlib.util.spec_from_file_location('dedicated_platform_support
 _support=importlib.util.module_from_spec(_support_spec);_support_spec.loader.exec_module(_support)
 WINDOWS=_support.WINDOWS;EXE=_support.EXE
 python_entry=_support.python_entry;console_entry=_support.console_entry
-file_lock=_support.file_lock;private_directory=_support.private_directory;private_install_root=_support.private_install_root;private_runtime_home=_support.private_runtime_home;replace_file=_support.replace_file
+file_lock=_support.file_lock;private_directory=_support.private_directory;private_install_root=_support.private_install_root;private_install_container=_support.private_install_container;private_runtime_home=_support.private_runtime_home;replace_file=_support.replace_file
 
 
 def required_binaries():
@@ -310,7 +310,7 @@ def native_package(root,manifest,archive_override=None):
     if reusable:return readable_native_package(root,reusable,manifest)
     if target.exists():target=target.with_name(target.name+'-repair-'+uuid.uuid4().hex[:10])
     owned_native_path(root,target)
-    private_directory(target.parent)
+    private_install_container(target.parent)
     target.mkdir()
     private_directory(target)
     for name in ['bin','codex-resources','codex-path']:(target/name).mkdir()

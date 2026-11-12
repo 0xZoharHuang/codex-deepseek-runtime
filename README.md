@@ -12,7 +12,7 @@ CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你�
 
 本版从 v0.7.9 源码安装适配器，并按此 tag 的平台清单读取既有原生归档。Windows 的 P41 归档仍托管在 v0.7.1 的 Release 页面。各平台的发布状态、最终提交 CI 与安装回读以 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 中对应版本说明和证据附件为准；尚未开放 0.7.9 的平台继续使用对应平台已发布版本。
 
-**0.7.9 Windows 安装维护候选**：升级时保留已验证的原生所需非继承元数据授权；对无法安全识别的现有安装 ACL 明确拒绝，避免悄悄重置。其他用户和现有运行中的任务不应被覆盖。[维护范围](reports/releases/0.7.9/README.md)
+**0.7.9 Windows 安装维护候选**：升级时保留安装根目录及原生程序容器内已验证的非继承元数据授权；对无法安全识别的现有安装 ACL 明确拒绝，避免悄悄重置。其他用户和现有运行中的任务不应被覆盖。[维护范围](reports/releases/0.7.9/README.md)
 
 **0.7.8 配置维护**：更新项目自带网页 MCP 时保留已有 LF、CRLF 或混合换行的无关行；纯 CRLF 配置中新增行仍使用 CRLF。配置没有变化时不重写文件。此前受影响的本项目测试配置已按原始摘要恢复；本修复不改变模型、工具或原生运行时。[维护范围](reports/releases/0.7.8/README.md)
 

@@ -337,6 +337,15 @@ def private_install_root(path):
     _WindowsPrivate().directory(path,preserve_native_metadata=True,managed=managed)
 
 
+def private_install_container(path):
+    """Keep verified native-container metadata grants while installing assets."""
+    path=Path(path)
+    if not WINDOWS:
+        private_directory(path);return
+    managed=path.is_dir() and any(path.iterdir())
+    _WindowsPrivate().directory(path,preserve_native_metadata=True,managed=managed)
+
+
 def replace_file(source,destination):
     # Windows readers and antivirus may momentarily deny FILE_SHARE_DELETE.
     # Keep replacement atomic; never fall back to truncating the destination.
@@ -403,7 +412,7 @@ def native_artifact_access(root,package,manifest_files):
     if actual!=set(manifest_files):raise ValueError('Native artifact inventory changed before permissions')
     # Normalize only the owned native container and public package. Root retains
     # its existing private ACL; no parent above root is modified.
-    private_directory(root/'native')
+    private_install_container(root/'native')
     private_directory(package)
     api=ctypes.WinDLL('advapi32',use_last_error=True);kernel=ctypes.WinDLL('kernel32',use_last_error=True)
     class TRUSTEE(ctypes.Structure):

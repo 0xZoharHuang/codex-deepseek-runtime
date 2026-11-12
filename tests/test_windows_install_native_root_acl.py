@@ -45,3 +45,27 @@ def test_existing_managed_root_refuses_unknown_grants_without_rewriting(tmp_path
     with pytest.raises(PermissionError,match='installation root'):
         installer.private_install_root(root)
     assert _security(root)==before
+
+
+@pytest.mark.parametrize('mode',['reuse','reuse-with-archive','new-package'])
+def test_native_container_keeps_existing_metadata_grant(tmp_path,mode):
+    from test_install import installer,archive_at
+    root=tmp_path/'install';source=tmp_path/'native.tar.gz'
+    files={name:b'first' for name in installer.required_binaries()}
+    manifest=archive_at(source,files);installer.native_package(root,manifest,source)
+    container=root/'native';_add(container,0x100080);before=_security(container)
+    if mode=='new-package':
+        source=tmp_path/'second.tar.gz'
+        manifest=archive_at(source,{name:b'second' for name in installer.required_binaries()})
+    installer.native_package(root,manifest,None if mode=='reuse' else source)
+    assert _security(container)==before
+
+
+def test_native_container_rejects_unknown_grant_without_rewriting(tmp_path):
+    from test_install import installer,archive_at
+    root=tmp_path/'install';source=tmp_path/'native.tar.gz'
+    manifest=archive_at(source,{name:b'fixture' for name in installer.required_binaries()})
+    installer.native_package(root,manifest,source)
+    container=root/'native';_add(container,0x2);before=_security(container)
+    with pytest.raises(PermissionError):installer.native_package(root,manifest)
+    assert _security(container)==before
