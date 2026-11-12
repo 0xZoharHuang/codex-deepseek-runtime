@@ -98,6 +98,8 @@ async def test_cancel_waits_for_owned_metadata_write_before_stopping_helper(tmp_
     finally:
         release.set()
         guard.cancel()
+        guard.join(timeout=1)
+        assert not guard.is_alive()
         if not task.done():
             try:
                 await task
@@ -150,7 +152,7 @@ async def test_close_waits_for_inflight_metadata_before_retiring_helper(tmp_path
             await transport.start()
     finally:
         release.set()
-        await asyncio.gather(starter, *( [closer] if closer else []), return_exceptions=True)
+        await asyncio.gather(starter, *([closer] if closer else []), return_exceptions=True)
         await transport.close()
 
 
