@@ -39,7 +39,8 @@ def test_native_package_keeps_existing_noninheriting_metadata_grant(tmp_path,mas
 def test_existing_managed_root_refuses_unknown_grants_without_rewriting(tmp_path,mask,flags,receipt):
     from test_install import installer
     root=tmp_path/'install';installer.private_install_root(root)
-    (root/('installation.json' if receipt else 'owned-state')).write_text('{}',encoding='utf8')
+    if receipt:(root/'installation.json').write_text('{}',encoding='utf8')
+    else:(root/'releases').mkdir()
     _add(root,mask,flags);before=_security(root)
     with pytest.raises(PermissionError,match='installation root'):
         installer.private_install_root(root)

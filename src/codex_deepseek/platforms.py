@@ -331,9 +331,9 @@ def private_install_root(path):
     path=Path(path)
     if not WINDOWS:
         private_directory(path);return
-    # An inactive installation may have no installation.json: any existing
-    # nonempty root can contain user state and must not be silently rewritten.
-    managed=path.is_dir() and any(path.iterdir())
+    # An inactive installation may have no installation.json, but its
+    # immutable releases directory still identifies existing installed state.
+    managed=(path/'installation.json').exists() or (path/'releases').exists()
     _WindowsPrivate().directory(path,preserve_native_metadata=True,managed=managed)
 
 
