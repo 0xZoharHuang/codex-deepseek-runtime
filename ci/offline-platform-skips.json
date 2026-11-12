@@ -294,6 +294,36 @@
       "classname": "tests.test_owned_process_exit_snapshot",
       "name": "test_snapshot_write_failure_is_explicit_and_cannot_be_success",
       "message": "Windows retained OS process handles"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_native_package_keeps_existing_noninheriting_metadata_grant[160]",
+      "message": "Windows native ACL contract"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_native_package_keeps_existing_noninheriting_metadata_grant[1048704]",
+      "message": "Windows native ACL contract"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_existing_managed_root_refuses_unknown_grants_without_rewriting[active-receipt-2-0]",
+      "message": "Windows native ACL contract"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_existing_managed_root_refuses_unknown_grants_without_rewriting[active-receipt-160-3]",
+      "message": "Windows native ACL contract"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_existing_managed_root_refuses_unknown_grants_without_rewriting[inactive-state-2-0]",
+      "message": "Windows native ACL contract"
+    },
+    {
+      "classname": "tests.test_windows_install_native_root_acl",
+      "name": "test_existing_managed_root_refuses_unknown_grants_without_rewriting[inactive-state-160-3]",
+      "message": "Windows native ACL contract"
     }
   ],
   "linux": [],
