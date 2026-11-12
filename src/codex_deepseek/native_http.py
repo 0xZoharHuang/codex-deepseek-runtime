@@ -7,11 +7,29 @@ import json
 import os
 from pathlib import Path
 import secrets
+import threading
 import time
+import weakref
 
 import aiohttp
 from .platforms import executable
 from .error_privacy import response_headers, safe_error_body, error_body_fallback, sensitive_http_value
+
+_METADATA_LOCKS = weakref.WeakValueDictionary()
+_METADATA_LOCKS_GUARD = threading.Lock()
+
+
+def _write_owned_metadata(path, value):
+    """Serialize same-path writes in worker threads without delaying other paths."""
+    from .service import atomic_json
+    key = os.path.normcase(os.path.abspath(os.fspath(path)))
+    with _METADATA_LOCKS_GUARD:
+        lock = _METADATA_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _METADATA_LOCKS[key] = lock
+    with lock:
+        atomic_json(path, value)
 
 
 def native_helper():
@@ -66,8 +84,24 @@ class NativeTransport:
                 self.port=ready['port'];self.raw_protocol_version=ready.get('raw_protocol_version')
                 if self.metadata_path:
                     from .processes import identity
-                    from .service import atomic_json
-                    atomic_json(Path(self.metadata_path),{'pid':self.process.pid,'birth':identity(self.process.pid),'parent_pid':os.getpid(),'port':self.port,'restarts':self.restarts})
+                    # Durable filesystem writes can block for seconds. Keep the
+                    # event loop available to other requests while retaining
+                    # ownership until this exact metadata write finishes.
+                    metadata_task=asyncio.create_task(asyncio.to_thread(
+                        _write_owned_metadata,Path(self.metadata_path),
+                        {'pid':self.process.pid,'birth':identity(self.process.pid),'parent_pid':os.getpid(),'port':self.port,'restarts':self.restarts}))
+                    try:
+                        await asyncio.shield(metadata_task)
+                    except asyncio.CancelledError:
+                        # A thread cannot be cancelled. Do not stop/restart the
+                        # owned helper while an older write can still publish.
+                        while not metadata_task.done():
+                            try:await asyncio.shield(metadata_task)
+                            except asyncio.CancelledError:continue
+                            except Exception:break
+                        try:metadata_task.result()
+                        except Exception:pass
+                        raise
                 self.client=aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None,sock_connect=30,sock_read=None),
                     cookie_jar=aiohttp.DummyCookieJar(),trust_env=False,read_bufsize=1024*1024)
             except BaseException:
@@ -82,7 +116,10 @@ class NativeTransport:
 
     async def close(self):
         self.closed=True
-        await self._stop()
+        # A start may be persisting ownership in a worker thread. Retire the
+        # helper only after that write and startup have left the same lock.
+        async with self.lock:
+            await self._stop()
 
     @asynccontextmanager
     async def request(self,method,url,*,api_key,payload=None,policy='default'):
