@@ -39,6 +39,11 @@ def test_creating_browser_stanza_respects_existing_crlf(tmp_path, monkeypatch):
     assert actual.startswith(original)
     assert actual.count(b'\r\n') == actual.count(b'\n')
     assert b'codex_deepseek.web_mcp' in actual
+    def unexpected_replace(*args):
+        raise AssertionError('unchanged config must not be rewritten')
+    monkeypatch.setattr(web_config, 'replace_file', unexpected_replace)
+    web_config.ensure_browser(tmp_path)
+    assert path.read_bytes() == actual
 
 
 def test_mixed_existing_line_endings_are_not_globally_normalized(tmp_path, monkeypatch):
