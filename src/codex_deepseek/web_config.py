@@ -2,6 +2,7 @@
 from .platforms import file_lock, private_fd, replace_file
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import tomlkit
@@ -13,7 +14,11 @@ def ensure_browser(home: Path):
     with (home/'browser-config.lock').open('a') as lock, file_lock(lock):
         path=home/'config.toml'
         if path.is_symlink():raise RuntimeError('Isolated browser configuration cannot follow a symlink')
-        old=path.read_text(encoding='utf-8') if path.exists() else ''
+        if path.exists():
+            # Universal-newline decoding would silently rewrite user lines on
+            # another platform whenever the bundled command changes.
+            with path.open('r',encoding='utf-8',newline='') as source:old=source.read()
+        else:old=''
         config=tomlkit.parse(old)
         servers=config.setdefault('mcp_servers',tomlkit.table())
         if 'codex_web' in servers:
@@ -29,10 +34,14 @@ def ensure_browser(home: Path):
         server['command']=sys.executable
         server['args']=['-I','-X','utf8','-m','codex_deepseek.web_mcp','--home',str(home)]
         content=tomlkit.dumps(config)
+        # tomlkit retains existing CRLF but inserts new table lines with LF.
+        # Keep an entirely CRLF input consistent without normalizing a mixed file.
+        if '\r\n' in old and '\n' not in old.replace('\r\n',''):
+            content=re.sub(r'(?<!\r)\n','\r\n',content)
         if content==old:return
         temporary=None
         try:
-            with tempfile.NamedTemporaryFile('w',encoding='utf-8',dir=home,prefix='.browser-config-',delete=False) as f:
+            with tempfile.NamedTemporaryFile('w',encoding='utf-8',newline='',dir=home,prefix='.browser-config-',delete=False) as f:
                 temporary=Path(f.name)
                 private_fd(f.fileno());f.write(content);f.flush()
             replace_file(temporary,path)
