@@ -409,6 +409,19 @@ def expected_offline_skips(target):
         result['test_native_source_extraction::test_unix_extracts_real_symlink_target_and_bytes']='Requires native Unix symlink extraction'
     if target!='x86_64-pc-windows-msvc':
         for name in [
+            'test_native_package_keeps_existing_noninheriting_metadata_grant[160]',
+            'test_native_package_keeps_existing_noninheriting_metadata_grant[1048704]',
+            'test_existing_managed_root_refuses_unknown_grants_without_rewriting[active-receipt-2-0]',
+            'test_existing_managed_root_refuses_unknown_grants_without_rewriting[active-receipt-160-3]',
+            'test_existing_managed_root_refuses_unknown_grants_without_rewriting[inactive-state-2-0]',
+            'test_existing_managed_root_refuses_unknown_grants_without_rewriting[inactive-state-160-3]',
+            'test_native_container_keeps_existing_metadata_grant[reuse]',
+            'test_native_container_keeps_existing_metadata_grant[reuse-with-archive]',
+            'test_native_container_keeps_existing_metadata_grant[new-package]',
+            'test_native_container_rejects_unknown_grant_without_rewriting',
+        ]:
+            result['test_windows_install_native_root_acl::'+name]='Windows native ACL contract'
+        for name in [
             'test_real_windows_child_exit_is_snapshot_before_owner_finishes[0]',
             'test_real_windows_child_exit_is_snapshot_before_owner_finishes[7]',
             'test_wrong_instance_birth_never_becomes_an_exit_or_retained_handle',

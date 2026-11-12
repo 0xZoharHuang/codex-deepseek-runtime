@@ -29,7 +29,7 @@ _support_spec=importlib.util.spec_from_file_location('dedicated_platform_support
 _support=importlib.util.module_from_spec(_support_spec);_support_spec.loader.exec_module(_support)
 WINDOWS=_support.WINDOWS;EXE=_support.EXE
 python_entry=_support.python_entry;console_entry=_support.console_entry
-file_lock=_support.file_lock;private_directory=_support.private_directory;private_runtime_home=_support.private_runtime_home;replace_file=_support.replace_file
+file_lock=_support.file_lock;private_directory=_support.private_directory;private_install_root=_support.private_install_root;private_install_container=_support.private_install_container;private_runtime_home=_support.private_runtime_home;replace_file=_support.replace_file
 
 
 def required_binaries():
@@ -283,7 +283,7 @@ def native_package(root,manifest,archive_override=None):
     # Python 3.13 Windows mode=0700 follows the elevated token owner (BA),
     # which can exclude the same user's Limited token. Bind private storage to
     # TokenUser through the existing platform helper before creating children.
-    private_directory(root)
+    private_install_root(root)
     private_directory(downloads.parent)
     private_directory(downloads)
     native_storage(root,manifest)
@@ -310,7 +310,7 @@ def native_package(root,manifest,archive_override=None):
     if reusable:return readable_native_package(root,reusable,manifest)
     if target.exists():target=target.with_name(target.name+'-repair-'+uuid.uuid4().hex[:10])
     owned_native_path(root,target)
-    private_directory(target.parent)
+    private_install_container(target.parent)
     target.mkdir()
     private_directory(target)
     for name in ['bin','codex-resources','codex-path']:(target/name).mkdir()
@@ -541,7 +541,7 @@ def main():
     manifest=runtime_manifest(args.native_manifest)
     if manifest.get('status')!='ready':raise SystemExit('The native release manifest is not ready; finish and verify the release build first')
     native_storage(root,manifest)
-    private_directory(root)
+    private_install_root(root)
     with (root/'installation.lock').open('a') as lock,file_lock(lock):
         install(root,native_archive=args.native_archive,native_manifest_path=args.native_manifest,wheelhouse=args.wheelhouse,activate=not args.no_activate)
 

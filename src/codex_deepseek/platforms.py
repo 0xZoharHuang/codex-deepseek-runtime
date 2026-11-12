@@ -159,24 +159,32 @@ class _WindowsPrivate:
         owner=ctypes.c_void_p();default=self.w.BOOL()
         if not self.a.GetSecurityDescriptorOwner(raw,ctypes.byref(owner),ctypes.byref(default)):raise ctypes.WinError(ctypes.get_last_error())
         return raw,self.sid_text(owner)
-    def private_acl(self,raw):
+    def private_acl(self,raw,*,native_metadata=False):
         present=self.w.BOOL();default=self.w.BOOL();acl=ctypes.c_void_p()
         if not self.a.GetSecurityDescriptorDacl(raw,ctypes.byref(present),ctypes.byref(acl),ctypes.byref(default)):return False
         start=ctypes.addressof(raw);end=start+len(raw)
         if not present.value or not acl.value or not start<=acl.value<=end-8 or not self.a.IsValidAcl(acl):return False
         size=ctypes.c_ushort.from_address(acl.value+2).value;count=ctypes.c_ushort.from_address(acl.value+4).value
-        if count!=2 or acl.value+size>end:return False
+        if count<2 or (not native_metadata and count!=2) or acl.value+size>end:return False
         principals=[]
         for i in range(count):
             ace=ctypes.c_void_p()
             if not self.a.GetAce(acl,i,ctypes.byref(ace)) or not acl.value<=ace.value<=acl.value+size-16:return False
             kind=ctypes.c_ubyte.from_address(ace.value).value;flags=ctypes.c_ubyte.from_address(ace.value+1).value
             length=ctypes.c_ushort.from_address(ace.value+2).value
-            if kind!=0 or flags&~0x17 or flags&8 or length<16 or ace.value+length>acl.value+size:return False
-            if ctypes.c_ulong.from_address(ace.value+4).value!=0x1f01ff:return False
+            if kind!=0 or length<16 or ace.value+length>acl.value+size:return False
+            mask=ctypes.c_ulong.from_address(ace.value+4).value
             sid=ace.value+8
             if not self.a.IsValidSid(sid) or self.a.GetLengthSid(sid)>length-8:return False
-            principals.append(self.sid_text(sid))
+            principal=self.sid_text(sid)
+            if principal in (self.sid,'S-1-5-18'):
+                if flags&~0x17 or flags&8 or mask!=0x1f01ff:return False
+                if native_metadata and flags!=3:return False
+                principals.append(principal)
+            elif not native_metadata or flags or not mask or mask&~0x1000a0:
+                # Native setup grants non-inheriting traverse/read-attributes
+                # (and sometimes synchronize), never content or write access.
+                return False
         return set(principals)=={self.sid,'S-1-5-18'} and len(set(principals))==2
     def apply(self,handle,directory,*,preserve_acl=False):
         self.information(handle,directory);raw,owner=self.security(handle)
@@ -229,7 +237,7 @@ class _WindowsPrivate:
         try:self.information(output,True)
         except BaseException:self.k.CloseHandle(output);raise
         return output
-    def directory(self,path,*,preserve_existing_acl=False):
+    def directory(self,path,*,preserve_existing_acl=False,preserve_native_metadata=False,managed=False):
         path=Path(path).absolute()
         if '..' in path.parts or not path.anchor or len(path.parts)<2:
             raise PermissionError('Unsafe native profile root')
@@ -248,6 +256,11 @@ class _WindowsPrivate:
                 parents.append(handle)
             raw,owner=self.security(parents[-1])
             if preserve_existing_acl and owner==self.sid:return
+            if preserve_native_metadata and owner==self.sid:
+                control=self.w.WORD();revision=self.w.DWORD()
+                protected=bool(self.a.GetSecurityDescriptorControl(raw,ctypes.byref(control),ctypes.byref(revision)) and control.value&0x1000)
+                if protected and self.private_acl(raw,native_metadata=True):return
+                if managed:raise PermissionError('Refusing unsafe or unrecognized installation root ACL')
             if owner!=self.sid:
                 # Only the exact prior private BA-owned layout may migrate owner.
                 # Ordinary user-owned directories need WRITE_DAC, not WRITE_OWNER.
@@ -311,6 +324,26 @@ def private_runtime_home(path):
     security.directory(path)
     # Native uses this shared cache with private=false: preserve existing grants.
     security.directory(path/'cache',preserve_existing_acl=True)
+
+
+def private_install_root(path):
+    """Retain native setup's safe traversal grants on an existing install."""
+    path=Path(path)
+    if not WINDOWS:
+        private_directory(path);return
+    # An inactive installation may have no installation.json, but its
+    # immutable releases directory still identifies existing installed state.
+    managed=(path/'installation.json').exists() or (path/'releases').exists()
+    _WindowsPrivate().directory(path,preserve_native_metadata=True,managed=managed)
+
+
+def private_install_container(path):
+    """Keep verified native-container metadata grants while installing assets."""
+    path=Path(path)
+    if not WINDOWS:
+        private_directory(path);return
+    managed=path.is_dir() and any(path.iterdir())
+    _WindowsPrivate().directory(path,preserve_native_metadata=True,managed=managed)
 
 
 def replace_file(source,destination):
@@ -379,7 +412,7 @@ def native_artifact_access(root,package,manifest_files):
     if actual!=set(manifest_files):raise ValueError('Native artifact inventory changed before permissions')
     # Normalize only the owned native container and public package. Root retains
     # its existing private ACL; no parent above root is modified.
-    private_directory(root/'native')
+    private_install_container(root/'native')
     private_directory(package)
     api=ctypes.WinDLL('advapi32',use_last_error=True);kernel=ctypes.WinDLL('kernel32',use_last_error=True)
     class TRUSTEE(ctypes.Structure):
