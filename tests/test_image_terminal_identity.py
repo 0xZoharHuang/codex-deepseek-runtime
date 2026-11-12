@@ -40,10 +40,10 @@ async def run_case(fake_upstream, tmp_path, value, *, stream, damage=None, heade
                     "tools": [{"type": "function", "name": "terminal_only", "parameters": {"type": "object"}}]}
             async with client.post(f"http://127.0.0.1:{gateway.port}/v1/responses", headers=HEADERS, json=body) as reply:
                 text = await reply.text()
-        row = store.db.execute("SELECT status,response_id FROM receipts").fetchone()
+        row = store.db.execute("SELECT status,response_id,detail FROM receipts").fetchone()
         image = {}
         for updates in records: image.update(updates)
-        return {"receipt_status": row[0], "response_id": row[1], "text": text, "image": image,
+        return {"receipt_status": row[0], "response_id": row[1], "receipt_detail": row[2], "text": text, "image": image,
                 "attested": store.db.execute("SELECT COUNT(*) FROM adapter_metadata WHERE key LIKE 'native-complete-v1:%'").fetchone()[0],
                 "transport": transport, "deleted": backend.deleted, "calls": len(calls)}
     finally:

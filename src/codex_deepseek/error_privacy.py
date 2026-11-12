@@ -22,6 +22,26 @@ _HTTP_ERROR_LABELS = frozenset({
 })
 _HTTP_DIAGNOSTIC_BODY_BYTES = 32 * 1024
 
+_IDENTITY_EVENT_PHASES = frozenset({
+    "response.created", "response.in_progress", "response.completed",
+    "response.failed", "response.incomplete", "error", "nonstream",
+})
+_IDENTITY_TERMINAL_STATUSES = frozenset({"completed", "failed", "incomplete"})
+
+
+def upstream_identity_context(event_phase, response_status=None):
+    """Safe context for an identity rejection, never an identity attestation.
+
+    Only finite protocol labels survive. Do not pass or inspect the response
+    body, model/provider values, request input, IDs or credentials here.
+    """
+    phase = (event_phase if type(event_phase) is str
+             and event_phase in _IDENTITY_EVENT_PHASES else "other")
+    result = {"schema": 1, "event_phase": phase}
+    if type(response_status) is str and response_status in _IDENTITY_TERMINAL_STATUSES:
+        result["terminal_status"] = response_status
+    return result
+
 
 def _http_error_diagnostic(raw, content_type, credential):
     """Bounded observation only; no body, message, request or header IDs survive."""

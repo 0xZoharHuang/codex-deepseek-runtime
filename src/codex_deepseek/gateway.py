@@ -26,7 +26,8 @@ from .state import Store
 from .request_metadata import native_request_metadata
 from .native_http import NativeTransport, NativeRawUnsupported, network_policy
 from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
-                            _http_error_diagnostic, safe_error_text, filter_error_headers)
+                            _http_error_diagnostic, safe_error_text, filter_error_headers,
+                            upstream_identity_context)
 from .structured import StructuredOutput
 from .image_provider import ImageProvider,load_image_config
 from .image_transport import ImageTransportError,PayloadBudgetExceeded,FileOperationError
@@ -48,6 +49,10 @@ _OBSERVED_PROVIDERS = {
 
 
 
+class UpstreamIdentityError(ProtocolError):
+    """An upstream identity field failed the pinned-route checks."""
+
+
 def validate_observed_identity(value, requested_provider, *, failed=False, incomplete=False):
     """Reject explicit contradictions; an error-only unknown is no attestation."""
     error_incomplete = False
@@ -65,12 +70,12 @@ def validate_observed_identity(value, requested_provider, *, failed=False, incom
         if item is None:
             continue
         if not isinstance(item, str) or not item:
-            raise ProtocolError("Observed upstream " + name + " must be a nonempty string")
+            raise UpstreamIdentityError("Observed upstream " + name + " must be a nonempty string")
         accepted = _OBSERVED_MODELS if name == "model" else _OBSERVED_PROVIDERS[requested_provider]
         if not failed and item not in accepted:
             if name == "model" and item == "unknown" and error_incomplete:
                 continue  # Preserve the original error, never claim model identity.
-            raise ProtocolError("Upstream returned an incompatible " + name + ": " + item)
+            raise UpstreamIdentityError("Upstream returned an incompatible " + name + ": " + item)
 
 
 
@@ -410,6 +415,7 @@ class Gateway:
         captured_key = self.key
         image_stack=AsyncExitStack();prepared_images=None;image_refs=False;image_started=False
         failure_detail = None
+        identity_context = None
         trace_event_lines, trace_event_bytes, trace_event_closed = [], 0, False
         def trace_upstream_event(original):
             nonlocal trace_event_bytes, trace_event_closed
@@ -459,17 +465,25 @@ class Gateway:
                 self.store.progress(receipt, events)
                 if self.images is not None:
                     self.images.record(receipt, response_id=events.response_id)
+        def check_observed_identity(value, phase, **options):
+            nonlocal identity_context
+            try:
+                validate_observed_identity(value, payload['provider']['only'][0], **options)
+            except UpstreamIdentityError:
+                status_value = value.get('status') if isinstance(value, dict) else None
+                identity_context = upstream_identity_context(phase, status_value)
+                raise
         async def deliver(operation, *args):
             try:
                 return await getattr(response, operation)(*args)
             except ConnectionError as exc:
                 raise _DownstreamDisconnected(operation, type(exc).__name__) from exc
-        async def image_terminal(value, expected=None):
+        async def image_terminal(value, expected=None, phase='nonstream'):
             if image_refs:
                 validate_response(value, expected)
                 # Terminal shape and stable ID prove consumption ended; an
                 # incompatible successful model/provider must still fail below.
-                validate_observed_identity(value, payload['provider']['only'][0], failed=True)
+                check_observed_identity(value, phase, failed=True)
                 response_id, terminal = value['id'], value['status']
                 self.images.record(receipt,consumption_status='provider_terminal',provider_terminal=terminal,provider_response_id=response_id,response_id=response_id)
                 await prepared_images.mark_upstream_settled(response_id,terminal)
@@ -543,8 +557,8 @@ class Gateway:
                         result = redact_provider_failure(result, captured_key)
                     observe_response(result)
                     await image_terminal(result)
-                    validate_observed_identity(result, payload['provider']['only'][0], failed=failed,
-                                               incomplete=result['status'] == 'incomplete')
+                    check_observed_identity(result, 'nonstream', failed=failed,
+                                            incomplete=result['status'] == 'incomplete')
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
@@ -567,11 +581,10 @@ class Gateway:
                     observed = original.get("response") if isinstance(original, dict) else None
                     observe_response(observed)
                     if image_refs and kind in {'response.completed','response.failed','response.incomplete'}:
-                        await image_terminal(observed, kind.removeprefix("response."))
+                        await image_terminal(observed, kind.removeprefix("response."), phase=kind)
                     if kind != "error":
-                        validate_observed_identity(observed, payload['provider']['only'][0],
-                                                   failed=kind == "response.failed",
-                                                   incomplete=kind == "response.incomplete")
+                        check_observed_identity(observed, kind, failed=kind == "response.failed",
+                                                incomplete=kind == "response.incomplete")
                     for event in structured.events(original):
                         normalized_events = events.transform(event)
                         if events.terminal:
@@ -616,6 +629,11 @@ class Gateway:
             receipt_detail = detail
             if failure_detail is not None:
                 receipt_detail = json.dumps({"message": detail, "provider_failure": failure_detail})
+            if identity_context is not None:
+                details = {"message": detail, "upstream_identity_context": identity_context}
+                if failure_detail is not None:
+                    details["provider_failure"] = failure_detail
+                receipt_detail = json.dumps(details, separators=(',', ':'))
             budget = getattr(exc, 'diagnostics', None) if isinstance(exc, ImageTransportError) else None
             if isinstance(budget, dict):
                 # Only the pure planner's aggregate: no URLs, image data or file IDs.
