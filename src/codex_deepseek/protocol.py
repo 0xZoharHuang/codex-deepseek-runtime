@@ -314,7 +314,7 @@ class Registry:
             "text": INTERRUPTED_CONTEXT_PREFIX + json.dumps(items, ensure_ascii=False),
         }]}
 
-    def history(self, items: list[dict]) -> list[dict]:
+    def history(self, items: list[dict], *, opaque_replay=False) -> list[dict]:
         self.peer_history_bindings = []
         peer_history_items = []
         result = []
@@ -322,6 +322,11 @@ class Registry:
         for original in self.regroup_tool_history(items):
             item = copy.deepcopy(original)
             kind = item.get("type", "message")
+            if opaque_replay and kind == 'reasoning' and item.get('encrypted_content') and not item.get('encrypted_function_args'):
+                # Credential-bound verification follows route selection and
+                # precedes any provider I/O. An unverified item cannot proceed.
+                result.append(item)
+                continue
             if kind in {'reasoning','function_call','custom_tool_call'}:
                 fingerprint=native_history_fingerprint(item)
                 check=getattr(self.search_store,'has_completed_native_item',None)
@@ -430,7 +435,11 @@ class Registry:
                 pending.append(record)
             else:
                 if pending:
-                    if index in context_positions:
+                    if any(record['item'].get('encrypted_content') for record in pending):
+                        # Preserve the complete reasoning sequence in place.
+                        # It is credential/route verified before provider I/O.
+                        projected.extend(record['item'] for record in pending)
+                    elif index in context_positions:
                         interrupted.extend(pending)
                     elif kind in {"function_call", "openrouter:web_search"} or item.get("role") == "assistant":
                         projected.extend(record["item"] for record in pending)
@@ -438,6 +447,8 @@ class Registry:
                         interrupted.extend(pending)
                     pending = []
                 projected.append(item)
+        if any(record['item'].get('encrypted_content') for record in interrupted):
+            raise ProtocolError('Unpaired opaque reasoning cannot be converted to continuation text')
         if interrupted:
             projected.insert(0, self.interrupted_context(interrupted))
         # Trace-only provenance follows object identity after all index shifts.
@@ -592,7 +603,7 @@ def redact_provider_failure(value, credential):
 
 def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER,
             peer_hosted_provider: str = PEER_HOSTED_PROVIDER,
-            native_headers: Any = None) -> tuple[dict, Registry]:
+            native_headers: Any = None, opaque_replay: bool = False) -> tuple[dict, Registry]:
     """Pin the model/provider and convert tool schemas and retained tool history together."""
     if not isinstance(ordinary_default_provider, str) or ordinary_default_provider not in {PROVIDER, STRUCTURED_PROVIDER}:
         raise ProtocolError("Unsupported ordinary default provider")
@@ -617,7 +628,7 @@ def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: 
     if isinstance(result.get("input"), list):
         if any(not isinstance(item, dict) for item in result['input']):
             raise ProtocolError("Responses input items must be objects")
-        result["input"] = registry.history(result["input"])
+        result["input"] = registry.history(result["input"], opaque_replay=opaque_replay)
     context = native_runtime_context(body, headers=native_headers)
     if context is not None:
         if isinstance(result.get("input"), str):

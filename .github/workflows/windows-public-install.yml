@@ -78,6 +78,20 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           & "$env:RUNNER_TEMP/cds-verifier/Scripts/python.exe" -I -B ci/qualify_installed_release.py --public-windows-source "$env:RUNNER_TEMP/cds-public-tag" --root "$env:RUNNER_TEMP/cds-install" --evidence "$env:RUNNER_TEMP/cds-public-evidence"
+      - name: Replay reasoning through the installed native CLI
+        if: ${{ inputs.candidate_branch != '' && github.sha == inputs.commit }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $python = "$env:RUNNER_TEMP/cds-verifier/Scripts/python.exe"
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r ci/requirements-test.lock
+          $evidence = "$env:RUNNER_TEMP/cds-public-evidence"
+          $installed = Get-Content -LiteralPath "$evidence/qualification.json" -Raw | ConvertFrom-Json
+          $env:CODEX_DEEPSEEK_TEST_CLI_BINARY = Join-Path $installed.native_package 'bin/codex.exe'
+          $env:CODEX_DEEPSEEK_TEST_HTTP_BINARY = Join-Path $installed.native_package 'bin/codex-http-transport.exe'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          & $python -I -B -c "import sys; sys.path.insert(0, '.'); import pytest; raise SystemExit(pytest.main(sys.argv[1:]))" -p pytest_asyncio.plugin -W error -q -p no:cacheprovider --basetemp "$env:RUNNER_TEMP/cds-opaque-pytest" --junitxml "$evidence/opaque-replay.xml" tests/test_opaque_replay.py tests/test_native_opaque_replay.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

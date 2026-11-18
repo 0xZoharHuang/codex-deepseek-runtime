@@ -24,6 +24,7 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 
 from .state import Store
 from .request_metadata import native_request_metadata
+from .opaque_replay import opaque_items, restore
 from .native_http import NativeTransport, NativeRawUnsupported, network_policy
 from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
                             _http_error_diagnostic, safe_error_text, filter_error_headers,
@@ -398,7 +399,7 @@ class Gateway:
         try:
             body = await request.json()
             native_request = native_request_metadata(body, request.headers)
-            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=request.headers)
+            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=request.headers, opaque_replay=True)
             if registry.regrouped_tool_history:
                 native_request["regrouped_tool_history"] = registry.regrouped_tool_history
             structured = StructuredOutput(body)
@@ -494,6 +495,12 @@ class Gateway:
             captured_key=self.credential_source() if callable(self.credential_source) else self.credential_source
             if not isinstance(captured_key,str) or not captured_key or any(c.isspace() for c in captured_key):
                 raise ValueError('No usable provider credential')
+            if opaque_items({'output': payload.get('input')}):
+                try:
+                    restore(payload, self.store.db, captured_key)
+                except ProtocolError as error:
+                    self.store.finish(receipt, 'adapter_error', detail=str(error))
+                    return error_response(str(error), 400)
             if trace:
                 private_directory(trace)
                 private_write(trace / (receipt + "-request.json"),json.dumps(payload, ensure_ascii=False, indent=2))
@@ -561,6 +568,10 @@ class Gateway:
                                             incomplete=result['status'] == 'incomplete')
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
+                    if opaque_items(result):
+                        if result['status'] != 'completed' or payload['provider']['only'] != [PROVIDER]:
+                            raise ProtocolError('Opaque reasoning requires an official DeepSeek completion')
+                        events.opaque_credential = captured_key
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
                     self.store.finish(receipt, result.get("status", "completed"), status, events,
                                       json.dumps(failure_detail) if failure_detail is not None else None)
@@ -568,10 +579,23 @@ class Gateway:
                 response = web.StreamResponse(headers={**transport_headers,"Content-Type": "text/event-stream", "Cache-Control": "no-store",
                                                         "X-Adapter-Request-Id": receipt})
                 await deliver('prepare', request)
+                held = None
+                held_bytes = 0
+                opaque_terminal = False
                 async for original in sse_events(upstream.content):
+                    if opaque_terminal:
+                        raise ProtocolError('Provider sent an event after opaque response completion')
                     reject_credential_response_id(original.get("response") if isinstance(original, dict) else None)
                     trace_upstream_event(original)
                     kind = original.get("type") if isinstance(original, dict) else None
+                    opaque = opaque_items(original)
+                    if opaque:
+                        if payload['provider']['only'] != [PROVIDER]:
+                            raise ProtocolError('Opaque reasoning requires an official DeepSeek completion')
+                        if kind == 'response.completed' and any(item.get('id') not in events.done for item in opaque):
+                            raise ProtocolError('Streamed opaque reasoning lacks response.output_item.done evidence')
+                        if held is None:
+                            held = []
                     if kind in {"response.failed", "error"}:
                         failure_detail = provider_failure_diagnostic(original)
                     if kind == "response.failed":
@@ -587,16 +611,44 @@ class Gateway:
                                                 incomplete=kind == "response.incomplete")
                     for event in structured.events(original):
                         normalized_events = events.transform(event)
+                        frames = [encode_sse(item) for item in normalized_events]
+                        if held is not None and events.terminal and events.status == 'failed':
+                            failure = normalized_events[-1]
+                            failure['response']['output'] = []
+                            frames = [encode_sse(failure)]
+                        elif held is not None:
+                            held_bytes += sum(map(len, frames))
+                            if held_bytes > 8 * 1024 * 1024:
+                                raise ProtocolError('Opaque response exceeds the replay evidence budget')
+                            held.extend(frames)
+                            if not events.terminal:
+                                continue
+                            if events.status != 'completed' or not any(
+                                item.get('encrypted_content') for item in events.done.values()
+                            ):
+                                raise ProtocolError('Opaque reasoning lacks a completed native replay boundary')
+                            # The terminal is not authoritative until the full
+                            # transport body, including compressed integrity, ends.
+                            events.opaque_credential = captured_key
+                            opaque_terminal = True
+                            continue
                         if events.terminal:
                             # The receipt describes the upstream model result;
                             # native logs remain authoritative for tool effects.
                             self.store.finish(receipt, events.status, status, events,
                                               json.dumps(failure_detail) if failure_detail is not None else None)
-                        for normalized in normalized_events:
-                            await deliver('write', encode_sse(normalized))
+                        for frame in frames:
+                            await deliver('write', frame)
                         if events.terminal:
                             await deliver('write_eof')
                             return response
+                if opaque_terminal:
+                    self.store.finish(receipt, events.status, status, events,
+                                      json.dumps(failure_detail) if failure_detail is not None else None)
+                    for frame in held:
+                        await deliver('write', frame)
+                    await deliver('write_eof')
+                    return response
                 if not events.terminal:
                     raise ProtocolError("Upstream disconnected without a terminal Responses event")
                 await deliver('write_eof')
