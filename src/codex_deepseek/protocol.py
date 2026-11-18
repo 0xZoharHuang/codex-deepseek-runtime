@@ -181,11 +181,16 @@ class Registry:
                 raise ProtocolError(f"Provider cannot implement hosted tool type {kind!r}")
         return result
 
-    def history(self, items: list[dict]) -> list[dict]:
+    def history(self, items: list[dict], *, opaque_replay=False) -> list[dict]:
         result = []
         for original in items:
             item = copy.deepcopy(original)
             kind = item.get("type", "message")
+            if opaque_replay and kind == 'reasoning' and item.get('encrypted_content') and not item.get('encrypted_function_args'):
+                # The authenticated gateway resolves this against exact producer
+                # evidence after selecting the route and capturing its credential.
+                result.append(item)
+                continue
             if kind in {'reasoning','function_call','custom_tool_call'}:
                 fingerprint=native_history_fingerprint(item)
                 check=getattr(self.search_store,'has_completed_native_item',None)
@@ -279,6 +284,8 @@ class Registry:
         while result and (result[-1].get('type')=='reasoning' or (result[-1].get('type','message')=='message' and result[-1].get('role')=='assistant')):
             trailing.insert(0,result.pop())
         if trailing:
+            if any(item.get('encrypted_content') for item in trailing):
+                raise ProtocolError('Unpaired opaque reasoning cannot be converted to continuation text')
             self.continuation_context=True
             context_id='continuation_'+hashlib.sha256(json.dumps(trailing,sort_keys=True,ensure_ascii=False).encode()).hexdigest()[:24]
             result.extend([
@@ -417,7 +424,7 @@ def redact_provider_failure(value, credential):
 
 
 def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: str = PROVIDER,
-            peer_hosted_provider: str = PEER_HOSTED_PROVIDER) -> tuple[dict, Registry]:
+            peer_hosted_provider: str = PEER_HOSTED_PROVIDER, opaque_replay=False) -> tuple[dict, Registry]:
     """Pin the model/provider and convert tool schemas and retained tool history together."""
     if not isinstance(ordinary_default_provider, str) or ordinary_default_provider not in {PROVIDER, STRUCTURED_PROVIDER}:
         raise ProtocolError("Unsupported ordinary default provider")
@@ -442,7 +449,7 @@ def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: 
     if isinstance(result.get("input"), list):
         if any(not isinstance(item, dict) for item in result['input']):
             raise ProtocolError("Responses input items must be objects")
-        result["input"] = registry.history(result["input"])
+        result["input"] = registry.history(result["input"], opaque_replay=opaque_replay)
     by_name = {tool.get("name"):tool for tool in result["tools"] if tool.get("name")}
     for tool in registry.discovered:
         name=tool.get("name")

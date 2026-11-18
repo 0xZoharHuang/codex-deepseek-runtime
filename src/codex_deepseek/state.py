@@ -11,6 +11,7 @@ import uuid
 import zstandard
 
 from .protocol import PROVIDER, ProtocolError, native_history_fingerprint
+from .opaque_replay import remember_completed
 from .processes import identity, matches, terminate
 from .platforms import private_directory, sqlite_filename
 
@@ -120,17 +121,24 @@ class Store:
         return self.db.execute('SELECT 1 FROM adapter_metadata WHERE key=?',('native-complete-v1:'+fingerprint,)).fetchone() is not None
 
     def finish(self, key, status, upstream=None, events=None, detail=None):
-        self.db.execute('''UPDATE receipts SET finished=?,status=?,upstream_status=?,response_id=?,usage=?,detail=?
-                           WHERE id=? AND owner_id=? AND status='running' ''',
-                        (time.time(), status, upstream, events.response_id if events else None,
-                         json.dumps(events.usage if events else {}), detail, key, self.owner))
-        if status=='completed' and events and getattr(events,'terminal',False) and getattr(events,'status',None)=='completed':
-            for item in getattr(events,'done',{}).values():
-                if item.get('type') not in {'reasoning','function_call'}:continue
-                normalized=events.registry.output(item,final=True)
-                fingerprint=native_history_fingerprint(normalized)
-                if fingerprint:self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('native-complete-v1:'+fingerprint,'completed'))
-        self.db.commit()
+        with self.db:
+            changed = self.db.execute('''UPDATE receipts SET finished=?,status=?,upstream_status=?,response_id=?,usage=?,detail=?
+                                         WHERE id=? AND owner_id=? AND status='running' ''',
+                                      (time.time(), status, upstream, events.response_id if events else None,
+                                       json.dumps(events.usage if events else {}), detail, key, self.owner))
+            if (changed.rowcount and status == 'completed' and events
+                    and getattr(events, 'terminal', False) and getattr(events, 'status', None) == 'completed'):
+                for item in getattr(events, 'done', {}).values():
+                    if item.get('type') not in {'reasoning', 'function_call'}:
+                        continue
+                    normalized = events.registry.output(item, final=True)
+                    fingerprint = native_history_fingerprint(normalized)
+                    if fingerprint:
+                        self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',
+                                        ('native-complete-v1:' + fingerprint, 'completed'))
+                credential = getattr(events, 'opaque_credential', None)
+                if credential is not None:
+                    remember_completed(self.db, credential, key, events.done.values())
 
     @staticmethod
     def owner_lost(path, owner):
