@@ -1,8 +1,11 @@
 """Synthetic Files provider can create then return 4xx; never calls OpenRouter."""
 import json
+import sqlite3
+from contextlib import closing
 
 import pytest
 from codex_deepseek.image_transport import FileOperationError,OpenRouterFilesBackend,UploadOutcomeUnknown,_FileResponse
+from codex_deepseek.platforms import sqlite_filename
 from test_image_transport import PagedFiles,FakeFiles,payload,transport
 from test_image_provider import decode_file
 
@@ -44,3 +47,52 @@ async def test_created_then_4xx_never_blindly_reuploads_and_can_reconcile(tmp_pa
     reconciled=await cold.reconcile_unknown_uploads()
     assert reconciled['complete'] and reconciled['resolved_count']==1
     assert len(backend.uploaded)==1 and len(backend.deleted)==1 and not backend.files
+
+
+@pytest.mark.asyncio
+async def test_legacy_http_rejected_row_preserves_nonce_and_requires_reconciliation(tmp_path):
+    backend = GhostOnError(413)
+    original = transport(tmp_path, backend)
+    with pytest.raises(FileOperationError):
+        async with original.prepare(payload()):
+            pass
+    scope, directory = await original._scope(original.credentials())
+    async with original._db(directory) as db:
+        # Restore the two values written by the previous released backend.
+        db.execute("UPDATE assets SET state='upload_rejected',reason='FileOperationError'")
+        db.execute("UPDATE receipts SET event='upload_rejected' WHERE event='upload_unknown'")
+        legacy_asset = dict(db.execute("SELECT * FROM assets").fetchone())
+        legacy_receipts = [tuple(row) for row in db.execute("SELECT * FROM receipts ORDER BY sequence")]
+
+    cold = transport(tmp_path, backend)
+    other = await cold.diagnostics(credential='fixture-other-key')
+    with closing(sqlite3.connect(sqlite_filename(directory / 'files.sqlite'))) as db:
+        assert db.execute("SELECT state, reason FROM assets").fetchall() == [('upload_rejected', 'FileOperationError')]
+    assert not backend.list_calls and not backend.gets and not backend.deleted
+
+    private = await cold.diagnostics(private=True)
+    with pytest.raises((UploadOutcomeUnknown, FileOperationError)) as attempted:
+        async with cold.prepare(payload()):
+            pass
+    observed = {'foreign_scope_reported': other['foreign_scopes'] == [scope],
+                'durable_states': [asset['state'] for asset in private['assets']],
+                'next_error': type(attempted.value).__name__, 'uploads': len(backend.uploaded)}
+    print('SYNTHETIC_LEGACY_UPLOAD_OBSERVATION ' + json.dumps(observed, sort_keys=True))
+    assert observed == {'foreign_scope_reported': True, 'durable_states': ['upload_unknown'],
+                        'next_error': 'UploadOutcomeUnknown', 'uploads': 1}
+    expected = {**legacy_asset, 'state': 'upload_unknown', 'reason': 'legacy_upload_noncreation_unverified'}
+    assert private['assets'] == [expected]
+    public = await cold.diagnostics()
+    assert public['assets'][0]['state'] == 'upload_unknown'
+    assert 'filename' not in public['assets'][0] and 'file_id' not in public['assets'][0]
+    blocked = await cold.cleanup(all_unpinned=True)
+    assert blocked['unknown_uploads'] == 1 and not blocked['complete']
+    assert len(backend.uploaded) == 1 and not backend.list_calls and not backend.gets and not backend.deleted
+    async with cold._db(directory) as db:
+        receipts = [tuple(row) for row in db.execute("SELECT * FROM receipts ORDER BY sequence")]
+        assert receipts[:-1] == legacy_receipts
+        assert receipts[-1][2:4] == (legacy_asset['digest'], 'legacy_upload_reclassified')
+
+    reconciled = await cold.reconcile_unknown_uploads()
+    assert reconciled['complete'] and reconciled['resolved_count'] == 1
+    assert len(backend.uploaded) == len(backend.deleted) == 1 and not backend.files

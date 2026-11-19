@@ -183,6 +183,8 @@ async def test_definitely_rejected_upload_can_be_attempted_by_new_request(tmp_pa
     tr=transport(tmp_path,backend)
     with pytest.raises(FileOperationError):
         async with tr.prepare(payload()):pass
+    asset, = (await tr.diagnostics(private=True))['assets']
+    assert (asset['state'],asset['reason'])==('upload_rejected','verified_upload_noncreation')
     backend.upload_error=None
     async with tr.prepare(payload()) as value:assert value.uploads==1
     assert len(backend.uploaded)==2 and backend.uploaded[0][3]!=backend.uploaded[1][3]

@@ -33,6 +33,7 @@ DATA_URL = re.compile(r"data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/]
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 MAX_REFERENCED_FILE_BYTES = 20 * 1024 * 1024
 V3_SALT_FENCE = b"CDS-IMAGE-CACHE-V3-LEGACY-READERS-FENCED\n"
+LEGACY_HTTP_REJECTION = "state='upload_rejected' AND reason='FileOperationError' AND file_id IS NULL"
 
 
 class ImageTransportError(RuntimeError):
@@ -1243,9 +1244,17 @@ class ImageTransport:
                     db.execute("ALTER TABLE pins ADD COLUMN phase TEXT NOT NULL DEFAULT 'prepared'")
                 if 'request_ref' not in columns:
                     db.execute('ALTER TABLE pins ADD COLUMN request_ref TEXT')
-                # These lease-only transitions never depend on asset operation
-                # locks. Cancellation is not held behind unrelated network I/O.
                 with _ledger_transaction(db):
+                    # The old HTTP-based decision is not evidence that upload
+                    # failed before creation. Keep its nonce and journal intact.
+                    legacy = db.execute(f"SELECT digest FROM assets WHERE {LEGACY_HTTP_REJECTION}").fetchall()
+                    for asset in legacy:
+                        digest = asset['digest']
+                        self._validate_digest(digest)
+                        db.execute("UPDATE assets SET state='upload_unknown',reason='legacy_upload_noncreation_unverified' "
+                                   "WHERE digest=?", (digest,))
+                        self._record(db, digest, 'legacy_upload_reclassified')
+                    # Lease retirement does not wait on asset operation locks.
                     db.execute("DELETE FROM pins WHERE phase='settled'")
                     for pin in db.execute("SELECT DISTINCT pid,birth FROM pins WHERE phase!='upstream_unknown'").fetchall():
                         if self.owner_alive(pin['pid'], pin['birth']) is False:
@@ -1308,11 +1317,13 @@ class ImageTransport:
                 meta = await self.backend.upload(key, blob.data, blob.mime, filename)
             except BaseException as error:
                 known = isinstance(error, FileOperationError) and error.definitely_not_created
+                state = 'upload_rejected' if known else 'upload_unknown'
+                reason = 'verified_upload_noncreation' if known else type(error).__name__
                 async with self._db(directory) as db:
                     self._same_asset(db, blob.digest, pending)
                     with _ledger_transaction(db):
-                        db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", ('upload_rejected' if known else 'upload_unknown', type(error).__name__, blob.digest))
-                        self._record(db, blob.digest, 'upload_rejected' if known else 'upload_unknown', _safe_error_detail(error))
+                        db.execute("UPDATE assets SET state=?,reason=? WHERE digest=?", (state, reason, blob.digest))
+                        self._record(db, blob.digest, state, _safe_error_detail(error))
                 raise
             async with self._db(directory) as db:
                 row = self._same_asset(db, blob.digest, pending)
@@ -1705,7 +1716,8 @@ class ImageTransport:
                 _private_file_stat(database)
                 with closing(sqlite3.connect(sqlite_filename(database,read_only=True), uri=True)) as db:
                     self._verify_ledger_identity(db,directory)
-                    count = db.execute("SELECT COUNT(*) FROM assets WHERE state NOT IN ('deleted','upload_rejected')").fetchone()[0]
+                    count = db.execute("SELECT COUNT(*) FROM assets WHERE state NOT IN ('deleted','upload_rejected') "
+                                       f"OR ({LEGACY_HTTP_REJECTION})").fetchone()[0]
                 if count:
                     pending.append(directory.name)
             except (sqlite3.Error,OSError,ImageTransportError):
