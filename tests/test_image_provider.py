@@ -161,7 +161,7 @@ async def test_gateway_default_off_and_bound_credential(tmp_path,monkeypatch,ena
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('status',[429,500])
-async def test_known_rejection_releases_but_unknown_provider_failure_retains(tmp_path,monkeypatch,status):
+async def test_http_error_maintenance_preserves_unknown_consumption(tmp_path,monkeypatch,status):
     native=FakeNative();native.model_status=status;native.model_body={'error':{'message':'synthetic'}}
     monkeypatch.setattr('codex_deepseek.gateway.NativeTransport',lambda *a,**kw:native);config(tmp_path)
     store=Store(tmp_path/'adapter.sqlite')
@@ -170,10 +170,12 @@ async def test_known_rejection_releases_but_unknown_provider_failure_retains(tmp
             async with client.post(f'http://127.0.0.1:{gateway.port}/v1/responses',json={'model':MODEL,'input':payload()['input']},headers={'Authorization':'Bearer LOCAL'}) as response:
                 assert response.status==status
                 if status==429:assert response.headers['Retry-After']=='9'
-            diag=await gateway.images.transport().diagnostics();assert bool(diag['unknown_upstream_calls'])==(status==500)
-            result,code=await maintenance_command(tmp_path,native,lambda:KEY,'cleanup',all_unpinned=True)
-            assert code==(1 if status==500 else 0)
-            assert bool(native.deleted)==(status==429)
+            diagnostics = await gateway.images.transport().diagnostics()
+            assert len(diagnostics["unknown_upstream_calls"]) == 1
+            result, code = await maintenance_command(tmp_path, native, lambda: KEY, "cleanup", all_unpinned=True)
+            assert code == 1
+            assert result["unknown_upstream_calls"] == 1
+            assert native.deleted == []
     finally:store.close()
 
 
@@ -359,3 +361,45 @@ async def test_gateway_image_ledger_rollback_sidecar_beyond_win32_limit(tmp_path
             ledgers=list((root/'image-transport/files').glob('*/files.sqlite'))
             assert len(ledgers)==1 and len(str(ledgers[0])+'-journal')>260
     finally:store.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 413, 415, 422, 429])
+async def test_responses_http_error_keeps_file_consumption_unknown(tmp_path, monkeypatch, status):
+    native = FakeNative()
+    native.model_status = status
+    native.model_body = {"error": {"message": "synthetic upstream Responses error"}}
+    config(tmp_path)
+    monkeypatch.setattr("codex_deepseek.gateway.NativeTransport", lambda *args, **kwargs: native)
+    store = Store(tmp_path / "adapter.sqlite")
+    try:
+        async with Gateway(KEY, "LOCAL", store, {}) as gateway, aiohttp.ClientSession() as client:
+            async with client.post(
+                f"http://127.0.0.1:{gateway.port}/v1/responses",
+                json={"model": MODEL, "input": payload()["input"]},
+                headers={"Authorization": "Bearer LOCAL"},
+            ) as response:
+                assert response.status == status
+                if status == 429:
+                    assert response.headers["Retry-After"] == "9"
+                await response.read()
+
+            receipt, primary_status, upstream_status = store.db.execute(
+                "SELECT id,status,upstream_status FROM receipts"
+            ).fetchone()
+            assert primary_status == "upstream_error"
+            assert upstream_status == status
+            image_receipt = gateway.images.read_receipt(gateway.images.receipts, receipt)
+            assert image_receipt["adaptations"]["image_transport"]["consumption_status"] == "unknown"
+
+            transport = gateway.images.transport()
+            transport.owner_alive = lambda *_: False
+            diagnostics = await transport.diagnostics(private=True)
+            assert len(diagnostics["unknown_upstream_calls"]) == 1
+            cleanup = await transport.cleanup(all_unpinned=True)
+            assert cleanup["unknown_upstream_calls"] == 1
+            assert not cleanup["all_owned_files_deleted"]
+            assert len(native.files) == 1
+            assert native.deleted == []
+    finally:
+        store.close()

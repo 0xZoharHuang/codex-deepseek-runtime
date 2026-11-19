@@ -530,9 +530,7 @@ class Gateway:
                 transport_headers=response_headers(upstream.headers, captured_key)
                 if trace:private_write(trace/(receipt+'-network.json'),json.dumps({'policy':transport_policy,'native_http':True}))
                 if status >= 300:
-                    if image_refs and status in {400,401,403,404,413,415,422,429}:
-                        await prepared_images.mark_upstream_rejected(status)
-                        self.images.record(receipt,consumption_status='http_rejected',status='upstream_error')
+                    # An HTTP error response does not settle consumption of referenced files.
                     raw = await upstream.read()
                     # Diagnostic decoding is separately bounded. Checked ordinary
                     # bytes stay unchanged; sensitive/unverifiable errors use the

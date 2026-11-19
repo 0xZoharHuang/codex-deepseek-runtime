@@ -1777,9 +1777,7 @@ class _CallLease:
         await self._finish(json.dumps({'response_id': response_id, 'terminal': terminal}))
 
     async def rejected(self, status: int) -> None:
-        if type(status) is not int or status not in {400,401,403,404,413,415,422,429}:
-            raise ImageTransportError("This HTTP status does not prove that image consumption was rejected")
-        await self._finish(json.dumps({'http_status': status, 'terminal': 'http_rejected'}))
+        raise ImageTransportError("HTTP status alone does not prove that image consumption ended")
 
     async def _finish(self, evidence: str) -> None:
         async with self.transport._db(self.directory) as db:

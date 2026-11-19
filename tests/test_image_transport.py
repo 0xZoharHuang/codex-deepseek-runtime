@@ -422,13 +422,18 @@ async def test_provider_terminal_survives_later_client_delivery_error(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_known_rejected_post_releases_file_but_500_is_unknown(tmp_path):
-    backend=FakeFiles();tr=transport(tmp_path,backend)
+@pytest.mark.parametrize("status", [413, 500])
+async def test_http_response_status_alone_does_not_release_image_pin(tmp_path, status):
+    backend = FakeFiles()
+    tr = transport(tmp_path, backend)
     async with tr.prepare(payload()) as prepared:
         await prepared.mark_upstream_started('request-003')
-        with pytest.raises(ImageTransportError):await prepared.mark_upstream_rejected(500)
-        await prepared.mark_upstream_rejected(413)
-    assert (await tr.cleanup(all_unpinned=True))['all_owned_files_deleted']
+        with pytest.raises(ImageTransportError, match="HTTP status alone"):
+            await prepared.mark_upstream_rejected(status)
+    result = await tr.cleanup(all_unpinned=True)
+    assert result["unknown_upstream_calls"] == 1
+    assert not result["all_owned_files_deleted"]
+    assert backend.deleted == []
 
 
 @pytest.mark.asyncio
@@ -896,7 +901,7 @@ async def test_cache_directory_junction_is_rejected_before_external_state(tmp_pa
         linked.rmdir() if os.name=='nt' else linked.unlink()
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('terminal', ['completed', 'failed', 'incomplete', 'http_rejected'])
+@pytest.mark.parametrize('terminal', ['completed', 'failed', 'incomplete'])
 async def test_verified_terminal_pin_recovers_after_release_failure_with_live_owner(tmp_path, monkeypatch, terminal):
     from contextlib import asynccontextmanager
     backend = FakeFiles()
@@ -911,10 +916,7 @@ async def test_verified_terminal_pin_recovers_after_release_failure_with_live_ow
     with pytest.raises(OSError, match='temporary lease-release failure'):
         async with tr.prepare(payload()) as prepared:
             await prepared.mark_upstream_started('request-settled-release-failure')
-            if terminal == 'http_rejected':
-                await prepared.mark_upstream_rejected(429)
-            else:
-                await prepared.mark_upstream_settled('gen-settled-release-failure', terminal)
+            await prepared.mark_upstream_settled('gen-settled-release-failure', terminal)
             monkeypatch.setattr(tr, '_db', unavailable_during_release)
     monkeypatch.setattr(tr, '_db', original_db)
 

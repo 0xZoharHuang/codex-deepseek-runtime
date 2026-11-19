@@ -193,10 +193,14 @@ async def test_http_rejection_keeps_image_lease_consumption_semantics(fake_upstr
                     'input': [{'type': 'message', 'role': 'user', 'content': [part()]}]}, headers={'Authorization': 'Bearer LOCAL'}) as response:
                 assert response.status == 400 and await response.read() == raw
         assert len(calls) == 1
-        assert sum(record.get('consumption_status') == 'http_rejected' for record in records) == 1
+        assert sum(record.get('consumption_status') == 'unknown' for record in records) == 1
         diagnostics = await transport.diagnostics()
-        assert diagnostics['active_transport_pins'] == 0 and not diagnostics['unknown_upstream_calls']
-        assert (await transport.cleanup(all_unpinned=True))['all_owned_files_deleted']
+        assert diagnostics['active_transport_pins'] == 1
+        assert len(diagnostics['unknown_upstream_calls']) == 1
+        result = await transport.cleanup(all_unpinned=True)
+        assert result['unknown_upstream_calls'] == 1
+        assert not result['all_owned_files_deleted']
+        assert backend.deleted == []
         row = store.db.execute('SELECT status,upstream_status,detail FROM receipts').fetchone()
         assert row[:2] == ('upstream_error', 400) and PRIVATE not in row[2]
     finally:

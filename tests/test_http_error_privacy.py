@@ -123,9 +123,12 @@ async def exchange(fake_upstream, tmp_path, raw, *, status=400, content_type='ap
             traced = None
         if transport is not None:
             diagnostics = await transport.diagnostics()
-            assert diagnostics['active_transport_pins'] == 0
-            assert not diagnostics['unknown_upstream_calls']
-            assert (await transport.cleanup(all_unpinned=True))['all_owned_files_deleted']
+            assert diagnostics['active_transport_pins'] == 1
+            assert len(diagnostics['unknown_upstream_calls']) == 1
+            cleanup = await transport.cleanup(all_unpinned=True)
+            assert cleanup['unknown_upstream_calls'] == 1
+            assert not cleanup['all_owned_files_deleted']
+            assert backend.deleted == []
             if image_receipts is not None:
                 import sqlite3
                 with closing(sqlite3.connect(image_provider.receipts)) as db:
@@ -235,7 +238,7 @@ async def test_uninspectable_error_uses_clear_bounded_failure(fake_upstream, tmp
 
 
 @pytest.mark.asyncio
-async def test_known_http_400_image_rejection_still_settles_lease(fake_upstream, tmp_path):
+async def test_http_400_image_error_is_redacted_without_settling_lease(fake_upstream, tmp_path):
     raw = ('{"error":{"code":400,"type":"invalid_request_error","message":"Useful '
            + ESCAPED_KEY + '"}}').encode()
     body, _, _ = await exchange(fake_upstream, tmp_path, raw, image=True)
@@ -276,7 +279,7 @@ async def test_image_generation_header_does_not_persist_encoded_credential(fake_
     assert body == raw
     assert len(receipts) == 1
     image = receipts[0]['adaptations']['image_transport']
-    assert image['consumption_status'] == 'http_rejected'
+    assert image['consumption_status'] == 'unknown'
     saved = image.get('generation_header_candidate')
     if secret:
         assert saved is None, 'Encoded credential must not be persisted as a generation ID'
