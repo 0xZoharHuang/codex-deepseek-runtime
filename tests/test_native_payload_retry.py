@@ -1,7 +1,7 @@
 """Built CLI/local HTTP fixtures; no real provider, commands, sandbox setup or old home.
 Capacity fixtures use only the native plan tool with synthetic inputs.
 """
-import asyncio,hashlib,json,os,shutil,time,uuid
+import asyncio,hashlib,json,os,re,shutil,time,uuid
 from pathlib import Path
 from types import SimpleNamespace
 import aiohttp
@@ -350,6 +350,86 @@ def seeded_native_base(rollouts):
             'content':[{'type':'input_text','text':text}]}
 
 
+def assert_same_compaction_retry(first, second, work):
+    def canonical(value):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+    if canonical(first) == canonical(second):
+        return
+
+    def unique_fields(pairs):
+        result = dict(pairs)
+        assert len(result) == len(pairs), 'Duplicate native turn metadata field'
+        return result
+
+    # Native asynchronously discovers Git metadata during a turn. The retry
+    # may carry that new observation, with all request intent still identical.
+    key = 'x-codex-turn-metadata'
+    first_client, second_client = first['client_metadata'], second['client_metadata']
+    before = json.loads(first_client[key], object_pairs_hook=unique_fields)
+    after = json.loads(second_client[key], object_pairs_hook=unique_fields)
+    assert 'workspaces' not in before and 'workspaces' in after
+    workspaces = after.pop('workspaces')
+    assert isinstance(workspaces, dict) and len(workspaces) == 1
+    (root, observation), = workspaces.items()
+    own_cwd = work.resolve()
+    expected_root = next((p for p in (own_cwd, *own_cwd.parents) if (p / '.git').exists()), None)
+    assert Path(root).is_absolute() and Path(root).resolve() == expected_root
+    assert isinstance(observation, dict) and observation
+    assert set(observation) <= {'associated_remote_urls', 'latest_git_commit_hash', 'has_changes'}
+    if 'associated_remote_urls' in observation:
+        urls = observation['associated_remote_urls']
+        assert isinstance(urls, dict) and all(name and isinstance(url, str) and url for name, url in urls.items())
+    if 'latest_git_commit_hash' in observation:
+        revision = observation['latest_git_commit_hash']
+        assert isinstance(revision, str) and re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', revision)
+    if 'has_changes' in observation:
+        assert type(observation['has_changes']) is bool
+    assert canonical(before) == canonical(after), 'Retry changed other native turn metadata'
+    comparable = {**second, 'client_metadata': {**second_client, key: first_client[key]}}
+    assert canonical(first) == canonical(comparable), 'Retry changed the remaining model request'
+
+
+@pytest.mark.parametrize('mutation', [
+    'none', 'extra-client-field', 'extra-turn-field', 'changed-turn', 'input-order',
+    'removed-workspace', 'changed-workspace', 'unexpected-root', 'unexpected-git-field',
+])
+def test_compaction_retry_only_allows_late_native_workspace_observation(tmp_path, mutation):
+    (tmp_path / '.git').mkdir()
+    key = 'x-codex-turn-metadata'
+    original = {
+        'input': [{'id': 'msg_a'}, {'id': 'msg_b'}],
+        'client_metadata': {'thread_id': 'thread', key: json.dumps({'turn_id': 'turn'})},
+    }
+    enriched = json.loads(json.dumps(original))
+    turn = {'turn_id': 'turn', 'workspaces': {str(tmp_path): {'has_changes': True}}}
+    if mutation == 'extra-client-field':
+        enriched['client_metadata']['unknown'] = True
+    elif mutation == 'extra-turn-field':
+        turn['unknown'] = True
+    elif mutation == 'changed-turn':
+        turn['turn_id'] = 'different-turn'
+    elif mutation == 'input-order':
+        enriched['input'].reverse()
+    elif mutation in {'removed-workspace', 'changed-workspace'}:
+        original['client_metadata'][key] = json.dumps(turn)
+        if mutation == 'removed-workspace':
+            turn.pop('workspaces')
+        else:
+            turn['workspaces'][str(tmp_path)]['has_changes'] = False
+    elif mutation == 'unexpected-root':
+        turn['workspaces'] = {str(tmp_path.parent): {'has_changes': True}}
+    elif mutation == 'unexpected-git-field':
+        turn['workspaces'][str(tmp_path)]['unknown'] = True
+    enriched['client_metadata'][key] = json.dumps(turn)
+    if mutation == 'none':
+        assert_same_compaction_retry(original, original, tmp_path)
+        assert_same_compaction_retry(original, enriched, tmp_path)
+    else:
+        with pytest.raises(AssertionError):
+            assert_same_compaction_retry(original, enriched, tmp_path)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('retry_after',[None,'1'])
 async def test_real_cli_compaction_413_uses_same_native_retry_semantics(tmp_path,monkeypatch,retry_after):
@@ -369,8 +449,7 @@ async def test_real_cli_compaction_413_uses_same_native_retry_semantics(tmp_path
         assert provider.compact_calls==len(compacts)
         if retry_after:
             assert provider.compact_calls==2,resumed
-            assert compacts[0]['body_json']==compacts[1]['body_json']
-            assert compacts[0]['canonical_body_sha256']==compacts[1]['canonical_body_sha256'],'Retry advice may reorder object keys, but no JSON field or array order may change'
+            assert_same_compaction_retry(compacts[0]['body_json'], compacts[1]['body_json'], work)
             assert compacts[1]['at']-compacts[0]['at']>=.8
             assert resumed['exit_code']==0 and len(provider.calls)>=3,resumed
         else:
