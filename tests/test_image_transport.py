@@ -330,12 +330,12 @@ async def test_official_http_backend_handles_fragmented_json_and_enforces_no_red
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('status,not_created',[(400,True),(401,True),(413,True),(429,True),(500,False),(302,False),(408,False)])
-async def test_http_upload_errors_keep_ambiguous_outcome_distinct(status,not_created):
+@pytest.mark.parametrize('status',[400,401,403,413,415,422,429,500,302,408])
+async def test_http_upload_errors_keep_ambiguous_outcome_distinct(status):
     client=HttpClient([ChunkResponse(status,b'{"error":"untrusted upstream body"}')])
     with pytest.raises(FileOperationError) as failure:
         await OpenRouterFilesBackend(client).upload('secret-key',b'data','image/png','synthetic.png')
-    assert failure.value.definitely_not_created==not_created
+    assert failure.value.definitely_not_created is False
     assert 'secret-key' not in str(failure.value) and 'untrusted upstream body' not in str(failure.value)
     assert len(client.calls)==1
 
