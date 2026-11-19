@@ -708,7 +708,15 @@ class Gateway:
                 return response
             error_status=413 if isinstance(exc,PayloadBudgetExceeded) else (400 if isinstance(exc,(ImageTransportError,NativeRawUnsupported)) else 502)
             if isinstance(exc,FileOperationError):
-                error_status=exc.status if exc.status in {400,401,403,404,409,413,415,422,429} else 502
+                if exc.status == 413:
+                    # A Files rejection must not signal native Responses compaction.
+                    return web.json_response({'error': {
+                        'type': 'invalid_request_error',
+                        'code': 'file_operation_rejected',
+                        'message': 'The Files API rejected a file operation (HTTP 413).',
+                        'file_http_status': 413,
+                    }}, status=400)
+                error_status=exc.status if exc.status in {400,401,403,404,409,415,422,429} else 502
                 result=error_response(detail,error_status)
                 for name,value in filter_error_headers(exc.safe_headers, captured_key).items():
                     if name=='retry-after':result.headers['Retry-After']=value
