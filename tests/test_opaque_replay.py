@@ -113,6 +113,46 @@ async def test_verified_opaque_history_with_hosted_search_keeps_official_route(u
     assert [x for x in requests[-1]['input'] if x.get('type')=='reasoning']==items
 
 
+async def test_interrupted_reasoning_does_not_reroute_verified_opaque_history(upstream, tmp_path):
+    state, items, requests = upstream
+    path = tmp_path / 'adapter.sqlite'
+    async with running(path) as (post, _):
+        status, text = await post(original())
+        assert status == 200 and 'response.completed' in text
+
+    state['mode'] = 'replay'
+    body = continuation(items)
+    body['reasoning'] = {'effort': 'max'}
+    body['tools'] = [
+        {'type': 'web_search'},
+        {'type': 'function', 'name': 'synthetic_tool', 'parameters': {}},
+    ]
+    call = {'type': 'function_call', 'name': 'synthetic_tool', 'arguments': '{}',
+            'call_id': 'call_completed'}
+    output = {'type': 'function_call_output', 'call_id': 'call_completed',
+              'output': 'SYNTHETIC_COMPLETED_TOOL_RESULT'}
+    partial = {'type': 'reasoning', 'id': 'rs_interrupted', 'summary': [],
+               'content': [{'type': 'reasoning_text', 'text': 'SYNTHETIC_INTERRUPTED_REASONING'}]}
+    body['input'][-1:-1] = [call, output, partial]
+    async with running(path) as (post, store):
+        status, text = await post(body)
+        assert status == 200 and 'response.completed' in text and 'response.failed' not in text, text
+        assert store.db.execute('select provider, route_reason, upstream_status from receipts '
+                                'order by started desc limit 1').fetchone() == (
+            'deepseek', 'official_opaque_history_with_hosted_tools', 200)
+
+    assert len(requests) == 2
+    replay = requests[-1]
+    assert replay['provider']['only'] == ['deepseek']
+    assert replay['provider']['allow_fallbacks'] is False
+    assert replay['reasoning'] == {'effort': 'max'}
+    assert any(tool['type'] == 'openrouter:web_search' for tool in replay['tools'])
+    assert [row for row in replay['input'] if row.get('encrypted_content')] == items
+    assert [row for row in replay['input'] if row.get('call_id') == call['call_id']] == [call, output]
+    projected = replay['input'][0]['content'][0]['text']
+    assert json.loads(projected[projected.index('['):])[-1]['item'] == partial
+
+
 async def test_nonstream_completion_can_seed_streamed_opaque_continuation(upstream,tmp_path):
     state, items, requests = upstream
     path = tmp_path / 'adapter.sqlite'

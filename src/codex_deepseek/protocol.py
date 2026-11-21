@@ -711,8 +711,18 @@ def prepare(body: dict, search_store: Any = None, *, ordinary_default_provider: 
     # or reasoning, and never retry a failed request on a different provider.
     peer_hosted = (registry.peer_context or registry.continuation_context or registry.unattested_history) and mapping[effort]!='none' and any(
         tool.get('type')=='openrouter:web_search' for tool in result['tools'])
-    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else peer_hosted_provider if peer_hosted else ordinary_default_provider
+    # Automatic provider selection cannot migrate opaque history. The gateway
+    # still verifies each opaque item against its original receipt before I/O.
+    inputs = result.get('input')
+    official_opaque_replay = (
+        peer_hosted and opaque_replay and ordinary_default_provider == PROVIDER
+        and peer_hosted_provider == PEER_HOSTED_PROVIDER and isinstance(inputs, list)
+        and any(item.get('type') == 'reasoning' and item.get('encrypted_content') for item in inputs)
+    )
+    route = SERIAL_PROVIDER if serial else STRUCTURED_PROVIDER if upstream_structured else (
+        peer_hosted_provider if peer_hosted and not official_opaque_replay else ordinary_default_provider)
     registry.route_reason = ('explicit_serial_tools' if serial else 'strict_json_schema' if upstream_structured else
+                             'official_opaque_history_with_hosted_tools' if official_opaque_replay else
                              'unattested_native_history_with_hosted_tools' if peer_hosted and registry.unattested_history else
                              'native_peer_or_continuation_with_hosted_tools' if peer_hosted else
                              'operator_default/'+ordinary_default_provider if ordinary_default_provider!=PROVIDER else 'official_default')
