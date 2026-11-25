@@ -309,16 +309,47 @@ class _DownstreamDisconnected(ConnectionError):
         super().__init__(f"Downstream response disconnected during {operation}; delivery outcome unknown")
 
 
+# Provider-side unavailability that a different provider of the same model can serve.
+FAILOVER_STATUSES = frozenset({408, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529})
+
+
+def _failover_cooldown():
+    try:
+        value = float(os.environ.get('CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS', '60'))
+    except ValueError:
+        return 60.0
+    return value if 0 <= value <= 3600 else 60.0
+
+
+def _ordinary_route(payload, registry, provider):
+    reason = registry.route_reason or ''
+    if reason.startswith('auto_tools_final_schema_validation/'):
+        reason = reason.split('/', 2)[2] if reason.count('/') >= 2 else ''
+    ordinary = reason == 'official_default' or reason == 'operator_default/' + provider
+    return ordinary and payload['provider']['only'] == [provider]
+
+
+class _Failover:
+    """An upstream HTTP failure that the next provider attempt may replace."""
+
+    def __init__(self, status):
+        self.status = status
+
+
 class Gateway:
-    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None, ordinary_default_provider=PROVIDER, peer_hosted_provider=None, provider_config_sha256=None):
+    def __init__(self, key: str, token: str, store: Store, catalog: dict, *, listen_socket=None, trace_source=None, native_http_binary=None, external_port=None, ordinary_default_provider=PROVIDER, peer_hosted_provider=None, ordinary_fallback_provider=None, provider_config_sha256=None):
         from .provider_config import validate, digest
         policy={"schema":1,"ordinary_default_provider":ordinary_default_provider}
         if peer_hosted_provider is not None:policy["peer_hosted_provider"]=peer_hosted_provider
+        if ordinary_fallback_provider is not None:policy["ordinary_fallback_provider"]=ordinary_fallback_provider
         policy=validate(policy)
         expected=digest(policy)
         if provider_config_sha256 is not None and provider_config_sha256!=expected:raise ValueError("Provider snapshot hash mismatch")
         self.ordinary_default_provider=ordinary_default_provider
         self.peer_hosted_provider=policy.get("peer_hosted_provider",PEER_HOSTED_PROVIDER)
+        self.ordinary_fallback_provider=policy.get("ordinary_fallback_provider")
+        # Monotonic deadline while the ordinary default is known to be failing.
+        self._default_unhealthy_until=0.0
         self.provider_config_sha256=expected
         self.key = key if isinstance(key,str) else None
         self.credential_source = key
@@ -385,7 +416,9 @@ class Gateway:
         return web.json_response({"status": "ready", "model": MODEL, "provider": self.ordinary_default_provider,
                                   "provider_config_sha256": self.provider_config_sha256,
                                   "structured_provider": STRUCTURED_PROVIDER, "serial_provider": SERIAL_PROVIDER,
-                                  "peer_hosted_provider": self.peer_hosted_provider,"fallbacks": False,
+                                  "peer_hosted_provider": self.peer_hosted_provider,
+                                  "fallbacks": self.ordinary_fallback_provider is not None,
+                                  "ordinary_fallback_provider": self.ordinary_fallback_provider,
                                   "image_maintenance":self.image_gc.snapshot() if self.image_gc else {"enabled":False}})
 
     async def models(self, request):
@@ -393,19 +426,60 @@ class Gateway:
             return error_response("Unauthorized", 401)
         return web.json_response(self.catalog)
 
+    def _prepare_route(self, body, headers, provider):
+        payload, registry = prepare(body, self.store, ordinary_default_provider=provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=headers, opaque_replay=True)
+        return payload, registry
+
+    def _failover_route(self, body, headers, payload, registry):
+        """Prepare the same request for the configured fallback, or None when ineligible.
+
+        Only the ordinary route can fail over. Serial, strict-schema and
+        peer/continuation routes keep their compatibility pins, and opaque
+        reasoning history can only be replayed on the official provider.
+        """
+        fallback = self.ordinary_fallback_provider
+        if (fallback is None or not _ordinary_route(payload, registry, self.ordinary_default_provider)
+                or opaque_items({'output': payload.get('input')})):
+            return None
+        candidate, candidate_registry = self._prepare_route(body, headers, fallback)
+        if not _ordinary_route(candidate, candidate_registry, fallback):
+            return None
+        return candidate, candidate_registry
+
     async def responses(self, request):
         if not self.authorized(request):
             return error_response("Unauthorized", 401)
         try:
             body = await request.json()
             native_request = native_request_metadata(body, request.headers)
-            payload, registry = prepare(body, self.store, ordinary_default_provider=self.ordinary_default_provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=request.headers, opaque_replay=True)
+            payload, registry = self._prepare_route(body, request.headers, self.ordinary_default_provider)
             if registry.regrouped_tool_history:
                 native_request["regrouped_tool_history"] = registry.regrouped_tool_history
-            structured = StructuredOutput(body)
+            StructuredOutput(body)
             transport_policy=network_policy(request.headers)
+            backup = self._failover_route(body, request.headers, payload, registry)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
+        attempts = [(payload, registry)]
+        if backup is not None:
+            cooling = time.monotonic() < self._default_unhealthy_until
+            backup[1].route_reason = ('failover_cooldown/' if cooling else 'failover/') + self.ordinary_default_provider + '/' + backup[1].route_reason
+            attempts = [backup, (payload, registry)] if cooling else [(payload, registry), backup]
+        for index, (attempt_payload, attempt_registry) in enumerate(attempts):
+            result = await self._respond(request, body, native_request, attempt_payload, attempt_registry,
+                                         transport_policy, can_failover=index < len(attempts) - 1)
+            if not isinstance(result, _Failover):
+                return result
+            if attempt_payload['provider']['only'][0] == self.ordinary_default_provider:
+                self._default_unhealthy_until = time.monotonic() + _failover_cooldown()
+            logging.getLogger(__name__).warning(
+                "Provider %s returned HTTP %s before any output; failing over to %s",
+                attempt_payload['provider']['only'][0], result.status, attempts[index + 1][0]['provider']['only'][0])
+        raise AssertionError("The last provider attempt cannot request failover")
+
+    async def _respond(self, request, body, native_request, payload, registry, transport_policy, *, can_failover=False):
+        """One upstream attempt. Returns _Failover only before any downstream byte."""
+        structured = StructuredOutput(body)
         receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason,
                                    structured_output_mapping=registry.structured_output_mapping,
                                    native_request=native_request)
@@ -549,6 +623,10 @@ class Gateway:
                     if trace:
                         private_write(trace / (receipt + "-error.json"), safe_raw)
                     self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
+                    if can_failover and status in FAILOVER_STATUSES and not image_refs:
+                        # Nothing was delivered downstream and no file consumption
+                        # is managed; the receipt keeps the original failure.
+                        return _Failover(status)
                     return web.Response(body=safe_raw, status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):

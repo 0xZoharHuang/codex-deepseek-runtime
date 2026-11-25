@@ -94,6 +94,25 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-peer-hosted de
 
 `default` 恢复旧 schema 可读格式和规范化策略 hash；普通 provider 选择不被暗改。程序回退与数据回退分别判断，保留旧 tag、不可变入口、原始失败与匹配 native/许可证。不要移动已公开 tag、把新 SQLite 回灌旧 home，或承诺旧程序能读取所有新版扩展历史。
 
+## 可选的普通请求故障切换
+
+缺省不切换：没有 `ordinary_fallback_provider` 时，payload、策略 digest 和行为与此前完全一致。需要时，逐 home 显式配置一个与普通默认不同的备用 provider（`deepseek` 或 `morph/fp8`）：
+
+```sh
+# 同样仅在此 home 的任务、客户端、provider 与 lease 完全退役后操作。
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider status > "$CDS_CHECKS/provider-before-fallback.json"
+CDS_REVISION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["configured_revision"])' "$CDS_CHECKS/provider-before-fallback.json")"
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-fallback morph/fp8 --if-match "$CDS_REVISION"
+```
+
+`set-fallback default` 删除该字段，恢复不切换。切换的边界：
+
+- 只作用于普通路由（`official_default` / `operator_default/…`，含 auto-tools 最终 schema 校验）。serial、strict schema、peer/continuation 路由保持各自的固定 provider。
+- 只在上游返回 HTTP 408、429、500、502、503、504、520–524、529，且尚未向原生客户端发送任何字节时切换；请求错误（400/401/402/413 等）原样返回。
+- 输入含 opaque reasoning（只能在官方 DeepSeek 重放）或请求带有受管图片消费时不切换。
+- 每次尝试各有 receipt：失败的原 provider 保留 `upstream_error`，备用尝试的 `route_reason` 前缀为 `failover/<原 provider>/`。默认 provider 失败后 60 秒内（`CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS`）先走备用、再回落默认，前缀为 `failover_cooldown/`。
+- `runtime doctor` 接受已配置的备用 provider 作为计费身份，并报告 `failover_used`。
+
 ## 失败与清理
 
 区分适配缺陷、原生平台限制、上游服务错误和模型生成问题；保留 HTTP/流失败、中间失败、副作用与最终结果。318 MB 本地历史恢复证据不表示发送了 318 MB HTTP 请求，也不表示无限上下文或业务结果全通过。96 图任务在保留原失败的多次受控继续后完成，原 phase timeout 没有延长，不称一次连续 75 分钟运行。

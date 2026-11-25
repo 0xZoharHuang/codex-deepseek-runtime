@@ -232,7 +232,8 @@ def _admitted_provider(value):
     policy=provider_config.validate(value.get('provider_config'))
     if (provider_config.digest(policy)!=value.get('provider_config_sha256')
             or policy['ordinary_default_provider']!=value.get('ordinary_default_provider')
-            or policy.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)!=value.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)):
+            or policy.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)!=value.get('peer_hosted_provider',provider_config.PEER_HOSTED_PROVIDER)
+            or policy.get('ordinary_fallback_provider')!=value.get('ordinary_fallback_provider')):
         raise RuntimeError('Admitted provider policy metadata is inconsistent')
     return policy
 
@@ -255,7 +256,7 @@ async def worker(home,catalog,fd):
     watcher=asyncio.create_task(watch_owner())
     try:
         def trace_source():return json.loads((Path(home)/'provider-state/trace.json').read_text(encoding='utf-8')).get('directory')
-        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None,ordinary_default_provider=provider_snapshot['ordinary_default_provider'],peer_hosted_provider=provider_snapshot.get('peer_hosted_provider'),provider_config_sha256=value['provider_config_sha256']) as gateway:
+        async with Gateway(credential,value['token'],store,json.loads(Path(catalog).read_text(encoding='utf-8')),listen_socket=sock,trace_source=trace_source,native_http_binary=executable(Path(value['native_binary']).parent,'codex-http-transport') if value.get('native_binary') else None,external_port=value['port'] if WINDOWS else None,ordinary_default_provider=provider_snapshot['ordinary_default_provider'],peer_hosted_provider=provider_snapshot.get('peer_hosted_provider'),ordinary_fallback_provider=provider_snapshot.get('ordinary_fallback_provider'),provider_config_sha256=value['provider_config_sha256']) as gateway:
             if WINDOWS:
                 from .windows_sockets import Receiver
                 receiver=Receiver(gateway,stopped);receiver.start()
@@ -334,6 +335,7 @@ def _supervise(home,catalog,native_binary,provider_snapshot=None):
            'provider_config':provider_snapshot,'provider_config_sha256':provider_config.digest(provider_snapshot),
            'ordinary_default_provider':provider_snapshot['ordinary_default_provider']}
     if 'peer_hosted_provider' in provider_snapshot:value['peer_hosted_provider']=provider_snapshot['peer_hosted_provider']
+    if 'ordinary_fallback_provider' in provider_snapshot:value['ordinary_fallback_provider']=provider_snapshot['ordinary_fallback_provider']
     atomic_json(path,value);stopped=False;child=None;idle=time.monotonic();failures=[];retirement=None
     def stop(signum,frame):
         nonlocal stopped

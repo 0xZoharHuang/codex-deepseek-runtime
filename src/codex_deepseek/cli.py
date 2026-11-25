@@ -218,16 +218,18 @@ async def generation_receipt(transport,key,response_id,policy,*,timeout=90):
     return generation,rows
 
 
-def _verified_generation(generation, response_id, selected, ordinary_provider):
+def _verified_generation(generation, response_id, selected, ordinary_provider, fallback_provider=None):
     from .gateway import validate_observed_identity
+    # A configured ordinary fallback is the only other provider the probe may have used.
+    accepted={ordinary_provider}|({fallback_provider} if fallback_provider in {PROVIDER,STRUCTURED_PROVIDER} else set())
     if (not isinstance(generation,dict) or not isinstance(response_id,str) or not response_id.strip()
             or not isinstance(generation.get('id'),str) or generation['id']!=response_id
-            or ordinary_provider not in {PROVIDER,STRUCTURED_PROVIDER} or selected!=ordinary_provider
+            or ordinary_provider not in {PROVIDER,STRUCTURED_PROVIDER} or selected not in accepted
             or any(not isinstance(generation.get(field),str) or not generation[field].strip()
                    for field in ('model','provider_name'))):
         return False
     try:
-        validate_observed_identity({'model':generation.get('model'),'provider':generation.get('provider_name')},ordinary_provider)
+        validate_observed_identity({'model':generation.get('model'),'provider':generation.get('provider_name')},selected)
     except ValueError:
         return False
     return True
@@ -267,14 +269,18 @@ async def doctor(key: str, gateway, store, home, *, native_binary: Path) -> int:
     provider=generation.get('provider_name')
     generation_id=generation.get('id');generation_model=generation.get('model')
     ordinary_provider=gateway.metadata['ordinary_default_provider']
-    verified=_verified_generation(generation,response_id,selected,ordinary_provider)
+    fallback_provider=(gateway.metadata.get('provider_config') or {}).get('ordinary_fallback_provider')
+    verified=_verified_generation(generation,response_id,selected,ordinary_provider,fallback_provider)
     result={'status':'connected' if verified else 'provider_verification_failed',
-            'model':MODEL,'provider':provider,'fallbacks':False,'response_id':response_id,'native_version':NATIVE_VERSION,
+            'model':MODEL,'provider':provider,'fallbacks':fallback_provider is not None,'response_id':response_id,'native_version':NATIVE_VERSION,
             'generation_id':generation_id,'generation_model':generation_model,'selected_provider':selected,
             'native_thread':thread,'network_policy':policy,'text':answer,'echo_expected':'CONNECTED','echo_exact_match':answer.strip()=='CONNECTED',
             'provider_verification':verification,'structured_provider':STRUCTURED_PROVIDER,'serial_provider':SERIAL_PROVIDER,
             'ordinary_default_provider':ordinary_provider,'peer_hosted_provider':gateway.metadata.get('peer_hosted_provider',PEER_HOSTED_PROVIDER),
             'provider_config_sha256':gateway.metadata['provider_config_sha256']}
+    if fallback_provider is not None:
+        result['ordinary_fallback_provider']=fallback_provider
+        result['failover_used']=selected!=ordinary_provider
     (data_root()/'last-doctor.json').write_text(json.dumps(result,indent=2), encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if result['status']=='connected' else 1
@@ -361,7 +367,9 @@ async def run(arguments: list[str]) -> int:
                                   "provider_config_sha256": gateway.metadata["provider_config_sha256"], "structured_provider": STRUCTURED_PROVIDER,
                                   "serial_provider": SERIAL_PROVIDER,
                                   "peer_hosted_provider": gateway.metadata.get("peer_hosted_provider",PEER_HOSTED_PROVIDER),
-                                  "fallbacks": False, "state": str(store.path), "runtime_home":str(runtime_home),
+                                  "fallbacks": (gateway.metadata.get("provider_config") or {}).get("ordinary_fallback_provider") is not None,
+                                  "ordinary_fallback_provider": (gateway.metadata.get("provider_config") or {}).get("ordinary_fallback_provider"),
+                                  "state": str(store.path), "runtime_home":str(runtime_home),
                                   "release_environment":sys.prefix,"model_catalog":str(catalog_path())}, indent=2))
                 return 0
             environment=native_environment(runtime_home,gateway.token,binary,port=gateway.port)

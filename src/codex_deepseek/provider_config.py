@@ -1,4 +1,9 @@
-"""Explicit provider policy per isolated home; no inference fallback."""
+"""Explicit provider policy per isolated home.
+
+Inference fallback is off unless the operator names an
+``ordinary_fallback_provider``; the gateway then fails over only on the
+ordinary route and only before any response byte was delivered.
+"""
 from contextlib import contextmanager
 import hashlib
 import json
@@ -18,7 +23,7 @@ PEER_HOSTED_ALLOWED = frozenset({PEER_HOSTED_PROVIDER, SERIAL_PROVIDER})
 
 def validate(value):
     if (not isinstance(value, dict) or not {"schema", "ordinary_default_provider"} <= set(value)
-            or set(value) - {"schema", "ordinary_default_provider", "peer_hosted_provider"}
+            or set(value) - {"schema", "ordinary_default_provider", "peer_hosted_provider", "ordinary_fallback_provider"}
             or type(value["schema"]) is not int or value["schema"] != 1
             or not isinstance(value["ordinary_default_provider"], str)
             or value["ordinary_default_provider"] not in ALLOWED):
@@ -26,6 +31,12 @@ def validate(value):
     if ("peer_hosted_provider" in value and (not isinstance(value["peer_hosted_provider"], str)
             or value["peer_hosted_provider"] not in PEER_HOSTED_ALLOWED)):
         raise ValueError("Peer hosted provider must be morph/fp8 or primeintellect")
+    if "ordinary_fallback_provider" in value:
+        fallback = value["ordinary_fallback_provider"]
+        if not isinstance(fallback, str) or fallback not in ALLOWED:
+            raise ValueError("Ordinary fallback provider must be deepseek or morph/fp8")
+        if fallback == value["ordinary_default_provider"]:
+            raise ValueError("Ordinary fallback provider must differ from the ordinary default provider")
     return dict(value)
 
 
@@ -103,8 +114,10 @@ def _status_locked(home, loaded):
             "configured_peer_hosted_provider": loaded["policy"].get("peer_hosted_provider", PEER_HOSTED_PROVIDER),
             "configured_config_sha256": loaded["sha256"], "configured_revision": loaded["revision"],
             "configured_source_sha256": loaded["source_sha256"],
+            "configured_fallback_provider": loaded["policy"].get("ordinary_fallback_provider"),
             "admitted_provider": admitted.get("ordinary_default_provider") if running else None,
             "admitted_peer_hosted_provider": admitted_policy.get("peer_hosted_provider", PEER_HOSTED_PROVIDER) if admitted_policy is not None else None,
+            "admitted_fallback_provider": admitted_policy.get("ordinary_fallback_provider") if admitted_policy is not None else None,
             "admitted_config_sha256": admitted.get("provider_config_sha256") if running else None,
             "service_running": running, "native_active": native_active(home)}
 
@@ -140,6 +153,19 @@ def set_peer_hosted_provider(home, provider, *, expected_revision=None):
         value.pop("peer_hosted_provider", None)
         if provider != "default":
             value["peer_hosted_provider"] = provider
+        return value
+    return _set_policy(home, update, expected_revision=expected_revision)
+
+
+def set_fallback_provider(home, provider, *, expected_revision=None):
+    # "default" removes the extension: no inference fallback, schema-1 bytes accepted by older releases.
+    if provider != "default" and provider not in ALLOWED:
+        raise ValueError("Ordinary fallback provider must be deepseek, morph/fp8 or default")
+    def update(value):
+        value = dict(value)
+        value.pop("ordinary_fallback_provider", None)
+        if provider != "default":
+            value["ordinary_fallback_provider"] = provider
         return value
     return _set_policy(home, update, expected_revision=expected_revision)
 
@@ -183,9 +209,10 @@ def _set_policy(home, update, *, expected_revision=None):
 
 def command(home, arguments):
     if arguments == ["status"]: result = status(home)
-    elif len(arguments) in {2, 4} and arguments[0] in {"set", "set-peer-hosted"} and (len(arguments) == 2 or arguments[2] == "--if-match"):
-        setter = set_provider if arguments[0] == "set" else set_peer_hosted_provider
+    elif len(arguments) in {2, 4} and arguments[0] in {"set", "set-peer-hosted", "set-fallback"} and (len(arguments) == 2 or arguments[2] == "--if-match"):
+        setter = {"set": set_provider, "set-peer-hosted": set_peer_hosted_provider,
+                  "set-fallback": set_fallback_provider}[arguments[0]]
         result = setter(home, arguments[1], expected_revision=arguments[3] if len(arguments) == 4 else None)
     else:
-        raise ValueError("Usage: runtime provider status | runtime provider set deepseek|morph/fp8 [--if-match REVISION] | runtime provider set-peer-hosted morph/fp8|primeintellect|default [--if-match REVISION]")
+        raise ValueError("Usage: runtime provider status | runtime provider set deepseek|morph/fp8 [--if-match REVISION] | runtime provider set-peer-hosted morph/fp8|primeintellect|default [--if-match REVISION] | runtime provider set-fallback deepseek|morph/fp8|default [--if-match REVISION]")
     print(json.dumps(result, indent=2)); return 0

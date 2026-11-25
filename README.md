@@ -36,7 +36,7 @@ CDS 把原生 Codex CLI 连接到 OpenRouter 上的固定 DeepSeek 模型。你�
 
 Windows 管理员可以为现有普通用户的 CDS home 运行原生 `sandbox setup --elevated --user … --codex-home …`。对于 home 外的私有工作区，由创建目录的应用在原有初始化流程中向已核验的 namespace group 授予非继承的目录元数据权限 `READ_ATTRIBUTES | SYNCHRONIZE`（`0x100080`）。[受管 Windows 安装维护指南](docs/windows-managed-maintenance.md)
 
-真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
+真实长图片任务的已验证组合是**普通请求 Morph + peer/continuation Morph**。这须在自己的 home 自然退役后，通过正常 `runtime provider set morph/fp8` 和 `set-peer-hosted default` 配置；[稳定方案](docs/STABLE_PLAN.zh-CN.md)给出 revision CAS 操作。缺省官方 `deepseek` 不被修改，失败不自动换 provider；如需在上游不可用时切换，可逐 home 显式配置 `runtime provider set-fallback`，边界见[稳定方案](docs/STABLE_PLAN.zh-CN.md#可选的普通请求故障切换)。Prime 已有受限文本 peer 互操作证据，但 22 图续接出现过真实 400，不能视为任意图片/搜索/peer 组合均兼容。
 
 *An isolated native Codex CLI distribution for DeepSeek through OpenRouter. The native runtime owns tool execution, permissions, sessions and agent scheduling.*
 
