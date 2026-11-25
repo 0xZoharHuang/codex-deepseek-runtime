@@ -94,9 +94,11 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-peer-hosted de
 
 `default` 恢复旧 schema 可读格式和规范化策略 hash；普通 provider 选择不被暗改。程序回退与数据回退分别判断，保留旧 tag、不可变入口、原始失败与匹配 native/许可证。不要移动已公开 tag、把新 SQLite 回灌旧 home，或承诺旧程序能读取所有新版扩展历史。
 
-## 可选的普通请求故障切换
+## 可选的故障切换与线程迁移
 
-缺省不切换：没有 `ordinary_fallback_provider` 时，payload、策略 digest 和行为与此前完全一致。需要时，逐 home 显式配置一个与普通默认不同的备用 provider（`deepseek` 或 `morph/fp8`）：
+原则：**已有线程永远不会被自动换 provider**。换 provider 不会丢失对话记录（消息、工具调用与结果由原生 runtime 完整保存并每次全量发送），但官方 DeepSeek 的加密 reasoning 只有官方能读，中途换到其他 provider 会让模型看不到此前的隐藏推理。因此自动切换只作用于新线程，已有线程只能由你显式迁移。
+
+缺省不切换：没有 `ordinary_fallback_provider` 时，payload、策略 digest 和行为与此前完全一致。需要时逐 home 显式配置一个与普通默认不同的备用 provider（`deepseek` 或 `morph/fp8`）：
 
 ```sh
 # 同样仅在此 home 的任务、客户端、provider 与 lease 完全退役后操作。
@@ -105,13 +107,28 @@ CDS_REVISION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[
 CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-fallback morph/fp8 --if-match "$CDS_REVISION"
 ```
 
-`set-fallback default` 删除该字段，恢复不切换。切换的边界：
+`set-fallback default` 删除该字段，恢复不切换。
 
-- 只作用于普通路由（`official_default` / `operator_default/…`，含 auto-tools 最终 schema 校验）。serial、strict schema、peer/continuation 路由保持各自的固定 provider。
-- 只在上游返回 HTTP 408、429、500、502、503、504、520–524、529，且尚未向原生客户端发送任何字节时切换；请求错误（400/401/402/413 等）原样返回。
-- 输入含 opaque reasoning（只能在官方 DeepSeek 重放）或请求带有受管图片消费时不切换。
-- 每次尝试各有 receipt：失败的原 provider 保留 `upstream_error`，备用尝试的 `route_reason` 前缀为 `failover/<原 provider>/`。默认 provider 失败后 60 秒内（`CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS`）先走备用、再回落默认，前缀为 `failover_cooldown/`。
-- `runtime doctor` 接受已配置的备用 provider 作为计费身份，并报告 `failover_used`。
+**何时判定故障**（breaker）：
+
+- 只统计 OpenRouter 自身报告的 provider 失败：HTTP 500/502/503/504/529，且为带相同 `code` 的 OpenRouter JSON 错误。本地网络错误（连接失败、超时、DNS、TLS、原生 helper 的 `native_transport` 错误）、请求错误（400/401/402/413）与限流 429 都不计数。
+- 默认 provider 在 120 秒内失败 3 次后，再查询 OpenRouter 公开的 endpoint 状态；只有该 provider 状态异常或近 5 分钟可用率低于 50% 才判定故障。状态查询失败或显示正常时不切换，且最多每 30 秒查询一次。
+- 判定后 300 秒内，**只有新线程**（没有已完成的模型请求、历史中也没有模型输出）从备用 provider 开始，并固定在备用 provider 上，故障恢复后也不会被自动切回。300 秒后恢复正常判定。
+- 任何请求都不会在失败后改发到另一个 provider；失败原样返回，由原生重试处理。已有线程在故障期间等待其原 provider 恢复。
+- serial、strict schema、peer/continuation 路由保持各自的固定 provider。
+- 阈值可用环境变量调整：`CODEX_DEEPSEEK_FAILOVER_FAILURES`、`CODEX_DEEPSEEK_FAILOVER_WINDOW_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_RECHECK_SECONDS`。
+
+**手动迁移已有线程**（不需要 fallback 配置，也不需要退役 home，但该线程不能有进行中的请求）：
+
+```sh
+cds runtime thread list                      # 最近线程、名称、最后 provider、固定状态
+cds runtime thread move last morph/fp8       # 或 <线程 ID>
+cds runtime thread move last default         # 取消固定，回到配置的普通默认
+```
+
+迁移到非官方 provider 时，只去掉官方 DeepSeek 的加密 reasoning 项；消息、工具调用和结果全部保留，receipt 的 `native_request` 记录 `dropped_official_reasoning_items`。迁回官方时，原有的加密 reasoning 仍按原规则校验后重放。
+
+**记录**：每个请求一个 receipt。故障期间新线程的首个请求 `route_reason` 以 `failover_new_thread/<默认 provider>/` 开头，之后以 `thread_pin/failover/` 开头；手动迁移的线程以 `thread_pin/manual/` 开头。`/health` 显示 breaker 状态，`runtime doctor` 接受已配置的备用 provider 为计费身份并报告 `failover_used`。
 
 ## 失败与清理
 

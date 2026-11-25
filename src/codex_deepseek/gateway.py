@@ -25,6 +25,7 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 from .state import Store
 from .request_metadata import native_request_metadata
 from .opaque_replay import opaque_items, restore
+from . import thread_routes
 from .native_http import NativeTransport, NativeRawUnsupported, network_policy
 from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
                             _http_error_diagnostic, safe_error_text, filter_error_headers,
@@ -309,16 +310,79 @@ class _DownstreamDisconnected(ConnectionError):
         super().__init__(f"Downstream response disconnected during {operation}; delivery outcome unknown")
 
 
-# Provider-side unavailability that a different provider of the same model can serve.
-FAILOVER_STATUSES = frozenset({408, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529})
+# Upstream HTTP statuses where OpenRouter reports the provider, not the request, failing.
+# Network errors never reach this table: they raise before any HTTP status exists.
+PROVIDER_FAILURE_STATUSES = frozenset({500, 502, 503, 504, 529})
+OUTAGE_UPTIME_PERCENT = 50
 
 
-def _failover_cooldown():
+def _env_number(name, default, low, high):
     try:
-        value = float(os.environ.get('CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS', '60'))
+        value = float(os.environ.get(name, default))
     except ValueError:
-        return 60.0
-    return value if 0 <= value <= 3600 else 60.0
+        return float(default)
+    return value if low <= value <= high else float(default)
+
+
+class ProviderBreaker:
+    """Trip only after repeated provider failures that OpenRouter's public status confirms.
+
+    While tripped, only brand-new threads start on the fallback. Existing
+    threads never change provider automatically.
+    """
+
+    def __init__(self, provider, confirm, *, clock=time.monotonic):
+        self.provider = provider
+        self.confirm = confirm
+        self.clock = clock
+        self.failures = []
+        self.open_until = 0.0
+        self.last_check = None
+        self.checking = False
+        self.trips = 0
+
+    @staticmethod
+    def settings():
+        return {"failures": int(_env_number('CODEX_DEEPSEEK_FAILOVER_FAILURES', 3, 1, 100)),
+                "window": _env_number('CODEX_DEEPSEEK_FAILOVER_WINDOW_SECONDS', 120, 1, 3600),
+                "cooldown": _env_number('CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS', 300, 0, 86400),
+                "recheck": _env_number('CODEX_DEEPSEEK_FAILOVER_RECHECK_SECONDS', 30, 0, 3600)}
+
+    def tripped(self):
+        return self.clock() < self.open_until
+
+    def success(self):
+        self.failures.clear()
+
+    async def failure(self, policy='default'):
+        settings = self.settings()
+        now = self.clock()
+        self.failures = [moment for moment in self.failures if now - moment <= settings["window"]] + [now]
+        if (self.tripped() or self.checking or len(self.failures) < settings["failures"]
+                or (self.last_check is not None and now - self.last_check < settings["recheck"])):
+            return False
+        self.checking = True
+        self.last_check = now
+        try:
+            confirmed = await self.confirm(self.provider, policy) is True
+        except Exception:
+            confirmed = False  # An unconfirmed outage never changes routing.
+        finally:
+            self.checking = False
+        if confirmed:
+            self.open_until = self.clock() + settings["cooldown"]
+            self.failures.clear()
+            self.trips += 1
+            logging.getLogger(__name__).warning(
+                "Provider %s outage confirmed; new threads start on the fallback for %.0fs",
+                self.provider, settings["cooldown"])
+        return confirmed
+
+    def snapshot(self):
+        remaining = max(0.0, self.open_until - self.clock())
+        return {"provider": self.provider, "state": "tripped" if remaining else "closed",
+                "recent_failures": len(self.failures), "trips": self.trips,
+                "reopens_in_seconds": round(remaining)}
 
 
 def _ordinary_route(payload, registry, provider):
@@ -327,13 +391,6 @@ def _ordinary_route(payload, registry, provider):
         reason = reason.split('/', 2)[2] if reason.count('/') >= 2 else ''
     ordinary = reason == 'official_default' or reason == 'operator_default/' + provider
     return ordinary and payload['provider']['only'] == [provider]
-
-
-class _Failover:
-    """An upstream HTTP failure that the next provider attempt may replace."""
-
-    def __init__(self, status):
-        self.status = status
 
 
 class Gateway:
@@ -348,8 +405,7 @@ class Gateway:
         self.ordinary_default_provider=ordinary_default_provider
         self.peer_hosted_provider=policy.get("peer_hosted_provider",PEER_HOSTED_PROVIDER)
         self.ordinary_fallback_provider=policy.get("ordinary_fallback_provider")
-        # Monotonic deadline while the ordinary default is known to be failing.
-        self._default_unhealthy_until=0.0
+        self.breaker=ProviderBreaker(ordinary_default_provider,self._confirm_outage)
         self.provider_config_sha256=expected
         self.key = key if isinstance(key,str) else None
         self.credential_source = key
@@ -419,6 +475,7 @@ class Gateway:
                                   "peer_hosted_provider": self.peer_hosted_provider,
                                   "fallbacks": self.ordinary_fallback_provider is not None,
                                   "ordinary_fallback_provider": self.ordinary_fallback_provider,
+                                  "breaker": self.breaker.snapshot() if self.ordinary_fallback_provider else None,
                                   "image_maintenance":self.image_gc.snapshot() if self.image_gc else {"enabled":False}})
 
     async def models(self, request):
@@ -430,21 +487,37 @@ class Gateway:
         payload, registry = prepare(body, self.store, ordinary_default_provider=provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=headers, opaque_replay=True)
         return payload, registry
 
-    def _failover_route(self, body, headers, payload, registry):
-        """Prepare the same request for the configured fallback, or None when ineligible.
+    async def _confirm_outage(self, provider, policy='default'):
+        """Ask OpenRouter's public endpoint status whether this provider is actually down."""
+        key = self.credential_source() if callable(self.credential_source) else self.credential_source
+        if not isinstance(key, str) or not key:
+            return False
+        url = 'https://openrouter.ai/api/v1/models/' + MODEL + '/endpoints'
+        async with asyncio.timeout(8):
+            async with self.client.request('GET', url, api_key=key, policy=policy) as response:
+                if response.status != 200:
+                    return False
+                value = await response.json()
+        endpoints = value.get('data', {}).get('endpoints') if isinstance(value, dict) else None
+        for endpoint in endpoints if isinstance(endpoints, list) else []:
+            if isinstance(endpoint, dict) and endpoint.get('tag') == provider:
+                status, uptime = endpoint.get('status'), endpoint.get('uptime_last_5m')
+                return ((type(status) is int and status < 0)
+                        or (type(uptime) in (int, float) and uptime < OUTAGE_UPTIME_PERCENT))
+        return False
 
-        Only the ordinary route can fail over. Serial, strict-schema and
-        peer/continuation routes keep their compatibility pins, and opaque
-        reasoning history can only be replayed on the official provider.
-        """
-        fallback = self.ordinary_fallback_provider
-        if (fallback is None or not _ordinary_route(payload, registry, self.ordinary_default_provider)
-                or opaque_items({'output': payload.get('input')})):
-            return None
-        candidate, candidate_registry = self._prepare_route(body, headers, fallback)
-        if not _ordinary_route(candidate, candidate_registry, fallback):
-            return None
-        return candidate, candidate_registry
+    def _thread_route(self, body):
+        """Pick the ordinary provider for this thread: its pin, or the fallback for a new thread in an outage."""
+        context = body.get('prompt_cache_key') if isinstance(body, dict) else None
+        context = context if isinstance(context, str) and context else None
+        pinned = thread_routes.get(self.store.db, context) if self.store and context else None
+        if pinned is not None:
+            return context, pinned['provider'], 'thread_pin/' + pinned['origin'] + '/', False
+        if (self.ordinary_fallback_provider is not None and context and self.breaker.tripped()
+                and thread_routes.is_new_thread(self.store.db, context, body.get('input'))):
+            return (context, self.ordinary_fallback_provider,
+                    'failover_new_thread/' + self.ordinary_default_provider + '/', True)
+        return context, self.ordinary_default_provider, None, False
 
     async def responses(self, request):
         if not self.authorized(request):
@@ -452,33 +525,37 @@ class Gateway:
         try:
             body = await request.json()
             native_request = native_request_metadata(body, request.headers)
-            payload, registry = self._prepare_route(body, request.headers, self.ordinary_default_provider)
+            context, provider, note, new_pin = self._thread_route(body)
+            dropped = 0
+            if note and provider != PROVIDER:
+                # Only official DeepSeek can read its encrypted reasoning. The
+                # transcript (messages, tool calls, tool results) is unchanged.
+                body, dropped = thread_routes.without_official_reasoning(body)
+            payload, registry = self._prepare_route(body, request.headers, provider)
+            if note and not _ordinary_route(payload, registry, provider):
+                # Serial, strict-schema and peer routes keep their own provider pins.
+                if new_pin:
+                    payload, registry = self._prepare_route(body, request.headers, self.ordinary_default_provider)
+                new_pin, note = False, None
+            if note:
+                registry.route_reason = note + registry.route_reason
+            if new_pin:
+                thread_routes.pin(self.store.db, context, provider, 'failover')
+            if dropped:
+                native_request["dropped_official_reasoning_items"] = dropped
             if registry.regrouped_tool_history:
                 native_request["regrouped_tool_history"] = registry.regrouped_tool_history
             StructuredOutput(body)
             transport_policy=network_policy(request.headers)
-            backup = self._failover_route(body, request.headers, payload, registry)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
-        attempts = [(payload, registry)]
-        if backup is not None:
-            cooling = time.monotonic() < self._default_unhealthy_until
-            backup[1].route_reason = ('failover_cooldown/' if cooling else 'failover/') + self.ordinary_default_provider + '/' + backup[1].route_reason
-            attempts = [backup, (payload, registry)] if cooling else [(payload, registry), backup]
-        for index, (attempt_payload, attempt_registry) in enumerate(attempts):
-            result = await self._respond(request, body, native_request, attempt_payload, attempt_registry,
-                                         transport_policy, can_failover=index < len(attempts) - 1)
-            if not isinstance(result, _Failover):
-                return result
-            if attempt_payload['provider']['only'][0] == self.ordinary_default_provider:
-                self._default_unhealthy_until = time.monotonic() + _failover_cooldown()
-            logging.getLogger(__name__).warning(
-                "Provider %s returned HTTP %s before any output; failing over to %s",
-                attempt_payload['provider']['only'][0], result.status, attempts[index + 1][0]['provider']['only'][0])
-        raise AssertionError("The last provider attempt cannot request failover")
+        result = await self._respond(request, body, native_request, payload, registry, transport_policy)
+        if payload['provider']['only'] == [self.ordinary_default_provider] and getattr(result, 'status', 500) < 300:
+            self.breaker.success()
+        return result
 
-    async def _respond(self, request, body, native_request, payload, registry, transport_policy, *, can_failover=False):
-        """One upstream attempt. Returns _Failover only before any downstream byte."""
+    async def _respond(self, request, body, native_request, payload, registry, transport_policy):
+        """One upstream request; never retried on another provider."""
         structured = StructuredOutput(body)
         receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason,
                                    structured_output_mapping=registry.structured_output_mapping,
@@ -623,10 +700,14 @@ class Gateway:
                     if trace:
                         private_write(trace / (receipt + "-error.json"), safe_raw)
                     self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
-                    if can_failover and status in FAILOVER_STATUSES and not image_refs:
-                        # Nothing was delivered downstream and no file consumption
-                        # is managed; the receipt keeps the original failure.
-                        return _Failover(status)
+                    if (self.ordinary_fallback_provider is not None and status in PROVIDER_FAILURE_STATUSES
+                            and diagnostic_value.get("body_status") == "json"
+                            and diagnostic_value.get("error_code") == status
+                            and payload['provider']['only'] == [self.ordinary_default_provider]):
+                        # OpenRouter's own error envelope echoes the status code. The
+                        # native helper's connection errors carry none, so local
+                        # network failures never count. The request still fails as is.
+                        await self.breaker.failure(transport_policy)
                     return web.Response(body=safe_raw, status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):

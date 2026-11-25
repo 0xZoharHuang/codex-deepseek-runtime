@@ -296,6 +296,11 @@ async def run(arguments: list[str]) -> int:
         from .provider_config import command
         home=isolated_path(Path(os.environ.get('CODEX_DEEPSEEK_HOME',str(data_root()/'codex-home'))))
         return await asyncio.to_thread(command,home,arguments[2:])
+    if arguments[:2]==['runtime','thread']:
+        # Local pin bookkeeping only: no Store owner, native or provider startup.
+        from .thread_routes import command as thread_command
+        home=isolated_path(Path(os.environ.get('CODEX_DEEPSEEK_HOME',str(data_root()/'codex-home'))))
+        return await asyncio.to_thread(thread_command,home,arguments[2:])
     image_operations={'image-status':'status','image-cleanup':'cleanup','image-reconcile-uploads':'reconcile-uploads','image-reconcile-calls':'reconcile-calls','image-cache-format':'migrate-format'}
     is_format_command=arguments[:2]==['runtime','image-cache-format']
     if is_format_command and arguments[2:] not in (['--to','2'],['--to','3']):

@@ -1,8 +1,10 @@
 """Explicit provider policy per isolated home.
 
 Inference fallback is off unless the operator names an
-``ordinary_fallback_provider``; the gateway then fails over only on the
-ordinary route and only before any response byte was delivered.
+``ordinary_fallback_provider``. Even then no request is retried elsewhere and
+no existing thread changes provider: only brand-new threads start on the
+fallback, and only during an outage confirmed by repeated provider failures
+plus OpenRouter's public endpoint status.
 """
 from contextlib import contextmanager
 import hashlib

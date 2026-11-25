@@ -45,6 +45,9 @@ class Store:
               item_id TEXT NOT NULL, fingerprint TEXT NOT NULL, receipt_id TEXT NOT NULL,
               PRIMARY KEY(item_id, fingerprint, receipt_id));
         ''')
+        # Additive table: older releases ignore it, so the schema version is unchanged.
+        from .thread_routes import ensure as ensure_thread_routes
+        ensure_thread_routes(self.db)
         self.db.execute('BEGIN IMMEDIATE')
         self.db.execute('INSERT OR IGNORE INTO adapter_metadata VALUES (?,?)',('database_id',str(uuid.uuid4())))
         self.database_id=self.db.execute("SELECT value FROM adapter_metadata WHERE key='database_id'").fetchone()[0]
