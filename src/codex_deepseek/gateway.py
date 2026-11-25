@@ -324,6 +324,21 @@ def _env_number(name, default, low, high):
     return value if low <= value <= high else float(default)
 
 
+def _with_outage_hint(raw, provider, fallback, thread):
+    """Append a local, actionable note to OpenRouter's error message; never change the status."""
+    try:
+        value = json.loads(raw)
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return raw
+    error = value.get('error') if isinstance(value, dict) else None
+    if not isinstance(error, dict) or not isinstance(error.get('message'), str):
+        return raw
+    error['message'] += (' [cds: ' + provider + ' outage confirmed by OpenRouter status. This thread stays on '
+                         + provider + ' so it keeps its reasoning; new threads start on ' + fallback
+                         + '. To continue this thread now: cds runtime thread move ' + thread + ' ' + fallback + ']')
+    return json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+
+
 class ProviderBreaker:
     """Trip only after repeated provider failures that OpenRouter's public status confirms.
 
@@ -708,6 +723,10 @@ class Gateway:
                         # native helper's connection errors carry none, so local
                         # network failures never count. The request still fails as is.
                         await self.breaker.failure(transport_policy)
+                        thread = payload.get('prompt_cache_key')
+                        if self.breaker.tripped() and isinstance(thread, str) and thread:
+                            safe_raw = _with_outage_hint(safe_raw, self.ordinary_default_provider,
+                                                         self.ordinary_fallback_provider, thread)
                     return web.Response(body=safe_raw, status=status,
                                         content_type="application/json", headers={**transport_headers,"X-Adapter-Request-Id": receipt})
                 if not body.get("stream"):

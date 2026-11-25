@@ -155,7 +155,9 @@ def command(home, arguments):
             target = arguments[2] if arguments[2] != "default" else None
             if target is not None and target != PROVIDER and before["official_completed_requests"]:
                 result["note"] = ("Hidden reasoning from earlier official DeepSeek turns will not be sent to "
-                                  + target + ". Messages, tool calls and tool results are kept.")
+                                  + target + ", including web search results that only appeared inside it. "
+                                  "Messages, tool calls and tool results are kept. Move back with: "
+                                  "runtime thread move " + key + " default")
             elif target is None:
                 result["note"] = "The thread follows the configured ordinary default provider again."
         else:

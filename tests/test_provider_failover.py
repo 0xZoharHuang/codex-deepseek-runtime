@@ -385,3 +385,23 @@ def test_doctor_accepts_only_the_configured_fallback():
     official = {**generation, 'provider_name': 'DeepSeek'}
     assert cli._verified_generation(official, 'response1', 'morph/fp8', 'deepseek', 'morph/fp8') is False
     assert cli._verified_generation(official, 'response1', 'deepseek', 'deepseek', 'morph/fp8') is True
+
+
+async def test_existing_thread_error_names_the_move_command_only_after_a_confirmed_outage(store, upstream):
+    await upstream({'deepseek': 502})
+    completed_thread(store, 'thread-old')
+    history = [USER, ASSISTANT, USER]
+    async with gateway(store, Confirm(True), ordinary_fallback_provider='morph/fp8') as g:
+        code, before = await post(g, 'thread-old', history)
+        assert code == 502 and 'cds:' not in before
+        await post(g, 'thread-old', history)
+        code, after = await post(g, 'thread-old', history)  # third failure confirms the outage
+        assert code == 502 and g.breaker.tripped()
+    message = json.loads(after)['error']['message']
+    assert message.startswith('Provider returned error')
+    assert 'cds runtime thread move thread-old morph/fp8' in message
+
+
+@pytest.mark.parametrize('raw', [b'not json', b'[]', b'{"error":"text"}', b'{"error":{"code":502}}'])
+def test_outage_hint_leaves_unexpected_bodies_unchanged(raw):
+    assert module._with_outage_hint(raw, 'deepseek', 'morph/fp8', 't') == raw

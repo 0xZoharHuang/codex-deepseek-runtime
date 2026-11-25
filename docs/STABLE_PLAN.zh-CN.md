@@ -114,7 +114,7 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-fallback morph
 - 只统计 OpenRouter 自身报告的 provider 失败：HTTP 500/502/503/504/529，且为带相同 `code` 的 OpenRouter JSON 错误。本地网络错误（连接失败、超时、DNS、TLS、原生 helper 的 `native_transport` 错误）、请求错误（400/401/402/413）与限流 429 都不计数。
 - 默认 provider 在 120 秒内失败 3 次后，再查询 OpenRouter 公开的 endpoint 状态；只有该 provider 状态异常或近 5 分钟可用率低于 50% 才判定故障。状态查询失败或显示正常时不切换，且最多每 30 秒查询一次。
 - 判定后 300 秒内，**只有新线程**（没有已完成的模型请求、历史中也没有模型输出）从备用 provider 开始，并固定在备用 provider 上，故障恢复后也不会被自动切回。300 秒后恢复正常判定。
-- 任何请求都不会在失败后改发到另一个 provider；失败原样返回，由原生重试处理。已有线程在故障期间等待其原 provider 恢复。
+- 任何请求都不会在失败后改发到另一个 provider；失败原样返回，由原生重试处理。已有线程在故障期间等待其原 provider 恢复；确认故障后，它收到的错误信息末尾会附上 cds 提示和可直接执行的 `runtime thread move <线程> <备用>` 命令（HTTP 状态不变）。
 - serial、strict schema、peer/continuation 路由保持各自的固定 provider。
 - 阈值可用环境变量调整：`CODEX_DEEPSEEK_FAILOVER_FAILURES`、`CODEX_DEEPSEEK_FAILOVER_WINDOW_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_RECHECK_SECONDS`。
 
@@ -126,7 +126,7 @@ cds runtime thread move last morph/fp8       # 或 <线程 ID>
 cds runtime thread move last default         # 取消固定，回到配置的普通默认
 ```
 
-迁移到非官方 provider 时，只去掉官方 DeepSeek 的加密 reasoning 项；消息、工具调用和结果全部保留，receipt 的 `native_request` 记录 `dropped_official_reasoning_items`。迁回官方时，原有的加密 reasoning 仍按原规则校验后重放。
+迁移到非官方 provider 时，只去掉官方 DeepSeek 的加密 reasoning 项；消息、工具调用和结果全部保留，receipt 的 `native_request` 记录 `dropped_official_reasoning_items`。注意：托管网页搜索（OpenRouter web search）的原始结果只存在于官方的隐藏 reasoning 中，迁移后新 provider 只能看到搜索查询和此前的回答文本。迁回官方时，原有的加密 reasoning 仍按原规则校验后重放。
 
 **记录**：每个请求一个 receipt。故障期间新线程的首个请求 `route_reason` 以 `failover_new_thread/<默认 provider>/` 开头，之后以 `thread_pin/failover/` 开头；手动迁移的线程以 `thread_pin/manual/` 开头。`/health` 显示 breaker 状态，`runtime doctor` 接受已配置的备用 provider 为计费身份并报告 `failover_used`。
 
