@@ -2,6 +2,7 @@
 Capacity fixtures use only the native plan tool with synthetic inputs.
 """
 import asyncio,hashlib,json,os,re,shutil,time,uuid
+from contextlib import AsyncExitStack, closing
 from pathlib import Path
 from types import SimpleNamespace
 import aiohttp
@@ -10,6 +11,7 @@ import psutil
 import pytest
 from codex_deepseek.protocol import MODEL
 from codex_deepseek.processes import identity, matches, terminate
+from codex_deepseek.state import Store
 from ci.qualify_native import _observe_process_family
 
 TOKEN='synthetic-native-413-fixture-token'
@@ -437,21 +439,6 @@ async def test_real_cli_compaction_413_uses_same_native_retry_semantics(tmp_path
     finally:await chain.close()
 
 
-class NoOwnerState:
-    # A provider evidence test double. Never constructs runtime-owner reconciliation.
-    def __init__(self,path):self.path=path;self.rows={};self.items={};self.database_id='synthetic-no-owner'
-    def start(self,*args,**kwargs):
-        identity=uuid.uuid4().hex;self.rows[identity]={'status':'running'};return identity
-    def finish(self,key,status,upstream=None,events=None,detail=None):
-        self.rows[key].update(status=status,upstream_status=upstream,
-            response_id=events.response_id if events else None,
-            usage=events.usage if events else {},detail=detail)
-    def progress(self,*args):pass
-    def get(self,identity):return self.items.get(identity)
-    def put(self,identity,value):self.items[identity]=value
-    def has_completed_native_item(self,*args,**kwargs):return False
-
-
 async def native_chain(tmp_path,provider,monkeypatch,*,image_config=None):
     helper=os.environ.get('CODEX_DEEPSEEK_TEST_HTTP_BINARY');assert helper and Path(helper).is_file()
     from codex_deepseek import gateway as module
@@ -465,12 +452,24 @@ async def native_chain(tmp_path,provider,monkeypatch,*,image_config=None):
         async def responses(self,request):
             body=await request.read();row={'at':time.monotonic(),'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()};self.requests.append(row)
             response=await super().responses(request);row['status']=response.status;return response
-    gateway=ObservedGateway(TOKEN,TOKEN,NoOwnerState(state_root/'adapter.sqlite'),{},native_http_binary=Path(helper),trace_source=lambda:None);gateway.requests=[]
-    try:await gateway.__aenter__()
-    except BaseException:await upstream_runner.cleanup();raise
+    try:
+        state = Store(state_root/'adapter.sqlite')
+        try:
+            gateway = ObservedGateway(TOKEN,TOKEN,state,{},native_http_binary=Path(helper),trace_source=lambda:None)
+            gateway.requests = []
+            await gateway.__aenter__()
+        except BaseException:
+            state.close()
+            raise
+    except BaseException:
+        await upstream_runner.cleanup()
+        raise
     async def close():
-        try:await gateway.__aexit__(None,None,None)
-        finally:await upstream_runner.cleanup()
+        try:
+            with closing(state):
+                await gateway.__aexit__(None,None,None)
+        finally:
+            await upstream_runner.cleanup()
     return SimpleNamespace(port=gateway.port,requests=gateway.requests,close=close)
 
 
@@ -482,10 +481,14 @@ async def test_real_cli_local_operator_budget_413_is_not_replayed(tmp_path,monke
     monkeypatch.setattr(module,'UPSTREAM',f'http://127.0.0.1:{upstream_port}/v1/responses')
     state_root=tmp_path/'provider';state_root.mkdir()
     (state_root/'image-transport.json').write_text(json.dumps({'schema_version':1,'enabled':True,'native_outbound_policy':'default','activate_above_bytes':1,'wire_budget_bytes':128}))
-    state=NoOwnerState(state_root/'adapter.sqlite');calls=[]
+    calls=[]
     front_runner=None
     try:
-        async with module.Gateway(TOKEN,TOKEN,state,{},native_http_binary=Path(helper),trace_source=lambda:None) as gateway,aiohttp.ClientSession(trust_env=False) as local:
+        async with AsyncExitStack() as stack:
+            state = stack.enter_context(closing(Store(state_root/'adapter.sqlite')))
+            gateway = await stack.enter_async_context(
+                module.Gateway(TOKEN,TOKEN,state,{},native_http_binary=Path(helper),trace_source=lambda:None))
+            local = await stack.enter_async_context(aiohttp.ClientSession(trust_env=False))
             async def forward(request):
                 raw=await request.read();headers={'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}
                 if 'x-codex-deepseek-network-policy' in request.headers:headers['x-codex-deepseek-network-policy']=request.headers['x-codex-deepseek-network-policy']
@@ -496,13 +499,16 @@ async def test_real_cli_local_operator_budget_413_is_not_replayed(tmp_path,monke
             front_runner=web.AppRunner(app);await front_runner.setup();await web.TCPSite(front_runner,'127.0.0.1',0).start();port=front_runner.addresses[0][1]
             home=configure(tmp_path/'home',port);work=tmp_path/'work';work.mkdir()
             record=await invoke(home,port,work)
-            evidence(tmp_path,'local-operator-budget',{'native':record,'gateway_requests':calls,'upstream_requests':upstream.calls,'store_constructor_used':False})
+            evidence(tmp_path,'local-operator-budget',{'native':record,'gateway_requests':calls,'upstream_requests':upstream.calls,'store_constructor_used':True})
             assert calls and len(calls)==1 and calls[0]['status']==413,record
             assert record['exit_code']!=0 and not upstream.calls
             no_tools(record)
     finally:
-        if front_runner:await front_runner.cleanup()
-        await upstream_runner.cleanup()
+        try:
+            if front_runner:
+                await front_runner.cleanup()
+        finally:
+            await upstream_runner.cleanup()
 
 
 CAPACITY_BUDGET=256*1024
