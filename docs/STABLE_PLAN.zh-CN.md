@@ -1,6 +1,6 @@
 # CDS 按平台安装、升级与回滚方案
 
-v0.7.14 沿用 Windows P41 和 Linux、macOS P35 原生归档。先在 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 核对本平台的发行版及对应证据，再按 [README 安装步骤](../README.md#安装并运行)操作。本版可逐 home 显式启用普通路由故障切换。[v0.7.14 使用与边界](../reports/releases/0.7.14/README.md)
+v0.7.15 沿用 Windows P41 和 Linux、macOS P35 原生归档。先在 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 核对本平台的发行版及对应证据，再按 [README 安装步骤](../README.md#安装并运行)操作。本版可逐 home 显式启用普通路由故障切换。[v0.7.15 使用与边界](../reports/releases/0.7.15/README.md)
 
 已有格式 2 图片缓存的旧 home 升级时，先让所有原生进程和网关自然退出，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
 
@@ -51,7 +51,7 @@ Windows x64 的 v0.6.14 已从公开 tag 和默认归档 URL 在独立 Windows r
 
 ```sh
 # 从相同版本源码目录执行；验证目录应此前不存在。
-CDS_CHECK_ROOT="$HOME/.local/share/codex-deepseek-0.7.14-check"
+CDS_CHECK_ROOT="$HOME/.local/share/codex-deepseek-0.7.15-check"
 python3 install.py --root "$CDS_CHECK_ROOT" --no-activate
 ```
 
@@ -100,7 +100,7 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-peer-hosted de
 
 ## 可选的故障切换与线程迁移
 
-**已有线程在故障期间沿用原路由。** 自动切换仅作用于可核对原生 UUID 的新线程，并且只改变普通推理路由。原生 runtime 仍持有会话历史。显式迁移后，新 provider 可以继续使用已有消息、工具调用和结果，但只有官方 DeepSeek 能读原有的加密推理。
+**已有线程在故障期间沿用原路由。** 自动切换仅作用于可核对原生 UUID 的新线程，并且只改变普通推理路由。原生 runtime 仍持有会话历史。显式迁移后，新 provider 可以继续使用已有消息、工具调用和结果，加密推理须回到已核验的原 OpenRouter 路由。
 
 故障切换默认关闭。需要启用时，在对应 home 显式配置一个与普通默认不同的备用 provider，支持 `deepseek` 和 `morph/fp8`。下面以默认路由为官方 DeepSeek 的 home 为例。
 
@@ -135,7 +135,9 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime thread move '<线程 ID>' d
 
 `default` 取消线程固定，改用该 home 的普通默认路由。普通默认本身是 Morph 时，如要迁到官方 DeepSeek，显式指定 `deepseek`。`list` 展示最近的线程和路由，`show` 可用于核对所选线程。
 
-普通请求实际按显式迁移走非官方 provider 时，适配器从外发请求中省略经原凭据核验的官方 DeepSeek 加密推理，保留消息、工具调用和结果。托管网页工具的续办仅在现有路由规则分别支持官方 DeepSeek 和 Morph 时接受此迁移。来源无法核验的加密推理会报错。原生会话中的历史仍在。若托管网页搜索的原始结果只存在于该加密推理中，备用 provider 仍可见查询和此前的回答，无法读取原始结果。迁回官方后，加密推理按原规则核验并重放。
+普通请求实际按显式迁移走非官方 provider 时，适配器从外发请求中省略经原凭据核验的官方 DeepSeek 加密推理，保留消息、工具调用和结果。托管网页工具的续办仅在现有路由规则分别支持官方 DeepSeek 和 Morph 时接受此迁移。来源无法核验的加密推理会报错。原生会话中的历史仍在。若托管网页搜索的原始结果只存在于该加密推理中，备用 provider 仍可见查询和此前的回答，无法读取原始结果。已存在官方加密项的会话迁回官方时，原官方加密项仍可按回执核验。如果迁移后又保存了 Morph 加密项，则二者无法跨路由合并。
+
+v0.7.15 起，通过完整结束的 OpenRouter 响应获得的 Morph/fp8 加密推理可在同一模型、凭据和精确路由上续接。普通默认路由为官方 DeepSeek 时，带已核验 Morph 历史的请求继续留在 Morph。网页工具、工具回执和搜索来源随原生历史续接。显式选了其他 peer 路由、必须串行执行的请求，或含其他来源且未经显式迁移的混合加密历史，会在出站前报错。旧版能保留新账本与会话文件，回到 v0.7.14 后，含新版 Morph 加密项的会话需恢复 v0.7.15 再继续。
 
 每个请求有独立回执。故障期间新线程的首个备用请求 `route_reason` 以 `failover_new_thread/<默认 provider>/` 开头，随后以 `thread_pin/failover/` 开头。显式迁移后的普通请求以 `thread_pin/manual/` 开头。`native_request.dropped_official_reasoning_items` 记录外发请求中省略的加密推理项数。`/health` 显示故障切换状态，`runtime doctor` 在其探针走备用路由时报告 `failover_used`。
 

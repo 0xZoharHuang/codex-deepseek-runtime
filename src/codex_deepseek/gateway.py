@@ -24,7 +24,7 @@ from .protocol import Events, MODEL, PROVIDER, SERIAL_PROVIDER, STRUCTURED_PROVI
 
 from .state import Store
 from .request_metadata import native_request_metadata
-from .opaque_replay import opaque_items, restore
+from .opaque_replay import ROUTE_PREFIXES, opaque_items, require_route, verified_history
 from . import thread_routes
 from .native_http import NativeTransport, NativeRawUnsupported, network_policy
 from .error_privacy import (response_headers, safe_error_body, error_body_fallback, sensitive_http_value,
@@ -511,6 +511,32 @@ class Gateway:
         payload, registry = prepare(body, self.store, ordinary_default_provider=provider, peer_hosted_provider=self.peer_hosted_provider, native_headers=headers, opaque_replay=True)
         return payload, registry
 
+    def _read_credential(self):
+        key = self.credential_source() if callable(self.credential_source) else self.credential_source
+        if not isinstance(key, str) or not key or any(c.isspace() for c in key):
+            raise ValueError('No usable provider credential')
+        return key
+
+    def _admit_opaque_history(self, body, headers, context, key, payload, registry,
+                              manual_projection, primary_ordinary, native_request):
+        origin, restored, omitted = verified_history(payload['input'], self.store.db, key,
+                                                    omit_official=manual_projection)
+        if origin == STRUCTURED_PROVIDER and payload['provider']['only'] == [PROVIDER]:
+            pin = thread_routes.get(self.store.db, context)
+            if pin == {'provider': PROVIDER, 'origin': 'manual'}:
+                require_route(payload, origin)
+            # Preserve normal tool/final-format selection and any specialized
+            # provider constraints when carrying verified Morph history forward.
+            payload, registry = self._prepare_route(body, headers, origin)
+            registry.route_reason = 'attested_morph_opaque_history/' + registry.route_reason
+            primary_ordinary = False
+        if origin is not None:
+            require_route(payload, origin)
+        payload['input'] = restored
+        if omitted:
+            native_request['dropped_official_reasoning_items'] = omitted
+        return payload, registry, primary_ordinary
+
     async def _confirm_outage(self, provider, policy='default'):
         """Ask OpenRouter's public endpoint status whether this provider is actually down."""
         key = self.credential_source() if callable(self.credential_source) else self.credential_source
@@ -569,6 +595,7 @@ class Gateway:
     async def responses(self, request):
         if not self.authorized(request):
             return error_response("Unauthorized", 401)
+        key = credential_error = opaque_error = None
         try:
             body = await request.json()
             if not isinstance(body, dict):
@@ -581,11 +608,24 @@ class Gateway:
                 context = None
             structured = StructuredOutput(body)
             transport_policy=network_policy(request.headers)
+            if opaque_items({'output': body.get('input')}):
+                # A system credential lookup must not hold the SQLite writer.
+                try:
+                    key = self._read_credential()
+                except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+                    credential_error = exc
             # Publish the pin and the running receipt together. A move on another
             # process's connection must see either both or neither.
             with self.store.route_admission():
                 payload, registry, manual_projection, primary_ordinary = self._select_route(
                     body, request.headers, context, new_turn=kind == 'turn')
+                if key is not None and opaque_items({'output': payload.get('input')}):
+                    try:
+                        payload, registry, primary_ordinary = self._admit_opaque_history(
+                            body, request.headers, context, key, payload, registry, manual_projection,
+                            primary_ordinary, native_request)
+                    except ProtocolError as exc:
+                        opaque_error = str(exc)
                 if registry.regrouped_tool_history:
                     native_request["regrouped_tool_history"] = registry.regrouped_tool_history
                 receipt = self.store.start(
@@ -595,10 +635,13 @@ class Gateway:
                     native_request=native_request, commit=False)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
+        if opaque_error is not None:
+            self.store.finish(receipt, 'adapter_error', detail=opaque_error)
+            return error_response(opaque_error)
         monitor_primary = self.ordinary_fallback_provider is not None and primary_ordinary and kind == 'turn'
         result = await self._respond(
             request, body, native_request, payload, registry, transport_policy, structured,
-            receipt=receipt, manual_projection=manual_projection,
+            receipt=receipt, request_key=key, credential_error=credential_error,
             monitor_primary=monitor_primary, thread=context if kind == 'turn' else None)
         if monitor_primary and self.store.db.execute(
                 "SELECT status FROM receipts WHERE id=?", (receipt,)).fetchone() == ('completed',):
@@ -606,13 +649,13 @@ class Gateway:
         return result
 
     async def _respond(self, request, body, native_request, payload, registry, transport_policy, structured,
-                       *, receipt, manual_projection, monitor_primary, thread):
+                       *, receipt, request_key, credential_error, monitor_primary, thread):
         """One upstream request; never retried on another provider."""
         trace = None
         response = None
         events = Events(registry)
         status = None
-        captured_key = self.key
+        captured_key = request_key if request_key is not None else self.key
         image_stack=AsyncExitStack();prepared_images=None;image_refs=False;image_started=False
         failure_detail = None
         identity_context = None
@@ -691,24 +734,10 @@ class Gateway:
             from .policy import isolated_path
             trace_root = self.trace_source() if self.trace_source else os.environ.get("CODEX_DEEPSEEK_TRACE_DIR")
             trace = isolated_path(Path(trace_root)) if trace_root else None
-            captured_key=self.credential_source() if callable(self.credential_source) else self.credential_source
-            if not isinstance(captured_key,str) or not captured_key or any(c.isspace() for c in captured_key):
-                raise ValueError('No usable provider credential')
-            if opaque_items({'output': payload.get('input')}):
-                try:
-                    if manual_projection:
-                        # Verify every omitted item against the original same-key
-                        # official receipt. Never send this temporary projection.
-                        official = {**payload, 'provider': {'only': [PROVIDER]}, 'input': list(payload['input'])}
-                        restore(official, self.store.db, captured_key)
-                        payload, dropped = thread_routes.without_official_reasoning(payload)
-                        native_request["dropped_official_reasoning_items"] = dropped
-                        self.store.record_native_request(receipt, native_request)
-                    else:
-                        restore(payload, self.store.db, captured_key)
-                except ProtocolError as error:
-                    self.store.finish(receipt, 'adapter_error', detail=str(error))
-                    return error_response(str(error), 400)
+            if credential_error is not None:
+                raise credential_error
+            if request_key is None:
+                captured_key = self._read_credential()
             if trace:
                 private_directory(trace)
                 private_write(trace / (receipt + "-request.json"),json.dumps(payload, ensure_ascii=False, indent=2))
@@ -786,8 +815,8 @@ class Gateway:
                     structured.validate(result)
                     normalized=events.transform({'type':'response.'+result['status'],'response':result})
                     if opaque_items(result):
-                        if result['status'] != 'completed' or payload['provider']['only'] != [PROVIDER]:
-                            raise ProtocolError('Opaque reasoning requires an official DeepSeek completion')
+                        if result['status'] != 'completed' or payload['provider']['only'][0] not in ROUTE_PREFIXES:
+                            raise ProtocolError('Opaque reasoning requires completion on a supported DeepSeek route')
                         events.opaque_credential = captured_key
                     result=next(event['response'] for event in reversed(normalized) if event['type']=='response.'+result['status'])
                     self.store.finish(receipt, result.get("status", "completed"), status, events,
@@ -807,8 +836,8 @@ class Gateway:
                     kind = original.get("type") if isinstance(original, dict) else None
                     opaque = opaque_items(original)
                     if opaque:
-                        if payload['provider']['only'] != [PROVIDER]:
-                            raise ProtocolError('Opaque reasoning requires an official DeepSeek completion')
+                        if payload['provider']['only'][0] not in ROUTE_PREFIXES:
+                            raise ProtocolError('Opaque reasoning output is unsupported on the selected DeepSeek route')
                         if kind == 'response.completed' and any(item.get('id') not in events.done for item in opaque):
                             raise ProtocolError('Streamed opaque reasoning lacks response.output_item.done evidence')
                         if held is None:

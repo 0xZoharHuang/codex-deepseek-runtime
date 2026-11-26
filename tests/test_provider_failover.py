@@ -430,6 +430,24 @@ async def test_manual_move_requires_same_credential_attestation(store, upstream)
     assert 'dropped_official_reasoning_items' not in json.loads(request)
 
 
+async def test_manual_morph_move_keeps_new_morph_reasoning(store, upstream):
+    fake = await upstream({})
+    official = completed_thread(store, OLD_THREAD)
+    morph = {**OPAQUE, 'id': 'rs_morph', 'encrypted_content': 'synthetic-morph-cipher'}
+    receipt = store.start('morph/fp8', context_key=OLD_THREAD)
+    store.finish(receipt, 'completed', 200, SimpleNamespace(response_id='synthetic-morph', usage={}))
+    with store.db:
+        remember_completed(store.db, 'FAKE', official, [OPAQUE])
+        remember_completed(store.db, 'FAKE', receipt, [morph])
+    thread_routes.move(store.db, OLD_THREAD, 'morph/fp8')
+    async with gateway(store) as g:
+        code, _ = await post(g, OLD_THREAD, [USER, OPAQUE, ASSISTANT, morph, ASSISTANT, USER])
+    assert code == 200 and fake.calls == ['morph/fp8']
+    assert [item for item in fake.bodies[0]['input'] if item.get('encrypted_content')] == [morph]
+    native, = store.db.execute('SELECT native_request FROM receipts ORDER BY started DESC LIMIT 1').fetchone()
+    assert json.loads(native)['dropped_official_reasoning_items'] == 1
+
+
 async def test_explicit_hosted_opaque_move_and_move_back(store, upstream):
     fake = await upstream({})
     proof = completed_thread(store, OLD_THREAD)

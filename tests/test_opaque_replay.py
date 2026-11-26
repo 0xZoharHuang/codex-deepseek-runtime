@@ -27,15 +27,23 @@ async def upstream(monkeypatch):
     items[3]['content']=[{'type':'reasoning_text','text':'SYNTHETIC_REASONING_TEXT'}]
     async def endpoint(request):
         payload=await request.json();requests.append(payload)
+        identity = {}
+        if observed := state.get('observed_provider'):
+            identity = {'model': MODEL, 'provider': observed}
         if state['mode']=='produce':
-            ev=[{'type':'response.created','response':{'id':'resp_first','status':'in_progress','output':[]}}]
+            ev=[{'type':'response.created','response':{
+                'id':'resp_first','status':'in_progress','output':[],**identity}}]
+            output = [*state.get('items', items), *state.get('additional_output', [])]
             if state.get('tool_first'):
                 ev.append({'type':'response.output_item.done','output_index':0,'item':{
                     'id':'fc_prior','type':'function_call','call_id':'call_prior','name':'synthetic_tool','arguments':'{}'}})
             if not state.get('terminal_only'):
-                for index,item in enumerate(items):
+                for index,item in enumerate(output):
                     ev.append({'type':'response.output_item.done','output_index':index,'item':item})
-            terminal={'id':'resp_first','status':'failed' if state.get('fail') else 'completed','output':items}
+            terminal={'id':'resp_first','status':'failed' if state.get('fail') else 'completed',
+                      'output':output,**identity}
+            if terminal_provider := state.get('terminal_provider'):
+                terminal['provider'] = terminal_provider
             if state.get('fail'):terminal['error']={'code':'fixture_failure','message':'synthetic failure'}
             if not payload.get('stream'):
                 return web.json_response(terminal)
@@ -48,7 +56,9 @@ async def upstream(monkeypatch):
                 await response.prepare(request);await response.write(body);request.transport.close()
                 return response
             return web.Response(text=text,content_type='text/event-stream')
-        terminal={'id':'resp_second','status':'completed','output':[]}
+        terminal={'id':'resp_second','status':'completed','output':[],**identity}
+        if not payload.get('stream'):
+            return web.json_response(terminal)
         return web.Response(text='data: '+json.dumps({'type':'response.completed','response':terminal})+'\n\n',content_type='text/event-stream')
     app=web.Application();app.router.add_post('/responses',endpoint)
     runner=web.AppRunner(app,handler_cancellation=True);await runner.setup();await web.TCPSite(runner,'127.0.0.1',0).start()
@@ -63,11 +73,47 @@ def original():
 
 def continuation(items):
     # Native serde can omit provider-only output fields while retaining opaque bytes.
-    history=[{'type':'reasoning','id':x['id'],'summary':[],
-              'encrypted_content':x['encrypted_content']} for x in items]
-    history[0]['content']=None
-    history[3]['content']=copy.deepcopy(items[3]['content'])
+    history = []
+    for source in items:
+        projected = {field: copy.deepcopy(source[field])
+                     for field in ('type', 'id', 'summary', 'encrypted_content')}
+        if source.get('content') is None:
+            projected['content'] = None
+        elif any(part['type'] == 'reasoning_text' for part in source['content']):
+            projected['content'] = copy.deepcopy(source['content'])
+        history.append(projected)
     return {'model':MODEL,'stream':True,'input':[{'role':'user','content':'first'},*history,{'role':'user','content':'continue'}]}
+
+
+def hosted_continuation():
+    body = original()
+    body['reasoning'] = {'effort': 'max'}
+    body['tools'] = [
+        {'type': 'web_search'},
+        {'type': 'function', 'name': 'synthetic_tool', 'parameters': {}},
+    ]
+    pending = {'type': 'reasoning', 'id': 'rs_pending', 'summary': [],
+               'content': [{'type': 'reasoning_text', 'text': 'SYNTHETIC_UNATTESTED_THINKING'}]}
+    call = {'type': 'function_call', 'name': 'synthetic_tool', 'arguments': '{}',
+            'call_id': 'call_synthetic'}
+    result = {'type': 'function_call_output', 'call_id': 'call_synthetic',
+              'output': 'SYNTHETIC_TOOL_RESULT'}
+    body['input'].extend([pending, call, result, {'role': 'user', 'content': 'continue with search'}])
+    return body
+
+
+def morph_items(items):
+    result = copy.deepcopy(items)
+    for index, item in enumerate(result):
+        item['id'] = f'rs_morph_{index}'
+        item['encrypted_content'] = f'SYNTHETIC_MORPH_OPAQUE_{index}'
+        item['signature'] = f'SYNTHETIC_MORPH_SIGNATURE_{index}'
+    return result
+
+
+def opaque_ledger_count(store, version):
+    return store.db.execute('select count(*) from adapter_metadata where key like ?',
+                            (f'opaque-reasoning-v{version}:%',)).fetchone()[0]
 
 
 @asynccontextmanager
@@ -255,3 +301,126 @@ async def test_prior_tool_event_is_not_rolled_back_by_later_opaque_failure(upstr
         assert 'response.failed' in text and 'response.completed' not in text
         assert all(x['encrypted_content'] not in text for x in items)
         assert store.db.execute('select status from receipts').fetchone()[0]=='failed'
+
+
+@pytest.mark.parametrize('retain_hosted_tool', [False, True], ids=['ordinary-next', 'hosted-next'])
+@pytest.mark.parametrize('streamed_seed', [False, True], ids=['nonstream', 'stream'])
+async def test_morph_hosted_opaque_replays_verified_items_after_gateway_restart(
+    upstream, tmp_path, retain_hosted_tool, streamed_seed,
+):
+    state, items, requests = upstream
+    path = tmp_path / 'adapter.sqlite'
+    morph = morph_items(items)
+    search = {'type': 'openrouter:web_search', 'id': 'synthetic_search', 'status': 'completed',
+              'action': {'type': 'search', 'query': 'fixture docs',
+                         'sources': [{'url': 'https://example.com/docs'}]}}
+    state.update(observed_provider='Morph', items=morph, additional_output=[search])
+    first = hosted_continuation()
+    first['stream'] = streamed_seed
+    async with running(path) as (post, store):
+        status, text = await post(first)
+        assert status == 200, text
+        if streamed_seed:
+            assert 'response.completed' in text and 'response.failed' not in text, text
+        else:
+            assert json.loads(text)['status'] == 'completed', text
+        assert all(item['encrypted_content'] in text for item in morph)
+        assert 'https://example.com/docs' in text and 'ws_synthetic_search' in text
+        assert store.db.execute('select provider, status, route_reason, upstream_status from receipts'
+                                ).fetchone() == (
+            'morph/fp8', 'completed', 'unattested_native_history_with_hosted_tools', 200)
+        assert opaque_ledger_count(store, 1) == 0
+        assert opaque_ledger_count(store, 2) == len(morph)
+        saved = store.db.execute("select value from adapter_metadata where key like 'opaque-reasoning-v2:%'")
+        assert all(item['encrypted_content'] not in row[0] for row in saved for item in morph)
+
+    state['mode'] = 'replay'
+    second = continuation(morph)
+    second['tools'] = first['tools'] if retain_hosted_tool else first['tools'][1:]
+    call, result = first['input'][2:4]
+    second['input'][-1:-1] = [
+        {**search, 'type': 'web_search_call', 'id': 'ws_synthetic_search'},
+        call,
+        result,
+    ]
+    async with running(path) as (post, store):
+        status, text = await post(second)
+        assert status == 200 and 'response.completed' in text and 'response.failed' not in text, text
+        assert store.db.execute('select provider, status, upstream_status from receipts order by started'
+                                ).fetchall() == [('morph/fp8', 'completed', 200)] * 2
+    assert len(requests) == 2
+    for request in requests:
+        assert request['provider'] == {
+            'only': ['morph/fp8'], 'allow_fallbacks': False, 'require_parameters': True,
+        }
+    outgoing = requests[-1]
+    assert outgoing['input'][1:1 + len(morph)] == morph
+    assert next(item for item in outgoing['input'] if item.get('id') == search['id']) == search
+    assert [item for item in outgoing['input'] if item.get('call_id') == call['call_id']] == [call, result]
+    assert any(tool['type'] == 'openrouter:web_search' for tool in outgoing['tools']) == retain_hosted_tool
+
+
+@pytest.mark.parametrize('conflict', ['credential', 'serial', 'mixed', 'explicit-peer'])
+async def test_verified_morph_history_rejects_incompatible_input_before_i_o(upstream, tmp_path, conflict):
+    state, items, requests = upstream
+    path = tmp_path / 'adapter.sqlite'
+    morph = morph_items(items)
+    async with running(path) as (post, store):
+        if conflict == 'mixed':
+            state['observed_provider'] = 'DeepSeek'
+            status, text = await post(original())
+            assert status == 200 and 'response.completed' in text, text
+            assert opaque_ledger_count(store, 1) == len(items)
+        state.update(observed_provider='Morph', items=morph)
+        status, text = await post(hosted_continuation())
+        assert status == 200 and 'response.completed' in text, text
+        assert opaque_ledger_count(store, 2) == len(morph)
+
+    state['mode'] = 'replay'
+    body = continuation([*items, *morph] if conflict == 'mixed' else morph)
+    if conflict == 'serial':
+        body['parallel_tool_calls'] = False
+        body['tools'] = hosted_continuation()['tools'][1:]
+    if conflict == 'explicit-peer':
+        hosted = hosted_continuation()
+        body['input'][-1:-1] = hosted['input'][1:-1]
+        body['tools'] = hosted['tools']
+    key = 'OTHER_SYNTHETIC_KEY' if conflict == 'credential' else 'SYNTHETIC_KEY'
+    options = {'peer_hosted_provider': 'primeintellect'} if conflict == 'explicit-peer' else {}
+    before = len(requests)
+    async with running(path, key, **options) as (post, _):
+        status, text = await post(body)
+        assert status in (400, 502) and 'response.completed' not in text, text
+        assert all(item['encrypted_content'] not in text for item in [*items, *morph])
+    assert len(requests) == before
+
+
+@pytest.mark.parametrize('fault', ['fail', 'truncated', 'late', 'terminal_only', 'mismatch', 'unsupported'])
+async def test_ineligible_opaque_stream_never_delivers_replayable_output(upstream, tmp_path, fault):
+    state, items, requests = upstream
+    path = tmp_path / 'adapter.sqlite'
+    morph = morph_items(items)
+    state.update(observed_provider='Morph', items=morph)
+    options = {}
+    if fault == 'mismatch':
+        state['terminal_provider'] = 'DeepSeek'
+    elif fault == 'unsupported':
+        state['observed_provider'] = 'PrimeIntellect'
+        options['peer_hosted_provider'] = 'primeintellect'
+    else:
+        state[fault] = True
+    async with running(path, **options) as (post, store):
+        status, text = await post(hosted_continuation())
+        assert status == 200 and 'response.failed' in text and 'response.completed' not in text, text
+        if fault == 'fail':
+            assert 'fixture_failure' in text
+        assert all(item['encrypted_content'] not in text for item in morph)
+        assert opaque_ledger_count(store, 1) == opaque_ledger_count(store, 2) == 0
+        assert store.db.execute('select status, upstream_status from receipts').fetchone() != ('completed', 200)
+    route = 'primeintellect' if fault == 'unsupported' else 'morph/fp8'
+    assert len(requests) == 1 and requests[0]['provider']['only'] == [route]
+    state['mode'] = 'replay'
+    async with running(path) as (post, _):
+        status, text = await post(continuation(morph))
+        assert status in (400, 502) and 'response.completed' not in text, text
+    assert len(requests) == 1

@@ -71,16 +71,6 @@ def is_new_thread(db, context_key, inputs):
     ).fetchone() is None
 
 
-def without_official_reasoning(body):
-    """Return (body, dropped) with official encrypted reasoning items removed from the input."""
-    inputs = body.get("input")
-    if not isinstance(inputs, list):
-        return body, 0
-    kept = [item for item in inputs if not (isinstance(item, dict) and item.get("type") == "reasoning"
-                                            and item.get("encrypted_content"))]
-    return ({**body, "input": kept}, len(inputs) - len(kept)) if len(kept) != len(inputs) else (body, 0)
-
-
 # --- command ---------------------------------------------------------------
 
 USAGE = ("Usage: runtime thread list | runtime thread show <THREAD|last> | "
