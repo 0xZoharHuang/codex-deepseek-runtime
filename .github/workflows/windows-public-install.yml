@@ -78,7 +78,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           & "$env:RUNNER_TEMP/cds-verifier/Scripts/python.exe" -I -B ci/qualify_installed_release.py --public-windows-source "$env:RUNNER_TEMP/cds-public-tag" --root "$env:RUNNER_TEMP/cds-install" --evidence "$env:RUNNER_TEMP/cds-public-evidence"
-      - name: Check reasoning replay and Files capacity through installed native CLI
+      - name: Check reasoning replay, Files capacity and provider failover
         if: ${{ inputs.candidate_branch != '' && github.sha == inputs.commit }}
         shell: pwsh
         run: |
@@ -93,6 +93,7 @@ jobs:
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           & $python -I -B -c "import sys; sys.path.insert(0, '.'); import pytest; raise SystemExit(pytest.main(sys.argv[1:]))" -p pytest_asyncio.plugin -W error -q -p no:cacheprovider --basetemp "$env:RUNNER_TEMP/cds-opaque-pytest" --junitxml "$evidence/opaque-replay.xml" tests/test_opaque_replay.py tests/test_native_opaque_replay.py
           & $python -I -B -c "import sys; sys.path.insert(0, '.'); import pytest; raise SystemExit(pytest.main(sys.argv[1:]))" -p pytest_asyncio.plugin -W error -q -p no:cacheprovider --basetemp "$env:RUNNER_TEMP/cds-files-pytest" --junitxml "$evidence/files-capacity.xml" tests/test_files413_native_backport.py tests/test_files_capacity_scope_candidate.py tests/test_files_upload_unknown.py
+          & $python -I -B -m pytest -p pytest_asyncio.plugin -W error -q -p no:cacheprovider --basetemp "$env:RUNNER_TEMP/cds-failover-pytest" --junitxml "$evidence/provider-failover.xml" tests/test_provider_failover.py tests/test_thread_route_admission.py tests/test_provider_config.py tests/test_provider_gateway.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

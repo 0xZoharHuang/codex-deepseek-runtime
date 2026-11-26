@@ -1,12 +1,16 @@
 # CDS 按平台安装、升级与回滚方案
 
-本页说明 v0.7.3 的分平台安装与升级规则。先在 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 确认本平台已发布本版及对应资格；尚未开放的平台继续使用 v0.7.2。Windows 使用 P41，Linux 和 macOS 沿用 P35。升级已有图片缓存前，需要先让该 home 的所有原生进程和网关自然退役，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。需要回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
+v0.7.14 沿用 Windows P41 和 Linux、macOS P35 原生归档。先在 [GitHub Releases](https://github.com/0xZoharHuang/codex-deepseek-runtime/releases) 核对本平台的发行版及对应证据，再按 [README 安装步骤](../README.md#安装并运行)操作。本版可逐 home 显式启用普通路由故障切换。[v0.7.14 使用与边界](../reports/releases/0.7.14/README.md)
+
+已有格式 2 图片缓存的旧 home 升级时，先让所有原生进程和网关自然退出，再用新入口运行 `codex-deepseek runtime image-cache-format --to 3`。回到 v0.6.15 时，先用新入口运行 `codex-deepseek runtime image-cache-format --to 2`，再切回旧入口。[格式迁移、回滚和失败处理](image-cache-formats.zh-CN.md) · [v0.7.0 实测回执](../reports/releases/0.7.0/README.md)
+
+## 历史基线 0.6.15 与 0.7.3
 
 v0.6.15 的三份清单分别沿用 Windows v0.6.14 的 P39 和 Linux、macOS v0.6.13 的原生包。请核对 [v0.6.15 分平台验收记录](../reports/releases/0.6.15/README.md)。需要回滚时，Windows 固定 v0.6.14，Linux、macOS 固定 v0.6.13。Windows 的受管用户如果需要升级既有 home，先按[原生维护指南](windows-managed-maintenance.md)确认目标账号和目录，再用该版原生工具执行一次维护。保留原安装、会话与回滚入口。
 
 P39 的变化集中在 Windows 沙箱的目录元数据与权限维护。它复用原生工具、沙箱、会话及子智能体机制。Unix 原生组件、DeepSeek 模型路由和协议行为沿用各自已发布的固定组合。CADSG 的桌面 App 有独立安装和验收记录。
 
-## 0.7.3 维护更新与按平台交付
+### 0.7.3 维护更新与按平台交付
 
 按本平台已开放版本操作。0.7.3 保留 Windows P41、Linux/macOS P35 的归档地址、SHA-256 与构建配方；正常安装不重新编译 Rust。[本版修复与资格明细](../reports/releases/0.7.3/README.md)
 
@@ -47,8 +51,8 @@ Windows x64 的 v0.6.14 已从公开 tag 和默认归档 URL 在独立 Windows r
 
 ```sh
 # 从相同版本源码目录执行；验证目录应此前不存在。
-CDS_CHECK_ROOT="$HOME/.local/share/codex-deepseek-0.6.10-check"
-python3 install.py --root "$CDS_CHECK_ROOT" --no-activate   --native-manifest /verified/runtime-x86_64-unknown-linux-gnu.json   --native-archive /verified/codex-deepseek-native-0.6.10-x86_64-unknown-linux-gnu.tar.gz
+CDS_CHECK_ROOT="$HOME/.local/share/codex-deepseek-0.7.14-check"
+python3 install.py --root "$CDS_CHECK_ROOT" --no-activate
 ```
 
 安装器继续核对 target、recipe、工具链与完整清单。选择安装输出中记录的新不可变入口，显式指定自己的 `CODEX_DEEPSEEK_HOME`。`--no-activate` 不切现有命令入口，但会按正常安装规则建立该 root 的默认 home；不把它误当不会写任何目录。
@@ -96,9 +100,9 @@ CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-peer-hosted de
 
 ## 可选的故障切换与线程迁移
 
-原则：**已有线程永远不会被自动换 provider**。换 provider 不会丢失对话记录（消息、工具调用与结果由原生 runtime 完整保存并每次全量发送），但官方 DeepSeek 的加密 reasoning 只有官方能读，中途换到其他 provider 会让模型看不到此前的隐藏推理。因此自动切换只作用于新线程，已有线程只能由你显式迁移。
+**已有线程在故障期间沿用原路由。** 自动切换仅作用于可核对原生 UUID 的新线程，并且只改变普通推理路由。原生 runtime 仍持有会话历史。显式迁移后，新 provider 可以继续使用已有消息、工具调用和结果，但只有官方 DeepSeek 能读原有的加密推理。
 
-缺省不切换：没有 `ordinary_fallback_provider` 时，payload、策略 digest 和行为与此前完全一致。需要时逐 home 显式配置一个与普通默认不同的备用 provider（`deepseek` 或 `morph/fp8`）：
+故障切换默认关闭。需要启用时，在对应 home 显式配置一个与普通默认不同的备用 provider，支持 `deepseek` 和 `morph/fp8`。下面以默认路由为官方 DeepSeek 的 home 为例。
 
 ```sh
 # 同样仅在此 home 的任务、客户端、provider 与 lease 完全退役后操作。
@@ -107,28 +111,33 @@ CDS_REVISION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[
 CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime provider set-fallback morph/fp8 --if-match "$CDS_REVISION"
 ```
 
-`set-fallback default` 删除该字段，恢复不切换。
+`set-fallback default` 删除备用配置，后续新线程继续使用普通默认路由。已有线程的固定路由保留，可按下文显式撤销。回到 v0.7.13 前，先在该 home 完全退役后用新版删除备用配置。v0.7.13 忽略新版记录的线程路由，保留账本以供重新升级。
 
-**何时判定故障**（breaker）：
+### 何时判定故障
 
-- 只统计 OpenRouter 自身报告的 provider 失败：HTTP 500/502/503/504/529，且为带相同 `code` 的 OpenRouter JSON 错误。本地网络错误（连接失败、超时、DNS、TLS、原生 helper 的 `native_transport` 错误）、请求错误（400/401/402/413）与限流 429 都不计数。
+- 判定的输入是带匹配 `error.code` 的 OpenRouter 上游 HTTP 500、502、503、504、529 JSON 错误。本地连接、DNS、TLS 失败，HTTP 400、401、402、413 与限流 429 均不触发该机制。
 - 默认 provider 在 120 秒内失败 3 次后，再查询 OpenRouter 公开的 endpoint 状态；只有该 provider 状态异常或近 5 分钟可用率低于 50% 才判定故障。状态查询失败或显示正常时不切换，且最多每 30 秒查询一次。
-- 判定后 300 秒内，**只有新线程**（没有已完成的模型请求、历史中也没有模型输出）从备用 provider 开始，并固定在备用 provider 上，故障恢复后也不会被自动切回。300 秒后恢复正常判定。
-- 任何请求都不会在失败后改发到另一个 provider；失败原样返回，由原生重试处理。已有线程在故障期间等待其原 provider 恢复；确认故障后，它收到的错误信息末尾会附上 cds 提示和可直接执行的 `runtime thread move <线程> <备用>` 命令（HTTP 状态不变）。
-- serial、strict schema、peer/continuation 路由保持各自的固定 provider。
+- 判定后 300 秒内，可核对原生 UUID、无已完成模型请求且没有模型输出历史的新线程从备用 provider 开始，并固定在该 provider 上。300 秒后，新线程重新按正常路由判定，已经固定的线程继续使用其路由。
+- 每次请求发往选定的单一路由，失败由原生 runtime 处理。确认故障后，已有线程的错误消息可附上用原生 UUID 指定线程的手动迁移命令，HTTP 状态保持原值。
+- 自动切换保留 serial、strict schema、peer/continuation 各自的路由策略。
 - 阈值可用环境变量调整：`CODEX_DEEPSEEK_FAILOVER_FAILURES`、`CODEX_DEEPSEEK_FAILOVER_WINDOW_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_COOLDOWN_SECONDS`、`CODEX_DEEPSEEK_FAILOVER_RECHECK_SECONDS`。
 
-**手动迁移已有线程**（不需要 fallback 配置，也不需要退役 home，但该线程不能有进行中的请求）：
+### 手动迁移已有线程
+
+线程没有进行中的模型请求时，可在其所属 home 操作。此命令支持单独使用，无需配置自动故障切换。
 
 ```sh
-cds runtime thread list                      # 最近线程、名称、最后 provider、固定状态
-cds runtime thread move last morph/fp8       # 或 <线程 ID>
-cds runtime thread move last default         # 取消固定，回到配置的普通默认
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime thread list
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime thread show '<线程 ID>'
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime thread move '<线程 ID>' morph/fp8
+CODEX_DEEPSEEK_HOME="$CDS_HOME" "$CDS_ENTRY" runtime thread move '<线程 ID>' default
 ```
 
-迁移到非官方 provider 时，只去掉官方 DeepSeek 的加密 reasoning 项；消息、工具调用和结果全部保留，receipt 的 `native_request` 记录 `dropped_official_reasoning_items`。注意：托管网页搜索（OpenRouter web search）的原始结果只存在于官方的隐藏 reasoning 中，迁移后新 provider 只能看到搜索查询和此前的回答文本。迁回官方时，原有的加密 reasoning 仍按原规则校验后重放。
+`default` 取消线程固定，改用该 home 的普通默认路由。普通默认本身是 Morph 时，如要迁到官方 DeepSeek，显式指定 `deepseek`。`list` 展示最近的线程和路由，`show` 可用于核对所选线程。
 
-**记录**：每个请求一个 receipt。故障期间新线程的首个请求 `route_reason` 以 `failover_new_thread/<默认 provider>/` 开头，之后以 `thread_pin/failover/` 开头；手动迁移的线程以 `thread_pin/manual/` 开头。`/health` 显示 breaker 状态，`runtime doctor` 接受已配置的备用 provider 为计费身份并报告 `failover_used`。
+普通请求实际按显式迁移走非官方 provider 时，适配器从外发请求中省略经原凭据核验的官方 DeepSeek 加密推理，保留消息、工具调用和结果。托管网页工具的续办仅在现有路由规则分别支持官方 DeepSeek 和 Morph 时接受此迁移。来源无法核验的加密推理会报错。原生会话中的历史仍在。若托管网页搜索的原始结果只存在于该加密推理中，备用 provider 仍可见查询和此前的回答，无法读取原始结果。迁回官方后，加密推理按原规则核验并重放。
+
+每个请求有独立回执。故障期间新线程的首个备用请求 `route_reason` 以 `failover_new_thread/<默认 provider>/` 开头，随后以 `thread_pin/failover/` 开头。显式迁移后的普通请求以 `thread_pin/manual/` 开头。`native_request.dropped_official_reasoning_items` 记录外发请求中省略的加密推理项数。`/health` 显示故障切换状态，`runtime doctor` 在其探针走备用路由时报告 `failover_used`。
 
 ## 失败与清理
 

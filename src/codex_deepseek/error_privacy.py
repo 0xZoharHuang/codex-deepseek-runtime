@@ -10,7 +10,7 @@ from urllib.parse import unquote
 # failure labels and common protocol error classes are admitted verbatim; adding
 # labels requires review. Never search messages, metadata.raw or nested requests.
 _HTTP_ERROR_CODES = frozenset({400, 401, 402, 403, 404, 408, 409, 413, 415, 422,
-                              429, 500, 502, 503, 504})
+                              429, 500, 502, 503, 504, 529})
 _HTTP_ERROR_LABELS = frozenset({
     "context_length_exceeded", "insufficient_quota", "credit_balance_exhausted",
     "organization_spend_limit_exceeded", "project_spend_limit_exceeded",

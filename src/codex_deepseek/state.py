@@ -1,6 +1,6 @@
 """Profile-scoped recovery evidence. An interrupted model request is never replayed here."""
 
-from contextlib import closing
+from contextlib import closing, contextmanager
 import json
 import io
 import os
@@ -18,6 +18,11 @@ SCHEMA_VERSION = 3
 SERVICE_CLIENT_PREFIX = "service-launcher-v1:"
 
 
+
+
+def _encode_receipt_metadata(value):
+    return (json.dumps(value, allow_nan=False, sort_keys=True, separators=(',', ':'))
+            if value is not None else None)
 
 
 class Store:
@@ -105,17 +110,32 @@ class Store:
         self.db.execute('INSERT OR REPLACE INTO searches VALUES (?,?)', (key, json.dumps(value)))
         self.db.commit()
 
+    @contextmanager
+    def route_admission(self):
+        """Serialize route selection and receipt publication with thread moves."""
+        self.db.execute('BEGIN IMMEDIATE')
+        with self.db:
+            yield
+
     def start(self, provider=PROVIDER, *, context_key=None, network_policy=None, route_reason=None,
-              structured_output_mapping=None, native_request=None):
+              structured_output_mapping=None, native_request=None, commit=True):
         key = str(uuid.uuid4())
-        mapping=(json.dumps(structured_output_mapping,allow_nan=False,sort_keys=True,separators=(',',':'))
-                 if structured_output_mapping is not None else None)
-        native=(json.dumps(native_request,allow_nan=False,sort_keys=True,separators=(',',':'))
-                if native_request is not None else None)
+        mapping = _encode_receipt_metadata(structured_output_mapping)
+        native = _encode_receipt_metadata(native_request)
         self.db.execute('INSERT INTO receipts(id,started,status,provider,owner_id,context_key,network_policy,route_reason,structured_output_mapping,native_request) VALUES (?,?,?,?,?,?,?,?,?,?)',
                         (key, time.time(), 'running', provider, self.owner, context_key, network_policy, route_reason, mapping, native))
-        self.db.commit()
+        if commit:
+            self.db.commit()
         return key
+
+    def record_native_request(self, key, native_request):
+        with self.db:
+            changed = self.db.execute(
+                "UPDATE receipts SET native_request=? WHERE id=? AND owner_id=? AND status='running'",
+                (_encode_receipt_metadata(native_request), key, self.owner),
+            ).rowcount
+            if changed != 1:
+                raise RuntimeError('Native request evidence requires the owned running receipt')
 
     def progress(self, key, events):
         self.db.execute('UPDATE receipts SET response_id=? WHERE id=? AND owner_id=?',

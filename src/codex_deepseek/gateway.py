@@ -312,7 +312,6 @@ class _DownstreamDisconnected(ConnectionError):
 
 # Upstream HTTP statuses where OpenRouter reports the provider, not the request, failing.
 # Network errors never reach this table: they raise before any HTTP status exists.
-PROVIDER_FAILURE_STATUSES = frozenset({500, 502, 503, 504, 529})
 OUTAGE_UPTIME_PERCENT = 50
 
 
@@ -384,14 +383,15 @@ class ProviderBreaker:
             confirmed = False  # An unconfirmed outage never changes routing.
         finally:
             self.checking = False
-        if confirmed:
+        if confirmed and len(self.failures) >= settings["failures"]:
             self.open_until = self.clock() + settings["cooldown"]
             self.failures.clear()
             self.trips += 1
             logging.getLogger(__name__).warning(
                 "Provider %s outage confirmed; new threads start on the fallback for %.0fs",
                 self.provider, settings["cooldown"])
-        return confirmed
+            return True
+        return False
 
     def snapshot(self):
         remaining = max(0.0, self.open_until - self.clock())
@@ -406,6 +406,15 @@ def _ordinary_route(payload, registry, provider):
         reason = reason.split('/', 2)[2] if reason.count('/') >= 2 else ''
     ordinary = reason == 'official_default' or reason == 'operator_default/' + provider
     return ordinary and payload['provider']['only'] == [provider]
+
+
+def _explicit_hosted_opaque_move(current, alternate, provider, note):
+    if note != 'thread_pin/manual/':
+        return False
+    official = 'official_opaque_history_with_hosted_tools'
+    peers = {'native_peer_or_continuation_with_hosted_tools', 'unattested_native_history_with_hosted_tools'}
+    return ((current == official and alternate in peers and provider == STRUCTURED_PROVIDER)
+            or (current in peers and alternate == official and provider == PROVIDER))
 
 
 class Gateway:
@@ -521,60 +530,84 @@ class Gateway:
                         or (type(uptime) in (int, float) and uptime < OUTAGE_UPTIME_PERCENT))
         return False
 
-    def _thread_route(self, body):
+    def _thread_route(self, body, context, *, new_turn):
         """Pick the ordinary provider for this thread: its pin, or the fallback for a new thread in an outage."""
-        context = body.get('prompt_cache_key') if isinstance(body, dict) else None
-        context = context if isinstance(context, str) and context else None
-        pinned = thread_routes.get(self.store.db, context) if self.store and context else None
+        pinned = thread_routes.get(self.store.db, context) if context else None
         if pinned is not None:
-            return context, pinned['provider'], 'thread_pin/' + pinned['origin'] + '/', False
-        if (self.ordinary_fallback_provider is not None and context and self.breaker.tripped()
+            return pinned['provider'], 'thread_pin/' + pinned['origin'] + '/', False
+        if (self.ordinary_fallback_provider is not None and new_turn and context and self.breaker.tripped()
                 and thread_routes.is_new_thread(self.store.db, context, body.get('input'))):
-            return (context, self.ordinary_fallback_provider,
+            return (self.ordinary_fallback_provider,
                     'failover_new_thread/' + self.ordinary_default_provider + '/', True)
-        return context, self.ordinary_default_provider, None, False
+        return self.ordinary_default_provider, None, False
+
+    def _select_route(self, body, headers, context, *, new_turn):
+        default = self.ordinary_default_provider
+        payload, registry = self._prepare_route(body, headers, default)
+        ordinary = _ordinary_route(payload, registry, default)
+        if not context:
+            return payload, registry, False, ordinary
+        provider, note, new_pin = self._thread_route(body, context, new_turn=new_turn)
+        if provider != default:
+            alternate, alternate_registry = self._prepare_route(body, headers, provider)
+            hosted_move = (alternate['provider']['only'] == [provider]
+                           and _explicit_hosted_opaque_move(
+                               registry.route_reason, alternate_registry.route_reason, provider, note))
+            if not hosted_move and not (ordinary and _ordinary_route(alternate, alternate_registry, provider)):
+                return payload, registry, False, False
+            payload, registry = alternate, alternate_registry
+        elif not ordinary:
+            return payload, registry, False, False
+        if note:
+            registry.route_reason = note + registry.route_reason
+        manual_projection = note == 'thread_pin/manual/' and provider != PROVIDER
+        if new_pin and thread_routes.pin(self.store.db, context, provider, 'failover', commit=False) != {
+                "provider": provider, "origin": "failover"}:
+            raise ProtocolError("Thread pin changed during request admission")
+        return payload, registry, manual_projection, provider == default
 
     async def responses(self, request):
         if not self.authorized(request):
             return error_response("Unauthorized", 401)
         try:
             body = await request.json()
+            if not isinstance(body, dict):
+                raise ProtocolError("Responses request must be an object")
             native_request = native_request_metadata(body, request.headers)
-            context, provider, note, new_pin = self._thread_route(body)
-            dropped = 0
-            if note and provider != PROVIDER:
-                # Only official DeepSeek can read its encrypted reasoning. The
-                # transcript (messages, tool calls, tool results) is unchanged.
-                body, dropped = thread_routes.without_official_reasoning(body)
-            payload, registry = self._prepare_route(body, request.headers, provider)
-            if note and not _ordinary_route(payload, registry, provider):
-                # Serial, strict-schema and peer routes keep their own provider pins.
-                if new_pin:
-                    payload, registry = self._prepare_route(body, request.headers, self.ordinary_default_provider)
-                new_pin, note = False, None
-            if note:
-                registry.route_reason = note + registry.route_reason
-            if new_pin:
-                thread_routes.pin(self.store.db, context, provider, 'failover')
-            if dropped:
-                native_request["dropped_official_reasoning_items"] = dropped
-            if registry.regrouped_tool_history:
-                native_request["regrouped_tool_history"] = registry.regrouped_tool_history
-            StructuredOutput(body)
+            kind = native_request.get('request_kind')
+            context = native_request.get('thread_id')
+            if (native_request["status"] != "recognized" or kind not in {'turn', 'compaction'}
+                    or context != body.get('prompt_cache_key')):
+                context = None
+            structured = StructuredOutput(body)
             transport_policy=network_policy(request.headers)
+            # Publish the pin and the running receipt together. A move on another
+            # process's connection must see either both or neither.
+            with self.store.route_admission():
+                payload, registry, manual_projection, primary_ordinary = self._select_route(
+                    body, request.headers, context, new_turn=kind == 'turn')
+                if registry.regrouped_tool_history:
+                    native_request["regrouped_tool_history"] = registry.regrouped_tool_history
+                receipt = self.store.start(
+                    payload["provider"]["only"][0], context_key=payload.get("prompt_cache_key"),
+                    network_policy=transport_policy, route_reason=registry.route_reason,
+                    structured_output_mapping=registry.structured_output_mapping,
+                    native_request=native_request, commit=False)
         except (ValueError, KeyError, TypeError) as exc:
             return error_response(str(exc))
-        result = await self._respond(request, body, native_request, payload, registry, transport_policy)
-        if payload['provider']['only'] == [self.ordinary_default_provider] and getattr(result, 'status', 500) < 300:
+        monitor_primary = self.ordinary_fallback_provider is not None and primary_ordinary and kind == 'turn'
+        result = await self._respond(
+            request, body, native_request, payload, registry, transport_policy, structured,
+            receipt=receipt, manual_projection=manual_projection,
+            monitor_primary=monitor_primary, thread=context if kind == 'turn' else None)
+        if monitor_primary and self.store.db.execute(
+                "SELECT status FROM receipts WHERE id=?", (receipt,)).fetchone() == ('completed',):
             self.breaker.success()
         return result
 
-    async def _respond(self, request, body, native_request, payload, registry, transport_policy):
+    async def _respond(self, request, body, native_request, payload, registry, transport_policy, structured,
+                       *, receipt, manual_projection, monitor_primary, thread):
         """One upstream request; never retried on another provider."""
-        structured = StructuredOutput(body)
-        receipt = self.store.start(payload['provider']['only'][0],context_key=payload.get('prompt_cache_key'),network_policy=transport_policy,route_reason=registry.route_reason,
-                                   structured_output_mapping=registry.structured_output_mapping,
-                                   native_request=native_request)
         trace = None
         response = None
         events = Events(registry)
@@ -663,7 +696,16 @@ class Gateway:
                 raise ValueError('No usable provider credential')
             if opaque_items({'output': payload.get('input')}):
                 try:
-                    restore(payload, self.store.db, captured_key)
+                    if manual_projection:
+                        # Verify every omitted item against the original same-key
+                        # official receipt. Never send this temporary projection.
+                        official = {**payload, 'provider': {'only': [PROVIDER]}, 'input': list(payload['input'])}
+                        restore(official, self.store.db, captured_key)
+                        payload, dropped = thread_routes.without_official_reasoning(payload)
+                        native_request["dropped_official_reasoning_items"] = dropped
+                        self.store.record_native_request(receipt, native_request)
+                    else:
+                        restore(payload, self.store.db, captured_key)
                 except ProtocolError as error:
                     self.store.finish(receipt, 'adapter_error', detail=str(error))
                     return error_response(str(error), 400)
@@ -715,16 +757,15 @@ class Gateway:
                     if trace:
                         private_write(trace / (receipt + "-error.json"), safe_raw)
                     self.store.finish(receipt, "upstream_error", status, detail=diagnostic)
-                    if (self.ordinary_fallback_provider is not None and status in PROVIDER_FAILURE_STATUSES
+                    if (monitor_primary and status in thread_routes.PROVIDER_FAILURE_STATUSES
                             and diagnostic_value.get("body_status") == "json"
-                            and diagnostic_value.get("error_code") == status
-                            and payload['provider']['only'] == [self.ordinary_default_provider]):
+                            and diagnostic_value.get("error_code") == status):
                         # OpenRouter's own error envelope echoes the status code. The
                         # native helper's connection errors carry none, so local
                         # network failures never count. The request still fails as is.
                         await self.breaker.failure(transport_policy)
-                        thread = payload.get('prompt_cache_key')
-                        if self.breaker.tripped() and isinstance(thread, str) and thread:
+                        if (self.breaker.tripped() and thread is not None
+                                and not sensitive_http_value(thread, captured_key)):
                             safe_raw = _with_outage_hint(safe_raw, self.ordinary_default_provider,
                                                          self.ordinary_fallback_provider, thread)
                     return web.Response(body=safe_raw, status=status,
